@@ -11,7 +11,7 @@ pkg = "io.playarr.mobile"
 r2 = lambda v: round(v, 2)
 
 def sh(*args, binary=False):
-    return subprocess.run(adb + list(args), capture_output=True, text=not binary).stdout
+    return subprocess.run(adb + list(args), capture_output=True, text=not binary, timeout=30).stdout
 
 # The viewport comes from the device itself: physical size and density (160 dpi = 1 CSS px per px). The app exports CSS px already
 # (it divides by its own display density), so nothing is rescaled here; the device and the export have to agree or the capture fails.

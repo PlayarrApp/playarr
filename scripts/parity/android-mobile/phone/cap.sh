@@ -3,6 +3,8 @@
 # cap.sh <outdir> <Dark|Light> <screen...>
 HERE=$(cd "$(dirname "$0")" && pwd)
 export PATH=$HOME/Android/Sdk/platform-tools:$PATH ANDROID_SERIAL=${ANDROID_SERIAL:-emulator-5562}
+# A hung emulator must not stall the run: every adb call is bounded (30 s, one retry) and then fails like any other failed command.
+adb() { local rc n; for n in 1 2; do timeout 30 "$HOME/Android/Sdk/platform-tools/adb" "$@"; rc=$?; [ $rc -ne 124 ] && return $rc; done; return 124; }
 O=$1; T=$2; shift 2; adb shell settings put global sysui_demo_allowed 1 >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command enter >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 1200 >/dev/null 2>&1; pkg=io.playarr.mobile; mkdir -p "$O"
 CLOCK=${PARITY_CLOCK:-$(sed -n 's/.*"clock": *"\([^"]*\)".*/\1/p' "$HERE/../../screens.json" | head -1)}
 # Calendar posters are loopback art URLs on the static server (art port 18495): let the emulator reach the host's.
