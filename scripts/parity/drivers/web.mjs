@@ -799,6 +799,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
       await guard();
     },
+    // The video picture is a codec and scaler difference, not UI (capture-web.mjs hideVideo): hide it so the chrome shows on black.
+    async hideVideo() { await guard(); await page.addStyleTag({ content: "video{visibility:hidden!important}" }); await guard(); },
     async route(r, { requireHeroAction = false } = {}) {
       await guard();
       await page.goto(appUrl(r), { waitUntil: "load" });

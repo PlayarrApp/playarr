@@ -14,3 +14,12 @@ test("every dir of a per-user-agent group belongs to exactly one variant, and we
   assert.deepEqual(g.userAgents["tv-webos"], ["tizen-webos"]);
   assert.ok(!g.userAgents.xbox.includes("tizen-webos"));
 });
+
+test("the Harmony TV dir has its own group: xbox UA, player-controls shot with the video hidden, no other group hides video", () => {
+  const h = manifest.groups["tv-harmony"];
+  assert.deepEqual(h.dirs, ["harmony"]);
+  assert.equal(h.userAgent, "xbox");
+  assert.equal(h.hideVideo, true);
+  assert.ok(!manifest.groups.tv.dirs.includes("harmony"));
+  assert.deepEqual(Object.entries(manifest.groups).filter(([, g]) => g.hideVideo).map(([k]) => k), ["tv-harmony"]);
+});

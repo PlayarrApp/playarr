@@ -314,11 +314,11 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
         fills = fill is not None and fill[3] > 0.01
         radius = radius_of(a) * tkx
         if kind == "Text" and raw is not None:
-            # a Text the app declares a role for is that control: with its own fill or border it is a box (the control) holding glyph runs
-            # (the text); without one the runs are the control's only drawn part and carry the role. The measured glyph ranges decide their own
+            # a Text the app declares a role for is that control: with its own fill or border (any edge) it is a box (the control) holding glyph
+            # runs (the text); with neither, the control has no drawn box and its glyph runs are all the exporter can read, so they carry the role. The measured glyph ranges decide their own
             # visibility: a frame beyond the viewport does not hide a range inside it.
             control = role not in (None, "text")
-            painted = fills or (num(a.get("borderWidth"), 0.0) or 0.0) >= 1.0 and argb(a.get("borderColor"))[3] > 0.01
+            painted = fills or edge_width(a) >= 1.0 and argb(a.get("borderColor"))[3] > 0.01
             if inview and control:  # the control's own border box and accessible name, then its glyph runs as a separate text record
                 emit(role, name or str(a.get("content") or a.get("text") or "").strip(), box, here, clip, radius, opacity=opacity)
             if inview and painted and not control:  # a Text that paints its own pill: its painted box (with the native radius) stands as a container
@@ -436,7 +436,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
     limits.add("occlusion is measured on the rendered screen: an element the geometry flags as covered is dropped only if hiding it in the running app changed no pixel of its box (exact diff of two screenshots, noise between two unchanged shots ignored)")
     if unmeasured:
         limits.add("a flagged element the probe could not measure (no key, hide refused, unstable screen) is exported, never dropped on geometry")
-    limits |= {"the Previewer's XComponent placeholder text ('Preview not available for this component.') has no glyph runs, so it is not exported as text"}
+    if any(e.get("role") == "video" for e in kept):  # only a tree that still holds a surface XComponent carries the Previewer's placeholder
+        limits.add("the Previewer's XComponent placeholder text ('Preview not available for this component.') has no glyph runs, so it is not exported as text")
     doc["limits"] = sorted(limits)
     if with_src:
         doc["droppedBy"] = dropped
