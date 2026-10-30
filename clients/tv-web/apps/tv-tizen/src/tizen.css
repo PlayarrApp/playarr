@@ -231,3 +231,11 @@ b {
     }
   }
 }
+
+/* The media rail's count line ("1 scene markers") is plain text whose inherited 1.5 is 14.976 px, truncated to 14 (0.98 px short, which moves every block below the rail
+   header). Half a pixel more rounds it to 15. */
+@supports not (aspect-ratio: 1) {
+  .tv-media-track-heading span {
+    line-height: calc(1.5em + 0.5px);
+  }
+}
