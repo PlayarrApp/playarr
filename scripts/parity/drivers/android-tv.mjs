@@ -358,7 +358,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
           // is the evidence instead. On the player route, the same focused control and the same paused position for three consecutive polls (the ready flag itself flips with the auto-hiding controls).
           const playerPosition = target === "player-controls" ? lines.findLast((line) => line.startsWith("player positionMs="))?.slice(18) ?? "none" : null;
           const steady = playerPosition !== null
-            ? Boolean(currentRoute === EXPECTED_ROUTE[target] && focus && playerPosition !== "none" && playerPosition === previousPosition && focus === previous)
+            ? Boolean(currentRoute === EXPECTED_ROUTE[target] && focus && playerPosition === String(env.PARITY_PAUSE_AT_MS ?? "2000") && playerPosition === previousPosition && focus === previous)
             : stableCaptureObservation({ marker: previousMarker, focus: previous }, { ready: capture.ready, routeMatches: currentRoute === EXPECTED_ROUTE[target], marker: capture.marker, focus });
           lastReason = !capture.ready ? capture.reason : !focus ? "no focused node" : currentRoute !== EXPECTED_ROUTE[target] ? `route ${currentRoute ?? "none"}` : playerPosition !== null ? `paused frame still moving (position ${previousPosition || "none"} then ${playerPosition}, focus ${focus === previous ? "held" : "changed"})` : focus !== previous ? "focus still changing" : "marker still changing";
           if (steady) {
@@ -495,6 +495,13 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
         if (json === null) continue;
         const after = await grab();
         if (!before.equals(after)) { await sleep(500); continue; }
+        // The player frame may not be composited yet (the video surface shows black): a capture of the paused frame is retried until the frame is there.
+        if (screen === "player-controls") {
+          const img = PNG.sync.read(before);
+          let sum = 0;
+          for (let i = 0; i < img.data.length; i += 4) sum += img.data[i] + img.data[i + 1] + img.data[i + 2];
+          if (sum / (img.data.length / 4) < 12) { await sleep(1000); continue; }
+        }
         const layout = json ? JSON.parse(json) : null;
         if (layout && !(await resolveCovered(layout, before))) { await sleep(500); continue; }
         writeFileSync(file, before);
