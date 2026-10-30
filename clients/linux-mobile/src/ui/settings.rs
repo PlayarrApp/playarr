@@ -28,7 +28,7 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
         .hexpand(true)
         // The web's text block sits 1.5 px above the row's centre.
         .margin_bottom(3)
-        .margin_end(12)
+        .margin_end(10)
         .build();
     col.append(
         &gtk4::Label::builder()
