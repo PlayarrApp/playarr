@@ -12,7 +12,7 @@ import AppKit
 final class TVParityLayoutRegistry {
     static let shared = TVParityLayoutRegistry()
 
-    struct Item {
+    struct Item: Equatable {
         var text: String?
         var role: String
         var size: CGFloat?
@@ -30,8 +30,6 @@ final class TVParityLayoutRegistry {
         var opacity: Double = 1
         /// The scale the view is drawn at (its transformed frame over its own size), 1 when no ancestor scales it.
         var scale: CGFloat = 1
-        /// A page that a pushed page (the detail route) draws over: it stays in the view tree but is not on screen.
-        var covered = false
     }
 
     private var items: [UUID: Item] = [:]
@@ -64,8 +62,9 @@ final class TVParityLayoutRegistry {
 
     private var requestURL: URL? { TVParityState.stateURL?.deletingLastPathComponent().appendingPathComponent("parity-layout-request") }
 
-    /// The driver asks for the layout of one capture by writing an id to `parity-layout-request`. The tree is published again,
-    /// once it has settled, stamped with that id, so a layout always belongs to the frame the id was written for.
+    /// The driver asks for the layout of one capture by writing an id to `parity-layout-request`, after its screenshot. The tree
+    /// is published again, once it has settled and its visibility has been measured on the rendered screen, stamped with that id,
+    /// so a layout always belongs to the frame the id was written for.
     private func startWatching() {
         guard watcher == nil else { return }
         watcher = Task { @MainActor [weak self] in
@@ -76,13 +75,88 @@ final class TVParityLayoutRegistry {
                       !id.isEmpty, id != self.answeredRequest else { continue }
                 var previous: Data?
                 for _ in 0..<25 {
-                    guard let data = self.snapshot(captureID: id) else { try? await Task.sleep(nanoseconds: 300_000_000); continue }
-                    if data == previous { self.publish(data); self.answeredRequest = id; break }
+                    guard let data = self.snapshot(captureID: id, visibility: nil) else { try? await Task.sleep(nanoseconds: 300_000_000); continue }
+                    if data == previous {
+                        let visibility = await self.measureVisibility()
+                        if let data = self.snapshot(captureID: id, visibility: visibility) { self.publish(data) }
+                        self.answeredRequest = id
+                        break
+                    }
                     previous = data
                     try? await Task.sleep(nanoseconds: 300_000_000)
                 }
             }
         }
+    }
+
+    // MARK: Visibility from the rendered screen
+
+    /// What the rendered screen shows of each reported item. Every item is hidden in turn (several at once when their boxes are
+    /// apart) and the screen is rendered again: an item with no pixel of its own that changes is not visible, whatever its frame,
+    /// its layer or the opacity and clipping of its ancestors say. Nothing about visibility is inferred from geometry.
+    struct Visibility {
+        /// For each reported view, one flag per line rect (or one for the box): did hiding the view change pixels in that rect.
+        var rects: [UUID: [Bool]] = [:]
+        /// The bounds of the pixels that changed, per rect, for the record.
+        var seen: [UUID: [CGRect]] = [:]
+        /// For text: the colour most common behind it, read from the render with the text hidden (the backdrop it is drawn on).
+        var behind: [UUID: [String?]] = [:]
+        /// False when the screen could not be rendered (a blank render proves nothing): the export must then be refused.
+        var rendered = true
+    }
+
+    private func lineRect(_ item: Item, _ local: CGRect) -> CGRect {
+        let k = item.scale
+        return CGRect(x: item.rect.minX + local.minX * k, y: item.rect.minY + local.minY * k, width: local.width * k, height: local.height * k)
+    }
+
+    private func measureVisibility() async -> Visibility {
+        let hide = TVParityHide.shared
+        let settle: UInt64 = 160_000_000
+        hide.hidden = []
+        try? await Task.sleep(nanoseconds: settle)
+        guard let base = TVParityStageRender.capture() else { return Visibility(rendered: false) }
+        try? await Task.sleep(nanoseconds: settle)
+        guard let again = TVParityStageRender.capture(), base.hasContent else { return Visibility(rendered: false) }
+        // units: each reported view with the rect(s) it draws
+        var units: [(id: UUID, rects: [CGRect], hull: CGRect)] = []
+        for id in order {
+            guard let item = items[id] else { continue }
+            var rects = [item.rect]
+            if let lines = lineRects[id], !lines.isEmpty { rects = lines.map { lineRect(item, $0) } }
+            var hull = rects[0]
+            for rect in rects.dropFirst() { hull = hull.union(rect) }
+            guard hull.width > 0, hull.height > 0 else { continue }
+            units.append((id, rects, hull))
+        }
+        // views whose boxes are apart can be hidden together: one render for the whole batch
+        var batches: [[Int]] = []
+        for index in units.indices {
+            let box = units[index].hull.insetBy(dx: -3, dy: -3)
+            if let slot = batches.firstIndex(where: { batch in batch.allSatisfy { !units[$0].hull.insetBy(dx: -3, dy: -3).intersects(box) } }) {
+                batches[slot].append(index)
+            } else {
+                batches.append([index])
+            }
+        }
+        var result = Visibility()
+        for batch in batches {
+            hide.hidden = Set(batch.map { units[$0].id })
+            try? await Task.sleep(nanoseconds: settle)
+            guard let hidden = TVParityStageRender.capture() else { hide.hidden = []; return Visibility(rendered: false) }
+            for index in batch {
+                let unit = units[index]
+                let changes = unit.rects.map { hidden.changed(in: $0, from: base, stableWith: again) }
+                result.rects[unit.id] = changes.map { $0 != nil }
+                result.seen[unit.id] = changes.map { $0 ?? .zero }
+                if items[unit.id]?.size != nil, items[unit.id]?.text != nil {
+                    result.behind[unit.id] = unit.rects.map { hidden.dominantColour(in: $0) }
+                }
+            }
+        }
+        hide.hidden = []
+        try? await Task.sleep(nanoseconds: settle)
+        return result
     }
 
     /// The tree is never published on its own: only for a capture request (`startWatching`), so a file always has an id.
@@ -161,7 +235,7 @@ final class TVParityLayoutRegistry {
 
     /// The raw tree, before the translation to the layout schema: every reported item (a text view as one item per laid-out
     /// line), plus the accessibility entries. `scripts/parity/apple/layout-map.mjs` translates it.
-    private func snapshot(captureID: String? = nil) -> Data? {
+    private func snapshot(captureID: String? = nil, visibility: Visibility?) -> Data? {
         let screen = CGRect(x: 0, y: 0, width: 1920, height: 1080)
         func raw(_ item: Item) -> [String: Any] {
             var out: [String: Any] = [
@@ -179,25 +253,42 @@ final class TVParityLayoutRegistry {
             return out
         }
         // a text view is one item per laid-out line, each at the view's current origin plus the line's own bounds
-        let ordered = order.flatMap { id -> [Item] in
+        let ordered = order.flatMap { id -> [(Item, Bool?, CGRect?, String?)] in
             guard let item = items[id] else { return [] }
-            guard let rects = lineRects[id], !rects.isEmpty else { return [item] }
+            let seen = visibility?.rects[id]
+            let seenBounds = visibility?.seen[id]
+            let behind = visibility?.behind[id]
+            guard let rects = lineRects[id], !rects.isEmpty else { return [(item, seen?.first, seenBounds?.first, behind?.first ?? nil)] }
             return rects.enumerated().map { index, rect in
                 var line = item
                 line.local = rect
                 // the line's own bounds from SwiftUI's text layout, in the view's space, carried to the screen by the view's frame
                 // origin and scale: no offset is removed or invented
-                let k = item.scale
-                line.rect = CGRect(x: item.rect.minX + rect.minX * k, y: item.rect.minY + rect.minY * k,
-                                   width: rect.width * k, height: rect.height * k)
+                line.rect = lineRect(item, rect)
                 // the text of each line is known only where the view draws its lines itself; otherwise the view's whole string is kept
                 if let names = item.lines, names.count == rects.count { line.text = names[index] }
-                return line
+                return (line, seen.flatMap { index < $0.count ? $0[index] : nil }, seenBounds.flatMap { index < $0.count ? $0[index] : nil },
+                        behind.flatMap { index < $0.count ? $0[index] : nil })
             }
         }
-        let top = ordered.map(\.layer).max() ?? 0
-        var raws = ordered.filter { !$0.covered && $0.layer == top && $0.rect.width > 0 && $0.rect.height > 0 && $0.rect.intersects(screen) }.map(raw)
+        let top = ordered.map { $0.0.layer }.max() ?? 0
+        // Visible means: hiding the item changed the rendered screen (measureVisibility). Without the measurement nothing is dropped.
+        var raws = ordered.filter { entry in
+            entry.0.rect.width > 0 && entry.0.rect.height > 0 && entry.0.rect.intersects(screen) && (visibility == nil || entry.1 == true)
+        }.map { entry -> [String: Any] in
+            var out = raw(entry.0)
+            if let behind = entry.3 { out["background"] = behind }
+            if let bounds = entry.2 { out["visibleBounds"] = ["x": Double(bounds.minX), "y": Double(bounds.minY), "w": Double(bounds.width), "h": Double(bounds.height)] }
+            return out
+        }
+        let visibleRects = ordered.filter { visibility != nil && $0.1 == true }.map { $0.0.rect }
+        // An accessibility entry cannot be hidden and re-rendered: it is on screen when what it holds is, that is when a visible
+        // reported item lies inside it or it lies inside one.
         for var entry in accessibilityElements(onlyPresented: top > 0) where entry.rect.width > 0 && entry.rect.height > 0 && entry.rect.intersects(screen) {
+            if visibility != nil {
+                let centre = CGPoint(x: entry.rect.midX, y: entry.rect.midY)
+                guard visibleRects.contains(where: { $0.contains(centre) || entry.rect.contains(CGPoint(x: $0.midX, y: $0.midY)) }) else { continue }
+            }
             entry.background = nil
             var entryRaw = raw(entry); entryRaw["source"] = "ax"; raws.append(entryRaw)
         }
@@ -207,6 +298,7 @@ final class TVParityLayoutRegistry {
             "raw": raws,
         ]
         if let captureID { document["captureID"] = captureID }
+        if let visibility { document["visibility"] = visibility.rendered ? "rendered" : "unavailable" }
         return try? JSONSerialization.data(withJSONObject: document, options: [.sortedKeys])
     }
 
@@ -226,15 +318,6 @@ extension EnvironmentValues {
     }
 }
 
-/// True for a page that a pushed page covers (the Mac keeps the page beneath a NavigationStack push in the view tree).
-private struct TVParityCoveredKey: EnvironmentKey { static let defaultValue = false }
-extension EnvironmentValues {
-    var parityCovered: Bool {
-        get { self[TVParityCoveredKey.self] }
-        set { self[TVParityCoveredKey.self] = newValue }
-    }
-}
-
 private struct TVParityLayerScope: ViewModifier {
     @Environment(\.parityLayer) private var layer
     func body(content: Content) -> some View { content.environment(\.parityLayer, layer + 1) }
@@ -249,6 +332,123 @@ extension EnvironmentValues {
     }
 }
 
+
+/// The views the visibility pass hides: each reported view fades to nothing while it is in the set.
+@Observable
+final class TVParityHide {
+    static let shared = TVParityHide()
+    var hidden: Set<UUID> = []
+}
+
+/// The rendered stage as RGBA pixels, 1920 x 1080 (the stage in points; the Mac scales its window to it).
+struct TVParityStageRender {
+    static let width = 1920
+    static let height = 1080
+    var pixels: [UInt8]
+
+    /// A render that is one flat colour proves nothing (the render path produced nothing).
+    var hasContent: Bool {
+        var seen = Set<UInt32>()
+        var index = 0
+        let step = 4 * 997
+        while index + 3 < pixels.count && seen.count < 8 {
+            seen.insert(UInt32(pixels[index]) << 16 | UInt32(pixels[index + 1]) << 8 | UInt32(pixels[index + 2]))
+            index += step
+        }
+        return seen.count >= 8
+    }
+
+    /// The bounds of the pixels inside `rect` that differ from `base` by more than 3 in any channel, ignoring pixels that moved
+    /// between two renders of the unchanged screen (`stable`). Nil when none differ.
+    func changed(in rect: CGRect, from base: TVParityStageRender, stableWith stable: TVParityStageRender) -> CGRect? {
+        let x0 = max(0, Int(rect.minX.rounded(.down))), x1 = min(Self.width, Int(rect.maxX.rounded(.up)))
+        let y0 = max(0, Int(rect.minY.rounded(.down))), y1 = min(Self.height, Int(rect.maxY.rounded(.up)))
+        guard x0 < x1, y0 < y1 else { return nil }
+        var minX = Int.max, minY = Int.max, maxX = -1, maxY = -1
+        pixels.withUnsafeBufferPointer { now in
+            base.pixels.withUnsafeBufferPointer { was in
+                stable.pixels.withUnsafeBufferPointer { again in
+                    for y in y0..<y1 {
+                        var o = (y * Self.width + x0) * 4
+                        for x in x0..<x1 {
+                            for c in 0..<3 {
+                                let moved = abs(Int(now[o + c]) - Int(was[o + c])) > 3
+                                if moved && abs(Int(again[o + c]) - Int(was[o + c])) <= 3 {
+                                    minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+                                    break
+                                }
+                            }
+                            o += 4
+                        }
+                    }
+                }
+            }
+        }
+        return maxX < 0 ? nil : CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
+    }
+
+    /// The colour most common inside `rect` (sampled every 2 pixels), as #rrggbb: what a view is drawn on, when read from a render
+    /// of the screen without that view.
+    func dominantColour(in rect: CGRect) -> String? {
+        let x0 = max(0, Int(rect.minX.rounded(.down))), x1 = min(Self.width, Int(rect.maxX.rounded(.up)))
+        let y0 = max(0, Int(rect.minY.rounded(.down))), y1 = min(Self.height, Int(rect.maxY.rounded(.up)))
+        guard x0 < x1, y0 < y1 else { return nil }
+        var counts: [UInt32: Int] = [:]
+        pixels.withUnsafeBufferPointer { px in
+            for y in stride(from: y0, to: y1, by: 2) {
+                for x in stride(from: x0, to: x1, by: 2) {
+                    let o = (y * Self.width + x) * 4
+                    counts[UInt32(px[o]) << 16 | UInt32(px[o + 1]) << 8 | UInt32(px[o + 2]), default: 0] += 1
+                }
+            }
+        }
+        guard let best = counts.max(by: { $0.value < $1.value })?.key else { return nil }
+        return String(format: "#%02x%02x%02x", (best >> 16) & 255, (best >> 8) & 255, best & 255)
+    }
+
+    private static func pixels(of image: CGImage) -> [UInt8]? {
+        var data = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = data.withUnsafeMutableBytes { buffer -> Bool in
+            guard let ctx = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            ctx.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        return drawn ? data : nil
+    }
+
+    #if os(tvOS)
+    @MainActor
+    static func capture() -> TVParityStageRender? {
+        guard let window = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first else { return nil }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        let image = UIGraphicsImageRenderer(size: window.bounds.size, format: format).image { _ in
+            window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+        }
+        return image.cgImage.flatMap(pixels(of:)).map(TVParityStageRender.init)
+    }
+    #elseif os(macOS)
+    /// The window's layer tree at stage size, the way the debug remote takes the screenshot (MacDebugRemote.snapshot).
+    @MainActor
+    static func capture() -> TVParityStageRender? {
+        guard let window = NSApp.keyWindow ?? NSApp.windows.first, let view = window.contentView, let layer = view.layer, view.bounds.width > 0,
+              let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        let scale = 1 / min(view.bounds.width / 1920, view.bounds.height / 1080)
+        if layer.isGeometryFlipped || view.isFlipped {
+            ctx.translateBy(x: 0, y: CGFloat(height))
+            ctx.scaleBy(x: scale, y: -scale)
+        } else {
+            ctx.scaleBy(x: scale, y: scale)
+        }
+        layer.render(in: ctx)
+        guard let image = ctx.makeImage() else { return nil }
+        return pixels(of: image).map(TVParityStageRender.init)
+    }
+    #endif
+}
 
 /// SwiftUI's own text layout, observed while it draws: the typographic bounds of each laid-out line (glyph-run boxes).
 /// Drawing is unchanged; nothing is measured by another renderer.
@@ -282,9 +482,9 @@ private struct TVParityLayoutModifier: ViewModifier {
     @Environment(\.self) private var environment
     @Environment(\.parityLayer) private var layer
     @Environment(\.parityBackdrop) private var backdrop
-    @Environment(\.parityCovered) private var covered
     @Environment(\.colorScheme) private var scheme
     @State private var id = UUID()
+    private let hide = TVParityHide.shared
 
     private func hex(_ color: Color) -> String {
         let r = color.resolve(in: environment)
@@ -304,7 +504,7 @@ private struct TVParityLayoutModifier: ViewModifier {
 
     private func item(_ rect: CGRect, scale: CGFloat) -> TVParityLayoutRegistry.Item {
         .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: rect, tracking: tracking,
-              background: hex(behind), radius: radius, lines: lines, layer: layer, scale: scale, covered: covered)
+              background: hex(behind), radius: radius, lines: lines, layer: layer, scale: scale)
     }
 
     @ViewBuilder
@@ -321,6 +521,7 @@ private struct TVParityLayoutModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         rendered(content)
+            .opacity(hide.hidden.contains(id) ? 0 : 1)
             .background(
                 GeometryReader { proxy in
                     let frame = proxy.frame(in: tvScreenSpace)
@@ -329,9 +530,8 @@ private struct TVParityLayoutModifier: ViewModifier {
                         .onAppear { report(frame, scale) }
                         .onChange(of: frame) { _, new in report(new, scale) }
                         .onChange(of: scale) { _, new in report(frame, new) }
-                        .onChange(of: scheme) { _, _ in report(frame, scale) }
-                        .onChange(of: text) { _, _ in report(frame, scale) }
-                        .onChange(of: covered) { _, _ in report(frame, scale) }
+                        // anything the item records but the frame: text, colour, fill, backdrop, radius, role, layer, size, weight
+                        .onChange(of: item(.zero, scale: 1)) { _, _ in report(frame, scale) }
                 }
             )
             .onDisappear { TVParityLayoutRegistry.shared.remove(id) }
@@ -363,22 +563,21 @@ private struct TVParityBoxModifier: ViewModifier {
     var textStyle: (size: CGFloat, weight: Int, color: Color)? = nil
     @Environment(\.self) private var environment
     @Environment(\.parityBackdrop) private var backdrop
-    @Environment(\.parityCovered) private var covered
     @Environment(\.colorScheme) private var scheme
     @Environment(\.parityLayer) private var layer
     @State private var id = UUID()
+    private let hide = TVParityHide.shared
 
     func body(content: Content) -> some View {
         content
+            .opacity(hide.hidden.contains(id) ? 0 : 1)
             .background(
                 GeometryReader { proxy in
                     let frame = proxy.frame(in: tvScreenSpace)
                     Color.clear
                         .onAppear { report(frame) }
                         .onChange(of: frame) { _, new in report(new) }
-                        .onChange(of: scheme) { _, _ in report(frame) }
-                        .onChange(of: text) { _, _ in report(frame) }
-                        .onChange(of: covered) { _, _ in report(frame) }
+                        .onChange(of: build(.zero)) { _, _ in report(frame) }
                 }
                 .ignoresSafeArea(edges: bleed ? .all : [])
             )
@@ -397,6 +596,10 @@ private struct TVParityBoxModifier: ViewModifier {
     }
 
     private func report(_ frame: CGRect) {
+        TVParityLayoutRegistry.shared.set(id, build(frame))
+    }
+
+    private func build(_ frame: CGRect) -> TVParityLayoutRegistry.Item {
         var item = TVParityLayoutRegistry.Item(text: text, role: role, rect: frame)
         if let painted {
             let r = painted.resolve(in: environment)
@@ -415,8 +618,7 @@ private struct TVParityBoxModifier: ViewModifier {
         item.radius = radius
         item.opacity = opacity
         item.layer = layer
-        item.covered = covered
-        TVParityLayoutRegistry.shared.set(id, item)
+        return item
     }
 }
 #endif
@@ -427,16 +629,6 @@ extension View {
     func parityLayerScope() -> some View {
         #if DEBUG && (os(tvOS) || os(macOS))
         modifier(TVParityLayerScope())
-        #else
-        self
-        #endif
-    }
-
-    /// Marks a page that a pushed page covers: its items stay registered but are not exported while it is covered.
-    @ViewBuilder
-    func parityCovered(_ covered: Bool) -> some View {
-        #if DEBUG && (os(tvOS) || os(macOS))
-        environment(\.parityCovered, covered)
         #else
         self
         #endif

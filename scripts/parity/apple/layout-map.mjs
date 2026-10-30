@@ -15,9 +15,15 @@ function overlaps(a, b) {
 }
 
 export function mapRaw(doc, screen, theme) {
+  // Visibility is decided in the app, on the rendered screen (each item hidden and the screen rendered again). A tree that was not
+  // measured that way, or whose render failed, is not a layout: refuse it rather than publish items that may be hidden.
+  if (doc.visibility !== "rendered") throw new Error(`layout for ${screen} (${theme}) has no rendered visibility check (visibility=${doc.visibility ?? "missing"})`);
   const styled = doc.raw.filter((e) => e.source !== "ax");
-  // an accessibility text entry has no style (font, size, weight, colour): where the view reports none it is dropped, not exported bare
-  const plain = doc.raw.filter((e) => e.source === "ax" && !((e.role === "text" || e.role === "heading") && e.fontSize == null) && !styled.some((s) => s.text === e.text && s.role === e.role && overlaps(s.rect, e.rect)));
+  // An accessibility entry is kept unless the app also reported the same thing itself (same text, mostly the same area, same kind
+  // of element). One that carries no style stays without one (null font and colour): it is a real element, only unmeasured.
+  const textual = (role) => role === "text" || role === "heading";
+  const same = (s, e) => s.text === e.text && overlaps(s.rect, e.rect) && (s.role === e.role || (textual(s.role) && textual(e.role)));
+  const plain = doc.raw.filter((e) => e.source === "ax" && !styled.some((s) => same(s, e)));
   const elements = [...styled, ...plain].map((e) => {
     const out = {
       text: e.text ?? "",
@@ -32,23 +38,7 @@ export function mapRaw(doc, screen, theme) {
     if (e.opacity != null && e.opacity !== 1) out.opacity = e.opacity;
     return out;
   });
-  return { screen, theme, viewport: doc.viewport, clockPinned: doc.clockPinned, elements: canonicalOrder(dropCovered(elements)) };
-}
-
-// Covered content is not visible: an item fully inside a later-drawn dialog (the drawer over the library) is dropped. The
-// dialog is the app's own opaque panel; nothing here changes a measured value.
-function dropCovered(elements) {
-  const dialogs = elements.filter((e) => e.role === "dialog");
-  if (!dialogs.length) return elements;
-  // only the part of an item inside the viewport is on screen: an item whose visible part lies wholly under the dialog is covered
-  const view = { x: 0, y: 0, w: 1920, h: 1080 };
-  const clip = (a) => {
-    const x = Math.max(a.x, view.x), y = Math.max(a.y, view.y);
-    return { x, y, w: Math.min(a.x + a.w, view.x + view.w) - x, h: Math.min(a.y + a.h, view.y + view.h) - y };
-  };
-  const inside = (a0, b) => { const a = clip(a0); return a.x >= b.x - 0.5 && a.y >= b.y - 0.5 && a.x + a.w <= b.x + b.w + 0.5 && a.y + a.h <= b.y + b.h + 0.5; };
-  const dIndex = (d) => elements.indexOf(d);
-  return elements.filter((e, i) => e.role === "dialog" || !dialogs.some((d) => i < dIndex(d) && inside(e.rect, d.rect)));
+  return { screen, theme, viewport: doc.viewport, clockPinned: doc.clockPinned, elements: canonicalOrder(elements) };
 }
 
 if (process.argv[1]?.endsWith("layout-map.mjs") && process.argv[2]) {

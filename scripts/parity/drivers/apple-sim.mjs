@@ -429,7 +429,6 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       const base = mac ? dirname(macState) : join(run("xcrun", ["simctl", "get_app_container", udid, bundle, "data"]).trim(), "Documents");
       const captureID = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       rmSync(join(base, "parity-layout.json"), { force: true });
-      writeFileSync(join(base, "parity-layout-request"), captureID);
       if (mac) {
         rmSync(file, { force: true });
         run(notify, [`snapshot:${file}`]);
@@ -437,11 +436,14 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       } else run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", file]);
       if (!existsSync(file) || statSync(file).size < 20000) throw new Error("empty frame");
       if ((state().route ?? "").startsWith("/login")) throw new Error("signed out");
+      // The request goes out only now, with the screenshot taken: the app hides each item in turn to measure what is visible, which
+      // must never be on screen while the frame is grabbed. The layout is stamped with this id, so it follows this frame.
+      writeFileSync(join(base, "parity-layout-request"), captureID);
       // Layout export (docs/parity/LAYOUT.md): the app's own style values and frames for this capture, written beside the screenshot.
       const themeDir = dirname(file), id = basename(file, ".png");
       if (!/^(dark|light)$/.test(basename(themeDir))) return; // not a screen capture (a crop or a player case)
       let layout = null;
-      for (let i = 0; i < 40 && !layout; i += 1) {
+      for (let i = 0; i < 240 && !layout; i += 1) { // the app renders the screen once per batch of hidden items
         await sleep(500);
         try {
           const doc = JSON.parse(readFileSync(join(base, "parity-layout.json"), "utf8"));

@@ -377,7 +377,6 @@ private struct TVProductionShell<Stage: View>: View {
                 // in screen coordinates (back button at 153.6, rails at 881.6) and backdrops run to the left edge.
                 NavigationStack(path: $path) {
                     stageContent()
-                        .parityCovered(!path.isEmpty) // the page beneath a pushed detail stays in the tree on the Mac but is not on screen
                         .environment(\.homeCardFocusReturnRequest, homeCardFocusReturnRequest)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .toolbar(.hidden, for: .navigationBar)
