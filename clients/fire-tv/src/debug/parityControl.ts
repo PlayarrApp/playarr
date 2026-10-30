@@ -21,7 +21,7 @@ export const PARITY_CONTROL = process.env.PLAYARR_PARITY_CONTROL === '1';
 // A parity capture must be the same frame on every run. Every timed animation (focus lift, stage entrance, scroll reveals)
 // is a moving source whose last few frames differ by a few levels between runs, so in a parity build each one jumps
 // straight to its end state: the app lands on the same frame it settles to, only without the motion.
-if (PARITY_CONTROL) {
+if (PARITY_CONTROL && Animated?.timing) {
   const timing = Animated.timing;
   const instant = ((value: Animated.Value | Animated.ValueXY, config: Animated.TimingAnimationConfig) =>
     timing(value, {...config, duration: 0, delay: 0})) as typeof Animated.timing;
