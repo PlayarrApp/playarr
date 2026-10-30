@@ -228,9 +228,11 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
           {...lx('textbox', t('pages.search.searchPlaceholder'))}
           returnKeyType="search"
           hasTVPreferredFocus
-          // Parity builds draw no blinking caret (the web refs set caret-color transparent), so two captures match.
+          // Parity builds draw no blinking caret (the web refs set caret-color transparent), so two captures match. This platform's input
+          // ignores caretHidden and cursorColor and draws the caret in the text colour, so an empty input is given a transparent text colour
+          // there (the placeholder is separate Text, and typed text keeps the ink colour).
           {...(PARITY_CONTROL ? {caretHidden: true, cursorColor: 'transparent', selectionColor: 'transparent'} : null)}
-          style={{flex: 1, marginLeft: u(13), padding: 0, height: u(60), color: colour.ink, fontSize: u(17.28), textAlignVertical: 'center', ...sans(400)}}
+          style={{flex: 1, marginLeft: u(13), padding: 0, height: u(60), color: PARITY_CONTROL && query.length === 0 ? 'transparent' : colour.ink, fontSize: u(17.28), textAlignVertical: 'center', ...sans(400)}}
         />
         {/* The placeholder is drawn as a native Text over the empty input, so the row is laid-out text the exporter can read. */}
         {query.length === 0 ? (

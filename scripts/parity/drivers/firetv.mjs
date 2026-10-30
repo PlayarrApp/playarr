@@ -282,6 +282,14 @@ export async function createDriver({ out } = {}) {
       if (TAIL_KEYS[screenId]) {
         await command({ cmd: "route", path: "/movies" }, 4000);
         await waitSettled();
+        // The grid draws after its data arrives; a key before a card holds focus is spent on claiming it (the drawer then opens on
+        // the first card instead of the second), so wait for a real card focus first.
+        for (let i = 0; i < 10; i++) {
+          const f = (await state(8000).catch(() => null))?.focus;
+          if (f && f.position?.rail !== "nav") break;
+          await sleep(2000);
+        }
+        await settled();
         for (const { key, long } of expandKeys(TAIL_KEYS[screenId])) await this.key(key, { long });
         return;
       }
