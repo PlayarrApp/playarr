@@ -192,7 +192,8 @@ b {
   font-weight: bolder;
 }
 
-/* Chromium 85 (Tizen 6.5) keeps only whole pixels of a line height: the body's unitless 1.5 on the drawer's 9.6 px label (14.4 px) and 38.4 px title (57.6 px)
+/* Legacy Tizen app layout adjustment to match web line boxes (not engine rounding). Everything below sits behind the legacy-engine gate
+   `@supports not (aspect-ratio: 1)`, so webOS and Tizen 7 (Chromium 94) never apply it. Chromium 85 (Tizen 6.5) keeps only whole pixels of a line height: the body's unitless 1.5 on the drawer's 9.6 px label (14.4 px) and 38.4 px title (57.6 px)
    lays out 14 and 57, so a drawer opens 1 to 2 px higher than on the web and every block below it drifts. The drawer labels and titles are plain text,
    so a length is safe here (nothing inside them inherits it); half a pixel more rounds to the nearest pixel instead of truncating. */
 @supports not (aspect-ratio: 1) {
