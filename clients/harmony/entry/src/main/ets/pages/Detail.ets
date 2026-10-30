@@ -2235,7 +2235,7 @@ struct Detail {
   @Builder
   private tvContent(): void {
     Stack() {
-      KeyArtBackdrop({ keyArt: this.heroArtwork, railFrostWidthPct: 65 })
+      KeyArtBackdrop({ keyArt: this.heroArtwork, railFrostWidthPct: 62 })
 
       Column({ space: tv(COPY_GAP - (this.isSeriesPage() ? 23.8 : 0)) }) {
         FeatureCopy({

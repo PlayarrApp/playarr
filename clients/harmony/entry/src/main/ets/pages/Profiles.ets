@@ -363,7 +363,7 @@ struct Profiles {
       }
       .height(tv(TV_ACTION_HEIGHT))
       .accessibilityText('Clients').accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
-      .padding({ left: 17, right: 17 })
+      .padding({ left: 15.78, right: 15.78 }) // web's pill is 75.55 wide: 1 + 15.78 + the two runs + 8.8 gap
       .borderRadius(tv(TV_ACTION_HEIGHT / 2))
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
@@ -406,7 +406,7 @@ struct Profiles {
     .height(tv(TV_ACTION_HEIGHT))
     .constraintSize({ minWidth: tv(TV_ACTION_HEIGHT) })
     .justifyContent(FlexAlign.Center)
-    .padding({ left: label.length > 0 ? tv(isTvMetrics() ? 15 : 17) : 0, right: label.length > 0 ? tv(isTvMetrics() ? 15 : 17) : 0 })
+    .padding({ left: label.length > 0 ? tv(isTvMetrics() ? 15 : 15.57) : 0, right: label.length > 0 ? tv(isTvMetrics() ? 15 : 15.57) : 0 })
     .accessibilityText((label.length > 0 ? label + ' ' + this.currentName() : this.currentName() + ' settings')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
     .borderRadius(tv(TV_ACTION_HEIGHT / 2))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
@@ -490,7 +490,7 @@ struct Profiles {
         .textCase(TextCase.UpperCase)
         .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : BRAND_INK_LIGHT))
         .height(tv(16))
-        .margin({ top: this.pick(160.6, PHONE_KICKER_TOP), left: isTvMetrics() ? 3 : 142.3 })
+        .margin({ top: this.pick(161.6, PHONE_KICKER_TOP), left: isTvMetrics() ? 0.04 : 142.3 })
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       Text(t('pages.profiles.heading', 'Who’s watching?')).fontFamily(nunitoAt(500, this.pick(80.64, PHONE_HEADING_SIZE)))
         
@@ -499,7 +499,7 @@ struct Profiles {
         .letterSpacing(((this.pick(-5.15, -2.77)) + (isTvMetrics() ? -0.633 : 0)) + (!isTvMetrics() ? -0.08 : 0))
         .fontColor(toResourceColor(activeColors().ink))
         .height(this.pick(77, 37))
-        .margin({ top: this.pick(-8, -0.75), bottom: this.pick(4.2, 0), left: isTvMetrics() ? 4.65 : PHONE_HEADING_LEFT }) // TV: the 110 vp line overflows its 77 vp frame; web's run starts 4.2 higher
+        .margin({ top: this.pick(-9, -0.75), bottom: this.pick(4.2, 0), left: isTvMetrics() ? -0.25 : PHONE_HEADING_LEFT }) // TV: the 110 vp line overflows its 77 vp frame; web's run starts 4.2 higher
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       Row({ space: this.pick(36.74, PHONE_CHOICE_GAP) }) { // TV: the profile tile is 5.49 wider each side than its avatar
         ForEach(this.profiles, (profile: AvailableProfileResponse) => {
@@ -534,7 +534,7 @@ struct Profiles {
               .fontColor(toResourceColor(activeColors().inkMuted))
               .margin({ top: this.pick(13.3, profile.is_current ? 11.5 : 9.5) })
             if (profile.is_current) {
-              Row({ space: tv(9) }) {
+              Row({ space: this.pick(9, 8.8) }) {
                 this.tvActionButton($r('app.media.nav_settings'), '', BRAND_PINK, () => {
                   pushRoute(getNavStack(), ROUTES.Settings);
                 })
@@ -546,7 +546,7 @@ struct Profiles {
             }
           }
           .width(this.pick(254.98, 150.48))
-          .padding({ top: this.pick(4.09, 3.25), bottom: this.pick(1.0, 6.5) })
+          .padding({ top: this.pick(4.09, 3.25), bottom: this.pick(1.0, 5.5) })
           .accessibilityText(profile.display_name + (profile.is_current ? ', current profile' : '')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .clip(false)
         }, (profile: AvailableProfileResponse): string => profile.id)
@@ -568,7 +568,8 @@ struct Profiles {
                 colors: [['rgba(255, 255, 255, 0.28)', 0], ['rgba(255, 255, 255, 0)', 1]],
               })
             Text('+').fontFamily(nunitoAt(300, this.pick(76.8, 38.4)))
-              .translate({ x: this.pick(-1.8, -1.2), y: -2.4 })
+              .translate({ x: this.pick(-0.52, 0), y: this.pick(-1.21, -0.14) })
+              .letterSpacing(this.pick(4.84, 2.43)) // web's '+' run is wider than ArkUI lays it out
               .fontSize(this.pick(76.8, 38.4)).lineHeight(webLineHeight(this.pick(76.8, 38.4))).halfLeading(true)
               .fontWeight(FontWeight.Lighter)
               .fontColor(toResourceColor(activeColors().inkSoft))
@@ -590,7 +591,7 @@ struct Profiles {
             .textCase(TextCase.UpperCase)
             .textAlign(TextAlign.Center)
             .fontColor(toResourceColor(activeColors().inkMuted))
-            .margin({ top: this.pick(10.62, 13.2), bottom: this.pick(1.7, 1.4) })
+            .margin({ top: this.pick(10.62, 10.48), bottom: this.pick(1.7, 1.4) })
         }
         .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
         .margin({ top: this.pick(14.79, 12.33), right: this.pick(5.49, 0) })

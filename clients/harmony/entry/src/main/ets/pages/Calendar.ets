@@ -672,6 +672,7 @@ export struct ReleaseCalendar {
         Text(String(dayOfMonth(cell.day))).fontFamily(nunito(640))
           .fontSize(tv(MONTH_DAY_SIZE)).lineHeight(webLineHeight(tv(MONTH_DAY_SIZE))).halfLeading(true)
           .fontWeight(FontWeight.Medium)
+          .letterSpacing(isTvMetrics() ? 0 : 0.26) // phone: web's two-digit run is 15.36 wide, Nunito at 12.8 draws it 14.84
           .margin({ top: isTvMetrics() ? -4.2 : 3.84 })
           .fontColor(toResourceColor(cell.inMonth ? activeColors().ink : activeColors().inkMuted))
         if (groupSeriesEpisodes(cell.entries).length > this.monthLinesFor(cellHeight)) {
@@ -682,7 +683,7 @@ export struct ReleaseCalendar {
       }
       .height(isTvMetrics() ? tv(MONTH_FOOT_HEIGHT) : TOUCH_MONTH_FOOT_HEIGHT)
       .width('100%')
-      .padding({ left: isTvMetrics() ? 2.2 : 6 })
+      .padding({ left: isTvMetrics() ? 2.2 : 6.8 })
     }
     .layoutWeight(1)
     .height(isTvMetrics() ? tv(cellHeight) : '100%')

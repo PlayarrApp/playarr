@@ -196,6 +196,7 @@ export struct ProfileAvatar {
       Column()
         .width('100%')
         .height('100%')
+        .borderRadius(this.diameter / 2)
         .linearGradient({
           angle: GRADIENT_ANGLE_DEG,
           colors: [
@@ -208,6 +209,7 @@ export struct ProfileAvatar {
       Column()
         .width('100%')
         .height('100%')
+        .borderRadius(this.diameter / 2)
         .radialGradient({
           center: [HIGHLIGHT_CENTER_X_PCT, HIGHLIGHT_CENTER_Y_PCT],
           radius: this.diameter,
