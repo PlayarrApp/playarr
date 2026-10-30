@@ -86,7 +86,7 @@ internal sealed class Shell : View
         BackgroundColor = Ui.C(_theme.Bg);
         BuildRail();
         _chrome.Add(new ImageView(Ui.ResPath("logo.png")) { PositionX = 60.6f, PositionY = 60.2f, Size = new Size(42, 42) });
-        _clockTime = Ui.Text("", 481f, 68.2f, 17.28f, 760, _theme.Ink, 60, 25.92f, spacing: -0.5184f, block: true);
+        _clockTime = Ui.Text("", 481f, 67.73f, 17.28f, 760, _theme.Ink, 60, 25.92f, spacing: -0.5184f);
         _clockDate = Ui.Text("", 535.4f, 72.5f, 11.136f, 640, _theme.Ink, 160, 12.25f, upper: true, spacing: 0.44544f, block: true);
         Sem.Tag(_clockTime, "text", null); Sem.Tag(_clockDate, "text", null);
         _chrome.Add(_clockTime); _chrome.Add(_clockDate);
@@ -121,15 +121,16 @@ internal sealed class Shell : View
         var pv = new NavView { Item = new NavItem("profile", "Profile", "/profiles", "", 3), CentreY = 992.1f };
         pv.Item64.Size = new Size(64, 64); pv.Item64.CornerRadius = 16; pv.Item64.PositionX = Cx - 32 - RailX; pv.Item64.PositionY = pv.CentreY - 32 - 952.4f;
         pv.Tile = Ui.Box(0, 0, 64, 64, null, 16);
-        _avatarIcon = new ImageView(Ui.ResPath("avatars/" + AvatarPresets.Default("")) + ".png") { PositionX = 22, PositionY = 15.1f, Size = new Size(20, 20), CornerRadius = 10 };
+        _avatarIcon = new ImageView(Ui.ResPath("avatars/" + AvatarPresets.Default("")) + ".png") { PositionX = 0, PositionY = 0, Size = new Size(20, 20) };
+        var avatarFrame = Ui.Box(22, 15.1f, 20, 20, _theme.Surface, 10); avatarFrame.ClippingMode = ClippingModeType.ClipChildren; avatarFrame.Add(_avatarIcon); // web: a rounded span holding the picture
         pv.Icon = null!;
         pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
-        pv.Item64.Add(pv.Tile); pv.Item64.Add(_avatarIcon); pv.Item64.Add(pv.Label);
+        pv.Item64.Add(pv.Tile); pv.Item64.Add(avatarFrame); pv.Item64.Add(pv.Label);
         Sem.Tag(pv.Item64, "link", $"Signed in as {_env.Profile}. Open profiles.");
         chip.Add(pv.Item64);
         _nav.Add(pv);
         _profileLabel = pv.Label;
-        _chrome.Add(Sem.Tag(Ui.Text("v0.1.0", RailX - 1.5f, 1035f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center, spacing: 0.32f, family: Ui.Mono, block: true), "text"));
+        _chrome.Add(Sem.Tag(Ui.Text("v0.1.0", RailX - 1.5f, 1036.45f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center, spacing: 0.32f, family: Ui.Mono, block: true), "text"));
     }
 
     private View AddGroup(float y, float h)
