@@ -1,0 +1,1 @@
+Android phone and tablet layout capture reads the viewport from the device, no longer rescales the app's CSS px export, and only accepts a layout that carries the capture id, screen and theme it asked for, from an unchanged screen.
