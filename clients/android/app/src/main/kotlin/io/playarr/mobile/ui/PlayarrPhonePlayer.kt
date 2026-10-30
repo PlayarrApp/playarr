@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.layerAlpha
 import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityShape
 import io.playarr.shared.designsystem.icons.PlayarrWebIcons
@@ -125,15 +126,15 @@ private fun PhonePlayerButton(
         modifier
             .size(if (LocalStageScale.current == 1f) 44.dp else 42.dp)
             // Web `.player-btn:disabled { opacity: 0.28 }`: a single-item queue dims Previous and Next (the other buttons are never disabled on web).
-            .alpha(if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f)
-            .parityShape(999f, alpha = if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f)
+            .layerAlpha(if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f)
+            .parityShape(999f)
             .clip(CircleShape)
             .then(if (primary) Modifier.background(Color.White.copy(alpha = 0.14f), CircleShape) else Modifier)
             .clickable(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp).parityBox("image", opacity = if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f))
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp).parityBox("image"))
     }
 }
 
@@ -292,7 +293,7 @@ internal fun BoxScope.PhonePlayerOverlay(
                     Modifier
                         .size(if (LocalStageScale.current == 1f) 44.dp else 42.dp)
                         .parityShape(999f)
-                        .then(if (controls.qualityOptions.isEmpty() || controls.switching) Modifier.alpha(0.76f) else Modifier)
+                        .then(if (controls.qualityOptions.isEmpty() || controls.switching) Modifier.layerAlpha(0.76f) else Modifier)
                         // `.player-quality-button[aria-expanded="true"]`: a 15% white disc and 1.08x while its menu is open.
                         .then(
                             if (openMenu == PlayarrPlayerMenu.Quality) {
