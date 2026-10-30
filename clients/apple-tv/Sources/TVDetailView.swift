@@ -516,7 +516,6 @@ struct TVWorkDetailView: View {
                             .placed(x: 28.9, y: 162.3, w: 239.2, h: 17.3)
                     }
                     .frame(width: 268, height: 179.53, alignment: .topLeading)
-                    .parityBox("link", text: "Play \(detail.work.title) from Chapter \(chapter.index + 1)", fill: DesignTokens.Stage.surface)
                     .frame(width: 268, height: 190, alignment: .topLeading)
                     .placed(x: x, y: 620.7, w: 268, h: 190, alignment: .topLeading)
                 }
@@ -551,12 +550,13 @@ struct TVWorkDetailView: View {
                                     .font(TVTheme.font(size: 11.52, weight: .semibold))
                                     .foregroundStyle(DesignTokens.Color.textPrimary)
                                     .lineLimit(1)
-                                    .parityLayout(text: other.title, size: 11.9, weight: 610, color: DesignTokens.Color.textPrimary)
+                                    .parityLayout(text: other.title, size: 11.52, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary)
                                     .frame(width: cardWidth, alignment: .leading)
                             }
-                            .parityBox("link", text: "Open \(other.title)", fill: DesignTokens.Stage.surface)
+                            .parityBox("link", text: "Open \(other.title)")
                         }
                         .buttonStyle(TVFocusableCardButtonStyle())
+                        .accessibilityLabel("Open \(other.title)")
                         .disabled(frozen) // not .focusable: on a Button it adds a second, inert focus target
                     }
                 }
@@ -637,7 +637,7 @@ struct TVWorkDetailView: View {
         .frame(width: width, height: height)
         .clipShape(RoundedRectangle(cornerRadius: 13.44, style: .continuous))
         .parityBox("image", fill: DesignTokens.Stage.surfaceSoft)
-        .parityBox("container", radius: width > 300 ? 12.48 : 13.44, fill: DesignTokens.Stage.surfaceSoft)
+        .parityBox("container", radius: 13.44, fill: DesignTokens.Stage.surfaceSoft)
         .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(heavy ? 0.3 : 0.14), radius: heavy ? 24 : 10, y: heavy ? 24 : 10)
         .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(heavy ? 0.2 : 0.1), radius: heavy ? 10 : 4, y: heavy ? 10 : 3)
     }
@@ -773,7 +773,6 @@ struct TVWorkDetailView: View {
                 .placed(x: 49.3, y: 155, w: 218.7, h: 17.3)
         }
         .frame(width: 268, height: 179.53, alignment: .topLeading)
-        .parityBox("link", text: "\(String(format: "%02d", ep.episodeNumber)) \(code.replacingOccurrences(of: "S ", with: "S").replacingOccurrences(of: "E ", with: "E")) \(title)", fill: DesignTokens.Stage.surface)
         .frame(width: 268, height: 190, alignment: .topLeading)
         // Media cards show focus as a soft shadow plus a lift, never a ring or fill (owner ruling). Pinned web values
         // (page-layout spec, section 5 item 1a): the card rises 7 px over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1).
@@ -794,7 +793,7 @@ struct TVWorkDetailView: View {
                     )
                 )
             } label: {
-                card
+                card.parityBox("link", text: "\(String(format: "%02d", ep.episodeNumber)) \(code.replacingOccurrences(of: "S ", with: "S").replacingOccurrences(of: "E ", with: "E")) \(title)")
             }
             .buttonStyle(TVFocusableCardButtonStyle())
             .focused($focusedEpisodeID, equals: ep.id)

@@ -103,7 +103,7 @@ struct TVPlayerView: View {
         }) { Color.black }
             .frame(width: 1920, height: 1080)
             .clipped()
-            .parityBox("video", fill: Color.black)
+            .parityBox("image") // a still of the clip: this is an image, not a playing video
     }
 
     private var playerBody: some View {

@@ -449,7 +449,6 @@ struct TVCalendarView: View {
                                 .parityLayout(text: item.entries.count > 1 ? "\(Self.title(of: item)) \u{00B7} \(item.entries.count)\u{00D7}" : Self.title(of: item), size: 12.48, weight: Int(item.entries.count > 1 ? 680 : 400), color: DesignTokens.Color.textPrimary)
                         }
                         .frame(width: 226, height: 44, alignment: .leading)
-                        .parityBox("button", text: "\(Self.title(of: item)), \(Self.toneName(Self.tone(of: item, today: model.today))), \(Self.dayHeading(day))", radius: 4)
                         .padding(.leading, -5.6)
                     }
                 }
@@ -679,8 +678,7 @@ struct TVCalendarView: View {
         }
         return ZStack(alignment: .topLeading) {
             ForEach(Array(placed.enumerated()), id: \.offset) { _, item in
-                button(item.0, x: item.1, width: item.2, primary: item.3, y: y)
-                    .opacity(item.4 ? 1 : 0.5)
+                button(item.0, x: item.1, width: item.2, primary: item.3, enabled: item.4, y: y)
             }
             ForEach(Array(hints.enumerated()), id: \.offset) { index, hint in
                 Text(hint)
@@ -692,13 +690,14 @@ struct TVCalendarView: View {
         }
     }
 
-    private func button(_ label: String, x: CGFloat, width: CGFloat, primary: Bool, y: CGFloat) -> some View {
+    private func button(_ label: String, x: CGFloat, width: CGFloat, primary: Bool, enabled: Bool, y: CGFloat) -> some View {
         // Web: a leading "+" / minus glyph is its own run, 9.6 pt before the label; the control is named by the label alone.
         let ink = primary ? DesignTokens.Stage.onAccent : DesignTokens.Color.textSecondary
         let weight = Int(primary ? 720 : 900)
         let glyph: String? = (label.hasPrefix("+  ") || label.hasPrefix("\u{2212}  ")) ? String(label.prefix(1)) : nil
         let name = glyph == nil ? label : String(label.dropFirst(3))
-        return HStack(spacing: 9.6) {
+        return Button(action: {}) {
+          HStack(spacing: 9.6) {
             if let glyph {
                 Text(glyph)
                     .font(TVTheme.font(size: 14.72, css: 720))
@@ -709,15 +708,20 @@ struct TVCalendarView: View {
                 .font(TVTheme.font(size: 14.72, css: primary ? 720 : 900))
                 .foregroundStyle(ink)
                 .parityLayout(text: name, size: 14.72, weight: weight, color: ink)
+          }
+          .frame(width: width, height: 58)
+          .parityBox("button", text: name, radius: 29, fill: primary ? DesignTokens.Stage.accent : DesignTokens.Color.backgroundElevated, opacity: enabled ? 1 : 0.5)
+          .background(
+              Capsule()
+                  .fill(primary ? DesignTokens.Stage.accent : DesignTokens.Color.backgroundElevated)
+                  .overlay(Capsule().stroke(DesignTokens.Stage.inkMuted.opacity(primary ? 0 : 0.35), lineWidth: 1))
+          )
         }
-            .frame(width: width, height: 58)
-            .parityBox("button", text: name, radius: 29, fill: primary ? DesignTokens.Stage.accent : DesignTokens.Color.backgroundElevated)
-            .background(
-                Capsule()
-                    .fill(primary ? DesignTokens.Stage.accent : DesignTokens.Color.backgroundElevated)
-                    .overlay(Capsule().stroke(DesignTokens.Stage.inkMuted.opacity(primary ? 0 : 0.35), lineWidth: 1))
-            )
-            .placed(x: x, y: y, w: width, h: 58)
+        .buttonStyle(TVFocusableCardButtonStyle())
+        .disabled(true) // the parity agenda draws these controls but does not act on them; inert, so they take no focus
+        .accessibilityLabel(name)
+        .opacity(enabled ? 1 : 0.5)
+        .placed(x: x, y: y, w: width, h: 58)
     }
 
     private static func title(of item: CalendarItem) -> String {

@@ -1073,7 +1073,6 @@ struct TVWebHomeCard: View {
                 .frame(width: artWidth, alignment: .leading)
                 .padding(.top, 3.6)
         }
-        .background(alignment: .top) { Color.clear.frame(width: artWidth, height: artHeight + 29.36).parityBox("link", text: Self.accessibleName(work), radius: 0, fill: DesignTokens.Stage.surface) }
         .offset(y: focused ? -6 : 0)
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22), value: focused)
     }
@@ -1423,9 +1422,6 @@ struct TVSearchView: View {
                 .frame(width: 24, height: 24)
                 .parityBox("image")
                 .placed(x: 25, y: 26, w: 24, h: 24)
-            Color.clear.frame(width: 506, height: 60)
-                .parityBox("textbox", text: "Search your libraries and playlists")
-                .placed(x: 62, y: 8, w: 506, h: 60)
             // The placeholder is a native label (web: a text row inside the field); the field itself is transparent.
             if !hasQuery || frozen {
                 Text(hasQuery ? query.wrappedValue : "Search your libraries and playlists")
@@ -1436,15 +1432,16 @@ struct TVSearchView: View {
                     .allowsHitTesting(false)
                     .placed(x: 62, y: 0, w: 480, h: 76)
             }
-            if !frozen {
-                TextField("", text: query)
-                    .font(TVTheme.font(size: 17.66, weight: .regular))
-                    .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .accessibilityLabel("Search your libraries and playlists")
-                    .focused($searchFieldFocused)
-                    .onSubmit(onSubmit)
-                    .placed(x: 62, y: 0, w: 480, h: 76)
-            }
+            // the real field is always laid out; a frozen (parity) page keeps it inert so it takes no focus and no keyboard
+            TextField("", text: query)
+                .font(TVTheme.font(size: 17.66, weight: .regular))
+                .foregroundStyle(DesignTokens.Color.textPrimary)
+                .accessibilityLabel("Search your libraries and playlists")
+                .focused($searchFieldFocused)
+                .onSubmit(onSubmit)
+                .disabled(frozen)
+                .placed(x: 62, y: 0, w: 480, h: 76)
+                .parityBox("textbox", text: "Search your libraries and playlists")
             if hasQuery {
                 Text("Clear")
                     .font(TVTheme.font(size: 10.94, weight: .bold))
@@ -1946,7 +1943,7 @@ struct TVLibraryKindView: View {
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
                     .lineSpacing(3)
-                    .parityLayout(text: overview, size: 13.82, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255))
+                    .parityLayout(text: overview, size: 13.8, weight: 600, color: DesignTokens.Stage.inkMuted)
                     .padding(.top, 24)
                     .frame(maxWidth: 348, alignment: .leading)
             }
@@ -1963,17 +1960,17 @@ struct TVLibraryKindView: View {
             if !year.isEmpty {
                 Text(year)
                     .foregroundStyle(DesignTokens.Color.textSecondary)
-                    .parityLayout(text: year, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255))
+                    .parityLayout(text: year, size: 13, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textSecondary)
             }
             if !genreLine.isEmpty {
                 Text(genreLine)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .parityLayout(text: genreLine, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255))
+                    .parityLayout(text: genreLine, size: 13, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textDisabled)
             }
             if let runtime = previewRuntime, runtime.id == work.id, let text = runtime.text {
                 Text(text)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .parityLayout(text: text, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255))
+                    .parityLayout(text: text, size: 13, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textDisabled)
             }
         }
         .font(TVTheme.font(size: 13, weight: .medium))
@@ -2164,7 +2161,7 @@ struct TVLibraryKindView: View {
                     }
                     .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.card, style: .continuous))
                     .parityBox("image", fill: DesignTokens.Stage.surfaceSoft)
-                    .parityBox("container", radius: 12.48, fill: DesignTokens.Stage.surfaceSoft)
+                    .parityBox("container", radius: DesignTokens.Radius.card, fill: DesignTokens.Stage.surfaceSoft)
                     .modifier(TVCardFocusGlow(focused: isSelected && drawsFocusGlow, cornerRadius: DesignTokens.Radius.card))
                     // Pinned web values: rest 0 10 20 .14 + 0 3 8 .10; focused 0 24 48 .30 + 0 10 20 .20.
                     .shadow(
@@ -2203,7 +2200,7 @@ struct TVLibraryKindView: View {
                 }
             }
             .frame(width: width, alignment: .leading)
-            .parityBox("link", text: "Open \(work.title)", radius: 12, fill: DesignTokens.Stage.surface)
+            .parityBox("button", text: "Open \(work.title)", radius: DesignTokens.Radius.card)
             // Pinned web library focus: translateY(-7px) scale(1.025) over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1); no ring.
             .scaleEffect(isSelected ? 1.015 : 1)
             .offset(y: isSelected ? -5 : 0)
@@ -2289,11 +2286,12 @@ struct TVLibraryKindView: View {
                 Text(letter)
                     .font(TVTheme.font(size: 9.2, weight: .regular))
                     .foregroundStyle(active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
-                    .parityLayout(text: letter, size: 9.22, weight: 400, color: active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
+                    .parityLayout(text: letter, size: 9.2, weight: 400, color: active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
                     .frame(width: 24, height: 24)
-                    .background(Circle().fill(active ? DesignTokens.Color.textSecondary : Color.clear))
+                    .background {
+                        if active { Circle().fill(DesignTokens.Color.textSecondary).parityBox("container", radius: 12, fill: DesignTokens.Color.textSecondary) }
+                    }
                     .frame(width: 44, height: 44)
-                    .parityBox("button", text: letter == "#" ? "Numbers and symbols" : letter, radius: 22, fill: DesignTokens.Stage.surface)
                     .frame(width: DesignTokens.Shell.libraryAlphabetWidth, height: 44)
             }
         }

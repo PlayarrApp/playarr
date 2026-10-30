@@ -66,7 +66,6 @@ struct TVPlayerChrome: View {
                 endPoint: .bottom
             )
             .frame(width: 1920, height: 518.4)
-            .parityBox("container", fill: Color.black)
             .placed(x: 0, y: 561.6, w: 1920, h: 518.4)
             .offset(y: controlsVisible ? 0 : 518.4)
             .opacity(controlsVisible ? 1 : 0)
@@ -89,22 +88,27 @@ struct TVPlayerChrome: View {
 
     private var topButtons: some View {
         ZStack(alignment: .topLeading) {
-            HStack(spacing: 8.8) {
-                Image(systemName: "arrow.down.right.and.arrow.up.left")
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(width: 20, height: 20)
-                    .parityBox("image")
-                Text("Minimise")
-                    .font(TVTheme.font(size: 11.2, css: 700))
-                    .tracking(0.22)
-                    .parityLayout(text: "Minimise", size: 11.2, weight: 700, color: Color.white, tracking: 0.22)
+            Button(action: onClose) {
+                HStack(spacing: 8.8) {
+                    Image(systemName: "arrow.down.right.and.arrow.up.left")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 20, height: 20)
+                        .parityBox("image")
+                    Text("Minimise")
+                        .font(TVTheme.font(size: 11.2, css: 700))
+                        .tracking(0.22)
+                        .parityLayout(text: "Minimise", size: 11.2, weight: 700, color: Color.white, tracking: 0.22)
+                }
+                .foregroundStyle(Color.white)
+                .frame(width: 124, height: 48)
+                .parityBox("button", text: "Minimise player", radius: 999, fill: Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255), alpha: 0.81)
+                .background(Capsule().fill(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.81)))
+                .overlay(Capsule().stroke(Color.white.opacity(0.14), lineWidth: 1))
+                .shadow(color: Color.black.opacity(0.28), radius: 12, y: 8)
             }
-            .foregroundStyle(Color.white)
-            .frame(width: 124, height: 48)
-            .parityBox("button", text: "Minimise player", radius: 999, fill: Color(red: 10 / 255, green: 8 / 255, blue: 9 / 255))
-            .background(Capsule().fill(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.81)))
-            .overlay(Capsule().stroke(Color.white.opacity(0.14), lineWidth: 1))
-            .shadow(color: Color.black.opacity(0.28), radius: 12, y: 8)
+            .buttonStyle(TVFocusableCardButtonStyle())
+            .accessibilityLabel("Minimise player")
+            .disabled(true) // a pointer or remote does not reach it: Back closes the player
             .placed(x: 1678, y: 37.8, w: 124, h: 48)
 
             Button(action: onClose) {
@@ -114,12 +118,13 @@ struct TVPlayerChrome: View {
                     .frame(width: 14, height: 22)
                     .parityBox("image")
                     .frame(width: 48, height: 48)
-                    .parityBox("button", text: "Close player", radius: 999, fill: Color(red: 7 / 255, green: 6 / 255, blue: 6 / 255))
+                    .parityBox("button", text: "Close player", radius: 999, fill: Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255), alpha: 0.58)
                     .background(Circle().fill(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58)))
                     .overlay(Circle().stroke(Color.white.opacity(0.14), lineWidth: 1))
                     .shadow(color: Color.black.opacity(0.28), radius: 12, y: 8)
             }
             .buttonStyle(TVFocusableCardButtonStyle())
+            .accessibilityLabel("Close player")
             .disabled(!interactive) // not .focusable: on a Button it adds a second, inert focus target
             .modifier(TVFocusTag(binding: focus, control: .close))
             .placed(x: 1814, y: 37.8, w: 48, h: 48)
@@ -137,7 +142,8 @@ struct TVPlayerChrome: View {
         .buttonStyle(TVFocusableCardButtonStyle())
         .disabled(!interactive) // not .focusable: on a Button it adds a second, inert focus target
         .modifier(TVFocusTag(binding: focus, control: .scrubber))
-        .parityBox("slider", text: "Seek", fill: Color.black)
+        .accessibilityLabel("Seek")
+        .parityBox("button", text: "Seek")
         .placed(x: 70, y: 914, w: 1780, h: 44)
     }
 
@@ -147,16 +153,20 @@ struct TVPlayerChrome: View {
 
     /// A 20 pt icon inside its 64 pt round control (web: icon buttons are 64 x 64 with the icon centred), named as the web names it.
     private func icon(_ symbol: String, x: CGFloat, y: CGFloat = 980, opacity: Double = 0.92, name: String? = nil, disabled: Bool = false) -> some View {
-        Image(systemName: symbol)
-            .font(.system(size: 17, weight: .regular))
-            .foregroundStyle(Color.white.opacity(disabled ? 1 : opacity))
-            .frame(width: 20, height: 20)
-            .parityBox("image", fill: Color.black, opacity: disabled ? 0.28 : 1)
-            .frame(width: 64, height: 64)
-            .parityBox("button", text: name, radius: 50, fill: Color.black, opacity: disabled ? 0.28 : 1)
-            .opacity(disabled ? 0.28 : 1)
-            .accessibilityLabel(name ?? "")
-            .placed(x: x - 22, y: y - 22, w: 64, h: 64, alignment: .center)
+        Button(action: {}) {
+            Image(systemName: symbol)
+                .font(.system(size: 17, weight: .regular))
+                .foregroundStyle(Color.white.opacity(disabled ? 1 : opacity))
+                .frame(width: 20, height: 20)
+                .parityBox("image", opacity: disabled ? 0.28 : 1)
+                .frame(width: 64, height: 64)
+                .parityBox("button", text: name, radius: 50, opacity: disabled ? 0.28 : 1)
+        }
+        .buttonStyle(TVFocusableCardButtonStyle())
+        .disabled(true) // an inert control in the parity player: it draws and is named, nothing acts on it
+        .opacity(disabled ? 0.28 : 1)
+        .accessibilityLabel(name ?? "")
+        .placed(x: x - 22, y: y - 22, w: 64, h: 64, alignment: .center)
     }
 
     private static func clock(_ seconds: Double) -> String {
@@ -177,7 +187,7 @@ struct TVPlayerChrome: View {
                     .frame(width: 64, height: 64)
                     .background(Circle().fill(Color.white.opacity(0.14)))
             }
-            .parityBox("button", text: state.isPlaying ? "Pause" : "Play", radius: 50, fill: Color(red: 0x24 / 255, green: 0x24 / 255, blue: 0x24 / 255))
+            .parityBox("button", text: state.isPlaying ? "Pause" : "Play", radius: 50, fill: Color.white, alpha: 0.14)
             .buttonStyle(TVFocusableCardButtonStyle())
             .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
             .disabled(!interactive) // not .focusable: on a Button it adds a second, inert focus target
@@ -188,23 +198,20 @@ struct TVPlayerChrome: View {
                 Text(Self.clock(state.position))
                     .font(TVTheme.font(size: 10.88, css: 400))
                     .foregroundStyle(Color.white)
+                    .parityLayout(text: Self.clock(state.position), size: 10.88, weight: 400, color: Color.white)
                 Text(" / ")
                     .font(TVTheme.font(size: 10.88, css: 400))
                     .foregroundStyle(Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
+                    .parityLayout(text: " / ", size: 10.88, weight: 400, color: Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
                 Text(Self.clock(state.duration))
                     .font(TVTheme.font(size: 10.88, css: 400))
                     .foregroundStyle(Color.white)
+                    .parityLayout(text: Self.clock(state.duration), size: 10.88, weight: 400, color: Color.white)
             }
             .fixedSize()
             .frame(width: 58.39, height: 16.31, alignment: .leading)
-            .parityBox("container", text: "\(Self.clock(state.position)) / \(Self.clock(state.duration))", fill: Color.black, textStyle: (10.88, 400, Color.white))
             .placed(x: 302.78, y: 981.84, w: 58.39, h: 16.31)
             icon("speaker.wave.2.fill", x: 396.77, opacity: 0.4, name: "Mute")
-            // the volume control: a 130 x 44 hit area, drawn without a track as on the web reference
-            Color.clear.frame(width: 130, height: 44)
-                .accessibilityLabel("Volume")
-                .parityBox("textbox", text: "Volume", fill: Color.black)
-                .placed(x: 448.77, y: 968, w: 130, h: 44)
         }
     }
 
@@ -230,9 +237,9 @@ struct TVPlayerChrome: View {
                 }
                 .padding(.horizontal, 15.5)
                 .frame(width: 173.4, height: 60.5, alignment: .leading)
+                .parityBox("button", text: "Quality: \(state.qualityLabel)", radius: 999, fill: state.menuOpen ? Color.white : nil, alpha: 0.15)
                 .background(Capsule().fill(Color.white.opacity(state.menuOpen ? 0.15 : 0)))
                 .frame(width: 160.45, height: 56)
-                .parityBox("button", text: "Quality: \(state.qualityLabel)", radius: 999, fill: Color.black)
             }
             .buttonStyle(TVFocusableCardButtonStyle())
             .disabled(!interactive) // not .focusable: on a Button it adds a second, inert focus target

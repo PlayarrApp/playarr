@@ -1014,7 +1014,7 @@ struct TVFloatingNav: View {
                         .parityLayout(text: profile.name.split(separator: " ").first.map(String.init) ?? profile.name, size: 8.832, weight: 680, color: DesignTokens.Color.textDisabled, tracking: 0.31)
                 }
                 .frame(width: DesignTokens.Shell.navItemSize, height: DesignTokens.Shell.navItemSize)
-                .parityBox("link", text: "Signed in as \(profile.name). Open profiles.", radius: 16)
+                .parityBox("button", text: "Profile \(profile.name)", radius: 16)
                 .modifier(TVNavItemFocusFill())
             }
             .buttonStyle(TVFocusableCardButtonStyle())
@@ -1089,7 +1089,7 @@ struct TVFloatingNav: View {
                 width: DesignTokens.Shell.navItemSize,
                 height: DesignTokens.Shell.navItemSize
             )
-            .parityBox("link", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Color.textPrimary : nil, alpha: 0.09)
+            .parityBox("button", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Color.textPrimary : nil, alpha: 0.09)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(
