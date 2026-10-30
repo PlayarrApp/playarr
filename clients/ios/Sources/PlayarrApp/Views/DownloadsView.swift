@@ -160,7 +160,7 @@ struct DownloadsView: View {
                 }
             }
             .font(.caption.weight(.semibold))
-            .buttonStyle(.borderless)
+            .parityButtonStyle(.borderless)
         }
     }
 

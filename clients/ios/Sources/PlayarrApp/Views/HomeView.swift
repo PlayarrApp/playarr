@@ -321,7 +321,7 @@ struct HomeView: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .contextMenu {
             Button("Download", systemImage: "arrow.down.circle") { downloadTarget = work }
         }
@@ -428,7 +428,7 @@ struct HomeView: View {
         } label: {
             content()
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .focusable()
         .focused($focusedWork, equals: work.id)
         .focusEffectDisabled()

@@ -771,7 +771,7 @@ struct WMHeaderCircleButton: View {
                 .overlay(Ellipse().stroke(WM.line.opacity(0.14), lineWidth: 1))
             }
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 }
 

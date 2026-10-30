@@ -240,7 +240,7 @@ struct PlayerView: View {
                     .multilineTextAlignment(.center)
                 if mediaFileID != nil {
                     Button("Try again") { startPlayback() }
-                        .buttonStyle(PlayarrPrimaryButtonStyle())
+                        .parityButtonStyle(PlayarrPrimaryButtonStyle())
                 }
             }
             .foregroundStyle(.white)
@@ -315,14 +315,14 @@ struct PlayerView: View {
                         .background(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58), in: Capsule())
                         .overlay(Capsule().strokeBorder(.white.opacity(0.28), lineWidth: 1))
                     }
-                    .buttonStyle(.plain).accessibilityLabel("Minimise")
+                    .parityButtonStyle(.plain).accessibilityLabel("Minimise")
                     Button { dismiss() } label: {
                         PlayerGlyphView(glyph: .close, size: 15 * s)
                             .frame(width: 48 * s, height: 48 * s)
                             .background(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58), in: Circle())
                             .overlay(Circle().strokeBorder(.white.opacity(0.28), lineWidth: 1))
                     }
-                    .buttonStyle(.plain).accessibilityLabel("Close")
+                    .parityButtonStyle(.plain).accessibilityLabel("Close")
                 }
                 .padding(.top, 36 * s).padding(.trailing, max(53 * s, WM.trailingInset))
             }
@@ -353,7 +353,7 @@ struct PlayerView: View {
                 .background(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58), in: Circle())
                 .overlay(Circle().strokeBorder(.white.opacity(0.28), lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .accessibilityLabel(label)
     }
 
@@ -452,7 +452,7 @@ struct PlayerView: View {
                         .frame(width: 52 * s, height: 52 * s)
                         .background(Circle().fill(.white.opacity(0.14)))
                                         }
-                .buttonStyle(.plain).accessibilityLabel(isPlaying ? "Pause" : "Play")
+                .parityButtonStyle(.plain).accessibilityLabel(isPlaying ? "Pause" : "Play")
                 .padding(.horizontal, 19 * s)
                 iconButton(.next, disabled: queueEmpty, label: "Next") { playQueueEntry(at: 0, viewModel) }
                 HStack(spacing: 5.6) {
@@ -481,7 +481,7 @@ struct PlayerView: View {
                         }
                         .padding(.leading, 26).padding(.trailing, 12)
                     }
-                    .buttonStyle(.plain).disabled(viewModel.qualityOptions.isEmpty)
+                    .parityButtonStyle(.plain).disabled(viewModel.qualityOptions.isEmpty)
                     iconButton(.info, active: activeMenu == .info, label: "Playback info") { toggle(.info) }
                     ZStack {
                         iconButton(.castDevices, label: "Cast to a device") {}
@@ -519,7 +519,7 @@ struct PlayerView: View {
                 .parityBox("button", name: label, background: primary ? Color.white.opacity(0.14) : (active ? WM.pink.opacity(0.28) : nil))
                 .parityOpacity(disabled ? 0.28 : 1)
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .disabled(disabled)
         .accessibilityLabel(label)
     }
@@ -544,7 +544,7 @@ struct PlayerView: View {
             }
             .scaleEffect(expanded ? 1.08 : 1)
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .disabled(disabled)
         .accessibilityLabel("Quality \(PlayerQuality.displayLabel(option))")
     }
@@ -719,7 +719,7 @@ struct PlayerView: View {
             Button("Stop casting") {
                 castCoordinator.endSession(reason: .userStopped)
             }
-            .buttonStyle(.bordered)
+            .parityButtonStyle(.bordered)
             .tint(.white)
         }
         .padding(40)

@@ -153,7 +153,7 @@ struct WorkDetailView: View {
                         .background(PlayarrStyle.surfaceStrong.opacity(0.7), in: Circle())
                         .overlay { Circle().stroke(PlayarrStyle.lineStrong, lineWidth: 1) }
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 .padding(.leading, phone ? 16 : max(102, proxy.size.width * 0.08))
                 .padding(.top, phone ? max(56, WM.safeTop + 6) : min(76, max(38, proxy.size.height * 0.062)))
                 }
@@ -384,7 +384,7 @@ struct WorkDetailView: View {
                             } label: {
                                 PlayarrMediaCard(work: work, apiClient: apiClient, width: 126)
                             }
-                            .buttonStyle(.plain)
+                            .parityButtonStyle(.plain)
                         }
                     }
                 }
@@ -490,7 +490,7 @@ struct WorkDetailView: View {
                     } label: {
                         Label("Play", systemImage: "play.fill").frame(minWidth: 112)
                     }
-                    .buttonStyle(PlayarrPrimaryButtonStyle())
+                    .parityButtonStyle(PlayarrPrimaryButtonStyle())
 
                     DownloadTriggerButton(
                         candidates: [candidate(mediaFileID: mediaFileID, title: detail.work.title, subtitle: nil)],
@@ -580,11 +580,11 @@ struct WorkDetailView: View {
                         Button { showingTabletDownload = true } label: {
                             tabletSeriesActionLabel("Download", systemImage: "arrow.down", tabletScale: tabletScale)
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         Button { showingTabletPlayback = true } label: {
                             tabletSeriesActionLabel("Playback", systemImage: "slider.horizontal.3", tabletScale: tabletScale)
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         NavigationLink {
                             PlayerView(
                                 apiClient: apiClient,
@@ -601,7 +601,7 @@ struct WorkDetailView: View {
                                 .background(PlayarrStyle.ink, in: Capsule())
                                 .foregroundStyle(PlayarrStyle.background)
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         .focused($playFocused)
                         .onAppear { playFocused = true }
                     }
@@ -613,7 +613,7 @@ struct WorkDetailView: View {
                                 tabletScale: tabletScale
                             )
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         Menu {
                             let availablePlaylists = writablePlaylists(for: work)
                             if availablePlaylists.isEmpty { Text("No playlists yet") }
@@ -679,7 +679,7 @@ struct WorkDetailView: View {
                                         .frame(width: 229 * tabletScale, alignment: .leading)
                                 }
                             }
-                            .buttonStyle(.plain)
+                            .parityButtonStyle(.plain)
                         }
                     }
                     .padding(.top, 26 * tabletScale)
@@ -742,7 +742,7 @@ struct WorkDetailView: View {
                                     }
                                 }
                             }
-                            .buttonStyle(.plain)
+                            .parityButtonStyle(.plain)
                         }
                     }
                     .padding(.top, 37 * tabletScale)
@@ -959,7 +959,7 @@ struct WorkDetailView: View {
                             .background(PlayarrStyle.ink, in: Capsule())
                             .foregroundStyle(PlayarrStyle.background)
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                     .disabled(!tabletResumePlanLoaded)
                     .opacity(!tabletResumePlanLoaded ? 0.55 : 1)
 
@@ -973,7 +973,7 @@ struct WorkDetailView: View {
                                 tabletScale: tabletScale
                             )
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         .disabled(watchlistBusy)
                     } else {
                         Button {
@@ -985,7 +985,7 @@ struct WorkDetailView: View {
                                 tabletScale: tabletScale
                             )
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         .disabled(watchlistBusy || !watchlistLoadFailed)
                     }
 
@@ -1265,7 +1265,7 @@ struct WorkDetailView: View {
                             .zIndex(selectedAlbumID == album.album.id ? Double(albums.count + 1) : Double(albums.count - index))
                             .animation(.snappy, value: selectedAlbumID)
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -1296,7 +1296,7 @@ struct WorkDetailView: View {
                                 subtitle: selected.album.title
                             )
                         } label: { Label("Play", systemImage: "play.fill") }
-                            .buttonStyle(PlayarrPrimaryButtonStyle())
+                            .parityButtonStyle(PlayarrPrimaryButtonStyle())
                     }
                     DownloadTriggerButton(
                         candidates: selected.tracks.compactMap { track in
@@ -1471,7 +1471,7 @@ struct WorkDetailView: View {
                         tabletScale: tabletScale
                     )
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 .focused(focusedEpisodeID, equals: detail.id)
                 .contextMenu {
                     Button("Download", systemImage: "arrow.down.circle") {
@@ -1495,7 +1495,7 @@ struct WorkDetailView: View {
                         tabletScale: tabletScale
                     )
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 .focused(focusedEpisodeID, equals: detail.id)
             }
         }
@@ -1641,7 +1641,7 @@ struct WorkDetailView: View {
                 .frame(minHeight: 52)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .contextMenu {
                 Button("Download", systemImage: "arrow.down.circle") {
                     downloadRepository.enqueue(
@@ -1672,7 +1672,7 @@ struct WorkDetailView: View {
             } label: {
                 rowLabel(title: title, subtitle: subtitle, playable: true)
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .contextMenu {
                 Button("Download", systemImage: "arrow.down.circle") {
                     downloadRepository.enqueue(

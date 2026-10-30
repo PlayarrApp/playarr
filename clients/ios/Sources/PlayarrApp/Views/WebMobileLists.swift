@@ -265,7 +265,7 @@ struct WatchlistView: View {
             Button { Task { await model.remove(entry) } } label: {
                 WMSmallPill(label: "Remove from watchlist")
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
         }
     }
 
@@ -281,7 +281,7 @@ struct WatchlistView: View {
             } label: {
                 WMText(title.title, 10.88, 700, lh: 16.3)
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
         } else {
             WMText(title.title, 10.88, 700, lh: 16.3)
         }
@@ -308,13 +308,13 @@ struct WatchlistView: View {
             } label: {
                 WMPrimaryPill(label: primary.label)
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
         } else if primary?.action == "request" {
             let done = model.requested.contains(entry.title.titleKey)
             Button { Task { await model.request(entry) } } label: {
                 WMSmallPill(label: done ? "Requested" : "Request")
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .disabled(done)
         }
     }

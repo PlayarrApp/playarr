@@ -168,7 +168,7 @@ struct SettingsView: View {
                             .parityBox("button", name: "\(section.number) \(section.title) \(section.description)", background: rowFocused ? WM.artFill : nil)
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         .accessibilityLabel("\(section.number) \(section.title) \(section.description)")
                         .focusable()
                         .focused($focusedSection, equals: section)
@@ -226,7 +226,7 @@ struct SettingsView: View {
                             .parityShape("link", name: "\(section.number) \(section.title) \u{2192}", color: section == current ? WM.artFill : nil, in: Rectangle())
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         .accessibilityLabel("\(section.number) \(section.title) \u{2192}")
                         .accessibilityAddTraits(.isLink)
                     }
@@ -291,7 +291,7 @@ struct SettingsView: View {
                             .frame(height: 49)
                             .background(chosen ? WM.ink : PlayarrStyle.ink.opacity(0.06), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                 }
             }
             .padding(.top, 18)
@@ -333,7 +333,7 @@ struct SettingsView: View {
                     .padding(.vertical, 17)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 Divider().overlay(PlayarrStyle.line)
             }
         }
@@ -399,14 +399,14 @@ struct SettingsView: View {
                         .frame(width: 72, height: 72)
                         .overlay { Circle().stroke(avatar?.value == preset.id ? PlayarrStyle.pink : PlayarrStyle.lineStrong, lineWidth: avatar?.value == preset.id ? 4 : 1).padding(avatar?.value == preset.id ? -4 : 0) }
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                     .disabled(busy)
                 }
             }
             PhotosPicker(selection: $photoItem, matching: .images) {
                 Label(avatar?.kind == .custom ? "Replace photo" : "Use a photo", systemImage: "photo.badge.plus")
             }
-            .buttonStyle(.bordered)
+            .parityButtonStyle(.bordered)
             .tint(PlayarrStyle.inkSoft)
         }
     }
@@ -449,7 +449,7 @@ struct SettingsView: View {
                 .padding(.horizontal, 14).frame(height: 50)
                 .background(PlayarrStyle.background.opacity(0.6))
                 .overlay { Rectangle().stroke(PlayarrStyle.lineStrong, lineWidth: 1) }
-            Button("Save server") { saveServer() }.buttonStyle(PlayarrPrimaryButtonStyle())
+            Button("Save server") { saveServer() }.parityButtonStyle(PlayarrPrimaryButtonStyle())
             signOutButton
         }
     }
@@ -463,7 +463,7 @@ struct SettingsView: View {
                 .background(PlayarrStyle.background.opacity(0.6))
                 .overlay { Rectangle().stroke(PlayarrStyle.lineStrong, lineWidth: 1) }
             Button(pinLocked ? "Replace PIN" : "Set PIN") { savePin(pin) }
-                .buttonStyle(PlayarrPrimaryButtonStyle()).disabled(pin.count != 4 || busy)
+                .parityButtonStyle(PlayarrPrimaryButtonStyle()).disabled(pin.count != 4 || busy)
             if pinLocked { Button("Remove PIN", role: .destructive) { savePin(nil) } }
         }
     }
@@ -473,9 +473,9 @@ struct SettingsView: View {
             if let inviteLink {
                 Text(inviteLink.absoluteString).font(.caption.monospaced()).textSelection(.enabled)
                 ShareLink(item: inviteLink) { Label("Share invitation", systemImage: "square.and.arrow.up") }
-                    .buttonStyle(PlayarrPrimaryButtonStyle())
+                    .parityButtonStyle(PlayarrPrimaryButtonStyle())
             } else if inviteRequest?.status == .approved {
-                Button("Generate invitation") { generateInvite() }.buttonStyle(PlayarrPrimaryButtonStyle()).disabled(busy)
+                Button("Generate invitation") { generateInvite() }.parityButtonStyle(PlayarrPrimaryButtonStyle()).disabled(busy)
             } else if let request = inviteRequest {
                 Label(request.status.rawValue.capitalized, systemImage: request.status == .pending ? "clock" : "info.circle")
                     .foregroundStyle(PlayarrStyle.inkSoft)
@@ -484,7 +484,7 @@ struct SettingsView: View {
                     .lineLimit(3...5).padding(14)
                     .background(PlayarrStyle.background.opacity(0.6))
                     .overlay { Rectangle().stroke(PlayarrStyle.lineStrong, lineWidth: 1) }
-                Button("Request invitation") { requestInvite() }.buttonStyle(PlayarrPrimaryButtonStyle()).disabled(busy)
+                Button("Request invitation") { requestInvite() }.parityButtonStyle(PlayarrPrimaryButtonStyle()).disabled(busy)
             }
         }
     }
@@ -756,7 +756,7 @@ extension SettingsView {
                     }
                     .frame(width: isSelected ? 162 : 153, height: isSelected ? 162 : 153)
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 .disabled(busy)
                 .offset(x: isSelected ? x - 4.6 : x, y: isSelected ? y - 4.6 : y)
             }
@@ -832,7 +832,7 @@ extension SettingsView {
                     Text("\u{2713}").wm(11.84, 400, color: WM.pink, text: "\u{2713}").foregroundStyle(WM.pink).offset(x: 291, y: 15)
                 }
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .offset(x: 36, y: 170)
             ForEach(0..<3, id: \.self) { column in
                 Text(tiers[column].uppercased())
@@ -852,7 +852,7 @@ extension SettingsView {
                             WMText(tiers[column], 7.04, 400, color: WM.muted, lh: 11).offset(x: 11, y: 27)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                     .offset(x: columnX[column], y: y)
                 }
             }
@@ -868,7 +868,7 @@ extension SettingsView {
                         WMText(mode.1, 11.2, 700, color: subtitleMode == mode.0 ? WM.ink : WM.inkSoft, lh: 17).offset(x: 15, y: 19)
                     }
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 .offset(x: 36, y: 589 + CGFloat(index) * 62)
             }
             panelH3("Default audio track", size: 16.8, weight: 560, lh: 25, ls: -0.588).offset(x: 36, y: 812)

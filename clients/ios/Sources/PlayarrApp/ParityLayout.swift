@@ -5,6 +5,14 @@ import UIKit
 /// values (text, size, weight, colour) and their frame in the app window; the registry writes them to
 /// Documents/parity-layout.json, which the simulator driver copies next to the screenshot. Compiled out of Release.
 #if DEBUG
+/// The views whose drawing the visibility probe currently hides (opacity 0, layout unchanged).
+@Observable
+@MainActor
+final class ParityHide {
+    static let shared = ParityHide()
+    var ids: Set<UUID> = []
+}
+
 @MainActor
 final class ParityLayoutRegistry {
     static let shared = ParityLayoutRegistry()
@@ -25,6 +33,14 @@ final class ParityLayoutRegistry {
         var painted = false
         /// Belongs to a covering layer's own content (a drawer), so that layer does not hide it.
         var inCover = false
+        /// The view whose opacity the visibility probe toggles to see whether this element draws pixels, and the line within it.
+        var toggle: UUID?
+        var slot = 0
+    }
+
+    struct ProbeKey: Hashable {
+        let id: UUID
+        let slot: Int
     }
 
     private var items: [UUID: Item] = [:]
@@ -38,8 +54,8 @@ final class ParityLayoutRegistry {
     var coverRegions: [UUID: CGRect] = [:]
     /// What the ancestors of a tagged accessibility container do to its pixels (opacity, clips, edge masks).
     private var paintRegions: [UUID: ParityPaint] = [:]
-    /// Elements that registered and are fully clipped away or transparent (counted as occluded, never exported).
-    private var occludedByID: [UUID: Int] = [:]
+    /// Frames of controls that can be hidden through `parityToggle` (buttons and links without a styled box of their own).
+    private var toggleFrames: [UUID: CGRect] = [:]
     nonisolated static let paintIdentifierPrefix = "parity-paint-"
 
     func markAlive(_ id: UUID) { alive.insert(id) }
@@ -55,16 +71,17 @@ final class ParityLayoutRegistry {
 
     func set(_ id: UUID, _ item: Item) {
         _ = Self.enableAccessibility
-        if occludedByID[id] != nil { occludedByID[id] = nil; schedule() }
+        var item = item
+        item.toggle = id; item.slot = 0
         guard items[id] != item else { return }
         if items[id] == nil { order.append(id) }
         items[id] = item
         schedule()
     }
 
-    func setTextRuns(_ id: UUID, _ runs: [Item], dropped: Int = 0) {
+    func setTextRuns(_ id: UUID, _ runs: [Item]) {
         _ = Self.enableAccessibility
-        if (occludedByID[id] ?? 0) != dropped { occludedByID[id] = dropped > 0 ? dropped : nil; schedule() }
+        let runs = runs.enumerated().map { index, run -> Item in var run = run; run.toggle = id; run.slot = index; return run }
         guard alive.contains(id), textRuns[id] != runs else { return }
         if textRuns[id] == nil { order.append(id) }
         textRuns[id] = runs
@@ -77,11 +94,9 @@ final class ParityLayoutRegistry {
         schedule()
     }
 
-    /// The view is on screen but nothing of it is visible (clipped away, transparent): counted, not exported.
-    func hide(_ id: UUID) {
-        if items[id] != nil || textRuns[id] != nil { remove(id) }
-        guard occludedByID[id] != 1 else { return }
-        occludedByID[id] = 1
+    func setToggle(_ id: UUID, _ frame: CGRect?) {
+        guard toggleFrames[id] != frame else { return }
+        toggleFrames[id] = frame
         schedule()
     }
 
@@ -93,7 +108,7 @@ final class ParityLayoutRegistry {
 
     func remove(_ id: UUID) {
         alive.remove(id)
-        occludedByID[id] = nil
+        toggleFrames[id] = nil
         guard items[id] != nil || textRuns[id] != nil else { return }
         items[id] = nil
         textRuns[id] = nil
@@ -110,8 +125,8 @@ final class ParityLayoutRegistry {
             var previous: Data?
             for _ in 0..<40 {
                 guard !Task.isCancelled, let self else { return }
-                let current = self.snapshot()
-                if current == previous { self.write(current); return }
+                let current = self.snapshot().data
+                if current == previous { if let final = await self.probe() { self.write(final) }; return }
                 previous = current
                 try? await Task.sleep(nanoseconds: 600_000_000)
             }
@@ -120,10 +135,9 @@ final class ParityLayoutRegistry {
 
     /// Accessibility elements of the key window (buttons, links, headings, images, static text): frames, names and traits
     /// for everything the views did not report themselves. Styled text from `.parityLayout` replaces the plain entry.
-    private func accessibilityElements() -> (items: [Item], clippedAway: Int) {
-        guard let window = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first else { return ([], 0) }
+    private func accessibilityElements() -> [Item] {
+        guard let window = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first else { return [] }
         var found: [Item] = []
-        var clippedAway = 0
         let screenBounds = window.bounds
         var visited = 0
         func visit(_ object: NSObject, depth: Int, paint: ParityPaint? = nil) {
@@ -156,8 +170,8 @@ final class ParityLayoutRegistry {
                 var entry = Item(text: label.isEmpty ? nil : label, role: role, size: nil, weight: nil, color: nil, rect: frame)
                 // What the ancestors do to its pixels (opacity, edge masks, clips) comes from the tagged container it sits in.
                 if let paint, frame.intersects(screenBounds) {
-                    guard let opacity = paint.effective(frame) else { clippedAway += 1; return }
-                    entry.opacity = opacity
+                    // Whether clips or masks leave any pixel of it is decided by the visibility probe, not by this geometry.
+                    entry.opacity = paint.effective(frame) ?? paint.opacity
                 }
                 found.append(entry)
                 return
@@ -173,7 +187,7 @@ final class ParityLayoutRegistry {
             if let view = object as? UIView { for sub in view.subviews { visit(sub, depth: depth + 1, paint: paint) } }
         }
         visit(window, depth: 0)
-        return (found, clippedAway)
+        return found
     }
 
     private static func identifier(of object: NSObject) -> String? {
@@ -181,8 +195,9 @@ final class ParityLayoutRegistry {
         return object.value(forKey: "accessibilityIdentifier") as? String
     }
 
-    private func snapshot() -> Data? {
-        guard let window = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first else { return nil }
+    /// Every exported element with the view that can hide it, and the document built from the ones in `visible` (all when nil).
+    private func snapshot(visible: Set<ProbeKey>? = nil) -> (data: Data?, candidates: [Item], dropped: Int) {
+        guard let window = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first else { return (nil, [], 0) }
         let screen = window.bounds
         let styled = order.flatMap { id -> [Item] in
             if let runs = textRuns[id] { return runs }
@@ -191,7 +206,7 @@ final class ParityLayoutRegistry {
         // Styled text lines are the only text in the export: an accessibility text or heading entry is a widget frame, not a
         // glyph run, so it never stands in for a line. Controls keep their frame and accessible name.
         let walked = accessibilityElements()
-        let plain = walked.items.filter { entry in
+        let plain = walked.filter { entry in
             if entry.role == "text" || entry.role == "heading" { return false }
             return !styled.contains(where: { $0.text == entry.text && $0.role == entry.role && abs($0.rect.minX - entry.rect.minX) < 3 && abs($0.rect.minY - entry.rect.minY) < 12 })
         }
@@ -208,27 +223,30 @@ final class ParityLayoutRegistry {
             let candidates = boxes.filter { $0.role == entry.role && sameFrame($0.rect, entry.rect) && !ownBoxes.contains($0) }
             if let own = candidates.min(by: { distance($0.rect, entry.rect) < distance($1.rect, entry.rect) }) {
                 entry.background = own.background; entry.radius = own.radius; entry.opacity = min(entry.opacity, own.opacity)
+                entry.toggle = own.toggle
                 ownBoxes.append(own)
+            } else if let target = toggleFrames.filter({ distance($0.value, entry.rect) < 6 }).min(by: { distance($0.value, entry.rect) < distance($1.value, entry.rect) }) {
+                // A control without a styled box: the view that draws it carries a `parityToggle`, found by its frame.
+                entry.toggle = target.key
             }
             return entry
         }
         let remaining = styled.filter { item in !ownBoxes.contains { $0 == item } }
-        // Content under an opaque layer drawn over it is not visible: the visible part of its frame lies inside a measured
-        // cover (the covering layer's own content is exempt). The page behind a drawer is hidden from accessibility by the
-        // app, so its controls are not walked at all.
-        let screenRect = CGRect(origin: .zero, size: screen.size)
-        let covers = Array(coverRegions.values)
-        func hidden(_ item: Item) -> Bool {
-            if item.inCover { return false }
-            let visible = item.rect.intersection(screenRect)
-            return !visible.isNull && covers.contains { $0.contains(visible) }
-        }
-        let visibleStyled = remaining.filter { !hidden($0) }
-        let occluded = walked.clippedAway + occludedByID.values.reduce(0, +) + (remaining.count - visibleStyled.count)
-        var all = (visibleStyled + backed).filter { $0.text != nil || $0.size == nil }
+        // Whether an element is visible is decided by toggling the view that draws it and diffing the real screen (`probe`).
+        var all = (remaining + backed).filter { $0.text != nil || $0.size == nil }
         let viewport = CGRect(origin: .zero, size: screen.size)
         all = all.filter { $0.rect.intersects(viewport) && $0.rect.width > 1 && $0.rect.height > 1 }
         all.sort { ($0.rect.minY, $0.rect.minX, $0.text ?? "", $0.role) < ($1.rect.minY, $1.rect.minX, $1.text ?? "", $1.role) }
+        let candidates = all
+        var occluded = 0
+        if let visible {
+            // An element nothing can toggle is left out of the export (never counted visible from its geometry).
+            all = all.filter { item in
+                let shown = item.toggle.map { visible.contains(ProbeKey(id: $0, slot: item.slot)) } ?? false
+                if !shown { occluded += 1 }
+                return shown
+            }
+        }
         let elements: [[String: Any]] = all.compactMap { item in
             guard item.rect.width > 0, item.rect.height > 0 else { return nil }
             var element: [String: Any] = [
@@ -251,7 +269,91 @@ final class ParityLayoutRegistry {
             "occluded": occluded,
             "elements": elements,
         ]
-        return try? JSONSerialization.data(withJSONObject: document, options: [.sortedKeys])
+        return (try? JSONSerialization.data(withJSONObject: document, options: [.sortedKeys]), candidates, occluded)
+    }
+
+    // MARK: visibility probe
+
+    /// A frame of the real window as RGBA bytes at screen scale.
+    private struct Shot {
+        var bytes: [UInt8]
+        let width: Int
+        let height: Int
+        let scale: CGFloat
+    }
+
+    private func capture(_ window: UIWindow) -> Shot? {
+        let scale = window.screen.scale
+        let width = Int((window.bounds.width * scale).rounded()), height = Int((window.bounds.height * scale).rounded())
+        guard width > 0, height > 0 else { return nil }
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = bytes.withUnsafeMutableBytes { raw -> Bool in
+            guard let context = CGContext(data: raw.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                                          space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.translateBy(x: 0, y: CGFloat(height))
+            context.scaleBy(x: scale, y: -scale)
+            UIGraphicsPushContext(context)
+            defer { UIGraphicsPopContext() }
+            return window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+        }
+        return drawn ? Shot(bytes: bytes, width: width, height: height, scale: scale) : nil
+    }
+
+    /// True when any pixel inside `rect` differs between `a` and `b`; pixels that differ between two identical frames
+    /// (`base` against `again`, i.e. animation or video) do not count.
+    private func changed(_ rect: CGRect, _ a: Shot, _ b: Shot, base: Shot, again: Shot) -> Bool {
+        let x0 = max(0, Int((rect.minX * a.scale).rounded(.down))), x1 = min(a.width, Int((rect.maxX * a.scale).rounded(.up)))
+        let y0 = max(0, Int((rect.minY * a.scale).rounded(.down))), y1 = min(a.height, Int((rect.maxY * a.scale).rounded(.up)))
+        guard x1 > x0, y1 > y0 else { return false }
+        return a.bytes.withUnsafeBytes { pa in b.bytes.withUnsafeBytes { pb in base.bytes.withUnsafeBytes { p0 in again.bytes.withUnsafeBytes { p1 in
+            let wa = pa.bindMemory(to: UInt32.self), wb = pb.bindMemory(to: UInt32.self)
+            let w0 = p0.bindMemory(to: UInt32.self), w1 = p1.bindMemory(to: UInt32.self)
+            for y in y0..<y1 {
+                let row = y * a.width
+                for x in x0..<x1 where wa[row + x] != wb[row + x] && w0[row + x] == w1[row + x] { return true }
+            }
+            return false
+        } } } }
+    }
+
+    /// Toggle-and-diff on the real screen: each element's view is hidden through the parity hook, the window is rendered
+    /// again, and the element counts as visible only when pixels change inside its own frame. Elements are hidden in
+    /// batches of mutually disjoint frames. Returns the finished document, or nil when the probe could not run.
+    private func probe() async -> Data? {
+        guard let window = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first else { return nil }
+        let candidates = snapshot().candidates.filter { $0.toggle != nil }
+        ParityLaunch.record("layoutProbing", true)
+        ParityHide.shared.ids = []
+        defer { ParityHide.shared.ids = []; ParityLaunch.record("layoutProbing", false) }
+        var visible = Set<ProbeKey>()
+        if !candidates.isEmpty {
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            guard let base = capture(window) else { return nil }
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard let again = capture(window) else { return nil }
+            var byID: [UUID: [Item]] = [:], idOrder: [UUID] = []
+            for item in candidates { if let id = item.toggle { if byID[id] == nil { idOrder.append(id) }; byID[id, default: []].append(item) } }
+            func union(_ items: [Item]) -> CGRect { items.dropFirst().reduce(items[0].rect) { $0.union($1.rect) }.insetBy(dx: -2, dy: -2) }
+            var batches: [(ids: [UUID], union: [CGRect])] = []
+            for id in idOrder {
+                let area = union(byID[id]!)
+                if let index = batches.firstIndex(where: { batch in !batch.union.contains { $0.intersects(area) } }) {
+                    batches[index].ids.append(id); batches[index].union.append(area)
+                } else { batches.append(([id], [area])) }
+            }
+            for batch in batches {
+                guard !Task.isCancelled else { return nil }
+                ParityHide.shared.ids = Set(batch.ids)
+                try? await Task.sleep(nanoseconds: 90_000_000)
+                guard let hidden = capture(window) else { return nil }
+                for id in batch.ids { for item in byID[id]! where changed(item.rect, base, hidden, base: base, again: again) { visible.insert(ProbeKey(id: id, slot: item.slot)) } }
+            }
+            ParityHide.shared.ids = []
+            // A probe in which nothing changed means the hook did not work, not that nothing is visible.
+            if visible.isEmpty { return nil }
+        }
+        guard !Task.isCancelled else { return nil }
+        return snapshot(visible: visible).data
     }
 
     /// Layout floats to 0.01 px: removes sub-0.0001 noise between identical runs, far below the 1 px tolerance.
@@ -494,6 +596,7 @@ private struct ParityLayoutModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .opacity(ParityHide.shared.ids.contains(id) ? 0 : 1)
             .environment(\.parityBackdrop, box.map { environment.parityBackdrop.adding($0, environment) } ?? environment.parityBackdrop)
             .background(
                 GeometryReader { proxy in
@@ -517,11 +620,9 @@ private struct ParityLayoutModifier: ViewModifier {
         let paint = environment.parityPaint
         let drawn = frame // the global frame already includes ancestors' transforms
         guard enabled, frame.width > 0 else { ParityLayoutRegistry.shared.remove(id); return }
-        guard let opacity = paint.effective(drawn) else {
-            // Offscreen content is simply not on screen; only content inside the screen that a clip or mask removes is occluded.
-            if drawn.intersects(CGRect(origin: .zero, size: UIScreen.main.bounds.size)) { ParityLayoutRegistry.shared.hide(id) } else { ParityLayoutRegistry.shared.remove(id) }
-            return
-        }
+        // Offscreen content is not on screen; whether anything on screen is drawn is decided by the visibility probe.
+        guard drawn.intersects(CGRect(origin: .zero, size: UIScreen.main.bounds.size)) else { ParityLayoutRegistry.shared.remove(id); return }
+        let opacity = paint.effective(drawn) ?? paint.opacity
         ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size.map { $0 * CGFloat(paint.scale) }, weight: weight, color: hex, rect: drawn, tracking: tracking, background: (box.map { environment.parityBackdrop.adding($0, environment) } ?? environment.parityBackdrop).rgb(at: CGPoint(x: drawn.midX, y: drawn.midY), environment).hex, radius: radius * CGFloat(paint.scale), opacity: opacity, painted: box != nil, inCover: environment.parityInCover))
     }
 }
@@ -587,6 +688,7 @@ private struct ParityRenderedTextModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .opacity(ParityHide.shared.ids.contains(id) ? 0 : 1)
             .textRenderer(ParityTextRenderer { measured in
                 Task { @MainActor in lines = measured }
             })
@@ -612,25 +714,21 @@ private struct ParityRenderedTextModifier: ViewModifier {
         let strings = parityDisplayedLines(text, lines)
         let colour = ParityLayoutModifier.hex(color, environment)
         let paint = environment.parityPaint
-        var dropped = 0
         let factor = CGFloat(paint.scale)
         let runs = lines.enumerated().compactMap { index, line -> ParityLayoutRegistry.Item? in
             // The line rectangle is in the text view's own space and the frame origin is global (already transformed), so
             // the offset inside the view follows the ancestors' scale.
             let rect = CGRect(x: frame.minX + line.rect.minX * factor, y: frame.minY + line.rect.minY * factor, width: line.rect.width * factor, height: line.rect.height * factor)
             let background = environment.parityBackdrop.rgb(at: CGPoint(x: rect.midX, y: rect.midY), environment).hex
-            guard let opacity = paint.effective(rect) else {
-                if rect.intersects(CGRect(origin: .zero, size: UIScreen.main.bounds.size)) { dropped += 1 }
-                return nil
-            }
+            guard rect.intersects(CGRect(origin: .zero, size: UIScreen.main.bounds.size)) else { return nil }
+            let opacity = paint.effective(rect) ?? paint.opacity
             // A line whose characters cannot be read back from the layout is not exported with the whole source string.
             guard strings.count == lines.count, !strings[index].isEmpty else { return nil }
             return ParityLayoutRegistry.Item(text: strings[index], role: role,
                                               size: (size * CGFloat(paint.scale) * 100).rounded() / 100, weight: weight, color: colour, rect: rect,
                                               background: background, opacity: opacity, inCover: environment.parityInCover)
         }
-        let hiddenLines = dropped
-        Task { @MainActor in ParityLayoutRegistry.shared.setTextRuns(id, runs, dropped: hiddenLines) }
+        Task { @MainActor in ParityLayoutRegistry.shared.setTextRuns(id, runs) }
     }
 }
 /// Records a linear gradient this view really paints, so text and controls over it report the colour at their own position.
@@ -664,6 +762,22 @@ private struct ParityGradientModifier: ViewModifier {
     }
 }
 
+/// Makes a control hideable by the visibility probe: its view fades to nothing while the probe renders without it.
+private struct ParityToggleModifier: ViewModifier {
+    @State private var id = UUID()
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(ParityHide.shared.ids.contains(id) ? 0 : 1)
+            .background(GeometryReader { proxy in
+                Color.clear
+                    .onAppear { ParityLayoutRegistry.shared.setToggle(id, proxy.frame(in: .global)) }
+                    .onChange(of: proxy.frame(in: .global)) { _, value in ParityLayoutRegistry.shared.setToggle(id, value) }
+            })
+            .onDisappear { ParityLayoutRegistry.shared.setToggle(id, nil) }
+    }
+}
+
 /// A covering layer (a drawer): its measured frame hides what lies under it, and its own content is exempt.
 private struct ParityCoverLayer: ViewModifier {
     @State private var id = UUID()
@@ -689,6 +803,23 @@ private struct ParityTopLayer: ViewModifier {
 #endif
 
 extension View {
+    /// `buttonStyle`, also making the control hideable for the visibility probe (debug builds only).
+    func parityButtonStyle<S: PrimitiveButtonStyle>(_ style: S) -> some View {
+        #if DEBUG
+        buttonStyle(style).modifier(ParityToggleModifier())
+        #else
+        buttonStyle(style)
+        #endif
+    }
+
+    func parityButtonStyle<S: ButtonStyle>(_ style: S) -> some View {
+        #if DEBUG
+        buttonStyle(style).modifier(ParityToggleModifier())
+        #else
+        buttonStyle(style)
+        #endif
+    }
+
     /// Marks content drawn above the covering layers.
     func parityTopLayer() -> some View {
         #if DEBUG

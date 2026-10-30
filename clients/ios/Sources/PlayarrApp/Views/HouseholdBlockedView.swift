@@ -57,7 +57,7 @@ struct HouseholdBlockedView: View {
                 .frame(width: width, height: 48)
                 .overlay(Capsule().strokeBorder(WM.ink.opacity(0.9), lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 
     private func note(_ text: String, color: Color) -> some View {

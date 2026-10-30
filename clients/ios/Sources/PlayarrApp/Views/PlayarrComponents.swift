@@ -395,7 +395,7 @@ struct PlayarrFailureView: View {
                 .foregroundStyle(PlayarrStyle.inkSoft)
                 .multilineTextAlignment(.center)
             Button("Try again", action: retry)
-                .buttonStyle(PlayarrPrimaryButtonStyle())
+                .parityButtonStyle(PlayarrPrimaryButtonStyle())
         }
         .padding(30)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

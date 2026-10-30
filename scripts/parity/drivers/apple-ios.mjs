@@ -351,8 +351,8 @@ export async function createDriver() {
       const layoutPath = join(dirname(statePath()), "parity-layout.json");
       const readLayout = () => parseCaptureLayout(readFileSync(layoutPath, "utf8"), { screen: id, theme, deterministic: deterministicCapture });
       // The app writes atomically after its tree settles. A missing export is a capture failure, never an optional sidecar.
-      for (let attempt = 0; !existsSync(layoutPath) && attempt < 30; attempt += 1) await sleep(1000);
-      if (!existsSync(layoutPath)) throw new Error(`iOS parity layout export missing for ${id} after 30 seconds`);
+      for (let attempt = 0; !existsSync(layoutPath) && attempt < 120; attempt += 1) await sleep(1000);
+      if (!existsSync(layoutPath)) throw new Error(`iOS parity layout export missing for ${id} after 120 seconds`);
       readLayout();
       const raw = device === "ipad" ? `${file}.raw.png` : file;
       // Wait for two byte-identical frames so the capture contains the settled screen.
@@ -362,7 +362,7 @@ export async function createDriver() {
         for (let t = 0; t < 120; t += 1) {
           const current = state();
           if (current.failure) throw new Error(`iOS parity app failed: ${String(current.failure)}`);
-          if (current.screenContentReady === true) {
+          if (current.screenContentReady === true && current.layoutProbing !== true) { // never capture while the visibility probe hides views
             assertCaptureState(current, expectedUsername, { player: id === "player-controls", deterministic: deterministicCapture, fixedNow });
             return;
           }

@@ -91,7 +91,7 @@ struct HomeCustomiseView: View {
                                 .background(WM.chip.opacity(0.66), in: Capsule())
                                 .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                     }
                     if let saveError = model.saveError {
                         Text(saveError).wm(10.88, color: PlayarrStyle.danger, text: saveError).foregroundStyle(PlayarrStyle.danger)
@@ -140,6 +140,6 @@ struct HomeCustomiseView: View {
                 .background(WM.chip.opacity(0.66), in: Capsule())
                 .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 }

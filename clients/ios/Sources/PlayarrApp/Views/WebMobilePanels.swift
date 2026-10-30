@@ -56,7 +56,7 @@ struct WMPanelButton: View {
                     if !primary { Capsule().stroke(WM.line.opacity(scheme == .dark ? 0.2 : 0.14), lineWidth: 1) }
                 }
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .allowsHitTesting(enabled)
     }
 }
@@ -155,7 +155,7 @@ struct WMPanelPage<Content: View>: View {
                     // The web draws a 3 px focus ring 2 px outside the button.
                     .overlay(Ellipse().stroke(WM.ink, lineWidth: 3).padding(-3.7))
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .offset(x: 15, y: WM.topInset + 1)
             // The phone header shows the section name in place of the title and hides the description (web #1299).
             WMHeaderDetail(text: kicker, divider: false)

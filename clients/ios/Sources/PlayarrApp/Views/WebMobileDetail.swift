@@ -494,7 +494,7 @@ struct WMDetailPage: View {
                             glyphColor: WM.pink, label: "Download", labelSize: 8, labelColor: WM.ink, gap: 9, name: "Download \(work.title)"
                         )
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                     .wmKeyFocus(Capsule())
                     .disabled(downloadCandidates.isEmpty)
                     .offset(x: 0, y: 2)
@@ -504,7 +504,7 @@ struct WMDetailPage: View {
                             glyphColor: WM.pink, label: "Playback", labelSize: 11.2, labelColor: WM.ink, gap: 8, name: "Playback settings for \(work.title)"
                         )
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                     .wmKeyFocus(Capsule())
                     .disabled(playMediaFileID == nil)
                     .offset(x: 112, y: 2)
@@ -540,7 +540,7 @@ struct WMDetailPage: View {
                     glyphColor: WM.shell, label: "Play", labelSize: 11.2, labelColor: WM.shell, gap: 11, name: "Play \(work.title)"
                 )
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .wmKeyFocus(Capsule())
         }
     }
@@ -568,7 +568,7 @@ struct WMDetailPage: View {
                     glyphColor: WM.shell, label: "Start", labelSize: 11.2, labelColor: WM.shell, gap: 10
                 )
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .wmKeyFocus(Capsule())
         } else {
             pill(
@@ -603,7 +603,7 @@ struct WMDetailPage: View {
                 labelSize: 8, labelColor: WM.ink, gap: 9, name: model.listed ? "Remove from watchlist" : "+ Add to watchlist"
             )
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .wmKeyFocus(Capsule())
     }
 
@@ -709,7 +709,7 @@ struct WMDetailPage: View {
                         )
                     )
                 } label: { card }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 .focusable()
                 .focused($focusedEpisode, equals: episode.id)
                 .focusEffectDisabled()
@@ -788,7 +788,7 @@ struct WMDetailPage: View {
             }
             .frame(width: 181, height: 132, alignment: .topLeading)
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 
     private var similarTrack: some View {
@@ -806,7 +806,7 @@ struct WMDetailPage: View {
                         } label: {
                             WMRailCard(work: other, apiClient: apiClient, unseen: true, focused: false)
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 16)

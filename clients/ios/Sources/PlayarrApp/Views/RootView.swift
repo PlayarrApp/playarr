@@ -653,7 +653,7 @@ private struct AuthenticatedPlayarrShell: View {
                                 .parityShape("link", name: destination.title, color: phoneSelectedDestination == destination ? WM.ink : nil,
                                              in: RoundedRectangle(cornerRadius: 14, style: .continuous), radius: phoneSelectedDestination == destination ? 14 : 0)
                             }
-                            .buttonStyle(.plain)
+                            .parityButtonStyle(.plain)
                             .accessibilityLabel(destination.title)
                 .accessibilityAddTraits(.isLink)
                             .accessibilityIdentifier(destination.phoneAccessibilityIdentifier)
@@ -721,7 +721,7 @@ private struct AuthenticatedPlayarrShell: View {
             .offset(x: navEdge, y: 110 * proxy.size.height / 1024 + 2)
 
             profileTile
-                .offset(x: navEdge, y: proxy.size.height - 121 * proxy.size.height / 1024 + 26) // +26: the iPad stage is inset by the status bar and home indicator, measured against the web 1366x1024 capture
+                .offset(x: navEdge, y: proxy.size.height - 121 * proxy.size.height / 1024 + 22.95) // +26: the iPad stage is inset by the status bar and home indicator, measured against the web 1366x1024 capture
         }
     }
 
@@ -748,28 +748,28 @@ private struct AuthenticatedPlayarrShell: View {
     }
 
     private func navGroup(_ group: [Destination]) -> some View {
-        // The web rail pitch is 70 pt: 64 pt tiles with a 6 pt gap.
-        VStack(spacing: 6) {
+        // Web rail (1366 pt capture): 64 x 60.67 tiles at a 69.76 pitch inside a 77.5 pt wide pill.
+        VStack(spacing: 9.09) {
             ForEach(group, id: \.self) { destination in
                 Button { select(destination) } label: {
-                    VStack(spacing: 6) {
-                        WMIconView(icon: destination.webIcon, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft, size: 18)
+                    VStack(spacing: 2.5) {
+                        WMIconView(icon: destination.webIcon, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft, size: 20)
                         Text(destination.title)
-                            .wm(8.5, 700, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft, text: destination.title)
+                            .wm(6.72, 700, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft, text: destination.title)
                             .lineLimit(1)
                     }
                     .foregroundStyle(selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft)
-                    .frame(width: 64, height: 64)
+                    .frame(width: 64, height: 60.67)
                     .parityShape("link", name: destination.title, color: selected == destination ? PlayarrStyle.ink.opacity(0.09) : nil,
                                  in: RoundedRectangle(cornerRadius: 16, style: .continuous), radius: selected == destination ? 16 : 0)
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 .accessibilityLabel(destination.title)
                 .accessibilityAddTraits(.isLink)
             }
         }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 6)
+        .padding(.vertical, 7.73)
+        .padding(.horizontal, 6.75)
         // Web rail pills are solid surface-strong with a 1 px line border (the art never shows through).
         .parityShape("container", color: PlayarrStyle.surfaceStrong, in: RoundedRectangle(cornerRadius: 22, style: .continuous), radius: 22)
         .overlay {
@@ -785,23 +785,23 @@ private struct AuthenticatedPlayarrShell: View {
             VStack(spacing: 4) {
                 currentAvatar(size: 20)
                 Text((environment.currentUserName ?? "").split(separator: " ").first.map(String.init) ?? "Profile")
-                    .wm(7.2, 700, color: PlayarrStyle.muted, text: (environment.currentUserName ?? "").split(separator: " ").first.map(String.init) ?? "Profile")
+                    .wm(6.72, 700, color: PlayarrStyle.muted, text: (environment.currentUserName ?? "").split(separator: " ").first.map(String.init) ?? "Profile")
                     .foregroundStyle(PlayarrStyle.muted)
                     .lineLimit(1)
             }
-            .frame(width: 76, height: 75)
+            .frame(width: 77.5, height: 76.11)
             .background(PlayarrStyle.surfaceStrong, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay { RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(PlayarrStyle.line, lineWidth: 1) }
             .overlay(alignment: .bottom) {
                 // The web rail prints the app version under the profile tile.
                 Text("v\(InstalledAppVersion.current)")
-                    .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 6.08, weight: .semibold, design: .monospaced))
                     .foregroundStyle(PlayarrStyle.ink)
                     .fixedSize()
                     .offset(y: 13)
             }
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .accessibilityLabel("Open profile and settings")
     }
 
@@ -815,7 +815,7 @@ private struct AuthenticatedPlayarrShell: View {
             .background(ring ? PlayarrStyle.surfaceStrong.opacity(0.66) : .clear, in: Circle())
             .overlay { if ring { Circle().stroke(PlayarrStyle.line.opacity(0.7), lineWidth: 1) } }
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .accessibilityLabel("Open profile and settings")
     }
 
