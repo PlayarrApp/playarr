@@ -752,7 +752,8 @@ internal fun TvCalendarAgenda(
                     rows.forEachIndexed { index, (day, item) ->
                         if (day != null) {
                             item(key = "day-$day") {
-                                Row(Modifier.padding(top = if (index > 0) (if (tablet) 25.dp else 26.dp) else 0.dp, bottom = if (tablet) 43.dp else if (index > 0) 40.dp else 39.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                // Web: the day heading is one block as wide as the list that holds its date and its Today badge.
+                                Row(Modifier.fillMaxWidth().padding(top = if (index > 0) (if (tablet) 25.dp else 26.dp) else 0.dp, bottom = if (tablet) 43.dp else if (index > 0) 40.dp else 39.dp).parityBox("heading"), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     // Static web refs (television): the day heading is --accent at weight 640, a plain text run.
                                     Text(
                                         phoneCalendarDayHeading(day, locale), color = if (tablet) WebInk else io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent, fontSize = dayFont.dayHeading.sp, lineHeight = dayFont.dayHeadingLine.sp, fontWeight = FontWeight(if (tablet) 560 else 640),

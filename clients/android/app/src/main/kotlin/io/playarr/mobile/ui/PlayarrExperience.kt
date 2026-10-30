@@ -7773,6 +7773,10 @@ private fun WebEpisodeDetailCard(
     val stage = LocalStageScale.current
     val tablet = stage != 1f
     val copyFont = webVw(8.64f, 0.6f, 11.84f).value
+    val cardLabel = episode.episode.episodeNumber.let { n ->
+        "${n.toString().padStart(2, '0')} S${seasonNumber.toString().padStart(2, '0')} \u00B7 E${n.toString().padStart(2, '0')} " +
+            (episode.episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to n))
+    }
     androidx.compose.runtime.CompositionLocalProvider(
         androidx.compose.foundation.LocalIndication provides (if (tablet) CalendarNoFocusFill else androidx.compose.foundation.LocalIndication.current),
     ) {
@@ -7780,7 +7784,9 @@ private fun WebEpisodeDetailCard(
         modifier
             .width(if (tablet) 270.dp else 268.dp)
             .onFocusChanged { state -> focused = state.isFocused; if (state.isFocused) onSelect() }
-            .clickable(enabled = available, onClick = onPlay),
+            .clickable(enabled = available, onClick = onPlay)
+            // The card reads as its visible copy (number, code, title), not as the artwork under it.
+            .semantics { contentDescription = cardLabel },
     ) {
     val episodeCode = "S${seasonNumber.toString().padStart(2, '0')} \u00B7 E${episode.episode.episodeNumber.toString().padStart(2, '0')}"
     val episodeTitle = episode.episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to episode.episode.episodeNumber)
@@ -8175,7 +8181,9 @@ private fun WebEpisodeCard(
         modifier
             .width(cardWidth)
             .onFocusChanged { focused = it.isFocused }
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            // The card reads as its visible copy: number, lead and title.
+            .semantics { contentDescription = listOfNotNull(badge, lead, title).joinToString(" ") },
     ) {
     Column(Modifier.fillMaxWidth().mediaCardLift(focused)) {
         WebShadowedBox(
