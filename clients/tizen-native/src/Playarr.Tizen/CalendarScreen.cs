@@ -211,9 +211,7 @@ internal sealed class CalendarScreen : IPage
                     var row = new View { PositionX = 5.8f, PositionY = 1.8f + k * 25.4f, Size = new Size(226, 44) }; // the event row (dot and title); the day cell is the focus target
                     row.Add(Ui.Box(5.6f, ly + 4.1f - row.PositionY, 8.8f, 8.8f, dot, 4.4f));
                     var multi = e.Members is { Count: > 1 } m ? $" · {m.Count}×" : "";
-                    row.CornerRadius = 4; // web .calendar-chip: a 4 px rounded button named by its text, tone and day
-                    var tone = CalendarRules.Tone(e, _today);
-                    Sem.Tag(row, "button", $"{e.Title + multi}, {(tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" })}, {day.ToString("dddd d MMMM", CultureInfo.GetCultureInfo("en-GB"))}");
+                    // the row is only a group of the dot and the title: the day cell is the focus target, so it is not exported as a control
                     row.Add(Ui.Text(e.Title + multi, 21.6f, ly - row.PositionY, 12.48f, multi.Length > 0 ? 700 : 400, _t.Ink, CellW - 36, 14.976f));
                     cell.Add(row);
                 }

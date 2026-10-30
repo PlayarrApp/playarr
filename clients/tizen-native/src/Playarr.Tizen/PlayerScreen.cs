@@ -27,6 +27,10 @@ internal sealed class PlayerScreen : IPage
     private readonly View _root = new();
     private readonly View _controls = new();
     private readonly View _progress;
+    private readonly View _volumeFill;
+    private float _volume = 1f;
+    private int _beforeSeek = -1;
+    private bool _muted;
     private readonly View _seek;
     private readonly TextLabel _now, _total;
     private readonly TextLabel _qualityBadge, _qualityLabel;
@@ -47,6 +51,8 @@ internal sealed class PlayerScreen : IPage
     public string Route => $"/player/{_file}";
     public string? FocusedLabel => _focus.Item?.Label;
     public bool Fullscreen => true;
+    public bool ControlsVisible => _controlsVisible;
+    public bool PanelOpen => _panel is not null;
     public float FocusCentreY => 990;
 
     private readonly string? _local;
@@ -95,11 +101,13 @@ internal sealed class PlayerScreen : IPage
         _controls.Add(_total);
 
         // tools
-        AddIcon("volume", 397, 980, "mute", dim: false); // web: mute, then the volume slider
-        var volume = Sem.Tag(new View { PositionX = 449, PositionY = 968, Size = new Size(130, 44) }, "textbox", "Volume"); // web: the range input is the 130x44 control holding its track
-        volume.Add(Ui.Box(0, 20, 130, 4, new Rgba(1, 1, 1, 0.18f), 2)); volume.Add(Ui.Box(0, 20, 130, 4, new Rgba(1, 1, 1, 0.9f), 2));
+        AddIcon("volume", 397, 980, "mute", dim: false, select: ToggleMute); // web: mute, then the volume slider
+        var volume = Sem.Tag(new View { PositionX = 449, PositionY = 968, Size = new Size(130, 44) }, "slider", "Volume"); // a range control: Select steps the player's volume by a tenth (wrapping to silent after full)
+        volume.Add(Ui.Box(0, 20, 130, 4, new Rgba(1, 1, 1, 0.18f), 2));
+        _volumeFill = Ui.Box(0, 20, 130, 4, new Rgba(1, 1, 1, 0.9f), 2);
+        volume.Add(_volumeFill);
         _controls.Add(volume);
-        _focus.Items.Add(new Focusable { Rect = () => new Box(449, 968, 130, 44), Label = "volume", Select = () => { }, Style = f => volume.Opacity = f ? 1f : 0.8f });
+        _focus.Items.Add(new Focusable { Rect = () => new Box(449, 968, 130, 44), Label = "volume", Select = StepVolume, Style = f => volume.Opacity = f ? 1f : 0.8f });
         AddIcon("volume", 1246, 980, "audio", dim: false);
         AddIcon("captions", 1323.6f, 980, "subtitles", dim: false, select: OpenSubtitles);
         AddIcon("queue", 1401.2f, 980, "playlist", dim: false);
@@ -421,6 +429,21 @@ internal sealed class PlayerScreen : IPage
         _focus = _outer; _outer = null;
     }
 
+    private void ToggleMute()
+    {
+        _muted = !_muted;
+        _volumeFill.Size = new Size(_muted ? 0 : 130 * _volume, 4);
+        try { if (_player is not null) _player.Volume = _muted ? 0f : _volume; } catch (Exception e) { Dbg.Log("PLAY mute failed: " + e.Message); }
+    }
+
+    private void StepVolume()
+    {
+        _muted = false;
+        _volume = _volume >= 0.995f ? 0f : MathF.Min(1f, _volume + 0.1f);
+        _volumeFill.Size = new Size(130 * _volume, 4);
+        try { if (_player is not null) _player.Volume = _volume; } catch (Exception e) { Dbg.Log("PLAY volume failed: " + e.Message); }
+    }
+
     private async void SeekBy(long deltaMs)
     {
         if (_player is null || _info is null) return;
@@ -479,7 +502,7 @@ internal sealed class PlayerScreen : IPage
         }
         switch (key)
         {
-            case RemoteKey.Back: Stop(); return false;
+            case RemoteKey.Back: if (_controlsVisible) { SetControls(false); return true; } Stop(); return false; // as web: Back first hides the controls, a second Back leaves
             case RemoteKey.Play: case RemoteKey.PlayPause: TogglePause(); SetControls(true); return true;
             case RemoteKey.Pause: if (_player?.State == PlayerState.Playing) TogglePause(); SetControls(true); return true;
             case RemoteKey.FastForward: SeekBy(SeekStepMs); SetControls(true); return true;
@@ -495,7 +518,10 @@ internal sealed class PlayerScreen : IPage
         }
         _hide.Restart();
         if (key == RemoteKey.Select) { _focus.Item?.Select?.Invoke(); return true; }
+        if (key == RemoteKey.Down && _focus.Item?.Label == "seek" && _beforeSeek >= 0) { _focus.Set(_beforeSeek); return true; } // as web: Down from the seek bar returns to the control Up left
+        var from = _focus.Current;
         _focus.Move(key);
+        if (key == RemoteKey.Up && _focus.Item?.Label == "seek") _beforeSeek = from;
         return true;
     }
 
