@@ -343,16 +343,21 @@ namespace Playarr.Xbox.Views
                     undo();
                 }
 
-                var changed = false;
-                for (var y = y0; y < y1 && !changed; y++)
+                // Rasteriser noise moves a few pixels by a level or two between renders; paint is what moves enough pixels by enough.
+                var moved = 0;
+                for (var y = y0; y < y1; y++)
                 {
                     var from = (y * width + x0) * 4;
-                    for (var i = from; i < from + (x1 - x0) * 4 && !changed; i++)
+                    for (var i = from; i < from + (x1 - x0) * 4; i += 4)
                     {
-                        changed = before[i] != after[i];
+                        if (Math.Abs(before[i] - after[i]) >= 3 || Math.Abs(before[i + 1] - after[i + 1]) >= 3 || Math.Abs(before[i + 2] - after[i + 2]) >= 3)
+                        {
+                            moved++;
+                        }
                     }
                 }
 
+                var changed = moved >= 16;
                 if (!changed && !IsFocusableAndOnTop(candidate.Owner, candidate.Box))
                 {
                     hidden.Add(candidate.Item);
