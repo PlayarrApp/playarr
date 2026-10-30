@@ -27,6 +27,8 @@
         <!-- Thin outline and the 20 px, 45% card glow, centred on the avatar. -->
         <Poster id="focusRing" translation="[-29,-29]" width="304" height="304" uri="pkg:/images/avatar-ring.png" opacity="0" loadDisplayMode="scaleToFit" />
         <Poster id="avatarImage" translation="[0,0]" width="244" height="244" loadDisplayMode="scaleToFit" />
+        <!-- The preset mascot is its own picture inside the gradient circle (web: 225 px in a 264 px circle). -->
+        <Poster id="avatarGlyph" translation="[17.95,17.95]" width="208.1" height="208.1" loadDisplayMode="scaleToFit" visible="false" />
         <!-- A custom photo: the account's JPEG, clipped to the circle by the mask (only the mask's alpha counts). -->
         <MaskGroup id="customMask" maskUri="pkg:/images/avatar-mask.png" maskSize="[244,244]" visible="false">
           <Poster id="customImage" translation="[0,0]" width="244" height="244" loadDisplayMode="scaleToZoom" />
