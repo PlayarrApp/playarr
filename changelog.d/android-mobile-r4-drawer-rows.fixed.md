@@ -1,1 +1,1 @@
-Android phone drawers export their own surface fill, phone settings rows export their whole row box, and the navigation avatar image hook sits on the artwork node.
+- Android phone drawers export their own surface fill, phone settings rows export their whole row box, and the navigation avatar image hook sits on the artwork node.
