@@ -99,3 +99,34 @@ export function pvTextLines(id: string): PvLine[] {
   }
   return lines;
 }
+
+const INPUTS: Map<string, TextInputController> = new Map();
+
+// A TextInput's own controller, kept under the node's probe key (patch_hide.py adds it to the call's options).
+export function pvTic(key: string): TextInputController {
+  const controller: TextInputController = new TextInputController();
+  INPUTS.set(key, controller);
+  return controller;
+}
+
+export class PvInput {
+  x: number = 0;
+  y: number = 0;
+  w: number = 0;
+  h: number = 0;
+}
+
+// The rectangle the input's drawn text occupies, from the component's own text layout (TextInputController.getTextContentRect).
+export function pvInputRect(key: string): PvInput {
+  const controller: TextInputController | undefined = INPUTS.get(key);
+  if (controller === undefined) {
+    throw new Error('no input controller ' + key);
+  }
+  const rect: RectResult = controller.getTextContentRect();
+  const out: PvInput = new PvInput();
+  out.x = rect.x;
+  out.y = rect.y;
+  out.w = rect.width;
+  out.h = rect.height;
+  return out;
+}
