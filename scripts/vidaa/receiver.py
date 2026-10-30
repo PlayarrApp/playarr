@@ -247,6 +247,25 @@ class H(BaseHTTPRequestHandler):
             with STATS_LOCK:
                 JOB = {"id": data["id"], "expr": data["expr"]}
             return self._ok(204)
+        if path == "/__mirror/keylog":
+            # Remote-key logger (?mirrorKeyLog=1): one line per page event, for the physical-remote Back investigation.
+            if not self._authed():
+                return self._ok(403, b'{"error":"token"}')
+            n = int(self.headers.get("Content-Length", "0"))
+            if n <= 0 or n > 65_536:
+                return self._ok(413, b"{}")
+            try:
+                data = json.loads(self.rfile.read(n))
+            except ValueError:
+                return self._ok(400, b"{}")
+            events = data.get("events") if isinstance(data, dict) else None
+            if not isinstance(events, list):
+                return self._ok(400, b'{"error":"invalid_keylog"}')
+            with open(RECOVERY_DATA / "remote-keys.log", "a") as kf:
+                for ev in events[:200]:
+                    if isinstance(ev, dict):
+                        kf.write(json.dumps({k: ev.get(k) for k in ("type", "at", "key", "code", "keyCode", "detail") if k in ev}) + "\n")
+            return self._ok(204)
         if path == "/__mirror/cmd":
             if not self._authed():
                 return self._ok(403, b'{"error":"token"}')

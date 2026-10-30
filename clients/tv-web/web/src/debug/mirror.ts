@@ -7,6 +7,7 @@ import { focusInfo, selectorFor, visibleText } from "./mirrorSnapshot";
 import { mirrorCaptureGeometry } from "./mirrorCaptureGeometry";
 import { withCollapsingTrackHeights } from "./mirrorTrackHeights";
 import { inlineArtwork } from "./mirrorArtwork";
+import { startKeyLog } from "./mirrorKeyLog";
 import { localeTagFor } from "../lib/i18n/languages";
 import {
   mirrorFramePayload,
@@ -218,6 +219,7 @@ export function startDebugMirror(): void {
   if (!maybeToken) return;
   const token: string = maybeToken; // a declared type survives hoisted function declarations, narrowing does not
   const endpoint = `${window.location.origin}/__mirror/frame`;
+  if (mirrorFlag("mirrorKeyLog")) startKeyLog(`${window.location.origin}/__mirror/keylog?t=${encodeURIComponent(token)}`);
   const errors: string[] = [];
   window.addEventListener("error", (e) => {
     errors.push(String(e.message).slice(0, 300));

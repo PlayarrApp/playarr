@@ -75,6 +75,14 @@ class JobAndCommandChannels(unittest.TestCase):
         self.assertEqual(json.loads(self.call("GET", "/__mirror/cmd")[1]), {"id": "c1", "key": "back"})
         self.assertEqual(json.loads(self.call("GET", "/__mirror/cmd")[1]), {})
 
+    def test_keylog_appends_events_and_needs_the_token(self):
+        ev = {"events": [{"type": "keydown", "at": 1, "key": "x", "code": "", "keyCode": 461, "junk": 1}]}
+        self.assertEqual(self.call("POST", "/__mirror/keylog", ev, token="bad")[0], 403)
+        self.assertEqual(self.call("POST", "/__mirror/keylog", {"events": "no"})[0], 400)
+        self.assertEqual(self.call("POST", "/__mirror/keylog", ev)[0], 204)
+        line = (receiver.RECOVERY_DATA / "remote-keys.log").read_text().splitlines()[-1]
+        self.assertEqual(json.loads(line), {"type": "keydown", "at": 1, "key": "x", "code": "", "keyCode": 461})
+
     def test_frame_is_found_by_its_request_id(self):
         (receiver.FRAMES / "frame-0000000000001.json").write_text(json.dumps({"requestId": "r1", "hasImage": True}))
         (receiver.FRAMES / "frame-0000000000001.jpg").write_bytes(b"\x89PNGrest")
