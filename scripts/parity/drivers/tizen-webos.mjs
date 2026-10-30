@@ -594,6 +594,11 @@ export async function createDriver() {
         if (a.getState() === "PAUSED" && a.getCurrentTime() < 59000) a.play();
         return a.getState() === "PLAYING" && a.getCurrentTime() > 500 && !!c && !c.classList.contains("is-hidden") && !!document.activeElement?.closest("[data-player-default-focus]"); } catch (e) { return false; } })()`;
       if (!(await until(ready, 30000))) throw new Error("player not ready: AVPlay shim playing, controls up, focus on play/pause");
+      // The controls hide 5 s after playback starts (the pinned capture frame was paused, so the timer began at the play() above): a mouse move restarts it,
+      // so the check keys run inside a fresh window, as the web driver's start does.
+      await ev(`(() => { const s = document.querySelector(".player-page") || document.body; s.dispatchEvent(new MouseEvent("mousemove", { bubbles: true })); return true; })()`);
+      await sleep(300);
+      if (!(await until(ready, 5000))) throw new Error("player not ready after refreshing the controls timer");
       await guard();
     },
     // Used by the shared runner before the first key of a player check (alongside the webOS wait in key()).
