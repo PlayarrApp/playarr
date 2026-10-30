@@ -318,8 +318,9 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
       const size = round2((style.fontSize ?? 0) / scale);
       const m = /-w(\d+)$/.exec(family);
       // Glyph runs sit on whole device pixels: the ascent and descent each count in whole pixels.
-      // The glyph run's height: the probe's ascender and descender for this font file and size; where the probe could not lay out
-      // (it never does while the player is up), each line's own reported ascender and descender.
+      // The glyph run's height: the renderer's ascender and descender for this font file and size, from a probe Text without a line
+      // height (a line laid out with the app's line height reports ascender plus descender equal to the line box, leading included,
+      // so it is not the glyph run). Where the probe could not lay out, the line's own reported ascender and descender.
       const runHeight = (line: unknown): number | null => {
         const own = line as {ascender?: number; descender?: number};
         if (extent) return Math.round(extent.ascender / scale) + Math.round(extent.descender / scale);
@@ -335,11 +336,8 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
               ? value.replace(/(^|\s)(\S)/g, (_m, space: string, letter: string) => `${space}${letter.toUpperCase()}`)
               : value;
       const native = lines;
-      // The view box is measured with the transforms of its ancestors, the line geometry of onTextLayout is not: the ratio of the
-      // measured height to the laid-out line heights is the scale the text is drawn at (a card scaled on focus).
-      let laidOut = 0;
-      for (const l of native) laidOut += l.height;
-      const k = laidOut > 0 && Math.abs(r[3] / laidOut - 1) > 0.01 && Math.abs(r[3] / laidOut - 1) < 0.25 ? r[3] / laidOut : 1;
+      // The scale the text is drawn at: the product of the scale transforms in the style of the view and its ancestors.
+      const k = drawnScale[i]!;
       let above = 0;
       native.forEach((line, index) => {
         const lineTop = above;

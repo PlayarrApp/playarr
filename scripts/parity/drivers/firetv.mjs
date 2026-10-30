@@ -350,7 +350,7 @@ export async function createDriver({ out } = {}) {
       const kept = layout.filter((e) => !drop.has(e)).map(({ src, covered, ...element }) => (process.env.PARITY_LAYOUT_DEBUG ? { ...element, src } : element));
       const dir = join(dirname(dirname(file)), "layout", theme);
       mkdirSync(dir, { recursive: true });
-      writeFileSync(join(dir, `${basename(file, ".png")}.json`), JSON.stringify({ screen: basename(file, ".png"), theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: pinnedClock !== null, elements: kept }));
+      writeFileSync(join(dir, `${basename(file, ".png")}.json`), JSON.stringify({ screen: basename(file, ".png"), theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: pinnedClock !== null, occluded: drop.size, elements: kept }));
     },
     async play(c, expect) {
       await command({ cmd: "play", file: c.file }, 500);
