@@ -554,6 +554,7 @@ private struct TVParityLayoutModifier: ViewModifier {
         rendered(content)
             .accessibilityAddTraits(role == "heading" ? .isHeader : []) // the role declared to the export is the one the app reports
             .opacity(hide.hidden.contains(id) ? 0 : 1)
+            .animation(nil, value: hide.hidden.contains(id)) // the measurement hides without any ancestor animation
             .background(
                 GeometryReader { proxy in
                     let frame = proxy.frame(in: tvScreenSpace)
@@ -603,6 +604,7 @@ private struct TVParityBoxModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .opacity(hide.hidden.contains(id) ? 0 : 1)
+            .animation(nil, value: hide.hidden.contains(id)) // the measurement hides without any ancestor animation
             .background(
                 GeometryReader { proxy in
                     let frame = proxy.frame(in: tvScreenSpace)
