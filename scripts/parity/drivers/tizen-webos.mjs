@@ -586,7 +586,14 @@ export async function createDriver() {
       await guard();
     },
     // Used by the shared runner before the first key of a player check (alongside the webOS wait in key()).
-    async playhead() { await guard(); const value = await ev(`(() => { const v = document.querySelector("video"); return v ? v.currentTime : null; })()`); await guard(); return value; },
+    // Known state for the player checks on the Tizen 6.5 stand-in: the AVPlay shim is playing, controls up, focus on the default control. Other targets keep the shared fixed wait.
+    // The shim has no decoder (docs/parity/DEVICES.md): this proves the app's focus and control logic, not Samsung playback.
+    ...(tizen65 ? { async playerReady() {
+      await guard();
+      if (!(await until(`(() => { const a = window.webapis && window.webapis.avplay; const c = document.querySelector(".player-controls"); return !!a && a.getState() === "PLAYING" && !!c && !c.classList.contains("is-hidden") && !!document.activeElement && !!document.activeElement.closest("[data-player-default-focus]"); })()`, 30000))) throw new Error("player did not reach playing with controls and default focus within 30 s");
+      await guard();
+    } } : {}),
+    async playhead() { await guard(); const value = await ev(tizen65 ? `(() => { try { return window.webapis.avplay.getCurrentTime() / 1000; } catch (e) { return null; } })()` : `(() => { const v = document.querySelector("video"); return v ? v.currentTime : null; })()`); await guard(); return value; },
     async panelOpen() { await guard(); const value = !!(await ev(`[...document.querySelectorAll(".player-quality-menu")].some((m) => m.getBoundingClientRect().width > 0)`)); await guard(); return value; },
     async location() { await guard(); const value = (await ev("location.hash.replace(/^#/, '')")) ?? null; await guard(); return value; },
     async focused() {
