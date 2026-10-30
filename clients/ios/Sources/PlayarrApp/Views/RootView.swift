@@ -664,6 +664,7 @@ private struct AuthenticatedPlayarrShell: View {
                 }
                 .scrollIndicators(.hidden)
                 .frame(height: 58)
+                .parityClipped()
                 .padding(.horizontal, 0)
                 .parityShape("container", color: PlayarrStyle.surfaceStrong.opacity(0.88), in: RoundedRectangle(cornerRadius: 20, style: .continuous), radius: 20)
                 .shadow(color: Color(red: 31 / 255, green: 14 / 255, blue: 20 / 255).opacity(0.2), radius: 20, y: 14)
@@ -672,6 +673,7 @@ private struct AuthenticatedPlayarrShell: View {
             }
         }
         .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
+        .parityTopLayer()
     }
 
     private func stageChrome(proxy: GeometryProxy) -> some View {

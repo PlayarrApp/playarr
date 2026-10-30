@@ -161,8 +161,8 @@ const CHROME_GLASS: RgbaColor = { r: 12, g: 9, b: 12, a: 1 };
 const CHROME_TEXT_SECONDARY: RgbaColor = { r: 255, g: 255, b: 255, a: 0.7 };
 /** web: the slash between the elapsed and total time is the muted text token, the two times are white */
 const CHROME_TEXT_MUTED: RgbaColor = { r: 165, g: 150, b: 158, a: 1 };
-const CHROME_TRACK_ALPHA: number = 0.28;
-const CHROME_BUFFERED_ALPHA: number = 0.46;
+const CHROME_TRACK_ALPHA: number = 0.2; // web `.player-seek-track`: rgba(255,255,255,.2)
+const CHROME_BUFFERED_ALPHA: number = 0.34; // web `.player-seek-buffered`: rgba(255,255,255,.34)
 
 // Brief 5.4's "button" typographic role (16 / 720 -> `FontWeight.Bold` per
 // that section's own weight-rounding guidance) -- reused for every text
@@ -717,16 +717,16 @@ export struct PlayerChrome {
               .width(tv(130))
               .height(tv(44))
               .trackColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, 0.3))
-              .selectedColor(toResourceColor(CHROME_TEXT_PRIMARY))
-              .blockColor(toResourceColor(CHROME_TEXT_PRIMARY))
+              .selectedColor(toResourceColor(BRAND_PINK)) // web: the range and its thumb take the player accent
+              .blockColor(toResourceColor(BRAND_PINK))
               .accessibilityText('Volume').accessibilityRole(AccessibilityRoleType.SLIDER)
               .onChange((value: number): void => {
                 this.volumePercent = value;
               })
           }
           Blank()
-          // web: the audio-track button; drawn at full strength with no alternative track, named "Audio: Unavailable"
-          this.tvIcon($r('app.media.player_audio'), (): void => {}, true, 'Audio: Unavailable')
+          // web: the audio-track button is disabled (opacity .28) with no alternative track, named "Audio: Unavailable"
+          this.tvIcon($r('app.media.player_audio'), (): void => {}, false, 'Audio: Unavailable')
           this.tvIcon($r('app.media.player_subtitles'), (): void => { if (this.hasTracks) { this.onOpenTracks(); } }, true, 'Subtitles: Off')
           this.tvIcon($r('app.media.player_queue'), (): void => {}, true, 'Playlist: 1 item')
           if (this.qualityLabel.length > 0) {

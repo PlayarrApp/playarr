@@ -227,13 +227,14 @@ struct WorkDetailView: View {
                             .brightness(scheme == .dark ? -0.4 : 0.1)
                             .frame(width: 0.52 * proxy.size.width - clearance, height: 1.06 * proxy.size.height)
                             .scaleEffect(1.04, anchor: UnitPoint(x: 0, y: 0.5))
-                            .opacity(scheme == .dark ? 0.72 : 0.24)
+                            .parityOpacity(scheme == .dark ? 0.72 : 0.24)
                             .mask(LinearGradient(stops: [.init(color: .black, location: 0.72), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
+                            .parityFade(.horizontal) { _ -> [Gradient.Stop] in [Gradient.Stop(color: .black, location: 0.72), Gradient.Stop(color: .clear, location: 1)] }
                         LinearGradient(stops: [.init(color: PlayarrStyle.surface, location: 0), .init(color: .clear, location: 0.22)], startPoint: .leading, endPoint: .trailing)
                         LinearGradient(stops: [.init(color: PlayarrStyle.surface, location: 0), .init(color: .clear, location: 0.22), .init(color: .clear, location: 0.82), .init(color: PlayarrStyle.surface, location: 1)], startPoint: .bottom, endPoint: .top)
                     }
                     .frame(width: proxy.size.width - clearance, height: proxy.size.height, alignment: .topLeading)
-                    .clipped()
+                    .parityClipped()
                     .offset(x: clearance)
                     LinearGradient(
                         stops: [.init(color: PlayarrStyle.surface.opacity(0.94), location: 0), .init(color: PlayarrStyle.surface.opacity(0.9), location: 0.36), .init(color: .clear, location: 0.52)],
@@ -1910,7 +1911,7 @@ final class ParityMeasuredLabel: UILabel {
             let used = manager.boundingRect(forGlyphRange: shown, in: container)
             let baseline = origin.y + fragment.minY + manager.location(forGlyphAt: glyphs.location).y - raise
             let local = CGRect(x: origin.x + used.minX, y: baseline - font.ascender, width: used.width, height: font.ascender - font.descender)
-            let rect = self.paint.drawn(self.convert(local, to: nil))
+            let rect = self.convert(local, to: nil)
             guard !line.isEmpty, let opacity = self.paint.effective(rect) else { return }
             let colour = ((attributes[.foregroundColor] as? UIColor) ?? .label).resolvedColor(with: self.traitCollection)
             var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0

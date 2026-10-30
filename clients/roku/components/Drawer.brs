@@ -31,6 +31,12 @@ sub drawerOpen(kicker as String, title as String, items as Object, returnTo as S
     ' Web draws the drawer over the page with no scrim: the page behind keeps its full strength.
     drawerChrome(g, kicker, title, "Close")
     m.drawerRings = []
+    ' Web's Close button is a focus stop above the first action (Up from the first row; OK closes).
+    m.drawerCloseRing = CreateObject("roSGNode", "Group")
+    pgRound(m.drawerCloseRing, 1823, 51, 54, 56, 28, "focusRing", -1, true)
+    pgRound(m.drawerCloseRing, 1824, 52, 52, 54, 27, "focusRing", -1, true)
+    m.drawerCloseRing.visible = false
+    g.AppendChild(m.drawerCloseRing)
     for i = 0 to items.Count() - 1
         ' The web lists Download second; the channel cannot download, so that slot stays empty and the rows keep the web's places.
         slot = i
@@ -59,17 +65,24 @@ sub drawerRenderFocus()
     for i = 0 to m.drawerRings.Count() - 1
         m.drawerRings[i].visible = (i = m.drawerIndex)
     end for
+    m.drawerCloseRing.visible = (m.drawerIndex < 0)
+    if m.drawerIndex < 0
+        parityEmit("focus", "Close")
+        return
+    end if
     item = m.drawerItems[m.drawerIndex]
     parityEmit("focus", item.glyph + item.label)
 end sub
 
 function drawerOnKey(key as String) as Boolean
-    if key = "up" and m.drawerIndex > 0
+    if key = "up" and m.drawerIndex > -1
         m.drawerIndex = m.drawerIndex - 1
         drawerRenderFocus()
     else if key = "down" and m.drawerIndex < m.drawerItems.Count() - 1
         m.drawerIndex = m.drawerIndex + 1
         drawerRenderFocus()
+    else if key = "OK" and m.drawerIndex < 0
+        drawerClose()
     else if key = "OK"
         drawerChoose(m.drawerItems[m.drawerIndex].id)
     else if key = "back"

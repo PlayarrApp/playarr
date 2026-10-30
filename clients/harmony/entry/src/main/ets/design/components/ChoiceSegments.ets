@@ -61,6 +61,8 @@ export struct ChoiceSegments {
   /** Settings > Colour theme: web's buttons carry the lower-case value, the other settings their label. */
   @Prop lowerLabels: boolean = false;
   @Prop sectionWidth: number = SECTION_WIDTH;
+  /** Settings panels: false when the caller's own box draws the gap below (web: the gap lies between two setting boxes, not inside them). */
+  @Prop trailingGap: boolean = true;
   onChoose: (value: string) => void = () => {};
 
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
@@ -189,6 +191,6 @@ export struct ChoiceSegments {
       }
     }
     .alignItems(HorizontalAlign.Start)
-    .margin({ bottom: this.large ? tv(SECTION_GAP + (isTvMetrics() && this.description !== '' ? 0.23 : 0)) : (isTvMetrics() ? tv(SECTION_GAP - 0.4) : TOUCH_SECTION_GAP) })
+    .margin({ bottom: !this.trailingGap ? 0 : this.large ? tv(SECTION_GAP + (isTvMetrics() && this.description !== '' ? 0.23 : 0)) : (isTvMetrics() ? tv(SECTION_GAP - 0.4) : TOUCH_SECTION_GAP) })
   }
 }

@@ -85,6 +85,8 @@ struct LibraryView: View {
             if ParityLaunch.screen == "actions", actionsWork == nil { actionsWork = viewModel.works.first }
             #endif
         }
+        // The drawer is modal: the page behind it is not reachable (VoiceOver included) while it is open.
+        .accessibilityHidden(showingFilters || actionsWork != nil)
         .navigationBarHidden(true)
         #if DEBUG
         .parityScreenLoad(parityLoadState)
@@ -292,8 +294,8 @@ struct LibraryView: View {
                 if !phone, let preview {
                     PlayarrArtwork(work: preview, kind: .backdrop, apiClient: apiClient)
                         .frame(width: proxy.size.width * 0.52, height: proxy.size.height)
-                        .clipped() // scaledToFill art overflowed the frame and drew a grey band over the grid
-                        .opacity(scheme == .dark ? 0.1 : 0.04) // web light: the preview art is nearly invisible on the white page
+                        .parityClipped() // scaledToFill art overflowed the frame and drew a grey band over the grid
+                        .parityOpacity(scheme == .dark ? 0.1 : 0.04) // web light: the preview art is nearly invisible on the white page
                         .overlay {
                             LinearGradient(
                                 colors: [PlayarrStyle.surface.opacity(0.2), PlayarrStyle.surface],
