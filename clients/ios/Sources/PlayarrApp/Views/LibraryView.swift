@@ -89,7 +89,6 @@ struct LibraryView: View {
         #if DEBUG
         .parityScreenLoad(parityLoadState)
         #endif
-        .parityCovered(showingFilters || actionsWork != nil, region: isPhoneIdiom ? nil : CGRect(x: UIScreen.main.bounds.width - 360, y: 0, width: 360, height: UIScreen.main.bounds.height))
         .overlay {
             // Phones: a full-page panel; iPad: the web tablet's 360 pt drawer on the right.
             HStack(spacing: 0) {
@@ -158,8 +157,9 @@ struct LibraryView: View {
                     HStack(spacing: 12) {
                         WMIconView(icon: .search, color: WM.muted, size: 16)
                         TextField("", text: $viewModel.searchText, prompt: Text("Search").foregroundColor(WM.muted))
-                            .wm(16, color: WM.ink)
+                            .font(WM.font(16, 400))
                             .foregroundStyle(WM.ink)
+                            .accessibilityAddTraits(.isSearchField)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .submitLabel(.search)
@@ -368,6 +368,7 @@ struct LibraryView: View {
                     ZStack {
                         if letter == activeLetter { Circle().fill(WM.ink.opacity(0.78)).frame(width: 20, height: 20) }
                         Text(letter).wm(8.8, 700, color: letter == activeLetter ? PlayarrStyle.background : WM.muted, text: letter).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
+                            .parityFill(WM.ink.opacity(0.78), when: letter == activeLetter) // the circle behind the active letter
                     }
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
@@ -673,9 +674,9 @@ struct LibraryView: View {
     private func previewCopy(_ work: Work, viewportWidth: CGFloat) -> some View {
         let year = WorkDetailView.tabletYearRangeLabel(releaseDate: work.releaseDate, endDate: work.endDate)
         let genres = work.genres.prefix(2).joined(separator: " · ")
-        let meta = [year, genres.isEmpty ? nil : genres].compactMap { $0 }.joined(separator: "   ")
+        let metaItems = [year, genres.isEmpty ? nil : genres].compactMap { $0 }
         return VStack(alignment: .leading, spacing: 0) {
-            WMText((work.genres.first ?? work.kind.displayName).uppercased(), 8.6, 800, color: PlayarrStyle.pink, lh: 13, ls: 1.1)
+            WMText((work.genres.first ?? work.kind.displayName).uppercased(), 9.28, 860, color: WM.previewKicker, lh: 12, ls: 1.1)
                 .padding(.bottom, 20)
             let isPad = UIDevice.current.userInterfaceIdiom == .pad
             let titleSize: CGFloat = isPad ? min(max(35.2, viewportWidth * 0.036), 80) : 42
@@ -719,8 +720,10 @@ struct LibraryView: View {
                     .padding(.bottom, pitchCorrection)
                     .accessibilityAddTraits(.isHeader)
             }
-            WMText(meta, 10, 600, color: PlayarrStyle.inkSoft, lh: 15)
-                .padding(.top, 26)
+            HStack(spacing: 12.8) {
+                ForEach(metaItems, id: \.self) { WMText($0, 9.92, 600, color: WM.previewInk, lh: 14) }
+            }
+            .padding(.top, 26)
             if let overview = work.overview {
                 let overviewSize: CGFloat = isPad ? min(max(16 * 0.64, viewportWidth * 0.0072), 16 * 0.92) : 11.5
                 let overviewFont = isPad
@@ -738,9 +741,9 @@ struct LibraryView: View {
                 let overviewLineHeight = overviewFont?.lineHeight ?? overviewSize * 1.36
                 Text(overview)
                     .font(isPad ? WM.font(overviewSize, 600) : WM.font(11.5, 500))
-                    .foregroundStyle(isPad ? WM.detailMuted : PlayarrStyle.inkSoft)
+                    .foregroundStyle(isPad ? WM.previewInk : PlayarrStyle.inkSoft)
                     .lineSpacing(isPad ? max(0, overviewSize * 1.58 - overviewLineHeight) : 2.5)
-                    .parityRenderedText(overview, role: "text", size: isPad ? overviewSize : 11.5, weight: isPad ? 600 : 500, color: isPad ? WM.detailMuted : PlayarrStyle.inkSoft)
+                    .parityRenderedText(overview, role: "text", size: isPad ? overviewSize : 11.5, weight: isPad ? 600 : 500, color: isPad ? WM.previewInk : PlayarrStyle.inkSoft)
                     .lineLimit(5)
                     .frame(maxWidth: isPad ? overviewWidth : nil, alignment: .leading)
                     .padding(.top, 20)
@@ -753,14 +756,14 @@ struct LibraryView: View {
     private func tabletHeader(proxy: GeometryProxy) -> some View {
         let scale = proxy.size.width / 1366
         return ZStack(alignment: .topLeading) {
-            PlayarrBackButton(action: goHome).offset(x: 122 * scale, y: 55 * scale)
+            PlayarrBackButton(action: goHome).offset(x: 120.84 * scale, y: 53.23 * scale)
             WMTitleWithDetail(
                 detail: viewModel.total.map { "\($0.formatted(.number.grouping(.automatic))) \(viewModel.selectedKind == .artist ? "artists" : "titles")" },
-                maxWidth: max(0, (proxy.size.width > 1100 ? proxy.size.width * 0.24 : proxy.size.width * 0.6) - 182 * scale - 4), size: 9.92, gap: 15
+                maxWidth: max(0, (proxy.size.width > 1100 ? proxy.size.width * 0.24 : proxy.size.width * 0.6) - 181.23 * scale - 4), size: 9.92, gap: 15
             ) {
-                WMText(title, max(19.2, 24 * scale), 520, lh: 36, ls: -1)
+                WMText(title, 23.91 * scale, 580, lh: 32, ls: -1, role: "heading")
             }
-            .offset(x: 182 * scale, y: 57 * scale)
+            .offset(x: 181.23 * scale, y: 59.23 * scale)
             HStack {
                 Spacer()
                 PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3") { showingFilters = true }
@@ -970,7 +973,7 @@ private struct RailPaint: ViewModifier {
 
     func body(content: Content) -> some View {
         if phone {
-            content.background(PlayarrStyle.surface.opacity(0.96)).parityFill(PlayarrStyle.surface.opacity(0.96))
+            content.background(PlayarrStyle.surface.opacity(0.96))
         } else {
             content
                 .background(LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing))

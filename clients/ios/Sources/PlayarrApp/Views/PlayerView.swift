@@ -372,8 +372,11 @@ struct PlayerView: View {
             VStack(spacing: 2) {
                 HStack(spacing: 5.6) {
                     Text(playerTimeString(shownTime))
+                        .parityRenderedText(playerTimeString(shownTime), role: "text", size: 9.92, weight: 400, color: .white)
                     Text("/").foregroundStyle(Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
+                        .parityRenderedText("/", role: "text", size: 9.92, weight: 400, color: Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
                     Text(playerTimeString(viewModel.duration))
+                        .parityRenderedText(playerTimeString(viewModel.duration), role: "text", size: 9.92, weight: 400, color: .white)
                 }
                 .font(WM.font(9.92).monospacedDigit())
                 .foregroundStyle(.white)
@@ -454,8 +457,11 @@ struct PlayerView: View {
                 iconButton(.next, disabled: queueEmpty, label: "Next") { playQueueEntry(at: 0, viewModel) }
                 HStack(spacing: 5.6) {
                     Text(playerTimeString(shownTime))
+                        .parityRenderedText(playerTimeString(shownTime), role: "text", size: 9.92 + 1, weight: 400, color: .white)
                     Text("/").foregroundStyle(Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
+                        .parityRenderedText("/", role: "text", size: 9.92 + 1, weight: 400, color: Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
                     Text(playerTimeString(viewModel.duration))
+                        .parityRenderedText(playerTimeString(viewModel.duration), role: "text", size: 9.92 + 1, weight: 400, color: .white)
                 }
                 .font(WM.font(9.92 + 1).monospacedDigit()).foregroundStyle(.white)
                 .padding(.leading, 28 * s)
@@ -510,7 +516,7 @@ struct PlayerView: View {
                     }
                 }
                 .scaleEffect(active ? 1.1 : 1)
-                .parityBox("button", name: label)
+                .parityBox("button", name: label, background: primary ? Color.white.opacity(0.14) : (active ? WM.pink.opacity(0.28) : nil))
                 .parityOpacity(disabled ? 0.28 : 1)
         }
         .buttonStyle(.plain)

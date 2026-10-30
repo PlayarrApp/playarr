@@ -80,10 +80,13 @@ internal static class Ui
     {
         var lines = WrapLines(text, size, weight, spacing, width, maxLines, balance: balance);
         if (lines.Count == 0) return 0;
-        // one multi-line label (the web has one element for a wrapped block); the app wraps, NUI lays the lines out
-        var label = Text(string.Join("\n", lines), x, y + (lh - ((float)Math.Round(1.011 * size) + (float)Math.Round(0.353 * size))) / 2f, size, weight, color, width, lh, multiline: true, spacing: spacing, maxLines: lines.Count, exactLines: true);
-        if (role != "text") Sem.Tag(label, role);
-        parent.Add(label);
+        // one single-line label per wrapped line: the web exports one glyph run per rendered line, each as tall as the font's content area
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var label = Text(lines[i], x, y + i * lh, size, weight, color, 0, lh, spacing: spacing);
+            if (role != "text") Sem.Tag(label, role);
+            parent.Add(label);
+        }
         return lines.Count;
     }
 
@@ -154,8 +157,9 @@ internal static class Ui
     {
         var cssFamily = family; var reqWeight = weight;
         if (block) { multiline = true; exactLines = true; maxLines = 1; }
-        // fallback-font glyphs: the label is a box of the web's advance and the letter spacing makes the layout advance of the glyph that wide, so what follows starts where it does on web
-        if (GlyphAdvance(text) is { } adv && !multiline) { if (text is not ("←" or "→")) { w = adv * size; align = HorizontalAlignment.Center; } spacing += adv * size - TextWidth(text, size, weight, spacing, family); }
+        // web draws these glyphs from fallback fonts (Liberation Sans arrows, DejaVu Sans symbols) with the primary font's line metrics; the bundled subsets carry the same advances and Nunito's ascent and descent
+        if (family == Font && text is "←" or "→") { family = "Liberation Sans"; weight = weight >= 600 ? 700 : 400; }
+        else if (family == Font && text is "⇩" or "☷" or "⌄" or "✓" or "▶") { family = "Playarr Symbols"; weight = weight >= 600 ? 700 : 400; }
         if (!multiline && w <= 0) w = TextWidth(upper ? text.ToUpperInvariant() : text, size, weight, spacing, family); // an inline run is as wide as its text
         (family, weight) = Face(family, weight, size);
         var cssWeight = family.StartsWith(Font + " W", StringComparison.Ordinal) ? int.Parse(family[(Font.Length + 2)..]) : weight;
@@ -166,7 +170,7 @@ internal static class Ui
         // a block-level text element (the clock) is as tall as its CSS line; an inline run is the browser's content area
         var boxH = multiline ? Math.Max(line, size * 1.45f) : content;
         y += multiline ? (exactLines ? 0 : -(boxH - line) / 2f) : (line - boxH) / 2f;
-        if (family.StartsWith(Font, StringComparison.Ordinal) && !block) y -= BaselineShifts.Up(size); // NUI vs Chromium glyph placement, measured per size
+        if (cssFamily.StartsWith(Font, StringComparison.Ordinal) && !block) y -= BaselineShifts.Up(size); // NUI vs Chromium glyph placement, measured per size
         var t = new TextLabel(upper ? text.ToUpperInvariant() : text)
         {
             PositionX = x,
@@ -180,7 +184,6 @@ internal static class Ui
             MultiLine = multiline,
             Ellipsis = false, // an overflowing line is clipped by its parent, never elided, so every glyph has a laid-out position
         };
-        if (GlyphAdvance(text) is not null) t.Ellipsis = false;
         if (!multiline && w > 0) t.RelativeLineHeight = boxH / TextHeight(size, reqWeight, cssFamily); // the label's line is exactly the box, as the browser's
         if (spacing != 0) t.CharacterSpacing = spacing * TextScale;
         if (multiline && maxLines > 0) t.Ellipsis = false;
@@ -192,9 +195,6 @@ internal static class Ui
         TextMeta.Add(t, new TextMetaInfo(size, cssWeight, line, cssY - y, spacing, align, color, multiline) { Family = cssFamily, Block = block });
         return t;
     }
-
-    /// <summary>The web's advance (em) of glyphs that both clients draw from a fallback font: 0.838 em for the download, check and chevron glyphs, 0.769 em for the play triangle.</summary>
-    internal static float? GlyphAdvance(string text) => text switch { "⇩" or "✓" or "⌄" => 0.838f, "▶" => 0.769f, "←" or "→" => 1f, _ => null };
 
     /// <summary>Linear gradient box ("to right" when horizontal, else "to bottom"); stops are (offset 0..1, straight-alpha colour). Rendered once to a PNG and stretched.</summary>
     public static View Gradient(float x, float y, float w, float h, bool horizontal, params (float At, Rgba Color)[] stops)
@@ -233,7 +233,7 @@ internal static class Ui
     /// Web .tv-library-grid-panel / .tv-rail-surface: the right 1190 px carry a frost (soft surface over the strong one, 48 % in light and 44 % in dark)
     /// that fades in from nothing at the left edge to full at the right.
     /// </summary>
-    public static View PanelWash(PlayarrTheme t, float width = 1190)
+    public static View PanelWash(PlayarrTheme t, float width = 1190.39f)
     {
         var dark = t.Name == "dark"; var mix = dark ? 0.44f : 0.48f;
         Rgba Frost(float a) => new(t.SurfaceSoft.R * mix + t.SurfaceStrong.R * (1 - mix), t.SurfaceSoft.G * mix + t.SurfaceStrong.G * (1 - mix), t.SurfaceSoft.B * mix + t.SurfaceStrong.B * (1 - mix), a);
