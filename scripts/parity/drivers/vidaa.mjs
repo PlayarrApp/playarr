@@ -74,6 +74,10 @@ export const PIN_PLAYER_EXPRESSION = `(async function () {
   return { held: held >= 2, state: state };
 })()`;
 
+/** Detail refs are taken at page top (the web driver and the webOS driver do the same): the focus-scroll to the first episode card must not show in the capture. */
+export const DETAIL_TOP_EXPRESSION = `(function () { var n = 0; [document.scrollingElement].concat([].slice.call(document.querySelectorAll("*"))).forEach(function (e) { if (e && e.scrollTop > 0) { e.scrollTop = 0; n++; } }); return { reset: n }; })()`;
+export const isDetailRoute = (route) => /^\/(movies|series)\/[^/]+\/?$/.test(String(route).split("?")[0]);
+
 /** The frame a layout job produced is usable when it carries the job's id, rendered an image, saw the page hold still while it rendered and exported elements. */
 export function jobFrameProblem(frame, id) {
   if (!frame || frame.requestId !== id) return "frame does not carry the request id";
@@ -187,7 +191,7 @@ export async function createDriver({
     supports: {},
     async setDeterministicCapture({ fixedNow: instant } = {}) {
       if (!instant || !Number.isFinite(Date.parse(instant))) throw new Error("VIDAA deterministic capture requires a valid fixedNow instant");
-      fixedNow = instant; // the clock is frozen by the debug build; zone and locale are the TV page's own
+      fixedNow = instant; // the debug build freezes the clock and, with mirrorUtc, reads local time as UTC; locale is the TV page's own
     },
     async start({ theme: first } = {}) {
       if (first) theme = first;
@@ -224,7 +228,8 @@ export async function createDriver({
     async screenshot(file) {
       const screen = captureTarget;
       if (!screen) throw new Error("VIDAA screenshot needs a capture target (setCaptureTarget)");
-      const state = await settled(now() - 30);
+      let state = await settled(now() - 30);
+      if (isDetailRoute(suiteRoute(state.route))) { await pageEval(DETAIL_TOP_EXPRESSION); state = await settled(now() - 30); }
       let problem = "no attempt";
       for (let attempt = 1; attempt <= 4; attempt += 1) {
         const id = `${jobTag}-${++jobSeq}`;

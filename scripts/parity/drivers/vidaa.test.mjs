@@ -190,3 +190,12 @@ test("a Back injected into the page is reported once, a remote key is not", asyn
   assert.equal(d.takeInjectedBack(), true);
   assert.equal(d.takeInjectedBack(), false);
 });
+
+test("detail routes are recognised for the page-top reset, other routes are not", async () => {
+  const { isDetailRoute, DETAIL_TOP_EXPRESSION } = await import("./vidaa.mjs");
+  assert.equal(isDetailRoute("/series/7ab4ce97-d59e-43d6-8e03-31d4d29a5c90"), true);
+  assert.equal(isDetailRoute("/movies/abc?x=1"), true);
+  assert.equal(isDetailRoute("/series"), false);
+  assert.equal(isDetailRoute("/player/abc"), false);
+  assert.match(DETAIL_TOP_EXPRESSION, /scrollTop = 0/);
+});
