@@ -52,6 +52,8 @@ export struct PageShell {
   @Prop railFrostWidthPct: number = -1;
   /** Web draws this page's frost as a full-width box whose fade starts `railFrostWidthPct` from the right edge (Settings, Search). */
   @Prop railFrostFullBox: boolean = false;
+  /** TV: draws web's `.tv-stage-wash` (a full-page box, the left wash gradient on `surface`) under the content, as Settings' page has. */
+  @Prop stageWash: boolean = false;
 
   /** The page's own content, laid out in 1920x1080 coordinates, below the chrome. */
   @BuilderParam content: () => void = this.emptyContent;
@@ -210,6 +212,21 @@ export struct PageShell {
             .position({ x: this.railFrostFullBox ? 0 : `${100 - this.railFrostWidthPct}%`, y: 0 })
             .linearGradient({ angle: 90, colors: this.railFrostFullBox ? railFrostColorsFullWidth(this.railFrostWidthPct) : railFrostColors() })
             .hitTestBehavior(HitTestMode.None)
+        }
+        if (this.stageWash) {
+          Row()
+            .width('100%')
+            .height('100%')
+            .position({ x: 0, y: 0 })
+            .hitTestBehavior(HitTestMode.None)
+            .linearGradient({
+              angle: 90,
+              colors: [
+                [toResourceColorWithAlpha(activeColors().surface, TvGeometry.stageWashLeftOpacityPct / 100), 0],
+                [toResourceColorWithAlpha(activeColors().surface, TvGeometry.stageWashLeftMidOpacityPct / 100), TvGeometry.stageWashLeftMidPct / 100],
+                [toResourceColorWithAlpha(activeColors().surface, 0), TvGeometry.stageWashLeftFadePct / 100],
+              ],
+            })
         }
         this.content()
         if (this.showHeader) {

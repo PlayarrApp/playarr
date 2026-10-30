@@ -695,6 +695,7 @@ export struct SettingsScreen {
       PageShell({
         railFrostWidthPct: 65,
         railFrostFullBox: false, // web: the detail panel is its own 65% wide box
+        stageWash: isTvMetrics(), // web: the page's `.tv-stage-wash` is a full-page box under the panel
         title: t('settings.index.title', 'Preferences'),
         backLabel: 'Settings',
         backRole: 'button',
