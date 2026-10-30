@@ -1,6 +1,5 @@
 import SwiftUI
 import UIKit
-import AVFoundation
 
 /// Parity layout export (docs/parity/LAYOUT.md). Views that opt in with `.parityLayout(...)` report their own style
 /// values (text, size, weight, colour) and their frame in the app window; the registry writes them to
@@ -303,23 +302,9 @@ final class ParityLayoutRegistry {
         return drawn ? Shot(bytes: bytes, width: width, height: height, scale: scale) : nil
     }
 
-    /// Pixel rectangles (screen scale) of every video layer: moving frames are not evidence of visibility.
-    private func videoMasks(_ window: UIWindow, scale: CGFloat) -> [CGRect] {
-        var found: [CGRect] = []
-        func walk(_ layer: CALayer) {
-            if layer is AVPlayerLayer {
-                let frame = layer.convert(layer.bounds, to: window.layer)
-                found.append(CGRect(x: frame.minX * scale, y: frame.minY * scale, width: frame.width * scale, height: frame.height * scale))
-            }
-            for sub in layer.sublayers ?? [] { walk(sub) }
-        }
-        walk(window.layer)
-        return found
-    }
-
     /// Number of pixels inside `rect` that differ between `hidden` and `base` and between `hidden` and `after`, where
-    /// `base` and `after` agree (so animation and video never count) and outside the video masks.
-    private func changedCount(_ rect: CGRect, hidden: Shot, base: Shot, after: Shot, masks: [CGRect]) -> Int {
+    /// `base` and `after` agree (so animation and moving video never count; the player is paused when it is captured).
+    private func changedCount(_ rect: CGRect, hidden: Shot, base: Shot, after: Shot) -> Int {
         let s = hidden.scale
         let x0 = max(0, Int((rect.minX * s).rounded(.down))), x1 = min(hidden.width, Int((rect.maxX * s).rounded(.up)))
         let y0 = max(0, Int((rect.minY * s).rounded(.down))), y1 = min(hidden.height, Int((rect.maxY * s).rounded(.up)))
@@ -330,7 +315,6 @@ final class ParityLayoutRegistry {
             for y in y0..<y1 {
                 let row = y * hidden.width
                 for x in x0..<x1 where wh[row + x] != wb[row + x] && wh[row + x] != wa[row + x] && wb[row + x] == wa[row + x] {
-                    if masks.contains(where: { $0.contains(CGPoint(x: x, y: y)) }) { continue }
                     count += 1
                 }
             }
@@ -355,7 +339,6 @@ final class ParityLayoutRegistry {
         if !candidates.isEmpty {
             try? await Task.sleep(nanoseconds: settle)
             guard var base = capture(window) else { return nil }
-            let masks = videoMasks(window, scale: base.scale)
             var byID: [UUID: [Item]] = [:], idOrder: [UUID] = []
             for item in candidates { if let id = item.toggle { if byID[id] == nil { idOrder.append(id) }; byID[id, default: []].append(item) } }
             func union(_ items: [Item]) -> CGRect { items.dropFirst().reduce(items[0].rect) { $0.union($1.rect) }.insetBy(dx: -2, dy: -2) }
@@ -379,7 +362,7 @@ final class ParityLayoutRegistry {
                     for id in batch.ids { for item in byID[id]! {
                         let key = ProbeKey(id: id, slot: item.slot)
                         var row = counts[key] ?? [0, 0]
-                        row[round] = max(row[round], changedCount(item.rect, hidden: hidden, base: base, after: after, masks: masks))
+                        row[round] = max(row[round], changedCount(item.rect, hidden: hidden, base: base, after: after))
                         counts[key] = row
                     } }
                     base = after

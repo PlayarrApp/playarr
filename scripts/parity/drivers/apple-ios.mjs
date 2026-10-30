@@ -352,7 +352,7 @@ export async function createDriver() {
       const readLayout = () => parseCaptureLayout(readFileSync(layoutPath, "utf8"), { screen: id, theme, deterministic: deterministicCapture });
       // The app writes atomically after its tree settles. A missing export is a capture failure, never an optional sidecar.
       for (let attempt = 0; !existsSync(layoutPath) && attempt < 120; attempt += 1) await sleep(1000);
-      if (!existsSync(layoutPath)) throw new Error(`iOS parity layout export missing for ${id} after 120 seconds`);
+      if (!existsSync(layoutPath)) throw new Error(`iOS parity layout export missing for ${id} after 120 seconds; probe counts: ${JSON.stringify(state().layoutProbeCounts ?? null)}`);
       readLayout();
       const raw = device === "ipad" ? `${file}.raw.png` : file;
       // Wait for two byte-identical frames so the capture contains the settled screen.
