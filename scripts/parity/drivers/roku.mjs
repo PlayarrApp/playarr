@@ -409,7 +409,8 @@ export function calendarReadinessSnapshot(state, expectedView, baseline = {}) {
 export function calendarCellLeftEdgeAction(focus) {
   if (!focus || focus.action !== "cell" || !Number.isFinite(focus.rect?.x)) return "unknown";
   if (focus.rect.x < CALENDAR_CONTENT_LEFT_EDGE) return "unknown";
-  if (focus.rect.x <= CALENDAR_CONTENT_LEFT_EDGE + 1) return "edge";
+  // A first-column whole-cell stop starts at the grid edge; its chip stop sits 5.8 px in.
+  if (focus.rect.x <= CALENDAR_CONTENT_LEFT_EDGE + 7) return "edge";
   return "left";
 }
 
