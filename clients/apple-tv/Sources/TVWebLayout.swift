@@ -811,6 +811,7 @@ struct TVCardButton<Label: View>: View {
                                                                   gridPosition: parityGridPosition) }
         #endif
         .accessibilityLabel(accessibleName ?? work.title)
+        .accessibilityAddTraits(.isLink) // it opens the title
         .simultaneousGesture(LongPressGesture(minimumDuration: 0.65).onEnded { _ in
             longPressed = true
             openActions(work)

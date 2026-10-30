@@ -1014,12 +1014,13 @@ struct TVFloatingNav: View {
                         .parityLayout(text: profile.name.split(separator: " ").first.map(String.init) ?? profile.name, size: 8.832, weight: 680, color: DesignTokens.Color.textDisabled, tracking: 0.31)
                 }
                 .frame(width: DesignTokens.Shell.navItemSize, height: DesignTokens.Shell.navItemSize)
-                .parityBox("button", text: "Profile \(profile.name)", radius: 16)
+                .parityBox("link", text: "Profile \(profile.name)", radius: 16)
                 .modifier(TVNavItemFocusFill())
             }
             .buttonStyle(TVFocusableCardButtonStyle())
             .focused(externalFocus, equals: .navProfile)
             .accessibilityLabel("Profile \(profile.name)")
+            .accessibilityAddTraits(.isLink) // it opens the profiles page
             .padding(.vertical, DesignTokens.Shell.navGroupPaddingV)
             .padding(.horizontal, DesignTokens.Shell.navGroupPaddingH)
             .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.surface, alpha: 0.56)
@@ -1089,7 +1090,7 @@ struct TVFloatingNav: View {
                 width: DesignTokens.Shell.navItemSize,
                 height: DesignTokens.Shell.navItemSize
             )
-            .parityBox("button", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Color.textPrimary : nil, alpha: 0.09)
+            .parityBox("link", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Color.textPrimary : nil, alpha: 0.09)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(
@@ -1105,6 +1106,7 @@ struct TVFloatingNav: View {
         // Card-like style stays focusable; .plain can drop remote hand-off.
         .buttonStyle(TVFocusableCardButtonStyle())
         .accessibilityLabel(tab.title)
+        .accessibilityAddTraits(.isLink) // it opens the tab's page
         .focused(externalFocus, equals: .nav(tab))
         .background {
             GeometryReader { proxy in

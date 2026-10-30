@@ -2200,7 +2200,7 @@ struct TVLibraryKindView: View {
                 }
             }
             .frame(width: width, alignment: .leading)
-            .parityBox("button", text: "Open \(work.title)", radius: DesignTokens.Radius.card)
+            .parityBox("link", text: "Open \(work.title)", radius: DesignTokens.Radius.card)
             // Pinned web library focus: translateY(-7px) scale(1.025) over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1); no ring.
             .scaleEffect(isSelected ? 1.015 : 1)
             .offset(y: isSelected ? -5 : 0)
