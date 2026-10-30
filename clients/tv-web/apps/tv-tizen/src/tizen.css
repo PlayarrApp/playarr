@@ -202,3 +202,14 @@ b {
     line-height: calc(1.5em + 0.5px);
   }
 }
+
+/* The rounding above still loses 0.4 px per section label (14.4 px lays out 14, round is 14), 2 px by the fifth section. At the 1920 px TV width the label is
+   9.6 px, so its 14.4 px line box is the whole pixels the engine keeps plus the fraction it drops, put back as a margin. */
+@media (min-width: 1920px) and (max-width: 1920px) {
+  @supports not (aspect-ratio: 1) {
+    .tv-filter-drawer section h3 {
+      line-height: 14px;
+      margin-bottom: 0.4px;
+    }
+  }
+}
