@@ -145,7 +145,8 @@ export function layoutPageFn(volatile, opts) {
     var tag = el.tagName.toLowerCase();
     if (tag === "button") return "button";
     if (tag === "a") return "link";
-    if (tag === "input" || tag === "textarea") return el.type === "checkbox" ? "checkbox" : el.type === "radio" ? "radio" : "textbox";
+    /* implicit ARIA role of an input by type (HTML-AAM): search, range and number have their own; text, email, tel, url and the rest are textboxes */
+    if (tag === "input" || tag === "textarea") return el.type === "checkbox" ? "checkbox" : el.type === "radio" ? "radio" : el.type === "search" ? "searchbox" : el.type === "range" ? "slider" : el.type === "number" ? "spinbutton" : "textbox";
     if (tag === "select") return "select";
     if (tag === "img" || tag === "svg" || tag === "canvas") return "image";
     if (tag === "video") return "video";
@@ -302,7 +303,7 @@ export function layoutPageFn(volatile, opts) {
     var split = control && !!own;
     if (split && box.width >= 1 && box.height >= 1 && !clipped(el, box) && !occluded(el, box)) {
       var crow = {
-        text: norm(label) || own,
+        text: norm(label) || norm(contentName(el)) || own,
         role: roleOf(el, false),
         rect: { x: round(box.left), y: round(box.top), w: round(box.width), h: round(box.height) },
         color: null,

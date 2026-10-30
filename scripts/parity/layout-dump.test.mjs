@@ -283,3 +283,16 @@ test("a volatile element cut by ellipsis, a vertical line clamp and an input val
   await assert.rejects(dump(`<input class="abs" value="typed" style="width:100px">`), /value of an input/);
   assert.ok((await dump(`<input class="abs" value="" style="width:100px" aria-label="Empty">`)).elements.length === 1);
 });
+
+test("an input exports its implicit ARIA role by type: searchbox, slider, spinbutton, textbox", { skip }, async () => {
+  const d = await dump(`<input type="search" class="abs" style="top:0;width:80px;height:20px" aria-label="s"><input type="range" class="abs" style="top:30px;width:80px;height:20px" aria-label="r">
+    <input type="number" class="abs" style="top:60px;width:80px;height:20px" aria-label="n"><input type="email" class="abs" style="top:90px;width:80px;height:20px" aria-label="e">
+    <input type="tel" class="abs" style="top:120px;width:80px;height:20px" aria-label="t"><input type="url" class="abs" style="top:150px;width:80px;height:20px" aria-label="u"><input type="text" class="abs" style="top:180px;width:80px;height:20px" aria-label="x">`);
+  const roles = Object.fromEntries(d.elements.filter((e) => e.text.length === 1).map((e) => [e.text, e.role]));
+  assert.deepEqual(roles, { s: "searchbox", r: "slider", n: "spinbutton", e: "textbox", t: "textbox", u: "textbox", x: "textbox" });
+});
+
+test("a control with direct text and a styled child is named by its whole content", { skip }, async () => {
+  const d = await dump(`<button class="abs" style="top:0">Go <span style="font-weight:700">back</span></button>`);
+  assert.equal(d.elements.find((e) => e.role === "button").text, "Go back");
+});
