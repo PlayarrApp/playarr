@@ -186,6 +186,7 @@ struct TVPlayerChrome: View {
             .contentShape(Rectangle())
             .focusable(controlsVisible)
             .modifier(TVFocusTag(binding: focus, control: .scrubber))
+            .parityFocusTag("Seek")
             .parityBox("slider", text: "Seek")
         #if os(macOS)
         return body
@@ -245,7 +246,7 @@ struct TVPlayerChrome: View {
     }
 
     /// An icon that opens a menu of choices (audio, subtitles, playlist, info).
-    private func iconMenu<Items: View>(_ symbol: String, x: CGFloat, name: String, @ViewBuilder items: () -> Items) -> some View {
+    private func iconMenu<Items: View>(_ symbol: String, x: CGFloat, name: String, control: TVPlayerControl? = nil, @ViewBuilder items: () -> Items) -> some View {
         Menu {
             items()
         } label: {
@@ -254,6 +255,7 @@ struct TVPlayerChrome: View {
         .buttonStyle(TVFocusableCardButtonStyle())
         .focusEffectDisabled()
         .accessibilityLabel(name)
+        .modifier(TVOptionalFocusTag(binding: focus, control: control))
         .macPlayerMenuTarget(name)
         .placed(x: x - 22, y: 958, w: 64, h: 64, alignment: .center)
     }
@@ -317,7 +319,7 @@ struct TVPlayerChrome: View {
                     Button((track.id == state.selectedAudioID ? "\u{2713} " : "") + track.displayName) { onSelectAudio(track.id) }
                 }
             }
-            iconMenu("text.rectangle", x: 1323.5, name: state.subtitleLabel) {
+            iconMenu("text.rectangle", x: 1323.5, name: state.subtitleLabel, control: .subtitles) {
                 Button((state.selectedSubtitleID == nil ? "\u{2713} " : "") + "Off") { onSelectSubtitle(nil) }
                 ForEach(state.subtitleTracks) { track in
                     Button((track.id == state.selectedSubtitleID ? "\u{2713} " : "") + track.displayName) { onSelectSubtitle(track.id) }
@@ -480,6 +482,15 @@ struct TVPlayerChrome: View {
 }
 
 /// Applies the shared focus binding when the chrome has one (the parity route draws without).
+private struct TVOptionalFocusTag: ViewModifier {
+    let binding: FocusState<TVPlayerControl?>.Binding?
+    let control: TVPlayerControl?
+
+    func body(content: Content) -> some View {
+        if let binding, let control { content.focused(binding, equals: control) } else { content }
+    }
+}
+
 private struct TVFocusTag: ViewModifier {
     let binding: FocusState<TVPlayerControl?>.Binding?
     let control: TVPlayerControl
@@ -532,6 +543,9 @@ private struct TVScrubberBody: View {
 
 /// The focusable controls of the tvOS player chrome.
 enum TVPlayerControl: Hashable {
+    /// The video itself (web: the player's opening focus, named "video playback surface").
+    case surface
+    case subtitles
     case scrubber
     case play
     case quality
@@ -556,7 +570,7 @@ struct TVPlayerInteraction: Equatable {
         case exit
     }
 
-    var focus: TVPlayerControl? = .play
+    var focus: TVPlayerControl? = .surface
     var controlsVisible = true
     var menuOpen = false
 
@@ -591,7 +605,8 @@ struct TVPlayerInteraction: Equatable {
             return nil
         }
         switch focus {
-        case .scrubber, .play: return .togglePlayPause
+        case .subtitles: return nil
+        case .surface, .scrubber, .play: return .togglePlayPause
         case .quality:
             openQualityMenu()
             return .openQualityMenu

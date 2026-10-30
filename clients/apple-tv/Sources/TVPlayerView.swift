@@ -186,7 +186,10 @@ struct TVPlayerView: View {
                 // While the controls are hidden this catches SELECT and moves to reveal them again.
                 Color.clear
                     .ignoresSafeArea()
-                    .focusable(!interaction.controlsVisible)
+                    .focusable()
+                    .focused($focusedControl, equals: .surface)
+                    .accessibilityLabel("Video playback surface")
+                    .parityFocusTag("video playback surface")
                     .onTapGesture {
                         interaction.reveal()
                         focusedControl = interaction.focus
@@ -209,6 +212,17 @@ struct TVPlayerView: View {
                 .onMoveCommand { direction in
                     remoteUsed = true
                     interaction.reveal()
+                    // Web: from the video, left reaches Play/Pause, right the first menu control, up the seek bar.
+                    if focusedControl == .surface {
+                        switch direction {
+                        case .left: focusedControl = .play
+                        case .right: focusedControl = .subtitles
+                        case .up: focusedControl = .scrubber
+                        default: break
+                        }
+                        if let next = focusedControl { interaction.focus = next }
+                        return
+                    }
                     switch direction {
                     case .left:
                         viewModel.seek(by: -10)
@@ -246,12 +260,12 @@ struct TVPlayerView: View {
         }
         .animation(.easeInOut(duration: 0.25), value: viewModel.endOfPlayback.phase)
         .task {
-            // Play/pause holds the focus when the player opens (web: the play control), not whichever control the system finds first.
+            // The video surface holds the focus when the player opens (web: "video playback surface"), not whichever control the system finds first.
             // The system focuses the first focusable view it finds (the scrubber) and writes that into focusedControl, so a nil check
             // never fires: set the opening control outright, three times, as the chrome may appear after the stream is negotiated.
             for delay in [400, 800, 1500] {
                 try? await Task.sleep(for: .milliseconds(delay))
-                if interaction.controlsVisible, !remoteUsed, focusedControl != .play { focusedControl = .play; interaction.focus = .play }
+                if !remoteUsed, focusedControl != .surface { focusedControl = .surface; interaction.focus = .surface }
             }
         }
         .task {
