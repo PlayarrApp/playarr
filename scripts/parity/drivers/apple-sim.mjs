@@ -424,6 +424,12 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
         await sleep(1500); // artwork for the first screenful
       }
       await assertCurrentUser();
+      // Capture identity: the app publishes its layout only for the request written here, stamped with the same id, so a layout can
+      // never belong to an earlier frame (the old file is removed first, and a missing or mismatched export fails the capture).
+      const base = mac ? dirname(macState) : join(run("xcrun", ["simctl", "get_app_container", udid, bundle, "data"]).trim(), "Documents");
+      const captureID = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      rmSync(join(base, "parity-layout.json"), { force: true });
+      writeFileSync(join(base, "parity-layout-request"), captureID);
       if (mac) {
         rmSync(file, { force: true });
         run(notify, [`snapshot:${file}`]);
@@ -431,21 +437,25 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       } else run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", file]);
       if (!existsSync(file) || statSync(file).size < 20000) throw new Error("empty frame");
       if ((state().route ?? "").startsWith("/login")) throw new Error("signed out");
-      // Layout export (docs/parity/LAYOUT.md): the app's own style values and frames, written beside the screenshot.
-      try {
-        const base = mac ? dirname(macState) : join(run("xcrun", ["simctl", "get_app_container", udid, bundle, "data"]).trim(), "Documents");
-        for (let i = 0; i < 20 && !existsSync(join(base, "parity-layout.json")); i += 1) await sleep(500); // the app writes it once the view is idle
-        const layout = JSON.parse(readFileSync(join(base, "parity-layout.json"), "utf8"));
-        const themeDir = dirname(file), id = basename(file, ".png");
-        if (!/^(dark|light)$/.test(basename(themeDir))) throw new Error("not a screen capture");
-        const dir = join(dirname(themeDir), "layout", basename(themeDir));
-        mkdirSync(dir, { recursive: true });
-        const rawDir = join(dirname(themeDir), "layout-raw", basename(themeDir)); // the unmapped tree, for local replay
-        mkdirSync(rawDir, { recursive: true });
-        writeFileSync(join(rawDir, `${id}.json`), JSON.stringify(layout));
-        writeFileSync(join(dir, `${id}.json`), JSON.stringify(mapRaw(layout, id, basename(themeDir))));
-        rmSync(join(base, "parity-layout.json"), { force: true });
-      } catch { /* a build without the exporter, a crop, or a screen that registers nothing */ }
+      // Layout export (docs/parity/LAYOUT.md): the app's own style values and frames for this capture, written beside the screenshot.
+      const themeDir = dirname(file), id = basename(file, ".png");
+      if (!/^(dark|light)$/.test(basename(themeDir))) return; // not a screen capture (a crop or a player case)
+      let layout = null;
+      for (let i = 0; i < 40 && !layout; i += 1) {
+        await sleep(500);
+        try {
+          const doc = JSON.parse(readFileSync(join(base, "parity-layout.json"), "utf8"));
+          if (doc.captureID === captureID) layout = doc;
+        } catch { /* not written yet */ }
+      }
+      if (!layout) throw new Error(`layout export missing or not for this capture (${id})`);
+      const dir = join(dirname(themeDir), "layout", basename(themeDir));
+      mkdirSync(dir, { recursive: true });
+      const rawDir = join(dirname(themeDir), "layout-raw", basename(themeDir)); // the unmapped tree, for local replay
+      mkdirSync(rawDir, { recursive: true });
+      writeFileSync(join(rawDir, `${id}.json`), JSON.stringify(layout));
+      writeFileSync(join(dir, `${id}.json`), JSON.stringify(mapRaw(layout, id, basename(themeDir))));
+      rmSync(join(base, "parity-layout.json"), { force: true });
     },
     // Cases a and b: launch straight into the player (-PlayarrPlayFile) and read its state from parity-state.json. The
     // caller serialises runs (one device at a time, playback.lock rules); a 503/404 at a pod restart gets one re-run.

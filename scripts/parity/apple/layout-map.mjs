@@ -40,7 +40,13 @@ export function mapRaw(doc, screen, theme) {
 function dropCovered(elements) {
   const dialogs = elements.filter((e) => e.role === "dialog");
   if (!dialogs.length) return elements;
-  const inside = (a, b) => a.x >= b.x - 0.5 && a.y >= b.y - 0.5 && a.x + a.w <= b.x + b.w + 0.5 && a.y + a.h <= b.y + b.h + 0.5;
+  // only the part of an item inside the viewport is on screen: an item whose visible part lies wholly under the dialog is covered
+  const view = { x: 0, y: 0, w: 1920, h: 1080 };
+  const clip = (a) => {
+    const x = Math.max(a.x, view.x), y = Math.max(a.y, view.y);
+    return { x, y, w: Math.min(a.x + a.w, view.x + view.w) - x, h: Math.min(a.y + a.h, view.y + view.h) - y };
+  };
+  const inside = (a0, b) => { const a = clip(a0); return a.x >= b.x - 0.5 && a.y >= b.y - 0.5 && a.x + a.w <= b.x + b.w + 0.5 && a.y + a.h <= b.y + b.h + 0.5; };
   const dIndex = (d) => elements.indexOf(d);
   return elements.filter((e, i) => e.role === "dialog" || !dialogs.some((d) => i < dIndex(d) && inside(e.rect, d.rect)));
 }

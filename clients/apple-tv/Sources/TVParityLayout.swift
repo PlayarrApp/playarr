@@ -30,15 +30,17 @@ final class TVParityLayoutRegistry {
         var opacity: Double = 1
         /// The scale the view is drawn at (its transformed frame over its own size), 1 when no ancestor scales it.
         var scale: CGFloat = 1
+        /// A page that a pushed page (the detail route) draws over: it stays in the view tree but is not on screen.
+        var covered = false
     }
 
     private var items: [UUID: Item] = [:]
     /// The laid-out lines of a text view from SwiftUI's own text layout (glyph-run bounds, relative to the view's origin).
     private var lineRects: [UUID: [CGRect]] = [:]
     private var order: [UUID] = []
-    private var pending: Task<Void, Never>?
 
     func set(_ id: UUID, _ item: Item) {
+        startWatching()
         if items[id] == nil { order.append(id) }
         items[id] = item
         schedule()
@@ -57,22 +59,34 @@ final class TVParityLayoutRegistry {
         schedule()
     }
 
-    private var lastSnapshot: Data?
+    private var answeredRequest: String?
+    private var watcher: Task<Void, Never>?
 
-    /// Export only once the view is idle: the file is written when two consecutive snapshots, 0.4 s apart, are identical.
-    private func schedule() {
-        pending?.cancel()
-        lastSnapshot = nil
-        pending = Task { @MainActor [weak self] in
-            for _ in 0..<40 {
-                try? await Task.sleep(nanoseconds: 400_000_000)
-                guard !Task.isCancelled, let self else { return }
-                guard let data = self.snapshot() else { continue }
-                if data == self.lastSnapshot { self.publish(data); return }
-                self.lastSnapshot = data
+    private var requestURL: URL? { TVParityState.stateURL?.deletingLastPathComponent().appendingPathComponent("parity-layout-request") }
+
+    /// The driver asks for the layout of one capture by writing an id to `parity-layout-request`. The tree is published again,
+    /// once it has settled, stamped with that id, so a layout always belongs to the frame the id was written for.
+    private func startWatching() {
+        guard watcher == nil else { return }
+        watcher = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 250_000_000)
+                guard let self, let url = self.requestURL,
+                      let id = (try? String(contentsOf: url, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines),
+                      !id.isEmpty, id != self.answeredRequest else { continue }
+                var previous: Data?
+                for _ in 0..<25 {
+                    guard let data = self.snapshot(captureID: id) else { try? await Task.sleep(nanoseconds: 300_000_000); continue }
+                    if data == previous { self.publish(data); self.answeredRequest = id; break }
+                    previous = data
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                }
             }
         }
     }
+
+    /// The tree is never published on its own: only for a capture request (`startWatching`), so a file always has an id.
+    private func schedule() {}
 
     #if os(tvOS)
     private func accessibilityElements(onlyPresented: Bool) -> [Item] {
@@ -147,7 +161,7 @@ final class TVParityLayoutRegistry {
 
     /// The raw tree, before the translation to the layout schema: every reported item (a text view as one item per laid-out
     /// line), plus the accessibility entries. `scripts/parity/apple/layout-map.mjs` translates it.
-    private func snapshot() -> Data? {
+    private func snapshot(captureID: String? = nil) -> Data? {
         let screen = CGRect(x: 0, y: 0, width: 1920, height: 1080)
         func raw(_ item: Item) -> [String: Any] {
             var out: [String: Any] = [
@@ -171,36 +185,28 @@ final class TVParityLayoutRegistry {
             return rects.enumerated().map { index, rect in
                 var line = item
                 line.local = rect
-                // the first line sits at the view's top: the layout reports it a fraction of the font size lower (leading above the ascent),
-                // which is not where the view or its glyphs are; later lines keep the layout's own pitch. The layout is in the view's
-                // own space, so an ancestor's scale applies to the line's offsets and size (the frame origin is already transformed).
+                // the line's own bounds from SwiftUI's text layout, in the view's space, carried to the screen by the view's frame
+                // origin and scale: no offset is removed or invented
                 let k = item.scale
-                // a single line that fills its view starts at the view's edge: the layout's own x offset on tracked runs (a constant
-                // 3 pt) is not where the glyphs are drawn
-                let hugging = rects.count == 1 && abs(item.rect.width - rect.width * k) < 6
-                line.rect = CGRect(x: item.rect.minX + (hugging ? 0 : rect.minX * k), y: item.rect.minY + (rect.minY - rects[0].minY) * k,
+                line.rect = CGRect(x: item.rect.minX + rect.minX * k, y: item.rect.minY + rect.minY * k,
                                    width: rect.width * k, height: rect.height * k)
+                // the text of each line is known only where the view draws its lines itself; otherwise the view's whole string is kept
                 if let names = item.lines, names.count == rects.count { line.text = names[index] }
-                // SwiftUI exposes no string per line: split the string where the app's own wrapper breaks it at the laid-out width,
-                // and use it only when it agrees with the number of lines SwiftUI actually drew
-                else if item.lines == nil, rects.count > 1, let text = item.text, let size = item.size {
-                    let names = TVTextWrap.lines(text, weight: CGFloat(item.weight ?? 400), size: size, kern: item.tracking, width: item.rect.width)
-                    if names.count == rects.count { line.text = names[index] }
-                }
                 return line
             }
         }
         let top = ordered.map(\.layer).max() ?? 0
-        var raws = ordered.filter { $0.layer == top && $0.rect.width > 0 && $0.rect.height > 0 && $0.rect.intersects(screen) }.map(raw)
+        var raws = ordered.filter { !$0.covered && $0.layer == top && $0.rect.width > 0 && $0.rect.height > 0 && $0.rect.intersects(screen) }.map(raw)
         for var entry in accessibilityElements(onlyPresented: top > 0) where entry.rect.width > 0 && entry.rect.height > 0 && entry.rect.intersects(screen) {
             entry.background = nil
             var entryRaw = raw(entry); entryRaw["source"] = "ax"; raws.append(entryRaw)
         }
-        let document: [String: Any] = [
+        var document: [String: Any] = [
             "viewport": ["w": 1920.0, "h": 1080.0, "dpr": 1.0],
             "clockPinned": TVParityLaunch.pinnedClock,
             "raw": raws,
         ]
+        if let captureID { document["captureID"] = captureID }
         return try? JSONSerialization.data(withJSONObject: document, options: [.sortedKeys])
     }
 
@@ -217,6 +223,15 @@ extension EnvironmentValues {
     var parityLayer: Int {
         get { self[TVParityLayerKey.self] }
         set { self[TVParityLayerKey.self] = newValue }
+    }
+}
+
+/// True for a page that a pushed page covers (the Mac keeps the page beneath a NavigationStack push in the view tree).
+private struct TVParityCoveredKey: EnvironmentKey { static let defaultValue = false }
+extension EnvironmentValues {
+    var parityCovered: Bool {
+        get { self[TVParityCoveredKey.self] }
+        set { self[TVParityCoveredKey.self] = newValue }
     }
 }
 
@@ -267,6 +282,7 @@ private struct TVParityLayoutModifier: ViewModifier {
     @Environment(\.self) private var environment
     @Environment(\.parityLayer) private var layer
     @Environment(\.parityBackdrop) private var backdrop
+    @Environment(\.parityCovered) private var covered
     @Environment(\.colorScheme) private var scheme
     @State private var id = UUID()
 
@@ -288,7 +304,7 @@ private struct TVParityLayoutModifier: ViewModifier {
 
     private func item(_ rect: CGRect, scale: CGFloat) -> TVParityLayoutRegistry.Item {
         .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: rect, tracking: tracking,
-              background: hex(behind), radius: radius, lines: lines, layer: layer, scale: scale)
+              background: hex(behind), radius: radius, lines: lines, layer: layer, scale: scale, covered: covered)
     }
 
     @ViewBuilder
@@ -315,6 +331,7 @@ private struct TVParityLayoutModifier: ViewModifier {
                         .onChange(of: scale) { _, new in report(frame, new) }
                         .onChange(of: scheme) { _, _ in report(frame, scale) }
                         .onChange(of: text) { _, _ in report(frame, scale) }
+                        .onChange(of: covered) { _, _ in report(frame, scale) }
                 }
             )
             .onDisappear { TVParityLayoutRegistry.shared.remove(id) }
@@ -346,6 +363,7 @@ private struct TVParityBoxModifier: ViewModifier {
     var textStyle: (size: CGFloat, weight: Int, color: Color)? = nil
     @Environment(\.self) private var environment
     @Environment(\.parityBackdrop) private var backdrop
+    @Environment(\.parityCovered) private var covered
     @Environment(\.colorScheme) private var scheme
     @Environment(\.parityLayer) private var layer
     @State private var id = UUID()
@@ -360,6 +378,7 @@ private struct TVParityBoxModifier: ViewModifier {
                         .onChange(of: frame) { _, new in report(new) }
                         .onChange(of: scheme) { _, _ in report(frame) }
                         .onChange(of: text) { _, _ in report(frame) }
+                        .onChange(of: covered) { _, _ in report(frame) }
                 }
                 .ignoresSafeArea(edges: bleed ? .all : [])
             )
@@ -396,6 +415,7 @@ private struct TVParityBoxModifier: ViewModifier {
         item.radius = radius
         item.opacity = opacity
         item.layer = layer
+        item.covered = covered
         TVParityLayoutRegistry.shared.set(id, item)
     }
 }
@@ -407,6 +427,16 @@ extension View {
     func parityLayerScope() -> some View {
         #if DEBUG && (os(tvOS) || os(macOS))
         modifier(TVParityLayerScope())
+        #else
+        self
+        #endif
+    }
+
+    /// Marks a page that a pushed page covers: its items stay registered but are not exported while it is covered.
+    @ViewBuilder
+    func parityCovered(_ covered: Bool) -> some View {
+        #if DEBUG && (os(tvOS) || os(macOS))
+        environment(\.parityCovered, covered)
         #else
         self
         #endif
