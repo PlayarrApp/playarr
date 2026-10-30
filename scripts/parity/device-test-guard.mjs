@@ -115,7 +115,7 @@ export async function fetchCurrentIdentity({ expectedServerUrl } = {}) {
   let timeout;
   try {
     const controller = new AbortController();
-    timeout = setTimeout(() => controller.abort(), 15000);
+    timeout = setTimeout(() => controller.abort(), 30000);
     response = await fetch(`${base.replace(/\/$/, "")}/api/v1/users/profiles`, {
       headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: controller.signal,
     });
@@ -145,7 +145,7 @@ export async function assertDeviceTestPage({ page, allowedUsernames, expectedSer
   let identity;
   for (let attempt = 1; ; attempt++) {
     try { identity = await page.evaluate(fetchCurrentIdentity, { expectedServerUrl }); break; }
-    catch (error) { if (attempt >= 3 || !/identity request failed \((?:TypeError|AbortError)/.test(String(error?.message))) throw error; }
+    catch (error) { if (attempt >= 5 || !/identity request failed \((?:TypeError|AbortError)/.test(String(error?.message))) throw error; }
   }
   return assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl });
 }
