@@ -246,14 +246,14 @@ internal object PlayarrLayoutExport {
             line >= start && line < end
         }!!
         val paragraph = info.javaClass.methods.first { it.name == "getParagraph" }.invoke(info)!!
-        val getter = paragraph.javaClass.methods.first { it.parameterCount == 0 && it.returnType.name == "androidx.compose.ui.text.android.TextLayout" }
-        val textLayout = getter.invoke(paragraph)!!
+        val field = generateSequence<Class<*>>(paragraph.javaClass) { it.superclass }.flatMap { it.declaredFields.asSequence() }.first { it.type.name == "androidx.compose.ui.text.android.TextLayout" }
+        val textLayout = field.also { it.isAccessible = true }.get(paragraph)!!
         val platform = textLayout.javaClass.methods.first { it.name == "getLayout" }.invoke(textLayout) as android.text.Layout
         val paint = android.text.TextPaint(platform.paint)
         val local = index - (info.javaClass.methods.first { it.name == "getStartIndex" }.invoke(info) as Int)
         (platform.text as? android.text.Spanned)?.getSpans(local, local + 1, android.text.style.MetricAffectingSpan::class.java)?.forEach { it.updateMeasureState(paint) }
         paint
-    }.getOrNull()
+    }.onFailure { parityLog("shaped paint failed ${it.javaClass.simpleName} ${it.message?.take(100)}") }.getOrNull()
 
     private fun r2(v: Float) = Math.round(v * 100) / 100.0
     private fun rect(x: Float, y: Float, w: Float, h: Float, unit: Float) = JSONObject().put("x", r2(x * unit)).put("y", r2(y * unit)).put("w", r2(w * unit)).put("h", r2(h * unit))

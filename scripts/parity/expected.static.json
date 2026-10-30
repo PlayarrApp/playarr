@@ -43,7 +43,7 @@
   "player-left-edge": "play-pause",
   "player-up-seek": "seek",
   "player-up-down": "play-pause",
-  "player-ok-toggle": "play-pause",
+  "player-ok-toggle": "play",
   "player-panel-open": "panel:open",
   "player-panel-close": "panel:closed",
   "player-back": "player/:id",
