@@ -160,7 +160,7 @@ end function
 ' Mute toggles the Video node's own mute field (the stick's volume itself belongs to the remote and the TV).
 sub playerToggleMute()
     m.pcMuted = not (m.pcMuted = true)
-    m.video.mute = m.pcMuted
+    if m.video.hasField("mute") then m.video.mute = m.pcMuted
     playerMuteDraw()
 end sub
 
