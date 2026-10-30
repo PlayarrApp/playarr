@@ -1,0 +1,1 @@
+- Roku: the player bar has a real Mute control and the web transport positions (64 px circles, seek slider box, scrim container, close glyph), idle controls show no thumb or focus ring, the search field holds typed text in a native TextEditBox, and the card link spans art plus a title line box.

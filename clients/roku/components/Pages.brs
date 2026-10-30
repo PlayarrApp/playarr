@@ -2283,7 +2283,12 @@ sub renderCalendarMonth(entries as Object)
         day = calAddDays(r.start, i)
         x = gx + (i mod 7) * cw
         y = gy + Int(i / 7) * ch
-        if Mid(day, 6, 2) <> monthOf then pgRect(m.pageBody, x, y, cw, ch, "ink", 12).id = "a11y|container|0|"
+        if Mid(day, 6, 2) <> monthOf
+            pgRect(m.pageBody, x, y, cw, ch, "ink", 12).id = "a11y|container|0|"
+        else
+            ' A day of the month is a cell of the grid even when it draws no fill of its own (it shows the page behind it).
+            pgBare(m.pageBody, "container", "", x, y, cw, ch, 0)
+        end if
     end for
     for rr = 0 to rows
         pgRect(m.pageBody, gx, gy + rr * ch, cw * 7, 1, "line")

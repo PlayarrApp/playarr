@@ -159,9 +159,11 @@ this note.
 
 ### Roku player chrome: what is native and what is a platform limit
 
-The Roku bar follows the web order: previous, play, next, audio, subtitles, queue, quality, info. Subtitles use the Video node's caption tracks (the server's WebVTT sidecars), the queue lists the episodes or tracks of the title, and info shows the playback facts the Video node reports.
+The Roku bar follows the web order: previous, play, next, mute, audio, subtitles, queue, quality, info. Subtitles use the Video node's caption tracks (the server's WebVTT sidecars), the queue lists the episodes or tracks of the title, and info shows the playback facts the Video node reports.
 
-- **Volume.** Real platform limit: a channel cannot change or read the system volume; the remote's own volume keys drive the TV or receiver. No volume control is drawn.
+- **Mute.** Built: it toggles the Video node's own mute and names itself Mute or Unmute.
+- **Volume.** Real platform limit: a channel cannot change or read the system volume; the remote's own volume keys drive the TV or receiver. No volume slider is drawn.
+- **Fullscreen.** Real platform limit: a channel's video plane is always full screen, so there is nothing to enter or leave. No fullscreen button is drawn.
 - **Picture-in-picture.** Real platform limit: Roku has no PiP for a third-party video plane.
 - **Cast.** Real platform limit: a channel cannot start a cast session to another device; Roku is itself a cast target. No cast button is drawn.
 - **Audio track picker.** Built: it starts a replacement session at the same position that maps the chosen stream (`audio_stream_index`), as web does.

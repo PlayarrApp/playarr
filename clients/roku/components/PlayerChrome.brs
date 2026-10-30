@@ -12,6 +12,7 @@ sub playerChromeInit()
     m.pcMenuIndex = 0
     m.pcBuilt = false
     m.pcFocus = "play"
+    m.pcKeyed = false
     m.pcPanel = ""
     m.pcSubChosen = invalid
     m.audioStreamIndex = invalid
@@ -50,6 +51,7 @@ sub playerChromeBuild()
     scrim.height = 518.4
     ThemeSetRole(scrim, "playerScrim")
     scrim.blendColor = ThemeColor("playerScrim")
+    pgTag(scrim, "container", 0)
     g.insertChild(scrim, 0)
     ' Parity captures only: the Roku screenshot omits the video plane, so the static clip's 2 s frame stands in behind the controls.
     if m.global.parityArtEnabled = true
@@ -64,25 +66,26 @@ sub playerChromeBuild()
     m.pcThumb = pgRound(g, 121.8, 928.5, 15, 15, 7, "brand")
     pgTag(m.pcThumb, "container", 7)
     m.pcPrev = pgIcon(g, 92, 980, 20, "player-prev.png", "playerInk")
-    m.pcPlayBg = pgRound(g, 147.6, 958, 64, 64, 32, "playerButton")
+    m.pcPlayBg = pcRound64(g, 147.6, 958, "playerButton")
     m.pcPlay = pgIcon(g, 169.6, 980, 20, "player-pause.png", "playerInk")
     m.pcNext = pgIcon(g, 247.2, 980, 20, "player-next.png", "playerInk")
-    m.pcTimeNow = pgLabel(g, 302.8, 981.8, 0, 16, "0:00", 11, 400, "playerInk")
-    m.pcTimeSep = pgLabel(g, 330.4, 981.8, 0, 16, "/", 11, 400, "playerSeparator")
-    m.pcTimeEnd = pgLabel(g, 339.1, 981.8, 0, 16, "0:00", 11, 400, "playerInk")
+    m.pcTimeNow = pgLabel(g, 302.8, 981.8, 0, 16, "0:00", 10.88, 400, "playerInk")
+    m.pcTimeSep = pgLabel(g, 330.4, 981.8, 0, 16, "/", 10.88, 400, "playerSeparator")
+    m.pcTimeEnd = pgLabel(g, 339.1, 981.8, 0, 16, "0:00", 10.88, 400, "playerInk")
+    m.pcMuteIcon = pgIcon(g, 396.8, 980, 20, "player-volume.png", "playerInk")
 
     ' Quality pill (.player-quality-button): HD glyph and the current quality.
     ' Transparent at rest like web; the fill shows with focus (web hover and expanded).
-    m.pcQualityBg = pgRound(g, 1534.4, 962, 160.5, 56, 28, "playerButton")
+    m.pcQualityBg = pgRound(g, 1456.8, 962, 160.5, 56, 28, "playerButton")
     m.pcQualityBg.visible = false
-    m.pcQualityGlyph = pgLabel(g, 1556.6, 984.2, 0, 11, "HD", 7.68, 700, "playerInk")
-    m.pcQualityText = pgLabel(g, 1585.6, 982.1, 0, 15, "Original", 10.56, 700, "playerInk")
+    m.pcQualityGlyph = pgLabel(g, 1479, 984.2, 0, 11, "HD", 7.68, 700, "playerInk")
+    m.pcQualityText = pgLabel(g, 1508, 982.1, 0, 15, "Original", 10.56, 700, "playerInk")
 
     ' Subtitles, queue and info buttons (.player-btn.player-tool-button, 64 px circles; the web's audio slot sits before subtitles).
-    m.pcAudioIcon = pgIcon(g, 1323.6, 980, 20, "player-audio.png", "playerInk")
-    m.pcSubsIcon = pgIcon(g, 1401.2, 980, 20, "player-subtitles.png", "playerInk")
-    m.pcQueueIcon = pgIcon(g, 1478.8, 980, 20, "player-playlist.png", "playerInk")
-    m.pcInfoIcon = pgIcon(g, 1730.4, 980, 20, "player-health.png", "playerInk")
+    m.pcAudioIcon = pgIcon(g, 1246, 980, 20, "player-audio.png", "playerInk")
+    m.pcSubsIcon = pgIcon(g, 1323.6, 980, 20, "player-subtitles.png", "playerInk")
+    m.pcQueueIcon = pgIcon(g, 1401.2, 980, 20, "player-playlist.png", "playerInk")
+    m.pcInfoIcon = pgIcon(g, 1652.8, 980, 20, "player-health.png", "playerInk")
 
     ' Minimise and close (top right, .player-minimise and .player-close: 48 px high, 1 px border at 28% white). Roku cannot keep a
     ' mini player running behind the browse pages, so Minimise ends playback and returns to the title, as Back does.
@@ -90,26 +93,40 @@ sub playerChromeBuild()
     minPill.id = "a11y|button|999|Minimise player"
     A11yStamp(minPill, true)
     pcFullRound(g, 1678, 37.8, 124, 48, "playerInk", 71, true)
-    pgIcon(g, 1702, 51.8, 20, "player-minimise.png", "playerInk")
+    pgIcon(g, 1701.6, 51.8, 20, "player-minimise.png", "playerInk")
     pgLabel(g, 1730, 53.8, 66, 16, "Minimise", 11.2, 700, "playerInk")
     closePill = pcFullRound(g, 1814, 37.8, 48, 48, "playerPill", -1, false)
     closePill.id = "a11y|button|999|Close player"
     A11yStamp(closePill, true)
     pcFullRound(g, 1814, 37.8, 48, 48, "playerInk", 71, true)
-    pgIcon(g, 1829, 52.8, 18, "player-close.png", "playerInk")
+    closeIcon = CreateObject("roSGNode", "Poster")
+    closeIcon.uri = "pkg:/images/player-close-top.png"
+    closeIcon.translation = [1831, 50.8]
+    closeIcon.width = 14
+    closeIcon.height = 22
+    closeIcon.blendColor = ThemeColor("playerInk")
+    ThemeSetRole(closeIcon, "playerInk")
+    g.AppendChild(closeIcon)
 
     ' Control semantics (web order); a control without a drawn box gets a transparent Rectangle at its box.
-    ' The seek bar is its track, as drawn (the slider role names the real 6 px track node).
-    m.playerProgressTrack.id = "a11y|slider|0|Seek"
+    ' The seek slider is its 44 px hit box over the 6 px track (the web's slider box).
+    slider = pgBare(g, "slider", "Seek", 70, 914, 1780, 44, 0)
+    g.removeChild(slider)
+    at = g.getChildCount()
+    for i = 0 to g.getChildCount() - 1
+        if g.getChild(i).isSameNode(m.playerProgressTrack) then at = i
+    end for
+    g.insertChild(slider, at)
     m.pcPlayBg.id = "a11y|button|50|Play"
     A11yStamp(m.pcPlayBg, true)
     m.pcPrevMark = pgMark(g, "button", "Previous episode", 70, 958, 64, 64, 50)
     m.pcNextMark = pgMark(g, "button", "Next episode", 225.2, 958, 64, 64, 50)
-    m.pcAudioMark = pgMark(g, "button", "", 1301.6, 958, 64, 64, 50)
-    m.pcSubsMark = pgMark(g, "button", "Subtitles: Off", 1379.2, 958, 64, 64, 50)
-    m.pcQueueMark = pgMark(g, "button", "Playlist: 1 item", 1456.8, 958, 64, 64, 50)
-    m.pcQualityMark = pgMark(g, "button", "Quality: Original", 1534.4, 962, 160.5, 56, 999)
-    pgMark(g, "button", "Info and playback health", 1708.4, 958, 64, 64, 50)
+    m.pcMuteMark = pgMark(g, "button", "Mute", 374.8, 958, 64, 64, 50)
+    m.pcAudioMark = pgMark(g, "button", "", 1224, 958, 64, 64, 50)
+    m.pcSubsMark = pgMark(g, "button", "Subtitles: Off", 1301.6, 958, 64, 64, 50)
+    m.pcQueueMark = pgMark(g, "button", "Playlist: 1 item", 1379.2, 958, 64, 64, 50)
+    m.pcQualityMark = pgMark(g, "button", "Quality: Original", 1456.8, 962, 160.5, 56, 999)
+    pgMark(g, "button", "Info and playback health", 1630.8, 958, 64, 64, 50)
 
     m.pcMenu = CreateObject("roSGNode", "Group")
     m.pcMenu.visible = false
@@ -125,6 +142,39 @@ sub playerChromeBuild()
 end sub
 
 ' A fully rounded 48 px pill: pgRound drops to the 12 px corner under 49 px, which would square the top-right buttons off.
+' A 64 px circle drawn with the 32 px corner mask (pgRound has no mask above 25 px).
+function pcRound64(parent as Object, x as Float, y as Float, role as String) as Object
+    poster = CreateObject("roSGNode", "Poster")
+    poster.uri = "pkg:/images/round-r32.9.png"
+    poster.translation = [x, y]
+    poster.width = 64
+    poster.height = 64
+    poster.blendColor = ThemeColor(role)
+    ThemeSetRole(poster, role)
+    poster.id = "a11y|fill|32|"
+    A11yStamp(poster, true)
+    parent.AppendChild(poster)
+    return poster
+end function
+
+' Mute toggles the Video node's own mute field (the stick's volume itself belongs to the remote and the TV).
+sub playerToggleMute()
+    m.pcMuted = not (m.pcMuted = true)
+    if m.video.hasField("mute") then m.video.mute = m.pcMuted
+    playerMuteDraw()
+end sub
+
+sub playerMuteDraw()
+    name = "Mute"
+    icon = "player-volume.png"
+    if m.pcMuted = true
+        name = "Unmute"
+        icon = "player-muted.png"
+    end if
+    m.pcMuteIcon.uri = "pkg:/images/" + icon
+    pgRename(m.pcMuteMark, name)
+end sub
+
 function pcFullRound(parent as Object, x as Float, y as Float, w as Float, h as Float, role as String, alpha as Integer, outline as Boolean) as Object
     poster = CreateObject("roSGNode", "Poster")
     name = "round"
@@ -145,9 +195,9 @@ sub playerChromeUpdate(position as Dynamic, duration as Dynamic, fraction as Flo
     m.pcThumb.translation = [70 + 1780 * fraction - 7.5, 928.5]
     m.pcTimeNow.text = formatPlaybackTime(position)
     m.pcTimeEnd.text = formatPlaybackTime(duration)
-    sepX = 302.8 + m.pcTimeNow.boundingRect().width + 5
+    sepX = 302.8 + m.pcTimeNow.boundingRect().width + 5.6
     m.pcTimeSep.translation = [sepX, 981.8]
-    m.pcTimeEnd.translation = [sepX + 8.7, 981.8]
+    m.pcTimeEnd.translation = [sepX + 8.67, 981.8]
     m.pcPlay.uri = "pkg:/images/player-pause.png"
     m.pcPlayBg.id = "a11y|button|50|Pause"
     ' A held pause shows Play even while the pipeline re-buffers on the held frame.
@@ -198,11 +248,12 @@ function playerChromeItems() as Object
     if n > 0 and m.playbackEpisodeIndex > 0 then items.Push({ id: "prev", x: 70, y: 958, w: 64, h: 64 })
     items.Push({ id: "play", x: 147.6, y: 958, w: 64, h: 64 })
     if n > 0 and m.playbackEpisodeIndex < n - 1 then items.Push({ id: "next", x: 225.2, y: 958, w: 64, h: 64 })
-    items.Push({ id: "audio", x: 1301.6, y: 958, w: 64, h: 64 })
-    items.Push({ id: "subs", x: 1379.2, y: 958, w: 64, h: 64 })
-    items.Push({ id: "queue", x: 1456.8, y: 958, w: 64, h: 64 })
-    items.Push({ id: "quality", x: 1534.4, y: 962, w: 160.5, h: 56 })
-    items.Push({ id: "info", x: 1708.4, y: 958, w: 64, h: 64 })
+    items.Push({ id: "mute", x: 374.8, y: 958, w: 64, h: 64 })
+    items.Push({ id: "audio", x: 1224, y: 958, w: 64, h: 64 })
+    items.Push({ id: "subs", x: 1301.6, y: 958, w: 64, h: 64 })
+    items.Push({ id: "queue", x: 1379.2, y: 958, w: 64, h: 64 })
+    items.Push({ id: "quality", x: 1456.8, y: 962, w: 160.5, h: 56 })
+    items.Push({ id: "info", x: 1630.8, y: 958, w: 64, h: 64 })
     return items
 end function
 
@@ -218,6 +269,8 @@ sub playerChromeFocusDraw(fraction as Float)
     big = m.pcFocus = "seek"
     ring.visible = false
     m.pcQualityBg.visible = m.pcFocus = "quality"
+    ' Web: the seek thumb and the focus ring show only once the viewer drives the bar (hover or keyboard focus), not on a bar left idle.
+    m.pcThumb.visible = big
     m.pcThumb.width = 15
     m.pcThumb.height = 15
     m.pcThumb.translation = [70 + 1780 * fraction - 7.5, 928.5]
@@ -240,7 +293,7 @@ sub playerChromeFocusDraw(fraction as Float)
             ring.translation = [item.x - 4, item.y - 4]
             ring.width = item.w + 8
             ring.height = item.h + 8
-            ring.visible = not m.pcMenuOpen
+            ring.visible = not m.pcMenuOpen and m.pcKeyed = true
             return
         end if
     end for
@@ -262,6 +315,7 @@ function playerChromeKey(key as String) as Boolean
         if key = "OK" then togglePlayPause()
         return true
     end if
+    m.pcKeyed = true
     if m.pcFocus = "seek"
         if key = "left" then seekPlayback(-10)
         if key = "right" then seekPlayback(10)
@@ -298,6 +352,8 @@ sub playerChromeActivate(id as String)
         playAdjacentEpisode(-1)
     else if id = "next"
         playAdjacentEpisode(1)
+    else if id = "mute"
+        playerToggleMute()
     else if id = "quality"
         playerMenuOpen()
     else
@@ -682,6 +738,10 @@ function playerFocusLabel() as String
     if id = "close" then return "close"
     if id = "prev" then return "previous episode"
     if id = "next" then return "next episode"
+    if id = "mute"
+        if m.pcMuted = true then return "unmute"
+        return "mute"
+    end if
     if id = "audio"
         label = ""
         if m.pcPlaybackInfo <> invalid and m.pcPlaybackInfo.audio_tracks <> invalid

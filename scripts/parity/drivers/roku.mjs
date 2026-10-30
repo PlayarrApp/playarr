@@ -1162,7 +1162,7 @@ export function createDriver({ out, args = [] } = {}) {
       }
       // The player frame is taken only with the controls up and the progress fill at 2 s of 60 (59.33 px): the controls hide on their own
       // and a seek that did not land leaves another fill, so the measured tree is checked first and the state restored until it holds.
-      const playerHeld = (xml) => /name="a11y\|slider\|0\|Seek"/.test(xml) && /bounds="\{70, 933, 59\.\d+, 6\}"/.test(xml);
+      const playerHeld = (xml) => /name="a11y\|slider\|0\|Seek"/.test(xml) && /name="playerProgressFill"[^>]*bounds="\{70, 933, 59\.\d+, 6\}"|bounds="\{70, 933, 59\.\d+, 6\}"[^>]*name="playerProgressFill"/.test(xml);
       if (playerShot) {
         let held = false;
         for (let i = 0; i < 8 && !held; i += 1) {
