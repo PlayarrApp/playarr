@@ -45,7 +45,7 @@ run() { case $1 in
     for w in 1 2 3; do python3 -I $HERE/uiexpect.py 'Mute|Seek|Quality' && break; adb shell input tap 360 500; sleep 3; done
     shot $1 3 || return 1
     python3 -I -c "import sys;from PIL import Image,ImageStat;im=Image.open(sys.argv[1]).convert('L').crop((0,560,719,1300));sys.exit(0 if ImageStat.Stat(im).mean[0]>60 else 1)" "$O/$1.png" || { echo 'player video not presented'; rm -f "$O/$1.png"; return 1; } ;;
-  actions) open movies 16; python3 -I $HERE/uiexpect.py 'Amber Thicket 3' || { echo "wrong screen movies"; return 1; }; python3 -I $HERE/uitap.py '7 Distant Harbour 30' long-up || { echo 'actions card not found'; return 1; }; sleep 2; python3 -I $HERE/uiexpect.py 'Title actions|Mark as Watched' || { echo 'wrong screen actions'; return 1; }; shot $1 ;;
+  actions) open movies 16; python3 -I $HERE/uiexpect.py 'Amber Thicket 3' || { echo "wrong screen movies"; return 1; }; python3 -I $HERE/uitap.py 'Open 7 Distant Harbour 30' long || { echo 'actions card not found'; return 1; }; sleep 2; python3 -I $HERE/uiexpect.py 'Title actions|Mark as Watched' || { echo 'wrong screen actions'; return 1; }; shot $1 ;;
   filters) open movies 16; tapdesc '^Filters' 2; python3 -I $HERE/uiexpect.py 'Sort by|Library controls|Filters' || { echo "wrong screen filters"; return 1; }; shot $1 ;;
   *) echo "unknown $1" ;;
 esac; }

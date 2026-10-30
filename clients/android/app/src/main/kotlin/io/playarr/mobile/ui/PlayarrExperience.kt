@@ -5812,7 +5812,7 @@ private fun TvDrawerActionRow(glyph: String, label: String, onClick: () -> Unit,
         shape = RoundedCornerShape(14.dp),
         color = WebSurfaceSoft,
         contentColor = WebInk,
-        modifier = modifier.fillMaxWidth().height(68.dp).parityShape(14f).webFocusRing(focused, radius = 14.dp, offset = 0.dp).onFocusChanged { focused = it.isFocused },
+        modifier = modifier.fillMaxWidth().height(68.dp).parityShape(14f).webFocusRing(focused, radius = 14.dp, offset = 0.dp).semantics { contentDescription = label }.onFocusChanged { focused = it.isFocused },
     ) {
         Row(Modifier.padding(start = 18.dp, end = 18.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(webSymbol(glyph), color = WebKicker, fontSize = 19.52.sp, lineHeight = 29.28.sp, modifier = Modifier.width(42.dp).then(if (glyph == "\uFF0B") Modifier.offset(y = (-1.5).dp) else Modifier)) // web: 1.22 rem in a 42 px column

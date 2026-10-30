@@ -1,11 +1,11 @@
-# uitap.py <regex> [tap-up|long-up]: act on the first node on $ANDROID_SERIAL whose text fully matches; "-up" aims 120 px above the caption, at the card art
+# uitap.py <regex> [tap-up|long-up]: act on the first node on $ANDROID_SERIAL whose text or content description fully matches; "-up" aims 120 px above the caption, at the card art
 import os, re, subprocess, sys
 adb = [os.path.expanduser("~/Android/Sdk/platform-tools/adb"), "-s", os.environ.get("ANDROID_SERIAL", "emulator-5562")]
 mode = sys.argv[2] if len(sys.argv) > 2 else "tap"
 subprocess.run(adb + ["shell", "rm -f /sdcard/ui.xml; uiautomator dump /sdcard/ui.xml"], capture_output=True, timeout=30)
 xml = subprocess.run(adb + ["shell", "cat", "/sdcard/ui.xml"], capture_output=True, text=True, timeout=30).stdout
 for m in re.finditer(r"<node ([^>]*)>", xml):
-    a = m.group(1); t = re.search(r'text="([^"]*)"', a); b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', a)
+    a = m.group(1); t = re.search(r'text="([^"]+)"', a) or re.search(r'content-desc="([^"]+)"', a); b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', a)
     if t and b and re.fullmatch(sys.argv[1], t.group(1).strip()):
         x, y = (int(b.group(1)) + int(b.group(3))) // 2, (int(b.group(2)) + int(b.group(4))) // 2
         if mode.endswith("-up"): y -= 120
