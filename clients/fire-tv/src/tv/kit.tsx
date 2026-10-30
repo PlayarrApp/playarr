@@ -92,7 +92,9 @@ export interface TProps {
  */
 export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines, heading, generic, group, style, onTextLayout, children}: TProps): React.ReactElement {
   const content = contentHeight(size, mono);
-  const single = lh !== undefined && (lines === 1 || lh < content);
+  // Parity builds: a run that laid out as one line is given the single-line form too (below), so its view box is the glyph run.
+  const [solo, setSolo] = useState(false);
+  const single = lh !== undefined && (lines === 1 || lh < content || solo);
   const run = textRun(uf(size), weight, {letterSpacing: ls === undefined ? undefined : uf(ls), lineHeight: lh === undefined ? undefined : uf(single ? content : lh), mono});
   const lead = lh === undefined ? 0 : (lh - content) / 2;
   // Parity builds record the laid-out lines of every run for the layout exporter. A run that wraps is then drawn as one real Text
@@ -100,7 +102,10 @@ export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines
   // line keeps the rest of the source, so a run that was cut short with an ellipsis is still cut short.
   const node = React.useRef<object | null>(null);
   const [pieces, setPieces] = useState<string[] | null>(null);
-  React.useEffect(() => setPieces(null), [children]);
+  React.useEffect(() => {
+    setPieces(null);
+    setSolo(false);
+  }, [children]);
   const parity = PARITY_CONTROL
     ? {
         ref: (instance: object | null) => {
@@ -110,6 +115,7 @@ export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines
           registerLines(node.current, event.nativeEvent.lines);
           onTextLayout?.(event);
           const found = event.nativeEvent.lines;
+          if (found.length === 1 && lh !== undefined && !single) setSolo(true);
           if (lines !== 1 && typeof children === 'string' && found.length > 1 && !pieces) {
             const out: string[] = [];
             let at = 0;

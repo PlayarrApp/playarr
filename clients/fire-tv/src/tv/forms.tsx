@@ -131,7 +131,7 @@ function SegmentButton({label, active, gap, onPress}: {label: string; active: bo
     <Pressable
       accessibilityRole="button"
       accessibilityState={{selected: active}}
-      {...lx('button', label.charAt(0).toUpperCase() + label.slice(1), 12)}
+      {...lx('button', label, 12)}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPress={onPress}

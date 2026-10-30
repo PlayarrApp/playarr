@@ -87,9 +87,17 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
         <Decor icon="skipPrev" label="Previous episode" x={70} y={958} />
         <Decor icon="skipNext" label="Next episode" x={225.19} y={958} />
         <RoundButton icon={props.playing ? 'pause' : 'play'} label={props.playing ? 'Pause' : 'Play'} web={props.playing ? 'Pause' : 'Play'} size={64} x={147.59} y={958} iconSize={20} control="play" {...props} nodeRef={props.playRef} onPress={props.onTogglePlay} filled />
-        <View style={{position: 'absolute', left: u(302.78), top: u(978.7)}} pointerEvents="none">
-          <T size={10.88} weight={400} color="#ffffff" lh={22} lines={1} generic>
-            {`${formatTime(shown)} / ${formatTime(duration)}`}
+        <View style={{position: 'absolute', left: u(302.78), top: u(978.7), flexDirection: 'row'}} pointerEvents="none">
+          <T size={10.88} weight={400} color="#ffffff" lh={22} lines={1}>
+            {formatTime(shown)}
+          </T>
+          <View style={{marginHorizontal: u(5.6)}}>
+            <T size={10.88} weight={400} color="#ffffff" lh={22} lines={1}>
+              /
+            </T>
+          </View>
+          <T size={10.88} weight={400} color="#ffffff" lh={22} lines={1}>
+            {formatTime(duration)}
           </T>
         </View>
 
