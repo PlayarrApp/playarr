@@ -382,7 +382,7 @@ struct TVHomeView: View {
                         TVHeroTitle(title: hero.title)
                             .padding(.top, 28)
                         if let overview = hero.overview, !overview.isEmpty {
-                            Text(overview)
+                            Text.parityWrapped(overview)
                                 .font(TVTheme.font(size: DesignTokens.Shell.featureOverviewSize, weight: .regular))
                                 .foregroundStyle(DesignTokens.Color.textDisabled)
                                 .lineLimit(5)
@@ -1150,7 +1150,7 @@ struct TVHomeHeroCopy: View {
                     .placed(x: 153.6, y: metaY, h: 18)
             }
             if let overview = work.overview, !overview.isEmpty {
-                Text(overview)
+                Text.parityWrapped(overview)
                     .font(TVTheme.font(size: 12.864, css: 600))
                     .foregroundStyle(DesignTokens.Color.textPrimary.opacity(0.86))
                     .lineLimit(5)
@@ -1365,7 +1365,7 @@ struct TVSearchView: View {
 
         switch model.state {
         case .idle:
-            Text("Find any available movie, series, artist or playlist.")
+            Text.parityWrapped("Find any available movie, series, artist or playlist.")
                 .font(TVTheme.font(size: 13.82, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
                 .parityLayout(text: "Find any available movie, series, artist or playlist.", size: 13.82, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
@@ -1440,8 +1440,9 @@ struct TVSearchView: View {
                 .focused($searchFieldFocused)
                 .onSubmit(onSubmit)
                 .disabled(frozen)
-                .placed(x: 62, y: 0, w: 480, h: 76)
-                .parityBox("textbox", text: "Search your libraries and playlists")
+                .frame(width: 480, height: 76, alignment: .leading)
+                .parityBox("textbox", text: "Search your libraries and playlists") // before the offset: the box is the field's own frame
+                .offset(x: 62, y: 0)
             if hasQuery {
                 Text("Clear")
                     .font(TVTheme.font(size: 10.94, weight: .bold))
@@ -1469,7 +1470,7 @@ struct TVSearchView: View {
                 .foregroundStyle(DesignTokens.Stage.brandInk)
                 .parityLayout(text: [kind, year].compactMap { $0 }.joined(separator: " \u{00B7} ").uppercased(), size: 12.288, weight: Int(860), color: DesignTokens.Stage.brandInk, tracking: 0.98)
                 .placed(x: 153.6, y: 286.6, w: 544, h: 18.4)
-            Text(work.title)
+            Text.parityWrapped(work.title)
                 .font(TVTheme.font(size: 49.92, css: 560))
                 .tracking(-3)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
@@ -1485,7 +1486,7 @@ struct TVSearchView: View {
             .foregroundStyle(soft)
             .placed(x: 153.6, y: metaY, h: 19.6)
             if let overview = work.overview, !overview.isEmpty {
-                Text(overview)
+                Text.parityWrapped(overview)
                     .font(TVTheme.font(size: 13.824, css: 600))
                     .foregroundStyle(soft)
                     .lineLimit(4)
@@ -1936,7 +1937,7 @@ struct TVLibraryKindView: View {
                     previewRuntime = (work.id, TVWebFormat.runtime(ms: detail?.runtimeMs))
                 }
             if let overview = work.overview, !overview.isEmpty {
-                Text(overview)
+                Text.parityWrapped(overview)
                     // Web `.details-panel .tv-preview-overview`: 0.72vw (13.8 px) at weight 600, line-height 1.58 (21.8 px pitch),
                     // measured on the light refs of series and music (lines wrap at about 348 px).
                     .font(TVTheme.font(size: 13.8, css: 600))
@@ -2547,7 +2548,7 @@ struct TVActionsDrawer: View {
                     TVActionRow(glyph: "\u{25CB}", label: "Mark as Unwatched") { Task { await setWatched(false) } }
                 }
                 if let message {
-                    Text(message)
+                    Text.parityWrapped(message)
                         .font(TVTheme.font(size: 12.48, css: 400))
                         .foregroundStyle(DesignTokens.Color.textSecondary)
                         .parityLayout(text: message, size: 12.48, weight: Int(400), color: DesignTokens.Color.textSecondary)

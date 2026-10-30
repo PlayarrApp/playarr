@@ -155,8 +155,9 @@ struct TVPageHeader: View {
                         .parityLayout(text: "\u{2190}", size: 17.3, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textSecondary)
                         .frame(width: 50, height: 50)
                 }
-                .placed(x: origin, y: backFocused ? 52.2 : 56.2, w: size, h: size)
-                .parityBox("container", radius: size / 2, fill: DesignTokens.Stage.surfaceStrong, alpha: 0.7)
+                .frame(width: size, height: size, alignment: .leading)
+                .parityBox("container", radius: size / 2, fill: DesignTokens.Stage.surfaceStrong, alpha: 0.7) // before the offset
+                .offset(x: origin, y: backFocused ? 52.2 : 56.2)
             // Web `.page-header`: the title, a hairline divider and the subtitle in one row, centred on the title. Only when
             // the row would run into the clock (x 466) does the subtitle drop under the title.
             let titleText = Text(title)

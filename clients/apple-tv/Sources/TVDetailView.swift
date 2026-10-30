@@ -199,7 +199,7 @@ struct TVWorkDetailView: View {
             titleBlock(lines)
             metaRow(parts).placed(x: 153.6, y: metaY, h: 15.8)
             if !synopsis.isEmpty {
-                Text(synopsis)
+                Text.parityWrapped(synopsis)
                     .font(TVTheme.font(size: 12.86, weight: .regular))
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
@@ -267,7 +267,7 @@ struct TVWorkDetailView: View {
                     .placed(x: 153.6, y: lagY, w: 455, h: 28.8)
             }
             if !synopsis.isEmpty {
-                Text(synopsis)
+                Text.parityWrapped(synopsis)
                     .font(TVTheme.font(size: 12.86, weight: .regular))
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
@@ -785,6 +785,7 @@ struct TVWorkDetailView: View {
         // Media cards show focus as a soft shadow plus a lift, never a ring or fill (owner ruling). Pinned web values
         // (page-layout spec, section 5 item 1a): the card rises 7 px over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1).
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: selected)
+        let episodeName = "\(String(format: "%02d", ep.episodeNumber)) \(code.replacingOccurrences(of: "S ", with: "S").replacingOccurrences(of: "E ", with: "E")) \(title)"
         if let mediaFileID = episode.mediaFileID, !frozen {
             NavigationLink {
                 TVPlayerView(
@@ -801,9 +802,10 @@ struct TVWorkDetailView: View {
                     )
                 )
             } label: {
-                card.parityBox("link", text: "\(String(format: "%02d", ep.episodeNumber)) \(code.replacingOccurrences(of: "S ", with: "S").replacingOccurrences(of: "E ", with: "E")) \(title)")
+                card.parityBox("link", text: episodeName)
             }
             .buttonStyle(TVFocusableCardButtonStyle())
+            .accessibilityLabel(episodeName)
             .accessibilityAddTraits(.isLink) // it opens the player
             .focused($focusedEpisodeID, equals: ep.id)
         } else {

@@ -35,6 +35,8 @@ final class TVParityLayoutRegistry {
     private var items: [UUID: Item] = [:]
     /// The laid-out lines of a text view from SwiftUI's own text layout (glyph-run bounds, relative to the view's origin).
     private var lineRects: [UUID: [CGRect]] = [:]
+    /// The string SwiftUI laid out on each line, read from the segment attributes of a `Text(parityWrapped:)` (nil elsewhere).
+    private var lineTexts: [UUID: [String]] = [:]
     private var order: [UUID] = []
 
     func set(_ id: UUID, _ item: Item) {
@@ -44,15 +46,17 @@ final class TVParityLayoutRegistry {
         schedule()
     }
 
-    func setLines(_ id: UUID, _ rects: [CGRect]) {
-        guard lineRects[id] != rects else { return }
+    func setLines(_ id: UUID, _ rects: [CGRect], texts: [String]) {
+        guard lineRects[id] != rects || lineTexts[id] != texts else { return }
         lineRects[id] = rects
+        lineTexts[id] = texts
         schedule()
     }
 
     func remove(_ id: UUID) {
         items[id] = nil
         lineRects[id] = nil
+        lineTexts[id] = nil
         order.removeAll { $0 == id }
         schedule()
     }
@@ -178,6 +182,8 @@ final class TVParityLayoutRegistry {
                 var role = "container"
                 if traits.contains(.link) { role = "link" }
                 else if traits.contains(.button) { role = "button" }
+                else if traits.contains(.adjustable) { role = "slider" }
+                else if traits.contains(.searchField) { role = "textbox" }
                 else if traits.contains(.header) { role = "heading" }
                 else if traits.contains(.image) { role = "image" }
                 else if traits.contains(.staticText) { role = "text" }
@@ -218,6 +224,8 @@ final class TVParityLayoutRegistry {
                 var mapped = "container"
                 if role == NSAccessibility.Role.button { mapped = "button" } else if role == NSAccessibility.Role.link { mapped = "link" }
                 else if role == NSAccessibility.Role.image { mapped = "image" } else if role == NSAccessibility.Role.staticText { mapped = "text" }
+                else if role == NSAccessibility.Role.slider { mapped = "slider" } else if role == NSAccessibility.Role.textField { mapped = "textbox" }
+                else if role == NSAccessibility.Role.checkBox { mapped = "switch" } else if role == NSAccessibility.Role.popUpButton { mapped = "select" }
                 // screen coordinates (origin bottom-left) to the content view's top-left origin
                 let inWindow = window.convertFromScreen(frame)
                 let rect = CGRect(x: inWindow.minX, y: height - inWindow.maxY, width: inWindow.width, height: inWindow.height)
@@ -261,7 +269,9 @@ final class TVParityLayoutRegistry {
             // SwiftUI's text layout gives each line's box but not its string, so a wrapped paragraph whose view does not draw its
             // lines itself is one item over the union of its lines (its whole string, its real bounds): never the whole string
             // repeated on every line.
-            if rects.count > 1, item.lines?.count != rects.count {
+            let drawn = lineTexts[id]
+            let known = drawn?.count == rects.count && drawn?.allSatisfy { !$0.isEmpty } == true
+            if rects.count > 1, item.lines?.count != rects.count, !known {
                 var union = lineRect(item, rects[0])
                 for r in rects.dropFirst() { union = union.union(lineRect(item, r)) }
                 var whole = item
@@ -276,6 +286,7 @@ final class TVParityLayoutRegistry {
                 line.rect = lineRect(item, rect)
                 // the text of each line is known only where the view draws its lines itself; otherwise the view's whole string is kept
                 if let names = item.lines, names.count == rects.count { line.text = names[index] }
+                else if known, let drawn { line.text = drawn[index] }
                 return (line, seen.flatMap { index < $0.count ? $0[index] : nil }, seenBounds.flatMap { index < $0.count ? $0[index] : nil })
             }
         }
@@ -446,11 +457,41 @@ struct TVParityStageRender {
 /// Drawing is unchanged; nothing is measured by another renderer.
 @available(tvOS 18.0, macOS 15.0, *)
 private struct TVParityTextRenderer: TextRenderer {
-    let report: ([CGRect]) -> Void
+    let report: ([CGRect], [String]) -> Void
 
     func draw(layout: Text.Layout, in context: inout GraphicsContext) {
         for line in layout { context.draw(line) }
-        report(layout.map { $0.typographicBounds.rect })
+        // each line's string is what SwiftUI placed on it: the segments (words) carried by its glyph runs, in order
+        let strings = layout.map { line -> String in
+            var parts: [String] = []
+            for run in line {
+                if let segment = run[TVParitySegment.self]?.string, parts.last != segment { parts.append(segment) }
+            }
+            return parts.joined().trimmingCharacters(in: .whitespaces)
+        }
+        report(layout.map { $0.typographicBounds.rect }, strings)
+    }
+}
+
+/// A word of a wrapped paragraph, attached to its glyph runs so the layout export can read each line's real string.
+@available(tvOS 18.0, macOS 15.0, *)
+private struct TVParitySegment: TextAttribute {
+    let string: String
+}
+
+extension Text {
+    /// The same text as `Text(string)`, built from word segments that carry their own string, so the parity export can read the
+    /// string SwiftUI drew on each wrapped line. Drawing is unchanged.
+    static func parityWrapped(_ string: String) -> Text {
+        guard #available(tvOS 18.0, macOS 15.0, *) else { return Text(string) }
+        var words: [String] = []
+        var current = ""
+        for ch in string {
+            current.append(ch)
+            if ch == " " || ch == "\n" { words.append(current); current = "" }
+        }
+        if !current.isEmpty { words.append(current) }
+        return words.reduce(Text("")) { $0 + Text($1).customAttribute(TVParitySegment(string: $1)) }
     }
 }
 
@@ -502,9 +543,9 @@ private struct TVParityLayoutModifier: ViewModifier {
     @ViewBuilder
     private func rendered(_ content: Content) -> some View {
         if #available(tvOS 18.0, macOS 15.0, *), text != nil, size != nil {
-            content.textRenderer(TVParityTextRenderer { bounds in
+            content.textRenderer(TVParityTextRenderer { bounds, strings in
                 let key = id
-                Task { @MainActor in TVParityLayoutRegistry.shared.setLines(key, bounds) }
+                Task { @MainActor in TVParityLayoutRegistry.shared.setLines(key, bounds, texts: strings) }
             })
         } else {
             content
