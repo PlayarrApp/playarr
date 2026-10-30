@@ -253,6 +253,13 @@ export async function createDriver() {
       await ev(`(document.querySelector('object[type="application/avplayer"]').style.visibility = "hidden", true)`);
       await sleep(1000);
     }
+    if (device !== "tizen") {
+      // The engine stops buffering at a different point each run (47 s and 49 s of a 60 s clip seen), which moves the end of the buffered bar. Seek to the
+      // clip end so the whole clip is in the buffer, then the pin below seeks back to 2 s: the bar then ends at the clip end every run.
+      await ev(`(async () => { const v = document.querySelector("video"); v.pause(); await new Promise((res) => { v.addEventListener("seeked", res, { once: true }); v.currentTime = Math.max(0, v.duration - 0.5); setTimeout(res, 8000); }); return true; })()`);
+      const end = `(() => { const v = document.querySelector("video"); return v && v.buffered.length ? v.buffered.end(v.buffered.length - 1) >= v.duration - 0.05 : false; })()`;
+      await until(end, 30000);
+    }
     // A late play() or a timer can resume playback: hold the frame until it stays paused for two checks 0.7 s apart.
     let held = avplay ? 2 : 0;
     for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2.03)) ? held + 1 : 0; await sleep(700); }
