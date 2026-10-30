@@ -45,7 +45,7 @@ function pct100(pct: number): number {
 
 /** Composite alpha of the layers that all paint the page's `surface` colour sideways over the key art and the page: the key-art mask (art only, inside
  * the art's own box), the horizontal scrim (art only), the left stage wash and, optionally, the right one. Layers of one colour composite order-free
- * (1 - the product of their transparencies), so one full-width gradient draws what four stacked boxes did, with a stop every 1/120 of the width
+ * (1 - the product of their transparencies), so one full-width gradient draws what four stacked boxes did, with a stop every 1/480 of the width
  * plus every layer's own corner, which keeps the piecewise-linear result within a fraction of an 8-bit step of the exact curve. */
 export function backdropSideColors(withArt: boolean, withRightWash: boolean): Array<[string, number]> {
   const surface = activeColors().surface;
@@ -70,8 +70,8 @@ export function backdropSideColors(withArt: boolean, withRightWash: boolean): Ar
   if (withArt) {
     xs.push(pct100(TvGeometry.keyArtScrimHorizontalFadePct), maskStart, artEnd, artEnd + seam);
   }
-  for (let i = 1; i < 120; i++) {
-    xs.push(i / 120);
+  for (let i = 1; i < 480; i++) {
+    xs.push(i / 480);
   }
   xs.sort((a: number, b: number): number => a - b);
   const out: Array<[string, number]> = [];
