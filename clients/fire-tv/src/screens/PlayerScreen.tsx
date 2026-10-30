@@ -90,6 +90,8 @@ export interface PlayerLaunchOptions {
   /** The saved quality for the file: its id and the transcoding profile (`null` or missing plays the original). */
   qualityId?: string;
   profile?: string | null;
+  /** The titles that play one after another (an episode list, a playlist), in order; the launched file is one of them. Empty or missing is a single title. */
+  queue?: {mediaFileId: string; title: string}[];
 }
 
 export interface PlayerScreenHandle {
@@ -145,7 +147,7 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
   const [visible, setVisible] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [focusedControl, setFocusedControl] = useState<ChromeControl | null>('play');
-  const [menu, setMenu] = useState<'quality' | 'subtitles' | null>(null);
+  const [menu, setMenu] = useState<'quality' | 'subtitles' | 'audio' | 'playlist' | 'info' | 'cast' | null>(null);
   const [seekTarget, setSeekTarget] = useState<number | null>(null);
   const [quality, setQuality] = useState<{id: string; profile?: string}>({id: 'original'});
   const [engineState, setEngineState] = useState<PlaybackEngineState>(() => engine.getState());
@@ -513,6 +515,7 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
     }
     reveal();
     if (focusedControl === 'scrubber' && menu === null && (key === 'left' || key === 'right')) stepSeek(key === 'right' ? 1 : -1, true);
+    if (focusedControl === 'volume' && menu === null && (key === 'left' || key === 'right')) stepVolume(key === 'right' ? 1 : -1);
   });
 
   const guarded = useCallback((action: () => void) => () => {
@@ -527,7 +530,7 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
     const opener = menu;
     setMenu(null);
     // Focus returns to the control that opened the menu.
-    setTimeout(() => focusNode(opener === 'quality' ? qualityPillRef : subtitlesRef), 50);
+    setTimeout(() => focusNode(opener === 'quality' ? qualityPillRef : opener === 'subtitles' ? subtitlesRef : playRef), 50);
   }, [menu]);
 
   const selectQuality = useCallback(
@@ -540,6 +543,29 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
       setTimeout(() => focusNode(qualityPillRef), 50);
     },
     [quality.id],
+  );
+
+  // The queue: previous and next play the neighbours of the current file; a single title has neither.
+  const queue = launchOptions.queue ?? [];
+  const queueIndex = mediaFileId ? queue.findIndex((entry) => entry.mediaFileId === mediaFileId) : -1;
+  const hasPrev = queueIndex > 0;
+  const hasNext = queueIndex >= 0 && queueIndex < queue.length - 1;
+  const playQueueItem = useCallback(
+    (index: number) => {
+      const entry = queue[index];
+      if (!entry) return;
+      show(entry.mediaFileId, {queue, title: entry.title});
+    },
+    [queue, show],
+  );
+  const audioTracks = engineState.audioTracks;
+  const audioLabel = audioTracks.length > 1 ? audioTracks.find((track) => track.id === engineState.selectedAudioTrackId)?.label ?? audioTracks[0].label : null;
+  const stepVolume = useCallback(
+    (direction: 1 | -1) => {
+      engine.setMuted(false);
+      engine.setVolume(Math.round((engineState.volume + direction * 0.05) * 100) / 100);
+    },
+    [engine, engineState.volume],
   );
 
   const qualityOptions = negotiation.status === 'ready' ? negotiation.data.quality_options : [];
@@ -610,6 +636,20 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
           onClose={guarded(() => void stop().then(() => onClose?.()))}
           onOpenQuality={guarded(() => setMenu('quality'))}
           onOpenSubtitles={guarded(() => setMenu('subtitles'))}
+          volume={engineState.volume}
+          muted={engineState.muted}
+          hasPrev={hasPrev}
+          hasNext={hasNext}
+          onPrev={guarded(() => playQueueItem(queueIndex - 1))}
+          onNext={guarded(() => playQueueItem(queueIndex + 1))}
+          onToggleMute={guarded(() => engine.setMuted(!engineState.muted))}
+          audioLabel={audioLabel}
+          onOpenAudio={guarded(() => setMenu('audio'))}
+          queueCount={Math.max(1, queue.length)}
+          onOpenPlaylist={guarded(() => setMenu('playlist'))}
+          onOpenInfo={guarded(() => setMenu('info'))}
+          onOpenCast={guarded(() => setMenu('cast'))}
+          onToggleFullscreen={guarded(() => setControlsVisible(false))}
           qualityRef={qualityPillRef}
           playRef={playRef}
           subtitlesRef={subtitlesRef}
@@ -642,6 +682,53 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
               }}
             />
           ))}
+        </Sheet>
+      ) : null}
+      {menu === 'audio' ? (
+        <Sheet title="Audio" onClose={closeMenu}>
+          {audioTracks.map((track) => (
+            <SheetOption
+              key={track.id}
+              label={track.label}
+              detail={track.language}
+              selected={engineState.selectedAudioTrackId === track.id}
+              hasTVPreferredFocus={engineState.selectedAudioTrackId === track.id}
+              onPress={() => {
+                void engine.selectAudioTrack(track.id);
+                closeMenu();
+              }}
+            />
+          ))}
+        </Sheet>
+      ) : null}
+      {menu === 'playlist' ? (
+        <Sheet title="Playlist" onClose={closeMenu}>
+          {(queue.length > 0 ? queue : [{mediaFileId: mediaFileId ?? '', title: launchOptions.title ?? 'Now playing'}]).map((entry, index) => (
+            <SheetOption
+              key={`${entry.mediaFileId}-${index}`}
+              label={entry.title}
+              selected={index === Math.max(0, queueIndex)}
+              hasTVPreferredFocus={index === Math.max(0, queueIndex)}
+              onPress={() => {
+                setMenu(null);
+                if (index !== queueIndex && queue.length > 0) playQueueItem(index);
+              }}
+            />
+          ))}
+        </Sheet>
+      ) : null}
+      {menu === 'info' ? (
+        <Sheet title="Info and playback health" onClose={closeMenu}>
+          <SheetOption label={`State: ${engineState.state}`} onPress={closeMenu} hasTVPreferredFocus />
+          <SheetOption label={`Position: ${formatClock(engineState.currentTimeSeconds)} of ${formatClock(engineState.durationSeconds)}`} onPress={closeMenu} />
+          <SheetOption label={`Buffered to: ${formatClock(engineState.bufferedSeconds)}`} onPress={closeMenu} />
+          <SheetOption label={`Quality: ${qualityLabel}`} onPress={closeMenu} />
+          <SheetOption label={`Volume: ${engineState.muted ? 'muted' : `${Math.round(engineState.volume * 100)}%`}`} onPress={closeMenu} />
+        </Sheet>
+      ) : null}
+      {menu === 'cast' ? (
+        <Sheet title="Play on another device" onClose={closeMenu}>
+          <SheetOption label="No other devices are paired with this one" onPress={closeMenu} hasTVPreferredFocus />
         </Sheet>
       ) : null}
     </View>
