@@ -195,7 +195,7 @@ struct TVPlayerView: View {
                     default: break
                     }
                     // A seek never moves focus: keep it on the control the user left it on.
-                    if focusedControl == nil { focusedControl = interaction.focus }
+                    if focusedControl != interaction.focus { focusedControl = interaction.focus }
                 }
                 .onChange(of: focusedControl) { _, control in
                     if let control { interaction.focus = control }

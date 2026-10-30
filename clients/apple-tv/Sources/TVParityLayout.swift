@@ -387,23 +387,23 @@ struct TVParityStageRender {
         return maxX < 0 ? nil : CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
     }
 
-    /// The colour most common inside `rect` (sampled every 2 pixels), as #rrggbb: what a view is drawn on, when read from a render
-    /// of the screen without that view.
+    /// The mean colour inside `rect` (sampled every 2 pixels), as #rrggbb: what a view is drawn on, when read from a render of the
+    /// screen without that view. A mean, because a gradient is dithered differently from one render to the next.
     func dominantColour(in rect: CGRect) -> String? {
         let x0 = max(0, Int(rect.minX.rounded(.down))), x1 = min(Self.width, Int(rect.maxX.rounded(.up)))
         let y0 = max(0, Int(rect.minY.rounded(.down))), y1 = min(Self.height, Int(rect.maxY.rounded(.up)))
         guard x0 < x1, y0 < y1 else { return nil }
-        var counts: [UInt32: Int] = [:]
+        var sum = (0, 0, 0), count = 0
         pixels.withUnsafeBufferPointer { px in
             for y in stride(from: y0, to: y1, by: 2) {
                 for x in stride(from: x0, to: x1, by: 2) {
                     let o = (y * Self.width + x) * 4
-                    counts[UInt32(px[o]) << 16 | UInt32(px[o + 1]) << 8 | UInt32(px[o + 2]), default: 0] += 1
+                    sum.0 += Int(px[o]); sum.1 += Int(px[o + 1]); sum.2 += Int(px[o + 2]); count += 1
                 }
             }
         }
-        guard let best = counts.max(by: { $0.value < $1.value })?.key else { return nil }
-        return String(format: "#%02x%02x%02x", (best >> 16) & 255, (best >> 8) & 255, best & 255)
+        guard count > 0 else { return nil }
+        return String(format: "#%02x%02x%02x", Int((Double(sum.0) / Double(count)).rounded()), Int((Double(sum.1) / Double(count)).rounded()), Int((Double(sum.2) / Double(count)).rounded()))
     }
 
     private static func pixels(of image: CGImage) -> [UInt8]? {

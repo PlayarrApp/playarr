@@ -181,7 +181,6 @@ struct TVPlayerChrome: View {
         let progress = 1780 * fraction
         let value = "\(Self.clock(state.position)) of \(Self.clock(state.duration))"
         let body = TVScrubberBody(progress: progress, showsFocus: !frozen)
-            .parityFocusTag("Seek")
             .contentShape(Rectangle())
             .focusable(controlsVisible)
             .modifier(TVFocusTag(binding: focus, control: .scrubber))
@@ -517,6 +516,9 @@ private struct TVScrubberBody: View {
         }
         .frame(width: 1780, height: 44, alignment: .topLeading)
         .animation(.easeOut(duration: DesignTokens.FocusMotion.transitionSeconds), value: isFocused)
+        #if DEBUG && (os(tvOS) || os(macOS))
+        .onChange(of: focusedByRemote) { _, now in TVParityState.setFocus("Seek", now) }
+        #endif
     }
 }
 
