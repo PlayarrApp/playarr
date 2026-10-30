@@ -9,6 +9,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { PNG } from "pngjs";
 import { checkLayout } from "../layout-check.mjs";
 import { basename, dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -170,14 +171,72 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   // docs/parity/LAYOUT.md: the debug app writes its own layout (semantics tree: text style, glyph-run bounds, controls) in the same state as the screenshot.
   // Asks the app for its layout and returns the document text, or null when none arrived.
   const requestLayout = async (theme, screen) => {
+    const id = randomUUID().replace(/-/g, "");
     await shell("run-as", pkg, "rm", "-f", "files/parity-layout.json").catch(() => {});
-    await shell("am", "broadcast", "-a", "io.playarr.mobile.PARITY_LAYOUT", "-p", pkg, "--es", "screen", screen, "--es", "theme", theme);
+    await shell("am", "broadcast", "-a", "io.playarr.mobile.PARITY_LAYOUT", "-p", pkg, "--es", "screen", screen, "--es", "theme", theme, "--es", "id", id, "--ez", "rendered", "true");
     for (let i = 0; i < 20; i++) {
       await sleep(500);
       const json = await adb("exec-out", "run-as", pkg, "cat", "files/parity-layout.json").catch(() => "");
-      if (json.startsWith("{")) return json;
+      if (!json.startsWith("{")) continue;
+      // The export must be the one asked for: its id, screen and theme echo the request (a stale or foreign file is refused).
+      const doc = JSON.parse(json);
+      if (doc.captureId !== id || doc.screen !== screen || doc.theme !== theme) throw new Error(`layout export for ${theme}/${screen} is not the one requested (id ${doc.captureId}, ${doc.theme}/${doc.screen})`);
+      return json;
     }
     return null;
+  };
+  // Real-screen occlusion (docs/parity/LAYOUT.md): the app flags the elements that lie wholly inside a higher window's opaque container. Toggle and diff:
+  // hide every window below the top one, screenshot again, and keep a flagged element only if the pixels in its own rectangle changed (the lower window showed there).
+  const resolveCovered = async (layout, shown) => {
+    const flagged = layout.elements.filter((e) => e.covered);
+    const sameWindow = flagged.filter((e) => e.coverIds);
+    const windowLevel = flagged.filter((e) => !e.coverIds);
+    const img = PNG.sync.read(shown);
+    // Pixels of the element's own rectangle that differ between the screen as shown and the screen with something hidden.
+    const changedFraction = (e, other) => {
+      const x0 = Math.max(0, Math.floor(e.rect.x)), y0 = Math.max(0, Math.floor(e.rect.y));
+      const x1 = Math.min(img.width, Math.ceil(e.rect.x + e.rect.w)), y1 = Math.min(img.height, Math.ceil(e.rect.y + e.rect.h));
+      let changed = 0, total = 0;
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+        const i = (img.width * y + x) * 4;
+        total++;
+        if (Math.abs(img.data[i] - other.data[i]) + Math.abs(img.data[i + 1] - other.data[i + 1]) + Math.abs(img.data[i + 2] - other.data[i + 2]) > 24) changed++;
+      }
+      return total ? changed / total : 0;
+    };
+    const hiddenShot = async (windows, ids) => {
+      try {
+        await shell("am", "broadcast", "-a", "io.playarr.mobile.PARITY_COVER", "-p", pkg, "--ez", "on", windows ? "true" : "false", "--es", "ids", ids.length ? ids.join(",") : "none");
+        await sleep(800);
+        return PNG.sync.read(await grab());
+      } finally {
+        await shell("am", "broadcast", "-a", "io.playarr.mobile.PARITY_COVER", "-p", pkg, "--ez", "on", "false", "--es", "ids", "none");
+        await sleep(500);
+      }
+    };
+    const drop = new Set();
+    // Elements under a higher window: hide that window's cover (every lower window); an element whose own pixels do not change was not showing.
+    if (windowLevel.length) {
+      const bare = await hiddenShot(true, []);
+      for (const e of windowLevel) if (changedFraction(e, bare) === 0) drop.add(e);
+    }
+    // Elements under a later painted box of the same window: hide the covers' paint. Hiding must not remove an ancestor of a candidate in the same pass, so candidates are grouped.
+    const groups = [];
+    for (const e of sameWindow) {
+      const g = groups.find((g) => !e.coverIds.some((id) => g.members.some((m) => m.chainIds.includes(id))) && !g.hide.some((id) => e.chainIds.includes(id)));
+      if (g) { g.members.push(e); for (const id of e.coverIds) if (!g.hide.includes(id)) g.hide.push(id); }
+      else groups.push({ members: [e], hide: [...e.coverIds] });
+    }
+    for (const g of groups) {
+      const bare = await hiddenShot(false, g.hide);
+      for (const e of g.members) if (changedFraction(e, bare) >= 0.9) drop.add(e);
+    }
+    for (const e of layout.elements) { delete e.covered; delete e.coverIds; delete e.chainIds; }
+    // The screen must be back as it was, else the frame kept would not be the one described.
+    if (flagged.length && !(await grab()).equals(shown)) return false;
+    layout.elements = layout.elements.filter((e) => !drop.has(e));
+    layout.occluded = drop.size;
+    return true;
   };
   const grab = async () => env.PARITY_XDISPLAY
     ? (await execBounded("import", ["-window", "root", "png:-"], { encoding: "buffer", maxBuffer: 64 << 20, env: { ...env, DISPLAY: env.PARITY_XDISPLAY }, label: "screen capture import" })).stdout
@@ -299,7 +358,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
           // is the evidence instead. On the player route, the same focused control and the same paused position for three consecutive polls (the ready flag itself flips with the auto-hiding controls).
           const playerPosition = target === "player-controls" ? lines.findLast((line) => line.startsWith("player positionMs="))?.slice(18) ?? "none" : null;
           const steady = playerPosition !== null
-            ? Boolean(currentRoute === EXPECTED_ROUTE[target] && focus && playerPosition !== "none" && playerPosition === previousPosition && focus === previous)
+            ? Boolean(currentRoute === EXPECTED_ROUTE[target] && focus && playerPosition === String(env.PARITY_PAUSE_AT_MS ?? "2000") && playerPosition === previousPosition && focus === previous)
             : stableCaptureObservation({ marker: previousMarker, focus: previous }, { ready: capture.ready, routeMatches: currentRoute === EXPECTED_ROUTE[target], marker: capture.marker, focus });
           lastReason = !capture.ready ? capture.reason : !focus ? "no focused node" : currentRoute !== EXPECTED_ROUTE[target] ? `route ${currentRoute ?? "none"}` : playerPosition !== null ? `paused frame still moving (position ${previousPosition || "none"} then ${playerPosition}, focus ${focus === previous ? "held" : "changed"})` : focus !== previous ? "focus still changing" : "marker still changing";
           if (steady) {
@@ -436,10 +495,19 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
         if (json === null) continue;
         const after = await grab();
         if (!before.equals(after)) { await sleep(500); continue; }
+        // The player frame may not be composited yet (the video surface shows black): a capture of the paused frame is retried until the frame is there.
+        if (screen === "player-controls") {
+          const img = PNG.sync.read(before);
+          let sum = 0;
+          for (let i = 0; i < img.data.length; i += 4) sum += img.data[i] + img.data[i + 1] + img.data[i + 2];
+          if (sum / (img.data.length / 4) < 12) { await sleep(1000); continue; }
+        }
+        const layout = json ? JSON.parse(json) : null;
+        if (layout && !(await resolveCovered(layout, before))) { await sleep(500); continue; }
         writeFileSync(file, before);
-        if (json) {
+        if (layout) {
           mkdirSync(dirname(layoutFile), { recursive: true });
-          writeFileSync(layoutFile, JSON.stringify(checkLayout(JSON.parse(json), theme)));
+          writeFileSync(layoutFile, JSON.stringify(checkLayout(layout, theme)));
         }
         return;
       }

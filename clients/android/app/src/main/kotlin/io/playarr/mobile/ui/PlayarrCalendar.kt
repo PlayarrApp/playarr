@@ -1893,7 +1893,10 @@ private fun CalendarPoster(url: String?, modifier: Modifier, measuredRadius: Flo
     val measured = if (measuredRadius != null) modifier.parityBox(kind, radius = measuredRadius) else modifier
     val shaped = if (clip != null) measured.clip(clip) else measured
     if (url.isNullOrBlank()) {
-        Box(shaped.background(WebSurfaceSoft, shape))
+        // No poster: only a painted Box is drawn, so a parity image hook on this slot is a container.
+        androidx.compose.runtime.CompositionLocalProvider(io.playarr.shared.designsystem.page.LocalParityImagePlaceholder provides true) {
+            Box(shaped.background(WebSurfaceSoft, shape))
+        }
     } else {
         AsyncImage(
             model = url,
@@ -2088,14 +2091,11 @@ private fun CalendarTonePill(tone: CalendarPillTone, phone: Boolean = false) {
             CalendarPillTone.Neutral -> PlayarrString.CalendarPillNotTracked
         },
     )
-    Box(
-        Modifier.parityBackground("textfill", androidx.compose.ui.graphics.lerp(WebSurface, toneColour, 0.14f), CircleShape, radius = 999f)
+    // Web `.calendar-pill`: one span that owns the fill, border and padding of its text, so the text node paints its own pill.
+    Text(label, color = WebInk, fontSize = if (phone) 10.24.sp else 13.44.sp, lineHeight = if (phone) 14.336.sp else 18.8.sp, fontWeight = FontWeight(750), style = WebTextStyle, maxLines = 1,
+        modifier = Modifier.parityBackground("textfill", androidx.compose.ui.graphics.lerp(WebSurface, toneColour, 0.14f), CircleShape, radius = 999f)
             .border(1.dp, toneColour.copy(alpha = 0.6f), CircleShape)
-            .padding(horizontal = 10.4.dp, vertical = 2.88.dp),
-    ) {
-        Text(label, color = WebInk, fontSize = if (phone) 10.24.sp else 13.44.sp, lineHeight = if (phone) 14.336.sp else 18.8.sp, fontWeight = FontWeight(750), style = WebTextStyle, maxLines = 1,
-            modifier = Modifier)
-    }
+            .padding(horizontal = 10.4.dp, vertical = 2.88.dp))
 }
 
 /** Web `.calendar-today-badge`: the small outlined TODAY tag beside today's heading. */

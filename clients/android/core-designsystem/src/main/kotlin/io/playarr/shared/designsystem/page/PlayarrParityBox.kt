@@ -7,6 +7,7 @@ import androidx.compose.ui.composed
 import androidx.compose.foundation.background as foundationBackground
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import android.view.View
@@ -20,8 +21,6 @@ var parityLayoutEnabled = false
  * and the alpha and corner radius the composable itself draws with. [fill] is set at paint time by [parityBackground], from the colour handed to the draw call.
  */
 class ParityBox(val view: View, var kind: String, var radius: Float, var opacity: Float, var fillAlpha: Float = 1f) {
-    /** The accessible name the app gives this surface (a video surface has no semantics node of its own to carry it). */
-    var label: String? = null
     /** True once a gradient or other brush fill was handed to the draw call (its colour is not one value, so [fill] stays unspecified). */
     var brushPainted = false
     val id: Int = nextParityBoxId.incrementAndGet()
@@ -35,8 +34,9 @@ class ParityBox(val view: View, var kind: String, var radius: Float, var opacity
     /** The box's four corners through the layers right now (a graphicsLayer animation does not call onGloballyPositioned), or null once detached. */
     fun bounds(): androidx.compose.ui.geometry.Rect? {
         val c = coordinates?.takeIf { it.isAttached } ?: return null
-        val a = c.localToWindow(androidx.compose.ui.geometry.Offset.Zero); val b = c.localToWindow(androidx.compose.ui.geometry.Offset(c.size.width.toFloat(), c.size.height.toFloat()))
-        return androidx.compose.ui.geometry.Rect(minOf(a.x, b.x), minOf(a.y, b.y), maxOf(a.x, b.x), maxOf(a.y, b.y))
+        val w = c.size.width.toFloat(); val h = c.size.height.toFloat()
+        val corners = listOf(androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset(w, 0f), androidx.compose.ui.geometry.Offset(0f, h), androidx.compose.ui.geometry.Offset(w, h)).map { c.localToWindow(it) }
+        return androidx.compose.ui.geometry.Rect(corners.minOf { it.x }, corners.minOf { it.y }, corners.maxOf { it.x }, corners.maxOf { it.y })
     }
 
     /** What is visible of the box: its window bounds clipped by every ancestor clip, or null when nothing shows. */
@@ -65,6 +65,11 @@ internal fun newParityBoxKey() = androidx.compose.ui.semantics.SemanticsProperty
 /** True inside an image slot that shows its placeholder instead of a picture, so the slot is exported as what it draws. */
 val LocalParityImagePlaceholder = androidx.compose.runtime.compositionLocalOf { false }
 
+/** Debug parity captures only: ids of boxes whose paint (and subtree) is skipped while the capture script screenshots the screen without them (docs/parity/LAYOUT.md, rendered occlusion check). Read in draw scope, so a change redraws. */
+val parityHiddenBoxes = androidx.compose.runtime.mutableStateOf<Set<Int>>(emptySet())
+
+private fun Modifier.hideWhenAsked(box: ParityBox): Modifier = drawWithContent { if (box.id !in parityHiddenBoxes.value) drawContent() }
+
 val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<ParityBox>())
 
 /**
@@ -73,15 +78,15 @@ val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<
  * [fillAlpha] is the alpha of the fill the box paints; a box painted at 0.5 or more covers what lies under it in lower windows.
  * [radius] is the dp corner radius the shape really uses (999 for a CircleShape); the export clamps it to half the measured short side.
  */
-fun Modifier.parityBox(kind: String, radius: Float = 0f, opacity: Float = 1f, fillAlpha: Float = 1f, label: String? = null): Modifier =
+fun Modifier.parityBox(kind: String, radius: Float = 0f, opacity: Float = 1f, fillAlpha: Float = 1f): Modifier =
     if (!parityLayoutEnabled) this else composed {
         val view = androidx.compose.ui.platform.LocalView.current
         // An image slot whose picture is not there (artwork placeholder) paints a container, not an image.
         val kind = if (kind == "image" && LocalParityImagePlaceholder.current) "container" else kind
         val box = remember { ParityBox(view, kind, radius, opacity, fillAlpha) }
-        box.density = androidx.compose.ui.platform.LocalDensity.current.density; box.kind = kind; box.radius = radius; box.opacity = opacity; box.fillAlpha = fillAlpha; box.label = label
+        box.density = androidx.compose.ui.platform.LocalDensity.current.density; box.kind = kind; box.radius = radius; box.opacity = opacity; box.fillAlpha = fillAlpha
         DisposableEffect(box) { parityBoxes.add(box); onDispose { box.coordinates = null; parityBoxes.remove(box) } }
-        onGloballyPositioned { box.coordinates = it }.semantics { this[box.semanticsKey] = box.id }
+        onGloballyPositioned { box.coordinates = it }.semantics { this[box.semanticsKey] = box.id }.hideWhenAsked(box)
     }
 
 /**
@@ -110,7 +115,7 @@ fun Modifier.parityPaint(kind: String, color: androidx.compose.ui.graphics.Color
                 is androidx.compose.ui.graphics.Outline.Rectangle -> 0f
                 else -> null
             }
-        }
+        }.hideWhenAsked(box)
     }
 
 /** Foundation's brush background, recorded: a gradient panel is a painted container even though it has no single colour. */
@@ -127,7 +132,7 @@ fun Modifier.background(brush: androidx.compose.ui.graphics.Brush, shape: androi
                 is androidx.compose.ui.graphics.Outline.Rectangle -> 0f
                 else -> null
             }
-        }
+        }.hideWhenAsked(box)
     }).foundationBackground(brush, shape, alpha)
 
 /** Foundation's background, recorded: drop-in for `androidx.compose.foundation.background(color, shape)` so every solid fill the app paints is read at paint time. */

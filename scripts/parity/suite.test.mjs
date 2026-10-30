@@ -764,7 +764,10 @@ test("player toggle reference records exact web state and rejects an unchanged p
     assert.equal(roleResult.results.find((x) => x.id === "player-ok-toggle").pass, false);
 
     const marker = join(out, "driver-started");
-    const stale = run("no", [], marker);
+    // A reference from before the exact web state was recorded (the committed one now has it).
+    const staleRef = join(out, "stale-expected.json");
+    writeFileSync(staleRef, JSON.stringify({ ...expected, dpad: { ...expected.dpad, "player-ok-toggle": "play-pause" } }));
+    const stale = run("no", ["--expected", staleRef], marker);
     assert.notEqual(stale.status, 0);
     assert.match(stale.stderr, /web reference has no exact Play\/Pause state/);
     assert.equal(existsSync(marker), false);

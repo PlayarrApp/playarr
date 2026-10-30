@@ -46,6 +46,8 @@ dark and light, no D-pad (dpadNA): `scripts/parity/harmony/run.sh <branch> <lege
 
 ### Android TV: the one-command run
 
+The layout export reads only the app's own paint and shaped text: the drawer fill is the app's `parityBackground`, the calendar pill is painted by its own Text node, run heights come from the paint `android.text.Layout` draws with (reflection on the internal compose text classes; the export fails when it is unavailable), and each layout request carries a fresh id that the export must echo.
+
 The Android TV emulator (`playarr_vnc_tv`) runs headless (`-no-window`, no X display, no VNC) as a user unit. Sign the app in to
 the static parity server once, then run everything (15 screens in both themes plus the 12 non-player D-pad checks, pinned clock
 `2026-10-07T12:00:00Z`) with:
