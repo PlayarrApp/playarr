@@ -135,7 +135,7 @@ export struct SettingsScreen {
 
   /** A phone row's description on one line: the web row clips it at 228.5 vp with a real "…". */
   private rowCopy(id: string): string {
-    return fitLineText(this.getUIContext(), sectionCopyOf(id), 10.88, 400, 228.5);
+    return fitLineText(this.getUIContext(), sectionCopyOf(id), 10.88, 400, 228.5, isTvMetrics() ? 0 : -0.084); // the tracking the row's Text is drawn with
   }
   @State private audioLanguage: string = 'en';
   /** Web's player preference status: loading, ready, saving or an error message. */

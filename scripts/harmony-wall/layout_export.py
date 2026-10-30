@@ -229,6 +229,25 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
                 if col[3] * opacity > 0.0:  # the glyph range paints over what is under it
                     glyphs.append((rect, col[3] * opacity))
 
+    def input_text(node, a, raw, under, opacity, chain, clip):
+        """The text a TextInput draws: one record at the rectangle the component's own text layout reports (TextInputController.getTextContentRect)."""
+        value = str(a.get("text") if a.get("text") is not None else a.get("content") or "")
+        if not value.strip():
+            return  # an empty input draws no text of its own (its placeholder is a separate Text)
+        rect = node.get("$input")
+        if rect is None or raw is None:
+            raise ExportError(f"TextInput {value[:30]!r} has no native text rectangle ({node.get('$inputError', 'no $input')})")
+        if num(a.get("fontSize")) is None or argb(a.get("fontColor")) is None:
+            raise ExportError(f"TextInput {value[:30]!r} has no native style")
+        kx, ky = scale_k(chain)
+        col = argb(a.get("fontColor"))
+        if col[3] * opacity <= 0.0:
+            return
+        box = (raw[0] + rect["x"] * kx, raw[1] + rect["y"] * ky, rect["w"] * kx, rect["h"] * ky)
+        if visible(box, clip):
+            emit("text", " ".join(value.split()), box, under, clip, 0.0, hex_of(over(col, under)), round(num(a.get("fontSize")) * kx, 2), weight_of(a), opacity)
+            glyphs.append((box, col[3] * opacity))
+
     def walk(node, under, opacity, chain, clip, nohit=False):
         a = attrs_of(node)
         kind = str(node.get("$type", ""))
@@ -308,6 +327,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
                 # intrinsic painted components: a spinner is drawn by the framework, a surface XComponent is the video's place
                 emit({"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox", "LoadingProgress": "image", "XComponent": "video"}[kind],
                      name, box, here, clip, radius, opacity=opacity)
+                if kind == "TextInput":
+                    input_text(node, a, raw, here, opacity, mychain, clip)
             elif fills or has_gradient(a) or (num(a.get("borderWidth"), 0.0) or 0.0) >= 1.0 and argb(a.get("borderColor"))[3] > 0.01:
                 emit("container", "", box, here, clip, radius, opacity=opacity)
         own = list(range(mark, len(out)))
