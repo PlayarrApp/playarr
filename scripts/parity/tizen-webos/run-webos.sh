@@ -11,4 +11,4 @@ cd "$here"
 eval "$(node parity-config.mjs --shell)"
 export DEVICE=webos PARITY_CLIENT=${PARITY_CLIENT:-webos} PARITY_LOCK_DIR=${PARITY_LOCK_DIR:-$out.lock}
 mkdir -p "$PARITY_LOCK_DIR"
-exec node suite-run.mjs --driver drivers/tizen-webos.mjs --out "$out" "$@" --only screens,dpad --skip-player
+exec node suite-run.mjs --driver drivers/tizen-webos.mjs --out "$out" "$@" --only screens,dpad $([ "${PARITY_PLAYER:-1}" = 1 ] && echo --player || echo --skip-player)
