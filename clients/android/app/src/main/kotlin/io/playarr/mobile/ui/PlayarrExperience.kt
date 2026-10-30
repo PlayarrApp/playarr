@@ -4812,17 +4812,24 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                             val shownLetter = if (activeLetter == "#") (filteredWorks.getOrNull(gridState.firstVisibleItemIndex) ?: selected).sortTitle.firstOrNull()?.uppercaseChar()?.takeIf { it in 'A'..'Z' }?.toString() ?: "#" else activeLetter
                             val active = shownLetter == letter
                             var letterFocused by remember { mutableStateOf(false) }
-                            Box(Modifier.size(44.dp * alphaCss), contentAlignment = Alignment.Center) {
+                            // Web: the button is the whole 44 px target (radius 22) and the 24 px disc inside it only marks the active letter, so the
+                            // target is the clickable and the focus holder; the disc and the ring are paint.
+                            Box(
+                                Modifier.size(44.dp * alphaCss)
+                                    .then(if (active) Modifier.focusRequester(letterFocus) else Modifier)
+                                    .onFocusChanged { letterFocused = it.isFocused }
+                                    .parityShape(999f)
+                                    .clip(CircleShape)
+                                    .clickable { activeLetter = letter },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                            val disc = WebInk.copy(alpha = 0.78f)
                             Box(
                                 modifier = Modifier
                                     .size(24.dp * alphaCss)
-                                    .then(if (active) Modifier.parityShape(999f) else Modifier)
-                                    .then(if (active) Modifier.focusRequester(letterFocus) else Modifier)
                                     .webFocusRing(letterFocused, offset = 1.dp)
-                                    .onFocusChanged { letterFocused = it.isFocused }
                                     .clip(CircleShape)
-                                    .then(if (active) Modifier.background(WebInk.copy(alpha = 0.78f)) else Modifier)
-                                    .clickable { activeLetter = letter },
+                                    .then(if (active) Modifier.drawBehind { drawRect(disc) } else Modifier),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
@@ -10140,7 +10147,7 @@ private fun ExperiencePlayerScreen(
                     )
                 } else {
                     androidx.compose.ui.viewinterop.AndroidView(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().parityBox("video", label = playarrString(PlayarrString.PlayerVideoSurface)),
                         factory = { context ->
                             androidx.media3.ui.PlayerView(context).apply {
                                 player = viewModel.player.rawPlayer

@@ -753,7 +753,7 @@ internal fun TvCalendarAgenda(
                         if (day != null) {
                             item(key = "day-$day") {
                                 // Web: the day heading is one block as wide as the list that holds its date and its Today badge.
-                                Row(Modifier.fillMaxWidth().padding(top = if (index > 0) (if (tablet) 25.dp else 26.dp) else 0.dp, bottom = if (tablet) 43.dp else if (index > 0) 40.dp else 39.dp).parityBox("heading"), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(Modifier.fillMaxWidth().padding(top = if (index > 0) (if (tablet) 25.dp else 26.dp) else 0.dp, bottom = if (tablet) 43.dp else if (index > 0) 40.dp else 39.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     // Static web refs (television): the day heading is --accent at weight 640, a plain text run.
                                     Text(
                                         phoneCalendarDayHeading(day, locale), color = if (tablet) WebInk else io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent, fontSize = dayFont.dayHeading.sp, lineHeight = dayFont.dayHeadingLine.sp, fontWeight = FontWeight(if (tablet) 560 else 640),
@@ -1634,7 +1634,7 @@ private fun CalendarMonthChips(
                             // `.calendar-line` text rows with an availability dot, then the day number and "+N more".
                             val cellBg = (if (inMonth) WebSurface else WebSurfaceSoft.copy(alpha = 0.4f).compositeOver(WebSurface))
                             Column(
-                                Modifier.width(columnWidth(columnIndex)).fillMaxHeight().parityBackground("container", if (inMonth) Color.Transparent else WebSurfaceSoft.copy(alpha = 0.4f))
+                                Modifier.width(columnWidth(columnIndex)).fillMaxHeight().parityBackground("container", if (inMonth) Color.Transparent else WebSurfaceSoft.copy(alpha = 0.4f), drawsBorder = true)
                                     .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.hairline(0.11f, 0.13f))
                                     .then(if (day == today) Modifier.border(2.dp, WebInk) else Modifier)
                                     .padding(start = 5.8.dp, end = 5.8.dp, top = 1.8.dp, bottom = 0.8.dp + (if (tabletCss) 9.dp else 0.dp)), // web: 1 px border plus 0.05rem / 0.3rem padding
