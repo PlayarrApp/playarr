@@ -776,8 +776,19 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       await guard();
       await page.goto(appUrl("/player/" + file), { waitUntil: "load" });
       await waitReady({ screen: "player-controls", phase: "route" });
-      // Headless has no user gesture: nudge playback until frames are buffered; play() is never awaited (it can stay pending).
-      await page.waitForFunction(() => { const v = document.querySelector("video"); if (v?.paused) v.play().catch(() => {}); return (v?.readyState ?? 0) >= 2; }, null, { timeout: 60000, polling: 500 });
+      // The seek bar draws the buffered range, and the browser stops downloading at a timing-dependent point. Play the clip through once, muted and fast, so the whole clip is buffered (the clip is a few seconds long);
+      // the pin below then returns to 2 s, and the fill is the full bar on every capture.
+      await page.waitForFunction(() => { const v = document.querySelector("video"); if (!v || v.readyState < 2) { v?.play().catch(() => {}); return false; } return true; }, null, { timeout: 60000, polling: 500 });
+      await page.evaluate(() => new Promise((res) => {
+        const v = document.querySelector("video");
+        v.muted = true; v.playbackRate = 16;
+        const full = () => { const b = v.buffered; return b.length > 0 && Number.isFinite(v.duration) && b.end(b.length - 1) >= v.duration - 0.05; };
+        const done = () => { v.playbackRate = 1; v.pause(); v.muted = false; res(); }; // unmute again: the player's mute button reads the element's state
+        v.play().catch(() => {});
+        const t0 = Date.now();
+        const tick = () => { if (full() || v.ended || Date.now() - t0 > 90000) done(); else setTimeout(tick, 200); };
+        tick();
+      }));
       const pin = (t) => page.evaluate(async (t) => {
         const v = document.querySelector("video");
         v.pause();
@@ -795,10 +806,26 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       let held = 0;
       for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2)) ? held + 1 : 0; await page.waitForTimeout(700); }
       if (held < 2) throw new Error("player did not hold a paused frame at 2 s");
+      // The seek bar draws the buffered range, which grows while the player downloads ahead of the playhead (it stops at the player's buffering goal, short of the clip's end).
+      // Wait until the buffered end reaches the clip's end or holds still for 4 s, so every capture shows the same fill.
+      await page.evaluate(() => new Promise((res) => {
+        const end = () => { const v = document.querySelector("video"); const b = v?.buffered; return b && b.length ? b.end(b.length - 1) : 0; };
+        let last = -1, since = Date.now();
+        const tick = () => {
+          const e = end(), v = document.querySelector("video");
+          if (e !== last) { last = e; since = Date.now(); }
+          if ((v && Number.isFinite(v.duration) && e >= v.duration - 0.05) || Date.now() - since >= 4000) res(); else setTimeout(tick, 250);
+        };
+        tick();
+      }));
+      // The time label follows timeupdate events and can still show the pre-seek second, and the mute button the muted state: wait for 0:02 and an unmuted player.
+      await page.waitForFunction(() => /(^|[^\d:])0:02(?![\d:])/.test(document.querySelector(".player-controls")?.textContent?.replace(/\s+/g, " ") ?? "") && document.querySelector("video")?.muted === false && !!document.querySelector(".player-controls [aria-label='Mute'],.player-controls [title='Mute']"), null, { timeout: 10000, polling: 100 });
       await page.waitForTimeout(600); // the player moves focus to play/pause on a timer: let it, then drop it
       await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
       await guard();
     },
+    // The video picture is a codec and scaler difference, not UI (capture-web.mjs hideVideo): hide it so the chrome shows on black.
+    async hideVideo() { await guard(); await page.addStyleTag({ content: "video{visibility:hidden!important}" }); await guard(); },
     async route(r, { requireHeroAction = false } = {}) {
       await guard();
       await page.goto(appUrl(r), { waitUntil: "load" });

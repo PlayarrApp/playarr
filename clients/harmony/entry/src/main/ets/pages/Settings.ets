@@ -351,6 +351,7 @@ export struct SettingsScreen {
       selected: this.homeView,
       large: true,
       sectionWidth: this.panelWidth(),
+      trailingGap: false,
       onChoose: (value: string) => {
         this.homeView = value;
         saveAppearance('homeView', value);
@@ -359,6 +360,7 @@ export struct SettingsScreen {
     }
     .width(tv(this.panelWidth()))
     .padding({ top: tv(SETTING_CARD_TOP) })
+    .margin({ bottom: tv(30.23) }) // web: the 30.2 px gap lies between the setting boxes, outside their rules
     .border({ width: { top: 1 }, color: toResourceColorWithAlpha(activeColors().ink, 0.083) }) // web: the setting's own box, a 1 px rule on its top edge
     Column() {
     ChoiceSegments({
@@ -368,6 +370,7 @@ export struct SettingsScreen {
       selected: this.artworkSize,
       large: true,
       sectionWidth: this.panelWidth(),
+      trailingGap: false,
       onChoose: (value: string) => {
         this.artworkSize = value;
         saveAppearance('artworkSize', value);
@@ -376,6 +379,7 @@ export struct SettingsScreen {
     }
     .width(tv(this.panelWidth()))
     .padding({ top: tv(SETTING_CARD_TOP) })
+    .margin({ bottom: tv(30.23) }) // web: the 30.2 px gap lies between the setting boxes, outside their rules
     .border({ width: { top: 1 }, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
   }
 
@@ -691,6 +695,7 @@ export struct SettingsScreen {
       PageShell({
         railFrostWidthPct: 65,
         railFrostFullBox: false, // web: the detail panel is its own 65% wide box
+        stageWash: isTvMetrics(), // web: the page's `.tv-stage-wash` is a full-page box under the panel
         title: t('settings.index.title', 'Preferences'),
         backLabel: 'Settings',
         backRole: 'button',

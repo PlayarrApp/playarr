@@ -129,23 +129,6 @@ def detail(s):
   return value;
 }"""
     s = s.replace(len_before, len_after, 1)
-    # The Previewer reports the page Scroll's Area once, at 0 x 0, and never again, so the page rectangle never becomes measurable
-    # there: use the Scroll's declared position and size (the same constants its position/width/height use).
-    page_before = """    const rect = detailFocusRectForArea(area);
-    if (rect === null) {
-      this.measuredSeriesAreaRects.set(pageId, null);
-      return;
-    }
-    this.measuredSeriesAreaRects.set(pageId, rect);
-    this.tryInitialEpisodeFocus(null, null, workId, generation);"""
-    page_after = """    const measured = detailFocusRectForArea(area);
-    const rect: EpisodeFocusRect = measured !== null ? measured : {
-      left: tv(RIGHT_COLUMN_X), top: tv(SERIES_COLUMN_TOP), width: tv(RIGHT_COLUMN_WIDTH), height: tv(SERIES_COLUMN_HEIGHT),
-    };
-    this.measuredSeriesAreaRects.set(pageId, rect);
-    this.tryInitialEpisodeFocus(null, null, workId, generation);"""
-    assert s.count(page_before) <= 1
-    s = s.replace(page_before, page_after, 1)
     api_await = "    const detailResult = await getWorkDetail(workId);"
     assert s.count(api_await) == 1
     s = s.replace(api_await, """    const detailResult = await getWorkDetail(workId);

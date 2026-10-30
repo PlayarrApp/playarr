@@ -70,6 +70,14 @@ class LayoutExportTest(unittest.TestCase):
         doc = export(column([field]), "x", "dark", (360, 780, 3))
         self.assertEqual([(e["role"], e["text"]) for e in doc["elements"] if e["role"] != "container"], [("textbox", "Search"), ("text", "the")])
 
+    def test_a_text_with_only_a_top_border_is_a_painted_box(self):
+        edge = {"left": "0.00vp", "top": "1.00vp", "right": "0.00vp", "bottom": "0.00vp"}
+        tree = column([text("[30.00, 300.00],[970.00, 72.00]", "Hello", [run(0, 5, 0.0, 3.0, 300.0, 69.0)], borderWidth=edge, borderColor="#15F4F0F1")])
+        doc = export(tree, "x", "dark", (360, 780, 3))
+        boxes = [e for e in doc["elements"] if e["role"] == "container" and e["rect"]["w"] < 360]
+        self.assertEqual(len(boxes), 1)
+        self.assertEqual(boxes[0]["rect"], {"x": 10.0, "y": 100.0, "w": 323.33, "h": 24.0})
+
     def test_a_text_without_glyph_runs_fails_the_export(self):
         tree = column([text("[0.00, 0.00],[200.00, 48.00]", "unmeasured", None)], rect="[0.00, 0.00],[1920.00, 1080.00]")
         with self.assertRaises(ExportError):
