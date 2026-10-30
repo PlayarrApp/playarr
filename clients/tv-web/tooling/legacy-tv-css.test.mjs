@@ -137,8 +137,8 @@ test("chromium85 rounds a fractional unitless line-height to the nearest pixel o
   assert.match(css, /\.a \{ line-height: 1\.58; -webkit-line-clamp: 5; \}\s*@supports not \(aspect-ratio: 1\) \{\s*\.a \{\s*line-height: calc\(1\.58em \+ 0\.5px\)/);
   assert.match(css, /@supports not \(aspect-ratio: 1\) \{\s*\.b \{\s*line-height: calc\(1\.5em \+ 0\.5px\)/);
   assert.doesNotMatch(css, /\.c \{[^}]*calc/);
-  assert.doesNotMatch(addLegacyTvCssFallbacks(".d { line-height: 1.45; }", undefined, { chromium85: true }), /calc/); // no clamp and not the detail title: children inherit the length
-  assert.match(addLegacyTvCssFallbacks(".tv-detail > .tv-detail-copy .tv-detail-title { font-size: 69px; line-height: 0.9; }", undefined, { chromium85: true }), /\.tv-detail-title \{\s*line-height: calc\(0\.9em \+ 0\.5px\)/);
+  assert.doesNotMatch(addLegacyTvCssFallbacks(".d { line-height: 1.45; }", undefined, { chromium85: true }), /calc/); // no clamp and no own font size: children inherit the length
+  assert.match(addLegacyTvCssFallbacks(".t { font-size: 69px; line-height: 0.9; }", undefined, { chromium85: true }), /\.t \{\s*line-height: calc\(0\.9em \+ 0\.5px\)/);
   assert.doesNotMatch(css, /@keyframes k[^}]*calc/);
   const plain = addLegacyTvCssFallbacks(".a { line-height: 1.58; -webkit-line-clamp: 5; }");
   assert.doesNotMatch(plain, /calc\(1\.58em/);
