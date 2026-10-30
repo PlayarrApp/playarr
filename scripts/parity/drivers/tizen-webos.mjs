@@ -183,15 +183,15 @@ export async function createDriver() {
     }
   }
   // Player chrome for the refs (web driver playerControls): the clip paused on its 2 s frame, controls revealed, focus dropped.
-  // Chromium 94 presents the frame before an exact 2.000 s seek target (burned-in 1.933), so the pin aims one frame later (2.02 s) to show the 2.000 s frame.
+  // Chromium 94 presents the frame before an exact 2.000 s seek target (burned-in 1.933), so the pin aims 2.03 s, which presents the 2.000 s frame (2.02 s still shows frame 29, measured).
   async function pinPlayerFrame() {
     const pin = (t) => ev(`(async () => {
       const v = document.querySelector("video");
       v.pause();
-      if (Math.abs(v.currentTime - ${t}) > 0.01) await new Promise((res) => { v.addEventListener("seeked", res, { once: true }); v.currentTime = ${t}; setTimeout(res, 8000); });
+      if (Math.abs(v.currentTime - ${t}) > 0.0005) await new Promise((res) => { v.addEventListener("seeked", res, { once: true }); v.currentTime = ${t}; setTimeout(res, 8000); });
       v.pause();
       if (v.requestVideoFrameCallback) await new Promise((res) => { v.requestVideoFrameCallback(() => res()); setTimeout(res, 3000); });
-      return v.paused && Math.abs(v.currentTime - ${t}) < 0.05;
+      return v.paused && Math.abs(v.currentTime - ${t}) < 0.001;
     })()`);
     if (device === "tizen") {
       // Tizen plays through AVPlay, a native plane. Method of docs/parity/DEVICES.md: hold the clip paused at exactly 2000 ms (seek while
@@ -224,8 +224,15 @@ export async function createDriver() {
     }
     // A late play() or a timer can resume playback: hold the frame until it stays paused for two checks 0.7 s apart.
     let held = device === "tizen" ? 2 : 0;
-    for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2.02)) ? held + 1 : 0; await sleep(700); }
+    for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2.03)) ? held + 1 : 0; await sleep(700); }
     if (held < 2) throw new Error("player did not hold a paused frame at 2 s");
+    if (device !== "tizen") {
+      // The seek bar fill follows the last position tick the app received, which can lag the paused position by a few frames. Hand the app the position the
+      // video really holds (a timeupdate, as the Tizen path does with the AVPlay position) and refuse the capture until the fill shows that position.
+      const synced = `(() => { const v = document.querySelector("video"), f = document.querySelector(".player-seek-progress"); return !!v && !!f && Math.abs(parseFloat(f.style.width) - 100 * v.currentTime / v.duration) < 0.15; })()`;
+      for (let i = 0; i < 10 && !(await ev(synced)); i += 1) { await ev(`(document.querySelector("video").dispatchEvent(new Event("timeupdate")), true)`); await sleep(400); }
+      if (!(await ev(synced))) throw new Error("the seek bar fill does not show the paused position");
+    }
     await sleep(600); // the player moves focus to play/pause on a timer: let it, then drop it
     await ev(`(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)`);
   }
@@ -433,9 +440,10 @@ export async function createDriver() {
     // The layout schema document (docs/parity/LAYOUT.md): the same DOM dump as the web refs, run in the app page through the inspector or netlog channel.
     async layoutDump({ screen, theme }) {
       await guard();
-      const doc = await ev(layoutExpression(screen));
+      // The emulator composites the AVPlay plane above the browser (DEVICES.md): the app syncs the object's rect to the player shell, so what lies inside it is not visible.
+      const doc = await ev(layoutExpression(screen, device === "tizen" && !TIZEN_REAL ? { opaquePlanes: ['object[type="application/avplayer"]'] } : {}));
       if (!doc?.elements) throw new Error("layout dump returned no elements");
-      return { screen, theme, viewport: doc.viewport, clockPinned: !!(pin || tizenPinScript), elements: doc.elements };
+      return { screen, theme, viewport: doc.viewport, clockPinned: !!(pin || tizenPinScript), elements: doc.elements, occluded: doc.occluded };
     },
     // The deployed package carries parity-build.json (written by the deploy scripts: repository HEAD, build time, SHA-256 of the entry bundle). The loaded
     // bundle is hashed again here, so the identity is only returned when the running page really is that build.
@@ -648,6 +656,7 @@ export async function createDriver() {
       if (device === "tizen" && Number(await ev("innerHeight")) < 1070 && (await ev(`location.hash === "#/search"`))) {
         xkey("back");
         for (let i = 0; i < 20 && Number(await ev("innerHeight")) < 1070; i += 1) await sleep(500);
+        if (Number(await ev("innerHeight")) < 1070) throw new Error("the Samsung keyboard did not close before capture");
         await sleep(1500);
       }
       if (await ev(`/^#\\/player\\//.test(location.hash)`)) await pinPlayerFrame();

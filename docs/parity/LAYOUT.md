@@ -41,7 +41,7 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
   subtree that paints (an image/video/canvas/svg, or a background of alpha 0.5 or more, a background image, or a backdrop filter,
   looking up to the common ancestor). Transparent click layers and `pointer-events: none` elements never occlude. A partly covered
   element stays. The document counts what it dropped as `occluded`; `layout-score.mjs` prints it, so a drawer screen shows a
-  non-zero count and a screen without an overlay shows 0.
+  non-zero count and a screen without an overlay shows 0. A native video plane that the platform composites above the browser (the Samsung emulator's AVPlay `<object>`, whose rect the app syncs to the player shell) is passed to the dumper as `opaquePlanes`: points inside its rect count as covered. Device documents carry `occluded` too.
 - Text colour: the exporter reads `-webkit-text-fill-color` (which defaults to `color`). Fully transparent text (loading skeleton
   lines use `color: transparent` over a painted bar) is not text: the element exports as a container with its background and no
   text, font or colour. Text clipped to a gradient (`background-clip: text`) reports the gradient's first stop colour and
@@ -83,6 +83,9 @@ their web positions and are scored as before, so an exclusion can never excuse a
 styling differences or bugs; a missing element that web draws and the product supports is a failure.
 
 ## Volatile content
+
+A volatile selector flags the matched element and each descendant `volatile`; none is merged into another, so every drawn text run and icon (the time code and its separator, the quality badge and label, the audio icon) keeps its own box and style.
+Text cut by `text-overflow: ellipsis` cannot be read from the DOM (the engine draws the "…"): the dumper refuses such an element with an error and never reconstructs the cut, so the app must render a truncated string as real text that ends in "…" (as Harmony's FitLine does). The same refusal covers volatile elements, vertical `-webkit-line-clamp` and the value of an input or textarea (drawn by the engine, no glyph bounds). The one exception is a volatile input (the calendar subscription URL): its control row (box, role, accessible name) is exported and its value text is not measured, so the row carries either the real value read from the element or its accessible name, never a reconstructed or substituted string, and no glyph-run row, colour or font size is invented for it; the scorer skips the text of volatile elements. A control's accessible name is computed from rendered content: aria-hidden, `display: none` and `visibility: hidden` descendants (decorative glyphs) are not part of the name and stay separate text rows.
 
 `scripts/parity/layout-volatile.json` (keyed by screen, `*` = all): elements whose text is expected to differ while box and style
 must still match: header clock and date, the nav-rail app version ("v 0.1.0"; native builds carry their own), calendar-link URL and QR, the settings-server address, the player time code; the player audio button (web Chromium shows "Audio: Unavailable" because it lacks `audioTracks` support, a native app shows the clip's real track); the player quality button (which stream the player picks is playback behaviour, out of scope: only its box, style, role and name presence are scored); the player buffered bar (`omit`: left out of the refs, its length follows download timing). An entry with `opacityVolatile` (the player audio button: web direct-play never loads tracks, so web shows it dimmed) is exported with

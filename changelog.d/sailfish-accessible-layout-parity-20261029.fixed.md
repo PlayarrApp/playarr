@@ -1,0 +1,1 @@
+- Sailfish OS: controls and headings carry real `Accessible.name` and `Accessible.role` values that the layout export reads; profiles, calendar, calendar link, filters, settings, player and film detail match the web layout; the page background layers nest as in the web.

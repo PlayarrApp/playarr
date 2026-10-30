@@ -107,8 +107,7 @@ struct SettingsView: View {
                 else { wideLayout(proxy: proxy) }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
-            // What the page paints: the page colour, or (phone sub-pages) the gradient that ends on the shell colour.
-            .parityFill(!phone || selected == nil ? WM.page : WM.shell)
+            .modifier(SettingsPagePaint(subpage: phone && selected != nil))
         }
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
@@ -210,32 +209,32 @@ struct SettingsView: View {
         let vScale = proxy.size.height / 1024
         let current = selected ?? .appearance
         return ZStack(alignment: .topLeading) {
-            PlayarrBackButton(action: goHome).offset(x: 122 * scale, y: 55 * scale)
-            WMText("Preferences", max(19.2, 24 * scale), 520, lh: 36, ls: -1).offset(x: 182 * scale, y: 57 * scale)
-            WMText(current.title.uppercased(), 7.2, 700, color: WM.muted, lh: 11, ls: 1).offset(x: 182 * scale, y: 111 * scale)
+            PlayarrBackButton(label: "Settings", role: "button", action: goHome).offset(x: 120.84 * scale, y: 53.23 * scale)
+            WMText("Preferences", 23.91 * scale, 580, lh: 32, ls: -1, role: "heading").offset(x: 181.23 * scale, y: 59.23 * scale)
+            WMText(current.title.uppercased(), 9.92 * scale, 680, color: WM.ink, lh: 14, ls: 1).offset(x: 181.23 * scale, y: 110.22 * scale)
             ScrollView {
                 VStack(spacing: 0) {
                     // The web hides Request latency from non-admins; the numbering keeps its gap.
                     ForEach(Section.allCases.filter { $0 != .requestLatency }) { section in
                         Button { selected = section } label: {
                             ZStack(alignment: .topLeading) {
-                                if section == current {
-                                    RoundedRectangle(cornerRadius: 6, style: .continuous).fill(PlayarrStyle.ink.opacity(0.07))
-                                }
-                                WMText(section.number, 10, 760, color: WM.muted, lh: 13.44).offset(x: 13, y: 22)
-                                WMText(section.title, 21, 400, lh: 26, ls: -0.5).offset(x: 67, y: 31)
-                                WMText("\u{2192}", 20.8, 400, color: section == current ? WM.ink : WM.muted, lh: 26).offset(x: 261, y: 31)
+                                WMText(section.number, 9.92, 760, lh: 14).offset(x: 27.32, y: 26.04)
+                                WMText(section.title, 21.86, 480, lh: 30, ls: -0.5).offset(x: 81.16, y: 28.61)
+                                WMText("\u{2192}", 20.8, 400, lh: 28).offset(x: 266.14, y: 29.41)
                             }
-                            .frame(width: 295, height: 88, alignment: .topLeading)
+                            .frame(width: 309.25, height: 88, alignment: .topLeading)
+                            .parityShape("link", name: "\(section.number) \(section.title) \u{2192}", color: section == current ? WM.artFill : nil, in: Rectangle())
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("\(section.number) \(section.title) \u{2192}")
+                        .accessibilityAddTraits(.isLink)
                     }
                 }
             }
             .scrollIndicators(.hidden)
-            .frame(width: 295, height: proxy.size.height - 153 * vScale)
-            .offset(x: 135 * scale, y: 153 * vScale)
+            .frame(width: 309.25, height: proxy.size.height - 153.59 * vScale)
+            .offset(x: 120.84 * scale, y: 153.59 * vScale)
             ScrollView {
                 if current == .appearance {
                     tabletAppearance
@@ -1047,5 +1046,20 @@ private struct WMQualityCell<Content: View>: View {
         .frame(width: width, height: height, alignment: .topLeading)
         .overlay(shape.stroke(selected && !bar ? WM.pink : WM.line.opacity(scheme == .dark ? 0.2 : 0.14), lineWidth: 1))
         .contentShape(Rectangle())
+    }
+}
+
+/// What the settings page paints: the flat page colour, or on phone sub-pages a surface-to-shell wash with a pink glow (see `settingsBackground`).
+private struct SettingsPagePaint: ViewModifier {
+    let subpage: Bool
+
+    func body(content: Content) -> some View {
+        if subpage {
+            content
+                .parityRadial([PlayarrStyle.pink.opacity(0.12), .clear], center: UnitPoint(x: 0.2, y: 0.4), endRadius: 420)
+                .parityGradient([.init(color: PlayarrStyle.surface, location: 0), .init(color: PlayarrStyle.background, location: 1)], from: .topLeading, to: .bottomTrailing)
+        } else {
+            content.parityFill(WM.page)
+        }
     }
 }

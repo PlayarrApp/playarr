@@ -89,7 +89,6 @@ struct LibraryView: View {
         #if DEBUG
         .parityScreenLoad(parityLoadState)
         #endif
-        .parityCovered(showingFilters || actionsWork != nil)
         .overlay {
             // Phones: a full-page panel; iPad: the web tablet's 360 pt drawer on the right.
             HStack(spacing: 0) {
@@ -97,6 +96,7 @@ struct LibraryView: View {
                 if showingFilters {
                     WMLibraryFiltersPanel(viewModel: viewModel) { showingFilters = false; Task { await viewModel.load() } }
                         .frame(maxWidth: isPhoneIdiom ? .infinity : 360)
+                        .parityCoverLayer()
                 } else if let work = actionsWork {
                     WMTitleActionsPanel(
                         work: work, apiClient: apiClient,
@@ -105,6 +105,7 @@ struct LibraryView: View {
                         onClose: { actionsWork = nil }
                     )
                     .frame(maxWidth: isPhoneIdiom ? .infinity : 360)
+                    .parityCoverLayer()
                 }
             }
         }
@@ -156,8 +157,9 @@ struct LibraryView: View {
                     HStack(spacing: 12) {
                         WMIconView(icon: .search, color: WM.muted, size: 16)
                         TextField("", text: $viewModel.searchText, prompt: Text("Search").foregroundColor(WM.muted))
-                            .wm(16, color: WM.ink)
+                            .font(WM.font(16, 400))
                             .foregroundStyle(WM.ink)
+                            .accessibilityAddTraits(.isSearchField)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .submitLabel(.search)
@@ -366,6 +368,7 @@ struct LibraryView: View {
                     ZStack {
                         if letter == activeLetter { Circle().fill(WM.ink.opacity(0.78)).frame(width: 20, height: 20) }
                         Text(letter).wm(8.8, 700, color: letter == activeLetter ? PlayarrStyle.background : WM.muted, text: letter).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
+                            .parityFill(WM.ink.opacity(0.78), when: letter == activeLetter) // the circle behind the active letter
                     }
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
@@ -622,6 +625,8 @@ struct LibraryView: View {
                             }
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Open \(work.title)")
+                        .accessibilityAddTraits(.isLink)
                         .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
                         .task {
                             if work.id == viewModel.works.last?.id { await viewModel.loadMore() }
@@ -655,32 +660,7 @@ struct LibraryView: View {
                 }
             }
             .frame(width: panelWidth, height: proxy.size.height)
-            // The rail panel's base fill (the gradient ends on it), for the letters drawn over it.
-            .parityFill(phone ? PlayarrStyle.surface.opacity(0.96) : (scheme == .dark ? PlayarrStyle.surface : Color(red: 239.64 / 255, green: 238.2 / 255, blue: 238.68 / 255)))
-            .background {
-                if phone {
-                    PlayarrStyle.surface.opacity(0.96)
-                } else if scheme == .dark {
-                    LinearGradient(
-                        colors: [.clear, PlayarrStyle.surface.opacity(0.92), PlayarrStyle.surface],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                } else {
-                    let railFrost = Color(red: 239.64 / 255, green: 238.2 / 255, blue: 238.68 / 255)
-                    LinearGradient(
-                        stops: [
-                            .init(color: .clear, location: 0),
-                            .init(color: railFrost.opacity(0.68), location: 0.12),
-                            .init(color: railFrost.opacity(0.88), location: 0.34),
-                            .init(color: railFrost.opacity(0.96), location: 0.62),
-                            .init(color: railFrost, location: 1)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                }
-            }
+            .modifier(RailPaint(phone: phone, scheme: scheme))
             .offset(x: phone ? 0 : proxy.size.width * 0.35)
             .onDisappear {
                 alphabetJumpTask?.cancel()
@@ -694,9 +674,9 @@ struct LibraryView: View {
     private func previewCopy(_ work: Work, viewportWidth: CGFloat) -> some View {
         let year = WorkDetailView.tabletYearRangeLabel(releaseDate: work.releaseDate, endDate: work.endDate)
         let genres = work.genres.prefix(2).joined(separator: " · ")
-        let meta = [year, genres.isEmpty ? nil : genres].compactMap { $0 }.joined(separator: "   ")
+        let metaItems = [year, genres.isEmpty ? nil : genres].compactMap { $0 }
         return VStack(alignment: .leading, spacing: 0) {
-            WMText((work.genres.first ?? work.kind.displayName).uppercased(), 8.6, 800, color: PlayarrStyle.pink, lh: 13, ls: 1.1)
+            WMText((work.genres.first ?? work.kind.displayName).uppercased(), 9.28, 860, color: WM.previewKicker, lh: 12, ls: 1.1)
                 .padding(.bottom, 20)
             let isPad = UIDevice.current.userInterfaceIdiom == .pad
             let titleSize: CGFloat = isPad ? min(max(35.2, viewportWidth * 0.036), 80) : 42
@@ -725,6 +705,7 @@ struct LibraryView: View {
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(work.title)
+                .accessibilityAddTraits(.isHeader)
             } else {
                 Text(work.title)
                     .font(WM.font(titleSize, titleWeight))
@@ -737,9 +718,12 @@ struct LibraryView: View {
                     .frame(maxWidth: isPad ? nil : 215, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: isPad)
                     .padding(.bottom, pitchCorrection)
+                    .accessibilityAddTraits(.isHeader)
             }
-            WMText(meta, 10, 600, color: PlayarrStyle.inkSoft, lh: 15)
-                .padding(.top, 26)
+            HStack(spacing: 12.8) {
+                ForEach(metaItems, id: \.self) { WMText($0, 9.92, 600, color: WM.previewInk, lh: 14) }
+            }
+            .padding(.top, 26)
             if let overview = work.overview {
                 let overviewSize: CGFloat = isPad ? min(max(16 * 0.64, viewportWidth * 0.0072), 16 * 0.92) : 11.5
                 let overviewFont = isPad
@@ -757,9 +741,9 @@ struct LibraryView: View {
                 let overviewLineHeight = overviewFont?.lineHeight ?? overviewSize * 1.36
                 Text(overview)
                     .font(isPad ? WM.font(overviewSize, 600) : WM.font(11.5, 500))
-                    .foregroundStyle(isPad ? WM.detailMuted : PlayarrStyle.inkSoft)
+                    .foregroundStyle(isPad ? WM.previewInk : PlayarrStyle.inkSoft)
                     .lineSpacing(isPad ? max(0, overviewSize * 1.58 - overviewLineHeight) : 2.5)
-                    .parityRenderedText(overview, role: "text", size: isPad ? overviewSize : 11.5, weight: isPad ? 600 : 500, color: isPad ? WM.detailMuted : PlayarrStyle.inkSoft)
+                    .parityRenderedText(overview, role: "text", size: isPad ? overviewSize : 11.5, weight: isPad ? 600 : 500, color: isPad ? WM.previewInk : PlayarrStyle.inkSoft)
                     .lineLimit(5)
                     .frame(maxWidth: isPad ? overviewWidth : nil, alignment: .leading)
                     .padding(.top, 20)
@@ -772,14 +756,14 @@ struct LibraryView: View {
     private func tabletHeader(proxy: GeometryProxy) -> some View {
         let scale = proxy.size.width / 1366
         return ZStack(alignment: .topLeading) {
-            PlayarrBackButton(action: goHome).offset(x: 122 * scale, y: 55 * scale)
+            PlayarrBackButton(action: goHome).offset(x: 120.84 * scale, y: 53.23 * scale)
             WMTitleWithDetail(
                 detail: viewModel.total.map { "\($0.formatted(.number.grouping(.automatic))) \(viewModel.selectedKind == .artist ? "artists" : "titles")" },
-                maxWidth: max(0, (proxy.size.width > 1100 ? proxy.size.width * 0.24 : proxy.size.width * 0.6) - 182 * scale - 4), size: 9.92, gap: 15
+                maxWidth: max(0, (proxy.size.width > 1100 ? proxy.size.width * 0.24 : proxy.size.width * 0.6) - 181.23 * scale - 4), size: 9.92, gap: 15
             ) {
-                WMText(title, max(19.2, 24 * scale), 520, lh: 36, ls: -1)
+                WMText(title, 23.91 * scale, 580, lh: 32, ls: -1, role: "heading")
             }
-            .offset(x: 182 * scale, y: 57 * scale)
+            .offset(x: 181.23 * scale, y: 59.23 * scale)
             HStack {
                 Spacer()
                 PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3") { showingFilters = true }
@@ -965,5 +949,35 @@ private struct LibraryWorkFrameKey: PreferenceKey {
     let apiClient = PreviewAPIClient()
     NavigationStack {
         LibraryView(kind: .movie, apiClient: apiClient, downloadRepository: DownloadRepository(apiClient: apiClient))
+    }
+}
+
+/// The alphabet rail's backing: opaque on a phone, a fade into the page on iPad. One stop list draws it and is recorded for the export.
+private struct RailPaint: ViewModifier {
+    let phone: Bool
+    let scheme: ColorScheme
+
+    private var stops: [Gradient.Stop] {
+        if scheme == .dark {
+            return [.init(color: .clear, location: 0), .init(color: PlayarrStyle.surface.opacity(0.92), location: 0.5), .init(color: PlayarrStyle.surface, location: 1)]
+        }
+        let frost = Color(red: 239.64 / 255, green: 238.2 / 255, blue: 238.68 / 255)
+        return [
+            .init(color: .clear, location: 0),
+            .init(color: frost.opacity(0.68), location: 0.12),
+            .init(color: frost.opacity(0.88), location: 0.34),
+            .init(color: frost.opacity(0.96), location: 0.62),
+            .init(color: frost, location: 1),
+        ]
+    }
+
+    func body(content: Content) -> some View {
+        if phone {
+            content.background(PlayarrStyle.surface.opacity(0.96))
+        } else {
+            content
+                .background(LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing))
+                .parityGradient(stops, from: .leading, to: .trailing)
+        }
     }
 }

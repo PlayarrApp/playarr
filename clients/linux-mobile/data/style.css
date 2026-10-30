@@ -276,6 +276,7 @@ dropdown.pa-filter arrow, dropdown.pa-filter image { -gtk-icon-size: 8px; min-wi
 
 /* Detail hero fades, as the web phone's .tv-key-art::after and .tv-stage-wash */
 .pa-khero-edge { background: linear-gradient(90deg, alpha(@pa_bg, 0) 72%, @pa_bg 100%); }
+.pa-page-fill { background: linear-gradient(to bottom, alpha(@pa_bg, 0) 485px, @pa_bg 485px); }
 .pa-khero-cover { background: @pa_bg; opacity: 0; }
 .pa-khero-root.scrolled .pa-khero-cover { opacity: 1; }
 .pa-khero-wash { background: linear-gradient(0deg, @pa_bg 34%, alpha(@pa_bg, 0) 68%); }
@@ -288,7 +289,6 @@ dropdown.pa-filter arrow, dropdown.pa-filter image { -gtk-icon-size: 8px; min-wi
 .pa-profile-actions button.pa-pill { min-height: 42px; } .pa-profile-actions button.pa-pill.round { min-width: 42px; }
 .pa-cal-controls .pa-pill { min-height: 42px; }
 .pa-cal-controls .pa-pill { padding: 0 20px; }
-.pa-cal-controls button.pa-pill { padding: 0 20.1px; }
 .pa-cal-controls .pa-pill.round { padding: 0; }
 .pa-cal-controls .pa-pill.round { min-width: 42px; }
 .pa-edge-fade-v { background: linear-gradient(180deg, alpha(@pa_bg, 0) 0%, alpha(@pa_bg, 0.11) 25%, alpha(@pa_bg, 0.35) 50%, alpha(@pa_bg, 0.59) 75%, alpha(@pa_bg, 0.7) 100%); }
@@ -342,7 +342,6 @@ button.pa-pill.small.pa-clients-link { padding: 0 16px; }
 .pa-seg-tile.wide { letter-spacing: 0.15px; }
 .pa-pref-arrow { margin-bottom: 1px; margin-top: 1px; line-height: 1.04; }
 button.pa-entry:not(.week).nosub { padding-bottom: 3.5px; }
-.pa-cal-controls .pa-pill-label { margin-left: 1px; }
 button.pa-entry:not(.week).nosub .pa-entry-metarow { margin-top: 2px; }
 button.pa-entry:not(.week).nosub .pa-entry-title { margin-top: 1px; }
 button.pa-pill.small.pa-clients-link { padding: 0 15px 0 17px; }
@@ -355,8 +354,6 @@ button.pa-entry:not(.week).nosub { padding-bottom: 6.8px; }
 /* The web status pill is its tone at 14% over the page surface (opaque), with a 60% border */
 .pa-chip-status.soon { background: mix(@pa_brand, @pa_surface, 0.86); border-color: alpha(@pa_brand, 0.6); }
 .pa-chip-status.gone { background: mix(@pa_missing, @pa_surface, 0.86); border-color: alpha(@pa_missing, 0.6); }
-/* Agenda range button: the web text starts 1.4 px right of the pill's padding (whole-pixel padding, the right side gives it back) */
-.pa-cal-controls box.pa-pill { padding: 0 19px 0 21px; }
 
 .pa-body { background: @pa_body; }
 
@@ -384,3 +381,4 @@ dropdown.pa-dropdown.pa-filter > button { min-height: 42px; border-radius: 10px;
 .pa-body.playing, .pa-body.playing .pa-app { background: #000000; }
 button.pa-mline { padding: 0 6px; font-weight: 400; border-radius: 4px; min-height: 32px; }
 button.pa-entry.week { padding-top: 10px; padding-bottom: 8px; }
+.pa-seg-tile:checked { transform: scale(1.025); }

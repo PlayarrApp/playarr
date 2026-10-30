@@ -13,8 +13,7 @@ MouseArea {
     property string glyph
     property alias text: label.text
     property bool primary: false
-    property string a11yName: glyph + " " + label.text
-    property real focusRadius: 14 * Tokens.u
+    Accessible.role: Accessible.Button; Accessible.name: label.text
     width: parent ? parent.width - 40 * Tokens.u : 0
     x: 20 * Tokens.u
     height: 68 * Tokens.u
@@ -31,6 +30,6 @@ MouseArea {
     }
     // The web icon slot: the glyph starts 18 css px in, at 19.52 px, in a system font (Nunito has none of these symbols).
     PLabel { renderType: Text.NativeRendering; id: g; x: 18 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; text: root.glyph === "+" ? "\uFF0B" : root.glyph; color: Tokens.brandPink; font.family: root.glyph === "\u25CB" ? Tokens.family400 + ",Liberation Sans" : Tokens.family400; font.pixelSize: Tokens.fs(19.52) }
-    PLabel { renderType: Text.NativeRendering; id: label; anchors { left: parent.left; leftMargin: 60 * Tokens.u; right: parent.right; verticalCenter: parent.verticalCenter }
+    FitText { id: label; anchors { left: parent.left; leftMargin: 60 * Tokens.u; right: parent.right; verticalCenter: parent.verticalCenter }
             elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.fam(700); font.letterSpacing: -0.3; font.pixelSize: Tokens.fs(16) }
 }

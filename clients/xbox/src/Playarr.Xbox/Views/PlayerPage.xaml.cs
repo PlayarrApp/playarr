@@ -54,20 +54,39 @@ namespace Playarr.Xbox.Views
         public PlayerPage()
         {
             InitializeComponent();
+            // Roles the layout export reports (the web's names for these parts): the video, the slider, and each control's drawn icon.
+            foreach (var control in new[] { CloseButton, PrevButton, PlayPauseButton, NextButton, MuteButton, AudioButton, SubtitlesButton, QueueButton, InfoButton, DeviceButton, FullscreenButton })
+            {
+                if (control.Content is Grid icon)
+                {
+                }
+            }
+
             _chromeTicker.Tick += (s, e) => UpdateChrome();
             _chromeHide.Tick += (s, e) => HideChrome();
-            // Any key or pointer movement reveals the controls (web: arrows reveal while hidden).
-            AddHandler(KeyDownEvent, new Windows.UI.Xaml.Input.KeyEventHandler((s, e) => ShowChrome()), true);
+            // Any key except Back (which the app handles first) or pointer movement keeps the controls up.
+            AddHandler(KeyDownEvent, new Windows.UI.Xaml.Input.KeyEventHandler((s, e) =>
+            {
+                if (e.Key != Windows.System.VirtualKey.Escape && e.Key != Windows.System.VirtualKey.GoBack && e.Key != Windows.System.VirtualKey.GamepadB)
+                {
+                    ShowChrome();
+                }
+            }), true);
+            PreviewKeyDown += Page_PreviewKeyDown;
             PointerMoved += (s, e) => ShowChrome();
         }
 
+        // Whether the controls are up (set the moment they are asked to show or hide, ahead of the 240 ms slide).
+        private bool _chromeShown = true;
+
         private void ShowChrome()
         {
-            if (ChromePanel.Visibility != Visibility.Visible)
+            if (!_chromeShown)
             {
+                _chromeShown = true;
                 ChromePanel.Visibility = Visibility.Visible;
+                ChromePanel.UpdateLayout(); // focus needs the controls laid out
                 AnimateScrim(Scrim.Height, 0, null);
-                PlayPauseButton.Focus(FocusState.Programmatic);
             }
 
             _chromeHide.Stop();
@@ -77,17 +96,197 @@ namespace Playarr.Xbox.Views
         // Parity capture holds the controls open so the delayed screenshot still shows them (web captures the paused, controlled frame).
         private bool _chromePinnedForTest;
 
-        private void HideChrome()
+        private void HideChrome(bool force = false)
         {
             _chromeHide.Stop();
-            if (_chromePinnedForTest)
+            if (_chromePinnedForTest && !force)
             {
                 return;
             }
 
-            if (_openPanel == null && ChromePanel.Visibility == Visibility.Visible)
+            if (_openPanel == null && _chromeShown)
             {
-                AnimateScrim(0, Scrim.Height, () => ChromePanel.Visibility = Visibility.Collapsed);
+                _chromeShown = false;
+                // Focus returns to the video surface as the controls leave (web: the video takes focus when the controls hide).
+                if (Windows.UI.Xaml.Input.FocusManager.GetFocusedElement() is DependencyObject focused && IsInChrome(focused))
+                {
+                    VideoSurface.Focus(FocusState.Programmatic);
+                }
+
+                AnimateScrim(0, Scrim.Height, () => { if (!_chromeShown) ChromePanel.Visibility = Visibility.Collapsed; });
+            }
+        }
+
+        // A click on the video only reveals the controls (web: a hidden player ignores the first press).
+        private void MuteButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel != null)
+            {
+                _viewModel.Player.IsMuted = !_viewModel.Player.IsMuted;
+                MuteIcon.Glyph = _viewModel.Player.IsMuted ? "\uE74F" : "\uE767";
+                AutomationProperties.SetName(MuteButton, _viewModel.Player.IsMuted ? "Unmute" : "Mute");
+            }
+        }
+
+        private void VolumeSlider_ValueChanged(object sender, Windows.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+        {
+            if (_viewModel != null)
+            {
+                _viewModel.Player.Volume = e.NewValue / 100;
+            }
+        }
+
+        private void FullscreenButton_Click(object sender, RoutedEventArgs e)
+        {
+            var view = Windows.UI.ViewManagement.ApplicationView.GetForCurrentView();
+            if (view.IsFullScreenMode)
+            {
+                view.ExitFullScreenMode();
+            }
+            else
+            {
+                view.TryEnterFullScreenMode();
+            }
+
+            AutomationProperties.SetName(FullscreenButton, view.IsFullScreenMode ? "Exit fullscreen" : "Enter fullscreen");
+        }
+
+        private void VideoSurface_Click(object sender, RoutedEventArgs e) => ShowChrome();
+
+        private bool IsInChrome(DependencyObject node)
+        {
+            for (var n = node; n != null; n = Windows.UI.Xaml.Media.VisualTreeHelper.GetParent(n))
+            {
+                if (ReferenceEquals(n, ChromePanel))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Control row in D-pad order (audio tracks are chosen in the audio and subtitles panel, so the audio icon is no stop): disabled controls are skipped, as on web (where the mute and fullscreen buttons are not D-pad stops on a TV).
+        private Button[] Row() => new[] { PrevButton, PlayPauseButton, NextButton, SubtitlesButton, QueueButton, QualityButton, InfoButton, DeviceButton }
+            .Where(b => b.IsEnabled && b.Visibility == Visibility.Visible).ToArray();
+
+        private static char DirectionOf(Windows.System.VirtualKey key) => key switch
+        {
+            Windows.System.VirtualKey.Left or Windows.System.VirtualKey.GamepadDPadLeft or Windows.System.VirtualKey.GamepadLeftThumbstickLeft => 'L',
+            Windows.System.VirtualKey.Right or Windows.System.VirtualKey.GamepadDPadRight or Windows.System.VirtualKey.GamepadLeftThumbstickRight => 'R',
+            Windows.System.VirtualKey.Up or Windows.System.VirtualKey.GamepadDPadUp or Windows.System.VirtualKey.GamepadLeftThumbstickUp => 'U',
+            Windows.System.VirtualKey.Down or Windows.System.VirtualKey.GamepadDPadDown or Windows.System.VirtualKey.GamepadLeftThumbstickDown => 'D',
+            _ => '\0',
+        };
+
+        /// <summary>
+        /// The web player's D-pad: focus starts on the video; the first arrow reveals the controls on play/pause and moves from
+        /// there; left and right walk the row and stop at its ends; up leaves the row for the scrubber (or opens the track,
+        /// queue and info panels); down from the scrubber returns to play/pause; OK on the video only reveals the controls.
+        /// </summary>
+        private void Page_PreviewKeyDown(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
+        {
+            if (_openPanel != null || EndPanel.Visibility == Visibility.Visible || ErrorPanel.Visibility == Visibility.Visible)
+            {
+                return;
+            }
+
+            var direction = DirectionOf(e.Key);
+            var select = e.Key == Windows.System.VirtualKey.Enter || e.Key == Windows.System.VirtualKey.GamepadA;
+            if (direction == '\0' && !select)
+            {
+                return;
+            }
+
+            var focused = Windows.UI.Xaml.Input.FocusManager.GetFocusedElement();
+            if (ReferenceEquals(focused, VideoSurface) || !_chromeShown)
+            {
+                ShowChrome();
+                PlayPauseButton.Focus(FocusState.Keyboard);
+                if (direction != '\0')
+                {
+                    MoveFrom(PlayPauseButton, direction);
+                }
+                else
+                {
+                    // OK on the video plays or pauses it and puts focus on play/pause (the web's check reads "Play" after it).
+                    PlayPauseButton_Click(PlayPauseButton, new RoutedEventArgs());
+                }
+
+                e.Handled = true;
+                return;
+            }
+
+            if (ReferenceEquals(focused, Scrubber))
+            {
+                if (direction == 'U')
+                {
+                    CloseButton.Focus(FocusState.Keyboard);
+                    e.Handled = true;
+                }
+                else if (direction == 'D')
+                {
+                    PlayPauseButton.Focus(FocusState.Keyboard);
+                    e.Handled = true;
+                }
+                else if (select)
+                {
+                    PlayPauseButton_Click(PlayPauseButton, new RoutedEventArgs());
+                    e.Handled = true;
+                }
+
+                return;
+            }
+
+            if (ReferenceEquals(focused, CloseButton))
+            {
+                if (direction == 'D')
+                {
+                    Scrubber.Focus(FocusState.Keyboard);
+                }
+
+                e.Handled = direction != '\0';
+                return;
+            }
+
+            if (focused is Button button && Row().Contains(button) && direction != '\0')
+            {
+                MoveFrom(button, direction);
+                e.Handled = true;
+            }
+        }
+
+        private void MoveFrom(Button button, char direction)
+        {
+            var row = Row();
+            var at = Array.IndexOf(row, button);
+            switch (direction)
+            {
+                case 'L':
+                    row[Math.Max(0, at - 1)].Focus(FocusState.Keyboard);
+                    break;
+                case 'R':
+                    row[Math.Min(row.Length - 1, at + 1)].Focus(FocusState.Keyboard);
+                    break;
+                case 'U':
+                    if (ReferenceEquals(button, SubtitlesButton) || ReferenceEquals(button, AudioButton))
+                    {
+                        TogglePanel(TracksPanel, button);
+                    }
+                    else if (ReferenceEquals(button, QueueButton))
+                    {
+                        QueueButton_Click(button, new RoutedEventArgs());
+                    }
+                    else if (ReferenceEquals(button, QualityButton))
+                    {
+                        InfoButton_Click(button, new RoutedEventArgs());
+                    }
+                    else
+                    {
+                        Scrubber.Focus(FocusState.Keyboard);
+                    }
+
+                    break;
             }
         }
 
@@ -131,15 +330,27 @@ namespace Playarr.Xbox.Views
             Scrubber.Maximum = Math.Max(1, duration.TotalSeconds);
             Scrubber.Value = Math.Min(Scrubber.Maximum, position.TotalSeconds);
             _updatingScrubber = false;
-            TimeText.Text = $"{Clock(position)}  /  {Clock(duration)}";
+            TimeText.Text = $"{Clock(position)} / {Clock(duration)}";
             QualityText.Text = QualityLabel();
+            AutomationProperties.SetName(QualityButton, $"Quality: {QualityLabel()}");
             var hasNext = _parameter != null && _parameter.UpNext.Count > 0;
             NextButton.IsEnabled = hasNext;
-            NextButton.Opacity = hasNext ? 1 : 0.35;
+            NextButton.Opacity = hasNext ? 1 : 0.28;
             var hasPrevious = _parameter != null && _parameter.Previous.Count > 0;
             PrevButton.IsEnabled = hasPrevious;
-            PrevButton.Opacity = hasPrevious ? 1 : 0.35;
-            PlayPauseIcon.Glyph = session.PlaybackState == Windows.Media.Playback.MediaPlaybackState.Playing ? "\uE769" : "\uE768";
+            PrevButton.Opacity = hasPrevious ? 1 : 0.28;
+            var playing = session.PlaybackState == Windows.Media.Playback.MediaPlaybackState.Playing;
+            PlayPauseIcon.Glyph = playing ? "\uE769" : "\uE768";
+            AutomationProperties.SetName(PlayPauseButton, playing ? "Pause" : "Play");
+            var items = (_parameter?.Previous.Count ?? 0) + 1 + (_parameter?.UpNext.Count ?? 0);
+            AutomationProperties.SetName(QueueButton, $"Playlist: {items} item{(items == 1 ? string.Empty : "s")}");
+            var audioCount = info?.AudioTracks.Count ?? 0;
+            AudioButton.IsEnabled = audioCount > 1;
+            AudioButton.Opacity = audioCount > 1 ? 1 : 0.28;
+            var audioName = info?.AudioTracks.FirstOrDefault(t => t.Id == _viewModel!.SelectedAudioTrackId);
+            AutomationProperties.SetName(AudioButton, audioCount > 1 ? $"Audio: {audioName?.Label ?? audioName?.Language ?? "Default"}" : "Audio: Unavailable");
+            var subtitle = info?.SubtitleTracks.FirstOrDefault(t => t.Id == _viewModel!.SelectedSubtitleTrackId);
+            AutomationProperties.SetName(SubtitlesButton, $"Subtitles: {(subtitle == null ? "Off" : subtitle.Label ?? subtitle.Language ?? subtitle.Id)}");
         }
 
         private static string Clock(TimeSpan time) =>
@@ -225,6 +436,7 @@ namespace Playarr.Xbox.Views
             Render();
             _chromeTicker.Start();
             ShowChrome();
+            VideoSurface.Focus(FocusState.Programmatic);
         }
 
         private void TearDownSession()
@@ -316,6 +528,9 @@ namespace Playarr.Xbox.Views
         /// <summary>Whether one of the audio, subtitle, queue or info panels is open (read by the parity trace).</summary>
         internal bool PanelOpen => _openPanel != null;
 
+        /// <summary>Whether the audio and subtitle menu is open (the web's quality, audio and subtitle menus; the queue and info panels are not counted).</summary>
+        internal bool MenuOpen => ReferenceEquals(_openPanel, TracksPanel);
+
         internal string PlaybackMode => _viewModel?.PlaybackInfo?.Mode.ToString().ToLowerInvariant() ?? string.Empty;
 
         private void ViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e) => RunOnUi(Render);
@@ -359,13 +574,27 @@ namespace Playarr.Xbox.Views
 
                 _viewModel.Player.Pause();
                 ShowChrome();
+                VideoSurface.Focus(FocusState.Programmatic);
                 return settled;
             }
 
             _viewModel?.Player.Pause();
             ShowChrome();
+            VideoSurface.Focus(FocusState.Programmatic);
             return true;
         }
+
+        /// <summary>D-pad checks: play on, controls up and unpinned, focus on play/pause (the state the web checks start from).</summary>
+        internal void ResumeForTest()
+        {
+            _chromePinnedForTest = true; // the checks must not race the 5 s auto-hide
+            _viewModel?.Player.Play();
+            ShowChrome();
+            PlayPauseButton.Focus(FocusState.Programmatic); // the checks start on play/pause, as the web's
+            UpdateChrome();
+        }
+
+        private DateTime _lastBack = DateTime.MinValue;
 
         /// <summary>Playback state and position for the parity trace: "error", "playing", "paused" or "loading".</summary>
         internal (string State, double Seconds) Probe()
@@ -404,7 +633,7 @@ namespace Playarr.Xbox.Views
             LoadingPanel.Visibility = PlayerStagePolicy.SpinnerVisible(isLoading, isFailed) ? Visibility.Visible : Visibility.Collapsed;
             ErrorPanel.Visibility = isFailed ? Visibility.Visible : Visibility.Collapsed;
             PlayerElement.Visibility = PlayerStagePolicy.StageVisible(isFailed) ? Visibility.Visible : Visibility.Collapsed;
-            TracksButton.Visibility = isLoading || isFailed ? Visibility.Collapsed : Visibility.Visible;
+            SubtitlesButton.Visibility = AudioButton.Visibility = isLoading || isFailed ? Visibility.Collapsed : Visibility.Visible;
 
             ErrorText.Text = _viewModel.ErrorMessage ?? "Playback failed.";
             RetryButton.Visibility = _viewModel.CanRetry ? Visibility.Visible : Visibility.Collapsed;
@@ -426,7 +655,7 @@ namespace Playarr.Xbox.Views
 
             EndPanel.Visibility = showing ? Visibility.Visible : Visibility.Collapsed;
             UpdateKeepAwake(phase);
-            TracksButton.Visibility = showing || hidden ? Visibility.Collapsed : Visibility.Visible;
+            SubtitlesButton.Visibility = AudioButton.Visibility = showing || hidden ? Visibility.Collapsed : Visibility.Visible;
             TracksPanel.Visibility = showing ? Visibility.Collapsed : TracksPanel.Visibility;
             if (!showing)
             {
@@ -627,6 +856,10 @@ namespace Playarr.Xbox.Views
                 panel.Visibility = Visibility.Visible;
                 _openPanel = panel;
                 _panelOpener = opener;
+                if (ReferenceEquals(panel, TracksPanel))
+                {
+                    SubtitleTrackList.Focus(FocusState.Keyboard);
+                }
             }
         }
 
@@ -636,13 +869,13 @@ namespace Playarr.Xbox.Views
             _openPanel = null;
         }
 
-        private void TracksButton_Click(object sender, RoutedEventArgs e) => TogglePanel(TracksPanel, TracksButton);
+        private void TracksButton_Click(object sender, RoutedEventArgs e) => TogglePanel(TracksPanel, (Button)sender);
 
         private void QueueButton_Click(object sender, RoutedEventArgs e)
         {
             var queue = _parameter?.UpNext;
             QueueText.Text = queue == null || queue.Count == 0 ? "Nothing is queued after this." : string.Join("\n", queue.Select(q => q.Title));
-            TogglePanel(QueuePanel, QueueButton);
+            TogglePanel(QueuePanel, (Button)sender);
         }
 
         private void InfoButton_Click(object sender, RoutedEventArgs e)
@@ -651,17 +884,7 @@ namespace Playarr.Xbox.Views
             InfoText.Text = info == null
                 ? string.Empty
                 : $"Delivery: {info.Mode}\nQuality: {QualityLabel()}\nContainer: {info.MimeType}\nDuration: {Clock(TimeSpan.FromMilliseconds(info.DurationMs))}";
-            TogglePanel(InfoPanel, InfoButton);
-        }
-
-        /// <summary>Mute toggle, as the web's volume control; the console's own volume stays with the system.</summary>
-        private void VolumeButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_viewModel != null)
-            {
-                _viewModel.Player.IsMuted = !_viewModel.Player.IsMuted;
-                ((FontIcon)VolumeButton.Content).Glyph = _viewModel.Player.IsMuted ? "\uE74F" : "\uE767";
-            }
+            TogglePanel(InfoPanel, (Button)sender);
         }
 
         private static PlaybackQueueItem AsQueueItem(PlayerNavigationParameter p) => new PlaybackQueueItem(p.MediaFileId, p.Title, p.WorkId);
@@ -703,13 +926,20 @@ namespace Playarr.Xbox.Views
         /// </summary>
         public bool TryHandleBack()
         {
+            // One press can arrive twice (key and system back request): the second must not exit what the first only hid.
+            if ((DateTime.UtcNow - _lastBack).TotalMilliseconds < 400)
+            {
+                return true;
+            }
+
+            _lastBack = DateTime.UtcNow;
             var panelOpen = _openPanel != null;
             if (PlayerStagePolicy.BackAction(panelOpen) != PlayerBackAction.ClosePanel)
             {
                 // Then the controls overlay; only with everything hidden does BACK exit (owner rule).
-                if (ChromePanel.Visibility == Visibility.Visible)
+                if (_chromeShown && EndPanel.Visibility != Visibility.Visible && ErrorPanel.Visibility != Visibility.Visible)
                 {
-                    HideChrome();
+                    HideChrome(force: true);
                     return true;
                 }
 

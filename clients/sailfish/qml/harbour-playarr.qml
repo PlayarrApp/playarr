@@ -21,15 +21,13 @@ ApplicationWindow {
 
     Component.onCompleted: Tokens.u = Screen.width / 390
 
-    FontMetrics { id: layoutFontMetrics }
+    Rectangle { id: borderProbe; visible: false }   // a Rectangle with no border set: Qt's default pen
     // Parity layout export (docs/parity/LAYOUT.md); only a PLAYARR_STEPS `js:layoutDump()` step calls it.
     function layoutDump() {
-        LayoutDump.dump(app.contentItem, Tokens.u, Tokens.weightOfFamily(), function (font) {
-            layoutFontMetrics.font = font
-            return { ascent: layoutFontMetrics.ascent, descent: layoutFontMetrics.descent,
-                advance: function (text) { return layoutFontMetrics.advanceWidth(text) },
-                elide: function (text, mode, width) { return layoutFontMetrics.elidedText(text, mode, width) } }
-        }, function (line) { console.log(line) })
+        LayoutDump.dump(app.contentItem, Tokens.u, Tokens.weightOfFamily(), function (line) { console.log(line) }, function (item) {
+            var a = item.Accessible   // the item's real accessibility name and role
+            return { name: a.name, role: a.role }
+        }, { width: borderProbe.border.width, color: borderProbe.border.color }, ParityScreen)
     }
 
     Connections {

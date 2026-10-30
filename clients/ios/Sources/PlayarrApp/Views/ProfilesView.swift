@@ -166,6 +166,11 @@ struct ProfilesView: View {
     /// Web mobile profile picker (numbers from the web layout): theme and language dropdowns,
     /// a centred heading and the profile avatars with the "Sign in" tile.
     private var phoneContent: some View {
+        phoneContentStack
+            .parityRadial([WM.pink.opacity(0.1), WM.pink.opacity(0)], center: UnitPoint(x: 0.5, y: 0.5), endRadius: 300, in: CGRect(x: -105, y: 120, width: 600, height: 600))
+    }
+
+    private var phoneContentStack: some View {
         ZStack(alignment: .topLeading) {
             WM.shell.ignoresSafeArea()
             RadialGradient(
@@ -293,8 +298,7 @@ struct ProfilesView: View {
                             WMText("Sign out", 7.68, 720, color: WM.inkSoft, lh: 11.52).fixedSize()
                         }
                         .frame(width: 92, height: 44)
-                        .parityFill(WM.chip)
-                        .background(WM.chip, in: Capsule())
+                        .parityShape("button", color: WM.chip, in: Capsule(), radius: 22)
                         .overlay(Capsule().stroke(WM.line.opacity(0.08), lineWidth: 1))
                         .wmChipShadow()
                     }
@@ -329,6 +333,8 @@ struct ProfilesView: View {
                     WMText("+", 38.4, 300, color: WM.inkSoft, lh: 57.6)
                 }
                 .frame(width: size, height: size)
+                .parityRadial([Color.white.opacity(0.17), .clear], center: UnitPoint(x: 0.27, y: 0.33), endRadius: size * 0.3)
+                .parityGradient([.init(color: WM.adaptive(light: (233, 185, 196), dark: (96, 36, 56)), location: 0), .init(color: WM.adaptive(light: (190, 85, 115), dark: (146, 39, 76)), location: 1)], from: UnitPoint(x: 0.2, y: 0.06), to: UnitPoint(x: 0.8, y: 0.94))
                 WMText("Sign in", 13.12, 680, color: WM.inkSoft, lh: 19.68).frame(width: size).padding(.top, 9)
                 WMText("ADD ANOTHER PROFILE", 6.72, 690, color: WM.muted, lh: 10.08, ls: 0.3024)
                     .frame(width: size).padding(.top, 10)
@@ -395,6 +401,10 @@ struct ProfilesView: View {
             .offset(x: 41, y: 949)
         }
         .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
+        // The stage's three washes, recorded in the order they are drawn (see `profileBackground`).
+        .parityGradient([.init(color: PlayarrStyle.background.opacity(0.9), location: 0), .init(color: .clear, location: 0.5), .init(color: PlayarrStyle.background.opacity(0.82), location: 1)], from: .bottomLeading, to: .topTrailing)
+        .parityRadial([PlayarrStyle.pink.opacity(0.13), .clear], center: .center, endRadius: 360)
+        .parityGradient([.init(color: PlayarrStyle.surface, location: 0), .init(color: PlayarrStyle.background, location: 1)], from: .topLeading, to: .bottomTrailing)
     }
 
     private var profileBackground: some View {

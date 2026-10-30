@@ -99,7 +99,7 @@ namespace Playarr.Xbox.Views
                         }
                     }
 
-                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 24, 0)));
+                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 24.95, 0)));
                     _homeCardContainerStyle = style;
                 }
 
@@ -125,7 +125,7 @@ namespace Playarr.Xbox.Views
                         }
                     }
 
-                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 25, 27.4)));
+                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 25.91, 26.99)));
                     _gridCardContainerStyle = style;
                 }
 
@@ -272,28 +272,34 @@ namespace Playarr.Xbox.Views
             else if (work.ShowUnwatched)
             {
                 // .tv-watch-unseen: a brand dot with a white ring in the top right corner.
-                art.Children.Add(LayoutExport.Tag(new Border
+                art.Children.Add(new Border
                 {
                     Width = 13,
                     Height = 13,
                     CornerRadius = new CornerRadius(6.5),
-                    Margin = new Thickness(0, 10, 11, 0),
+                    Margin = new Thickness(0, 10.55, 10.54, 0),
                     HorizontalAlignment = HorizontalAlignment.Right,
                     VerticalAlignment = VerticalAlignment.Top,
                     Background = (Brush)Application.Current.Resources["PlayarrBrand"],
                     BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(240, 255, 255, 255)),
                     BorderThickness = new Thickness(2),
                     IsHitTestVisible = false,
-                }, "img", "Unwatched"));
+                });
             }
 
             var root = new StackPanel { Width = width, Spacing = 0, Tag = work.Id };
             if (!caption)
             {
                 // The web's library card is one link ("Open <title>"): the art plus its caption, 213 px tall.
-                LayoutExport.Tag(root, "link", "Open " + work.Title);
+                LayoutExport.Named(root, "Open " + work.Title);
                 root.Height = height + 29.41;
             }
+            else
+            {
+                root.Height = height + 29.14; // the web's Home link: the art, the title line and the caption line
+            }
+
+            root.MinHeight = root.MaxHeight = root.Height;
 
             root.Children.Add(RestingShadow(width, height));
             root.Children.Add(art);
@@ -301,30 +307,32 @@ namespace Playarr.Xbox.Views
             {
                 Text = episode != null ? (string.IsNullOrEmpty(episode.Title) ? work.Title : episode.Title) : work.Title,
                 // Grid title: the web's 11.9 px (--card-title-size) sits 2 px higher than Home's; rows keep the same pitch.
-                FontSize = caption ? 13 : 11.9,
-                FontFamily = WebFont.Face(caption ? 600 : 610),
-                FontWeight = WebFont.Weight(caption ? 600 : 610),
-                CharacterSpacing = caption ? 0 : -15,
-                Margin = new Thickness(2, caption ? 12 : 12.4, 0, 0),
+                FontSize = 11.9,
+                FontFamily = WebFont.Face(610),
+                FontWeight = WebFont.Weight(610),
+                CharacterSpacing = -15,
+                Margin = new Thickness(2, caption ? 11.16 : 12.4, 0, 0),
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 // Library grid rows repeat every 240.5 px, as the web: 184 px art, 12 px gap, 19 px title and a 25.5 px row gap (25 here: layout rounding lifts each 240.5 px row to 241).
-                LineHeight = caption ? 0 : 16,
-                LineStackingStrategy = caption ? LineStackingStrategy.MaxHeight : LineStackingStrategy.BlockLineHeight,
+                LineHeight = 16,
+                LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
             });
             if (!caption)
             {
                 return root;
             }
 
-            LayoutExport.Tag(root, "link", work.Title + " " + (episode != null ? WorkLabels.OnDeckCaption(work) : WorkLabels.KindWithYear(work)));
+            LayoutExport.Named(root, work.Title + " " + (episode != null ? WorkLabels.OnDeckCaption(work) : WorkLabels.KindWithYear(work)));
 
             root.Children.Add(new TextBlock
             {
                 Text = episode != null ? WorkLabels.OnDeckCaption(work) : WorkLabels.KindWithYear(work),
-                FontSize = 10,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = (Brush)Application.Current.Resources["PlayarrInkSoft"],
-                Margin = new Thickness(2, 4, 0, 0),
+                FontSize = 8.83,
+                FontWeight = FontWeights.Normal,
+                LineHeight = 12,
+                LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+                Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"],
+                Margin = new Thickness(2, 4.4, 0, -14.43), // the web draws the caption below its link box
             });
             return root;
         }

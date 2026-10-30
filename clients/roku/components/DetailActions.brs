@@ -243,7 +243,7 @@ function tileSemantics(t as Object) as String
         if m.top.layoutKind = "series" then return "a11y|button|999|" + t.text + " " + title
         return "a11y|link|999|Play " + title
     end if
-    return "a11y|button|999|+ " + t.text
+    return "a11y|button|999|" + t.text
 end function
 
 sub onWorkTitle()

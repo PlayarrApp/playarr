@@ -1,0 +1,1 @@
+- Tizen native: the back arrow on Library, Calendar, Search and both detail pages is a real focusable control (focus ring, Select goes back) instead of a painted view.

@@ -11,6 +11,9 @@ enum WM {
     static let shell = PlayarrStyle.background
     static let page = PlayarrStyle.surface
     static let ink = PlayarrStyle.ink
+    /// Web library preview copy (year, genres, overview) and its kicker, measured on the tablet refs.
+    static let previewInk = adaptive(light: (79, 63, 59), dark: (218, 214, 215))
+    static let previewKicker = adaptive(light: (130, 30, 54), dark: (234, 166, 182))
     static let inkSoft = adaptive(light: (68, 58, 64), dark: (205, 193, 198)) // web --ink-soft
     static let muted = adaptive(light: (77, 66, 72), dark: (194, 181, 187)) // web --ink-muted
     static let detailMuted = adaptive(light: (77, 66, 72), dark: (194, 181, 187))
@@ -140,7 +143,7 @@ struct WMText: View {
             .foregroundStyle(color)
             .lineLimit(1)
             .truncationMode(.tail)
-            .parityRenderedText(text, role: role, size: size, weight: weight, color: color, scales: true)
+            .parityRenderedText(text, role: role, size: size, weight: weight, color: color)
             .frame(height: lineHeight, alignment: .leading)
             .accessibilityAddTraits(role == "heading" ? .isHeader : [])
     }
@@ -603,7 +606,6 @@ struct WMRailCard: View {
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .parityBox("image", background: WM.artFill)
                 .parityBox("container", background: WM.artFill, radius: 8)
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
@@ -615,7 +617,6 @@ struct WMRailCard: View {
         }
         .frame(height: art + 24.7, alignment: .top)
         .frame(width: width, height: WMRailCard.height(cover: cover), alignment: .topLeading)
-        .parityBox("link", name: "\(work.title) \(work.singularKindYearLabel)", radius: 12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(work.title) \(work.singularKindYearLabel)")
     }
@@ -687,7 +688,6 @@ struct WMLibraryCard: View {
                 .frame(width: width, height: art)
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .parityBox("image", background: WM.artFill)
                 .parityBox("container", background: WM.artFill, radius: 8)
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
@@ -698,7 +698,6 @@ struct WMLibraryCard: View {
         }
         .frame(height: art + 24.7, alignment: .top)
         .frame(width: width, height: WMLibraryCard.rowHeight(cover: cover), alignment: .topLeading)
-        .parityBox("link", name: "Open \(work.title)", radius: 12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Open \(work.title)")
     }
@@ -716,7 +715,6 @@ struct WMSearchCard: View {
                 .frame(width: 173, height: 97.3)
                 .background(WM.chip)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .parityBox("image", background: WM.chip)
                 .parityBox("container", background: WM.chip, radius: 8)
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
@@ -743,14 +741,29 @@ struct WMHeaderCircleButton: View {
 
     var body: some View {
         Button(action: action) {
-            // The web draws the arrow glyph about 0.65 times the size of the app's fallback glyph, 1.3 pt lower.
-            Text(glyph)
-                .wm(glyph == "\u{2190}" ? 8.3 : 12.8, weight, color: WM.inkSoft, text: glyph)
-                .foregroundStyle(WM.inkSoft)
-                .offset(y: glyph == "\u{2190}" ? 1.3 : 0)
+            if glyph == "\u{2190}" {
+                // The design font has no arrow glyph, so it is drawn as a vector in the web glyph's 12.8 x 18 box.
+                Canvas { context, _ in
+                    var arrow = Path()
+                    arrow.move(to: CGPoint(x: 11.6, y: 9)); arrow.addLine(to: CGPoint(x: 1.4, y: 9))
+                    arrow.move(to: CGPoint(x: 5.6, y: 4.8)); arrow.addLine(to: CGPoint(x: 1.4, y: 9)); arrow.addLine(to: CGPoint(x: 5.6, y: 13.2))
+                    context.stroke(arrow, with: .color(WM.inkSoft), style: StrokeStyle(lineWidth: 1.3, lineCap: .round, lineJoin: .round))
+                }
+                .frame(width: 12.8, height: 18)
+                .offset(y: -0.6)
+                .parityBox("image")
+                .accessibilityHidden(true)
                 .frame(width: width, height: height)
                 .parityShape(role, name: name, color: WM.chip.opacity(0.66), in: Ellipse(), radius: width == height ? width / 2 : 0)
                 .overlay(Ellipse().stroke(WM.line.opacity(0.14), lineWidth: 1))
+            } else {
+            Text(glyph)
+                .wm(12.8, weight, color: WM.inkSoft, text: glyph)
+                .foregroundStyle(WM.inkSoft)
+                .frame(width: width, height: height)
+                .parityShape(role, name: name, color: WM.chip.opacity(0.66), in: Ellipse(), radius: width == height ? width / 2 : 0)
+                .overlay(Ellipse().stroke(WM.line.opacity(0.14), lineWidth: 1))
+            }
         }
         .buttonStyle(.plain)
     }
@@ -834,6 +847,7 @@ struct WMHeaderDetail: View {
             .font(WM.font(size, 680))
             .tracking(size * 0.045)
             .foregroundStyle(WM.ink)
+            .parityRenderedText(text.uppercased(), role: "text", size: size, weight: 680, color: WM.ink)
             .lineLimit(1)
             .truncationMode(.tail)
             .padding(.leading, divider ? gap : 0)
@@ -869,6 +883,7 @@ struct WMTitleWithDetail<Title: View>: View {
                         .font(WM.font(size, 680))
                         .tracking(size * 0.045)
                         .foregroundStyle(WM.ink)
+                        .parityRenderedText(detail.uppercased(), role: "text", size: size, weight: 680, color: WM.ink)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .padding(.top, 6)

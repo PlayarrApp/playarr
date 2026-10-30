@@ -111,7 +111,7 @@ internal sealed class FiltersDrawer
                 box.BorderlineWidth = 1; box.BorderlineColor = Ui.C(t.Line);
                 Sem.Tag(box, "group", "");
                 var arrow = _openMulti == si ? "\u2303" : "\u2304";
-                var inner = Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", label + " " + arrow); // web: the button inside the field holds its label and arrow
+                var inner = Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", label); // web: the button inside the field holds its label and arrow
                 inner.Add(Ui.Text(label, 12, 13.1f, 11.84f, 680, t.Ink, 200, 17.76f));
                 inner.Add(Ui.Text(arrow, 231.2f, 13.1f, 11.84f, 700, t.InkMuted, 12, 17.76f));
                 box.Add(inner);
@@ -132,7 +132,7 @@ internal sealed class FiltersDrawer
                 var box = Ui.Box(1606, top, 268, 58.8f, new Rgba(t.SurfaceSoft.R, t.SurfaceSoft.G, t.SurfaceSoft.B, 0.64f), 12);
                 box.BorderlineWidth = 1; box.BorderlineColor = Ui.C(t.Line);
                 Sem.Tag(box, "group", "");
-                var inner = Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", s.Options[s.Selected] + " \u2304");
+                var inner = Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", s.Options[s.Selected]);
                 inner.Add(Ui.Text(s.Options[s.Selected], 12, 13.1f, 11.84f, 680, t.Ink, 200, 17.76f));
                 inner.Add(Ui.Text("\u2304", 231.2f, 13.1f, 11.84f, 700, t.InkMuted, 12, 17.76f));
                 box.Add(inner);
@@ -165,7 +165,7 @@ internal sealed class FiltersDrawer
                     var b = Ui.Box(bx, by, w, 56, active ? t.Ink : new Rgba(t.SurfaceSoft.R, t.SurfaceSoft.G, t.SurfaceSoft.B, 0.64f), 12);
                     b.BorderlineWidth = 1; b.BorderlineColor = Ui.LineA(t, 0.15f);
                     var label = Ui.Text(n == 3 ? s.Options[i] : System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(s.Options[i]), 0, n == 3 ? 33 : 22.2f, 10.56f, n == 3 ? 900 : 680, active ? t.Bg : t.InkMuted, w, 11.6f, HorizontalAlignment.Center);
-                    if (n == 3) { Sem.Tag(label, "text", s.Options[i].ToLowerInvariant()); Sem.Tag(b, "button", s.Options[i]); } else Sem.Tag(b, "button", s.Options[i]);
+                    if (n == 3) { Sem.Tag(label, "text", s.Options[i].ToLowerInvariant()); Sem.Tag(b, "button", s.Options[i].ToLowerInvariant()); } else Sem.Tag(b, "button", s.Options[i]);
                     b.Add(label);
                     if (active) b.Scale = new Vector3(1.025f, 1.025f, 1);
                     if (n == 3) AddViewGlyph(b, i, w, active ? t.OnAccent : t.InkMuted); // web: a small List / Screen / Cover glyph above the label

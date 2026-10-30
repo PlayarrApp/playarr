@@ -83,7 +83,7 @@ export struct MultiSelect {
       Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))
         .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)).halfLeading(true)
         .fontWeight(FontWeight.Bold)
-        .letterSpacing((tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.02)) + (isTvMetrics() ? 0.044 : 0))
+        .letterSpacing(((tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.02)) + (isTvMetrics() ? 0.044 : 0)) + (!isTvMetrics() ? -0.233 : 0))
         .textCase(TextCase.UpperCase)
         
         .fontColor(toResourceColor(activeColors().inkMuted))
@@ -114,16 +114,16 @@ export struct MultiSelect {
           }, (value: string): string => value)
           Row() {
             Text(this.selected.length === 0 ? this.noneLabel : this.addLabel).fontFamily(isTvMetrics() ? nunitoAt(700, tv(CONTROL_FONT)) : nunito(680))
-              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT).letterSpacing((isTvMetrics() ? -0.135 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT)).halfLeading(true)
+              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT).translate({ y: (!isTvMetrics() ? -1.05 : 0) }).letterSpacing(((isTvMetrics() ? -0.135 : 0)) + (!isTvMetrics() ? -0.197 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT)).halfLeading(true)
               .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
               .fontColor(toResourceColor(activeColors().ink))
               .layoutWeight(1)
             Text('⌄').fontFamily(nunitoAt(400, tv(CONTROL_FONT)))
-              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : 8.96).lineHeight(webLineHeight(isTvMetrics() ? tv(CONTROL_FONT) : 8.96)).halfLeading(true)
+              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : 8.96).translate({ y: (!isTvMetrics() ? -1.38 : 0) }).lineHeight(webLineHeight(isTvMetrics() ? tv(CONTROL_FONT) : 8.96)).halfLeading(true)
               .fontColor(toResourceColor(activeColors().inkMuted))
               .rotate({ angle: this.open ? 180 : 0 })
           }
-          .accessibilityText((this.selected.length === 0 ? this.noneLabel : this.addLabel) + ' ⌄').accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+          .accessibilityText((this.selected.length === 0 ? this.noneLabel : this.addLabel)).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           // Web `flex: 1 1 8rem`: shares a line with the tokens when it fits.
           .flexGrow(1)
           .flexBasis(tv(TRIGGER_BASIS))

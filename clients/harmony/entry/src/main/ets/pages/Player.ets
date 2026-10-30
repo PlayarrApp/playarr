@@ -628,6 +628,9 @@ struct Player {
     );
     this.reporter = reporter;
 
+    // what the negotiation says about the stream is shown as soon as it is known, not after the engine has attached the source
+    this.hasTracks = info.subtitle_tracks.length > 0 || info.audio_tracks.length > 1;
+    this.qualityLabel = qualityLabelOf(info);
     await this.controller.attachSource(info, options.startPositionMs);
     if (this.muted) {
       this.controller.setVolume(0);

@@ -70,8 +70,9 @@ namespace Playarr.Xbox.Views
                         await PlayRequestedAsync(frame, folder);
                         OpenRequested(folder);
                         ResizeRequested(folder);
-                        LayoutRequested(folder);
+                        await LayoutRequestedAsync(folder);
                         await PauseRequestedAsync(frame, folder);
+                        ResumeRequested(frame, folder);
                     }
                 }
 
@@ -143,6 +144,23 @@ namespace Playarr.Xbox.Views
             }
         }
 
+        /// <summary>A <c>parity.resume</c> file puts the player in the state the web's D-pad checks start from: playing, controls up, focus on play/pause.</summary>
+        private static void ResumeRequested(Frame frame, string folder)
+        {
+            var file = System.IO.Path.Combine(folder, "parity.resume");
+            try
+            {
+                if (System.IO.File.Exists(file) && frame.Content is PlayerPage player)
+                {
+                    System.IO.File.Delete(file);
+                    player.ResumeForTest();
+                }
+            }
+            catch (Exception)
+            {
+            }
+        }
+
         /// <summary>A <c>parity.pause</c> file pauses the player on its current frame (identical-frame screenshots).</summary>
         private static async System.Threading.Tasks.Task PauseRequestedAsync(Frame frame, string folder)
         {
@@ -167,7 +185,7 @@ namespace Playarr.Xbox.Views
 
         /// <summary>Desktop-window tests: a <c>parity.resize</c> file holding "1280x720" resizes the window.</summary>
         /// <summary>A <c>parity.layout</c> file holding <c>theme,screen,nonce</c> makes the app write <c>layout.json</c> (the layout-score export, see LayoutExport) with that nonce in <c>layoutNonce</c>.</summary>
-        private static void LayoutRequested(string folder)
+        private static async System.Threading.Tasks.Task LayoutRequestedAsync(string folder)
         {
             var file = System.IO.Path.Combine(folder, "parity.layout");
             try
@@ -178,8 +196,13 @@ namespace Playarr.Xbox.Views
                     System.IO.File.Delete(file);
                     if (parts.Length == 3)
                     {
-                        var json = LayoutExport.Build(parts[1], parts[0]);
+                        var json = await LayoutExport.BuildAsync(parts[1], parts[0]);
                         System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "layout.json"), json.Substring(0, json.Length - 1) + ",\"layoutNonce\":\"" + parts[2] + "\"}");
+                    }
+                    else if (parts.Length == 4 && parts[3] == "frame")
+                    {
+                        // Only the hash of the app's render: the driver brackets the screenshot with it.
+                        System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "layout.json"), "{\"frame\":\"" + await LayoutExport.FrameHashAsync() + "\",\"layoutNonce\":\"" + parts[2] + "\"}");
                     }
                 }
             }
@@ -275,7 +298,7 @@ namespace Playarr.Xbox.Views
                 var initialFocusPending = frame.Content is LibraryPage library && library.InitialFocusPending;
                 var play = frame.Content is PlayerPage player ? player.Probe() : ("", 0.0);
                 var playerMode = frame.Content is PlayerPage playerPage ? playerPage.PlaybackMode : string.Empty;
-                var playerPanel = frame.Content is PlayerPage { PanelOpen: true };
+                var playerPanel = frame.Content is PlayerPage { MenuOpen: true };
                 var themeTargets = frame.Content is SettingsPage settings ? ThemeTargets(settings) : Array.Empty<object>();
                 var json = Newtonsoft.Json.JsonConvert.SerializeObject(new { screen, kind, panel, focus, focusArea, initialFocusPending, play = play.Item1, pos = Math.Round(play.Item2, 1), playerMode, playerPanel, playerFixture = _playerFixtureStatus, playerFixtureNonce = _playerFixtureNonce, code = (frame.Content as LoginPage)?.PairingCode, position = Position(FocusManager.GetFocusedElement() as DependencyObject, frame.Content), themeChoice = Theme.Choice, themeIsLight = Theme.IsLight, themeTargets, accountProbe, accountMatchesTest });
                 if (json == _last)
@@ -378,6 +401,11 @@ namespace Playarr.Xbox.Views
         {
             for (var node = element; node != null; node = VisualTreeHelper.GetParent(node))
             {
+                if (node is Slider seek && page is PlayerPage)
+                {
+                    return Windows.UI.Xaml.Automation.AutomationProperties.GetName(seek).ToLowerInvariant();
+                }
+
                 if (node is SelectorItem { ContentTemplateRoot: Panel card } && card.Children.Count > 1)
                 {
                     var texts = card.Children.OfType<TextBlock>().Select(t => t.Text).ToList();
@@ -389,16 +417,11 @@ namespace Playarr.Xbox.Views
                     // Icon glyphs live in the Segoe MDL2 private-use range: they are not part of the label.
                     var texts = Texts(button).Select(t => new string(t.Where(c => c < '\ue000' || c > '\uf8ff').ToArray()).Trim()).Where(t => t.Length > 0).ToList();
                     var label = string.Join(" ", texts);
-                    if (label.Length == 0 && page is PlayerPage)
+                    var accessibleName = Windows.UI.Xaml.Automation.AutomationProperties.GetName(button);
+                    if (page is PlayerPage && accessibleName.Length > 0)
                     {
-                        // Player controls carry no text: name them as the web's control labels do.
-                        label = Windows.UI.Xaml.Automation.AutomationProperties.GetName(button) switch
-                        {
-                            "Play or pause" => "play-pause",
-                            "Seek" => "seek",
-                            "Play on another device" => "play on another device",
-                            var other => other.ToLowerInvariant(),
-                        };
+                        // Player controls are read by their accessible name, as the web's aria-labels are.
+                        label = accessibleName.ToLowerInvariant();
                     }
                     return texts.Count == 1 && texts[0] == "Play" && Drawer.Current != null ? "\u25b6" + label : label;
                 }

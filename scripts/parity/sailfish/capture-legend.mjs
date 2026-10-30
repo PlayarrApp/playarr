@@ -35,8 +35,8 @@ function captureInputPaths() {
     "scripts/parity/package.json", "scripts/parity/package-lock.json",
   ];
   const paths = [...new Set([...listed, ...fixed])].sort();
-  if (paths.filter((path) => path.startsWith("clients/sailfish/qml/")).length !== 57) {
-    throw new Error("Expected 57 committed Sailfish QML files in the capture source");
+  if (paths.filter((path) => path.startsWith("clients/sailfish/qml/")).length !== 58) {
+    throw new Error("Expected 58 committed Sailfish QML files in the capture source");
   }
   return paths;
 }

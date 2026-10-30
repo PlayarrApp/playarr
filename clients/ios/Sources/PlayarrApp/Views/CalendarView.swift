@@ -981,10 +981,12 @@ struct CalendarView: View {
                     Text("\(dayNumber)")
                         .font(.custom("Avenir Next", fixedSize: 13).weight(.medium))
                         .foregroundStyle(PlayarrStyle.ink) // web: today and out-of-month numbers read as plain ink
+                        .parityRenderedText("\(dayNumber)", role: "text", size: 13, weight: 500, color: PlayarrStyle.ink)
                     let hidden = max(0, items.count - shownCount)
                     Spacer(minLength: 0)
                     if hidden > 0 {
                         Text("+\(hidden) more").font(.custom("Avenir Next", fixedSize: 12)).foregroundStyle(PlayarrStyle.muted)
+                            .parityRenderedText("+\(hidden) more", role: "text", size: 12, weight: 400, color: PlayarrStyle.muted)
                     }
                 }
                 .padding(.leading, -2.1).padding(.trailing, -2.9) // web footer: number at 12.3 pt, "+N more" ends 13 pt from the edge

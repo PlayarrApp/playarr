@@ -29,6 +29,7 @@ export function registerNunito(ui: UIContext): void {
   font.registerFont({ familyName: 'NunitoSansW900', familySrc: $rawfile('fonts/NunitoSans-W900.ttf') });
   font.registerFont({ familyName: 'PlayarrArrows', familySrc: $rawfile('fonts/PlayarrArrows.ttf') });
   font.registerFont({ familyName: 'PlayarrArrowsRegular', familySrc: $rawfile('fonts/PlayarrArrowsRegular.ttf') });
+  font.registerFont({ familyName: 'PlayarrGlyphs', familySrc: $rawfile('fonts/PlayarrGlyphs.ttf') });
 }
 
 /** The family for a weight: the nearest static instance. Call sites pass the web CSS weight; the nominal ArkUI weights

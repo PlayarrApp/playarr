@@ -7,15 +7,10 @@ set -euo pipefail
 LEGEND=${1:?legend dir}; REF=${2:-integration/parity}
 REPO=PlayarrApp/playarr
 HERE=$(cd "$(dirname "$0")" && pwd)
-BEFORE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-gh workflow run parity-xbox.yml -R "$REPO" --ref "${WORKFLOW_REF:-main}" -f "ref=$REF"
-RUN=""
-for _ in 1 2 3 4 5 6; do
-  sleep 10
-  RUN=$(gh run list -R "$REPO" -w parity-xbox.yml -e workflow_dispatch --json databaseId,createdAt -q "[.[]|select(.createdAt>=\"$BEFORE\")]|sort_by(.createdAt)|.[0].databaseId // empty")
-  [ -n "$RUN" ] && break
-done
-[ -n "$RUN" ] || { echo "dispatched run not found" >&2; exit 1; }
+# gh prints the dispatched run's URL: the run id comes from it, never from a list of recent runs.
+OUT=$(gh workflow run parity-xbox.yml -R "$REPO" --ref "${WORKFLOW_REF:-main}" -f "ref=$REF" -f parts=all)
+RUN=$(printf '%s' "$OUT" | grep -oE 'actions/runs/[0-9]+' | grep -oE '[0-9]+$' | head -1)
+[ -n "$RUN" ] || { echo "dispatched run id not found in: $OUT" >&2; exit 1; }
 echo "run $RUN"
 gh-watcher wait --repo "$REPO" --run "$RUN" --timeout 150m --json > "$LEGEND/.run-$RUN.json"
 grep -q '"state": "success"' "$LEGEND/.run-$RUN.json" || { echo "run $RUN did not succeed" >&2; cat "$LEGEND/.run-$RUN.json" >&2; exit 1; }
@@ -25,6 +20,6 @@ for T in dark light; do
   for f in "$LEGEND"/dev/layout/"$T"/*.json; do
     [ -e "$f" ] || continue
     S=$(basename "${f%.json}"); REF_JSON="$LEGEND/web/layout/$T/$S.json"
-    [ -e "$REF_JSON" ] && node "$HERE/../layout-score.mjs" --ref "$REF_JSON" --device "$f" | head -1
+    [ -e "$REF_JSON" ] && node "$HERE/../layout-score.mjs" --client xbox --ref "$REF_JSON" --device "$f" | head -1
   done
 done

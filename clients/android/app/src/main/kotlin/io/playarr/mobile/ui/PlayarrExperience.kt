@@ -2,7 +2,6 @@ package io.playarr.mobile.ui
 
 import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityShape
-import io.playarr.shared.designsystem.page.parityRole
 import io.playarr.shared.designsystem.page.parityBox
 import io.playarr.shared.designsystem.page.parityPainted
 import io.playarr.shared.designsystem.page.playarrEdgeFades
@@ -2148,7 +2147,7 @@ private fun ExperienceNavigation(
         modifier = Modifier
             .then(if (isTelevision) Modifier else Modifier.fillMaxWidth())
             .glass(phoneNavShape, if (isTelevision) WebGlass.NavGroup else WebGlass.PhoneNav)
-            .parityPainted("container", WebSurfaceStrong.copy(alpha = if (isTelevision) WebGlass.NavGroup.tintAlpha else WebGlass.PhoneNav.tintAlpha), radius = if (isTelevision) 0f else 20f),
+            .parityBox("container", radius = if (isTelevision) 0f else 20f),
         color = Color.Transparent,
         shape = phoneNavShape,
         tonalElevation = 0.dp,
@@ -2359,7 +2358,7 @@ internal fun tvProfileTileLabel(displayName: String): String =
 private fun TvNavGroup(padding: PaddingValues, content: @Composable ColumnScope.() -> Unit) {
     val groupShape = RoundedCornerShape(22.dp)
     Surface(
-        modifier = Modifier.glass(groupShape, WebGlass.NavGroup).parityPainted("container", WebSurfaceStrong.copy(alpha = WebGlass.NavGroup.tintAlpha), radius = 22f),
+        modifier = Modifier.glass(groupShape, WebGlass.NavGroup).parityBox("container", radius = 22f),
         color = Color.Transparent,
         shape = groupShape,
     ) {
@@ -3960,7 +3959,9 @@ internal fun WebDetailPill(
             // The glyph is decoration: the control is named by its label (or the web aria-label the caller passes).
             .semantics { contentDescription = exportLabel ?: label }
             .webFocusRing(focused, offset = 2.dp)
-            .onFocusChanged { focused = it.isFocused },
+            .onFocusChanged { focused = it.isFocused }
+            // The accessible name is the words alone: the decorative glyph beside them is not read.
+            .semantics { contentDescription = exportLabel ?: label },
     ) {
         Row(
             Modifier.padding(horizontal = if (primary) 21.6.dp else 16.dp),
@@ -4351,7 +4352,7 @@ private fun TvLanguageMultiSelect(title: String, entries: List<LanguageFacetEntr
         ) {
             Row(
                 Modifier.fillMaxWidth().height(44.dp).parityShape(10f).clip(RoundedCornerShape(10.dp))
-                    .focusRequester(triggerFocus).clickable(interactionSource = triggerInteractions, indication = null) {
+                    .focusRequester(triggerFocus).semantics { contentDescription = summary }.clickable(interactionSource = triggerInteractions, indication = null) {
                         if (!open) focusedLanguageCode = orderedEntries.firstOrNull()?.code
                         open = !open
                     }.webFocusRing(triggerFocused, radius = 10.dp, offset = 2.dp).padding(horizontal = 12.dp),
@@ -4796,7 +4797,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                                 Modifier.height(25.dp).fillMaxWidth().clickable { activeLetter = letter },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (active) Box(Modifier.size(22.dp).then(if (savedSelectedId == null) Modifier.drawBehind {
+                                if (active) Box(Modifier.size(22.dp).parityShape(999f).then(if (savedSelectedId == null) Modifier.drawBehind {
                                     // Web's letter ring is crimson, 2 css px, 1.5 px off the disc, and is drawn in touch mode too (programmatic focus).
                                     val grow = 1.5.dp.toPx() + 1.dp.toPx()
                                     drawCircle(UnwatchedDotColour, radius = size.minDimension / 2f + grow, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
@@ -4828,6 +4829,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                             Box(
                                 modifier = Modifier
                                     .size(24.dp * alphaCss)
+                                    .parityShape(999f)
                                     .then(if (active) Modifier.focusRequester(letterFocus) else Modifier)
                                     .webFocusRing(letterFocused, offset = 1.dp)
                                     .onFocusChanged { letterFocused = it.isFocused }
@@ -5142,7 +5144,7 @@ private fun PhoneSearchContent(
                 Row(
                     // Web's 50px min-height grows to 60px from the 44px input plus 14px padding and 2px border.
                     Modifier.fillMaxWidth().height(60.dp)
-                        .parityShape(999f).parityRole("search")
+                        .parityShape(999f)
                         .background(WebSurfaceStrong.copy(alpha = 0.88f), pillShape)
                         .border(1.dp, WebSearchBorder, pillShape)
                         .padding(horizontal = 17.dp), // the web box adds its 1 px border to the padding
@@ -5348,13 +5350,13 @@ private fun TelevisionSearchBody(
                 initialSearchFocusHandled = true
             }
         }
-        val searchLabel = playarrString(PlayarrString.SearchPlaceholder)
+        val searchPlaceholder = playarrString(PlayarrString.SearchPlaceholder)
         // Web `.tv-search`: a 590 x 76 pill at (153.6, 172.8) with the 3 px ink ring 2 px outside it while the field has focus.
         Row(
             Modifier
                 .offset(x = 153.6.dp, y = 172.8.dp)
                 .size(590.dp, 76.dp)
-                .parityShape(999f).parityRole("search")
+                .parityShape(999f)
                 .webFocusRing(focused, radius = 38.dp, offset = 2.dp)
                 .clip(CircleShape)
                 .background(WebSurfaceStrong.copy(alpha = 0.88f), CircleShape)
@@ -5373,8 +5375,8 @@ private fun TelevisionSearchBody(
                 keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
                 modifier = Modifier
                     // Web `.tv-search input`: 506 x 60, 13 px after the icon, the field's own box.
+                    .semantics { contentDescription = searchPlaceholder }
                     .padding(start = 13.dp).width(506.dp).height(60.dp)
-                    .semantics { contentDescription = searchLabel }
                     .focusRequester(searchFieldFocus)
                     .onFocusChanged { focused = it.isFocused }
                     .onPreviewKeyEvent { event ->

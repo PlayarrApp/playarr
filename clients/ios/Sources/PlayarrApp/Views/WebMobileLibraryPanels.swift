@@ -39,10 +39,7 @@ private struct WMPanelFrame<Content: View>: View {
     @ViewBuilder
     private var panelBackground: some View {
         if isPad {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .overlay(WM.chip.opacity(0.94))
-                .ignoresSafeArea()
+            WM.chip.ignoresSafeArea() // web tablet drawer: one opaque surface, so the export reads the colour it draws
         } else {
             WM.page.ignoresSafeArea() // web phone panels are opaque: the library behind does not show through
         }
@@ -57,7 +54,6 @@ private struct WMPanelFrame<Content: View>: View {
                         WMText(kicker.uppercased(), 7.04, 720, color: WM.muted, lh: 11, ls: 0.4928)
                         WMText(title, 27.32, 590, lh: 40.98, ls: -1.5026, role: "heading")
                             .lineLimit(1)
-                            .minimumScaleFactor(0.72)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -88,8 +84,8 @@ private struct WMPanelFrame<Content: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
-        // What the panel really paints: opaque page colour on the phone, chip at 94% over a thin material on iPad.
-        .parityFill(isPad ? WM.chip.opacity(0.94) : WM.page)
+        // What the panel really paints: opaque page colour on the phone, opaque chip on iPad.
+        .parityFill(isPad ? WM.chip : WM.page)
     }
 }
 
@@ -107,14 +103,14 @@ private struct WMChoice: View {
         Button(action: action) {
             VStack(spacing: 5) {
                 if let symbol { Image(systemName: symbol).font(.system(size: 13, weight: .semibold)) }
-                Text(label).wm(wmIsPad ? 11.5 : 11.52, wmIsPad ? (selected ? 700 : 600) : 680, text: label)
+                Text(label).wm(wmIsPad ? 11.5 : 11.52, wmIsPad ? (selected ? 700 : 600) : 680, color: selected ? WM.page : WM.inkSoft, text: label)
             }
             .foregroundStyle(selected ? WM.page : WM.inkSoft)
             .frame(maxWidth: .infinity).frame(height: height)
             // Web `.tv-filter-choice-grid button`: surface-soft at 64% with a 1 px border of line at 76%; the active one is solid ink.
-            .background(selected ? WM.ink : WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .parityShape("button", color: selected ? WM.ink : WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 14, style: .continuous), radius: 14)
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(WM.line.opacity(scheme == .light ? 0.106 : 0.084), lineWidth: 1))
-            .scaleEffect(selected ? 1.025 : 1)
+            .parityScale(selected ? 1.025 : 1)
         }
         .buttonStyle(.plain)
     }
@@ -158,7 +154,7 @@ private struct WMLanguageSelector: View {
                 }
                 .padding(.horizontal, 19)
                 .frame(height: 58)
-                .background(WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .parityShape("button", color: WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 16, style: .continuous), radius: 16)
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(WM.line.opacity(scheme == .light ? 0.106 : 0.084), lineWidth: 1))
             }
             .buttonStyle(.plain)
@@ -184,13 +180,13 @@ private struct WMLanguageSelector: View {
                                 HStack(spacing: 10) {
                                     Image(systemName: selectedCodes.contains(facet.code) ? "checkmark.square.fill" : "square")
                                         .foregroundStyle(selectedCodes.contains(facet.code) ? WM.pink : WM.muted)
-                                    Text(facet.displayName).foregroundStyle(WM.ink)
+                                    Text(facet.displayName).wm(11, 500, color: WM.ink, text: facet.displayName).foregroundStyle(WM.ink)
                                     Spacer()
                                     if let count = facet.count {
-                                        Text(count.formatted()).foregroundStyle(WM.muted)
+                                        Text(count.formatted()).wm(11, 500, color: WM.muted, text: count.formatted()).foregroundStyle(WM.muted)
                                     }
                                 }
-                                .wm(11, 500)
+                                .font(WM.font(11, 500))
                                 .padding(.horizontal, 13).frame(minHeight: 42)
                                 .contentShape(Rectangle())
                             }

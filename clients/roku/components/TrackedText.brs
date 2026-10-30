@@ -74,19 +74,36 @@ sub onSpecChange()
                         j = j + 1
                     end while
                 end if
-                piece = Mid(line, i, j - i + 1)
-                x = advanceOf(Left(line, j)) - advanceOf(piece) + tracking * (i - 1)
+                word = Mid(line, i, j - i + 1)
+                ' Roku rounds every advance, so a word's Label ends short of or past the web's word. The last character is a Label of its
+                ' own at its web position (suffix ~t, joined to the word before it), so the run ends where the web's does.
+                parts = [{ text: word, x: advanceOf(Left(line, j)) - advanceOf(word) + tracking * (i - 1), tail: false }]
+                if tracking = 0 and spec.symbol <> true and Len(word) > 1
+                    last = Right(word, 1)
+                    parts = [{ text: Left(word, Len(word) - 1), x: parts[0].x, tail: false }, { text: last, x: advanceOf(Left(line, j)) - advanceOf(last), tail: true }]
+                end if
+                for each part in parts
+                piece = part.text
+                x = part.x
                 glyph = nextGlyph()
                 glyph.font = font
                 glyph.width = 0
                 glyph.height = 0
                 if spec.symbol = true
-                    glyph.font = PlayarrSymbolFont(piece, size)
+                    glyph.font = PlayarrSymbolFont(piece, size, weight)
                 end if
                 ' The font actually drawn (the bundled instance's weight, the integer pixel size the Font node takes), readable through ECP query/app-ui (node names are printed; fonts are not).
-                glyph.id = "f" + Str(PlayarrInstanceWeight(weight)).Trim() + "s" + Str(Int(size + 0.5)).Trim()
+                drawnWeight = PlayarrInstanceWeight(weight)
+                if spec.symbol = true then drawnWeight = PlayarrSymbolWeight(piece, weight)
+                glyph.id = "f" + Str(drawnWeight).Trim() + "s" + Str(Int(size + 0.5)).Trim()
                 ' Untracked text is set a word per Label, tracked text a character per Label: the export joins words with a space and characters directly.
-                if tracking = 0 then glyph.id = glyph.id + "~w" else glyph.id = glyph.id + "~c"
+                if part.tail then
+                    glyph.id = glyph.id + "~t"
+                else if tracking = 0 then
+                    glyph.id = glyph.id + "~w"
+                else
+                    glyph.id = glyph.id + "~c"
+                end if
                 role = "text"
                 if spec.aria <> invalid and spec.aria <> "" then role = spec.aria
                 if role <> "text" then glyph.id = glyph.id + "|" + role
@@ -103,6 +120,7 @@ sub onSpecChange()
                 end if
                 glyph.translation = [lineOffset + x, lineIndex * lineHeight]
                 glyph.visible = true
+                end for
                 i = j + 1
             end if
         end while

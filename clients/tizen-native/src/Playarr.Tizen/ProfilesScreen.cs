@@ -129,7 +129,7 @@ internal sealed class ProfilesScreen : IPage
         var (ring, glow) = Widgets.RailRing(_t, Circle, Circle, Circle / 2);
         disc.Add(glow); disc.Add(ring);
         holder.Add(disc);
-        Sem.Tag(holder, "button", "+ Sign in ADD ANOTHER PROFILE");
+        Sem.Tag(holder, "button", "Sign in Add another profile");
         holder.Add(Ui.Text("Sign in", 0, Circle + 8.4f, 17.28f, 700, _t.InkSoft, Circle, 25.92f, HorizontalAlignment.Center));
         holder.Add(Ui.Text("Add another profile", 0, Circle + 42.3f, 9.408f, 690, _t.InkMuted, Circle, 14.112f, HorizontalAlignment.Center, upper: true, spacing: 0.42f));
         _body.Add(holder);

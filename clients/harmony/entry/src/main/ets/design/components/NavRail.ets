@@ -342,7 +342,7 @@ export struct NavRail {
   @Builder
   private versionText(): void {
     Text('v' + clientVersion).fontFamily(nunitoAt(700, tv(8)))
-      .fontSize(tv(8)).lineHeight(webLineHeight(tv(8))).halfLeading(true)
+      .fontSize(tv(8)).translate({ y: -1.55 }).lineHeight(webLineHeight(tv(8))).halfLeading(true)
       .letterSpacing((1.36) + 0.178) // web's run is 30.73 wide
       .fontColor(toResourceColor(activeColors().ink))
       .width(NAV_GROUP_WIDTH)

@@ -1,0 +1,1 @@
+- HarmonyOS parity capture: the sign-in connects again up to three times when the Previewer's first name lookup of the server fails, and the phone run records the Appearance panel for the theme step.

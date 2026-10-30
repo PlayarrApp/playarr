@@ -484,7 +484,7 @@ final class MacFocusEngineTests: XCTestCase {
         // Safe 1920x1080 web geometry: Home rail 0/card 0 after the driver focuses it.
         let focusedCard = CGRect(x: 881.59375, y: 457.75, width: 327.171875, height: 213.390625)
         let navColumnWidth = DesignTokens.Shell.navItemSize
-            + DesignTokens.Shell.navGroupPadding * 2
+            + DesignTokens.Shell.navGroupPaddingH * 2
             + DesignTokens.Shell.navEdge * 2
         let navCenterX = navColumnWidth / 2
         let navCandidates = try (0..<10).map { index -> (UUID, CGRect) in

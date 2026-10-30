@@ -327,7 +327,7 @@ Page {
         size: BusyIndicatorSize.Large
         running: page.playerBusyShouldRun()
     }
-    PLabel { renderType: Text.NativeRendering;
+    FitText { 
         anchors { centerIn: parent; margins: Theme.paddingLarge }
         width: parent.width - 2 * Theme.paddingLarge
         horizontalAlignment: Text.AlignHCenter
@@ -343,7 +343,7 @@ Page {
         text: page.notice
         color: "white"
     }
-    PLabel { renderType: Text.NativeRendering;
+    FitText { 
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: (page.controls ? 130 * Tokens.u : 48 * Tokens.u) + Tokens.safeBottom; leftMargin: Tokens.pad; rightMargin: Tokens.pad }
         visible: text !== ""
         text: page.cueText
@@ -385,8 +385,8 @@ Page {
         Item {
             id: seekArea
             x: 12 * Tokens.u; y: 518.13 * Tokens.u; width: 366 * Tokens.u; height: 44 * Tokens.u
-            property string a11yName: qsTr("Seek")
-            property string parityRole: "slider"
+            Accessible.name: qsTr("Seek")
+            Accessible.role: Accessible.Slider
             Rectangle { y: 19 * Tokens.u; width: parent.width; height: 6 * Tokens.u; color: "#2b2b2b" }
             Rectangle { y: 19 * Tokens.u; width: 0.8 * parent.width; height: 6 * Tokens.u; color: "#6e6e6e" }
             Rectangle { y: 19 * Tokens.u; width: Math.max(1, parent.width * Math.min(1, page.positionMs / Math.max(1, page.durationMs))); height: 6 * Tokens.u; color: Tokens.brandPink }
@@ -404,11 +404,10 @@ Page {
                 onReleased: page.seekTo(sliderValue)
             }
         }
-        // The time code is one volatile text run (the web's player-time).
-        Item {
-            x: 12 * Tokens.u; y: 556.13 * Tokens.u; width: 366 * Tokens.u; height: 16.88 * Tokens.u
-            PLabel { renderType: Text.NativeRendering; id: timeLbl; anchors.centerIn: parent; anchors.verticalCenterOffset: -2.4; font.letterSpacing: 0.27; text: page.mmss(page.positionMs) + " / " + page.mmss(page.durationMs); color: "#ffffff"; property string parityRole: "container"; font.family: Tokens.family400; font.pixelSize: Tokens.fs(10.56) }
-        }
+        // The time code: the web's three text runs (position, a dimmer slash, duration), each at its own place.
+        PText { x: 167.91 * Tokens.u; y: 556.13 * Tokens.u; text: page.mmss(page.positionMs); color: "#ffffff"; font.letterSpacing: -0.245; font.family: Tokens.family400; font.pixelSize: Tokens.fs(9.92) }
+        PText { x: 193.59 * Tokens.u; y: 556.13 * Tokens.u; text: "/"; color: "#a5969e"; font.letterSpacing: 0; font.family: Tokens.family400; font.pixelSize: Tokens.fs(9.92) }
+        PText { x: 202 * Tokens.u; y: 556.13 * Tokens.u; text: page.mmss(page.durationMs); color: "#ffffff"; font.letterSpacing: -0.245; font.family: Tokens.family400; font.pixelSize: Tokens.fs(9.92) }
         PlayerButton { x: 12 * Tokens.u; y: 577 * Tokens.u; icon: "pPrev"; label: qsTr("Previous episode"); dimmed: true; parityIndex: 3 }
         PlayerButton {
             x: 58 * Tokens.u; y: 577 * Tokens.u; plate: "#242424"; label: qsTr("Play"); parityIndex: 2
@@ -424,7 +423,7 @@ Page {
             navigationActivate: function() { player.muted = !player.muted }
             onClicked: player.muted = !player.muted
         }
-        PlayerButton { x: 196 * Tokens.u; y: 577 * Tokens.u; icon: "pAudio"; iconCss: 0; label: ""; dimmed: true; parityIndex: 6 }
+        PlayerButton { x: 196 * Tokens.u; y: 577 * Tokens.u; icon: "pAudio"; label: qsTr("Audio: Unavailable"); dimmed: true; parityIndex: 6 }
         PlayerButton {
             x: 242 * Tokens.u; y: 577 * Tokens.u; icon: "pSubs"; label: qsTr("Subtitles: Off"); parityIndex: 7
             navigationActivate: function() { page.menuOpen = !page.menuOpen }
@@ -439,8 +438,11 @@ Page {
             onClicked: page.menuOpen = !page.menuOpen
         }
         // The quality control's own labels: a small HD badge and the current quality, which the web lets run over the right edge.
-        PLabel { renderType: Text.NativeRendering; x: 325.25 * Tokens.u; y: 593.23 * Tokens.u; text: "HD"; color: "#ffffff"; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(7.68) }
-        PLabel { renderType: Text.NativeRendering; x: 351.25 * Tokens.u; y: 575.23 * Tokens.u; width: 40.31 * Tokens.u; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; lineHeightMode: Text.FixedHeight; lineHeight: 15.85 * Tokens.u
+        PText {   // the control's HD badge: its own text record, running over the button's left edge
+            x: 325.25 * Tokens.u; y: 593.23 * Tokens.u
+            text: "HD"; color: "#ffffff"; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(7.68)
+        }
+        FitText { x: 351.25 * Tokens.u; y: 575.23 * Tokens.u; width: 40.31 * Tokens.u; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; lineHeightMode: Text.FixedHeight; lineHeight: 15.85 * Tokens.u
                 text: qsTr("Original · 0.3 Mbps"); color: "#ffffff"; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(10.56) }
         PlayerButton { x: 127 * Tokens.u; y: 625 * Tokens.u; icon: "pHealth"; label: qsTr("Info and playback health"); parityIndex: 10 }
         PlayerButton { x: 173 * Tokens.u; y: 625 * Tokens.u; icon: "pCast"; label: qsTr("Play on another device"); parityIndex: 11 }

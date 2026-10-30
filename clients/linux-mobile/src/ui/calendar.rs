@@ -360,17 +360,11 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
 }
 
 fn pill(label: &str) -> gtk4::Button {
-    // The web's text is the control (its box is the text run); the pill around it only carries the click.
     let text = gtk4::Label::builder()
         .label(label)
-        .accessible_role(gtk4::AccessibleRole::Button)
         .css_classes(["pa-pill-label"])
         .build();
-    gtk4::Button::builder()
-        .child(&text)
-        .accessible_role(gtk4::AccessibleRole::Generic)
-        .css_classes(["pa-pill"])
-        .build()
+    gtk4::Button::builder().child(&text).css_classes(["pa-pill"]).build()
 }
 
 /// A round control with a text arrow, as the web's period navigation.
@@ -727,16 +721,16 @@ impl Cal {
                     } else {
                         e.title.clone()
                     };
-                    // The web keeps the title on one line and clips it at the cell edge; the scroller reports no minimum width.
-                    let name = gtk4::Label::builder().label(text).xalign(0.0).build();
-                    name.set_margin_start(-1);
-                    let clip = gtk4::ScrolledWindow::builder()
-                        .child(&name)
-                        .hscrollbar_policy(gtk4::PolicyType::External)
-                        .vscrollbar_policy(gtk4::PolicyType::Never)
+                    // The web keeps the title on one line and ends it with an ellipsis at the cell edge.
+                    let name = gtk4::Label::builder()
+                        .label(text)
+                        .xalign(0.0)
                         .hexpand(true)
+                        .ellipsize(gtk4::pango::EllipsizeMode::End)
+                        .max_width_chars(1)
                         .build();
-                    row.append(&clip);
+                    name.set_margin_start(-1);
+                    row.append(&name);
                     let btn = gtk4::Button::builder()
                         .child(&row)
                         .css_classes(["pa-plain", "pa-mline"])
@@ -899,12 +893,11 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .margin_end(16)
         .css_classes(["pa-cal-controls"])
         .build();
-    let range_label = gtk4::Label::builder()
-        .accessible_role(gtk4::AccessibleRole::Button)
-        .css_classes(["pa-pill-label"])
+    let range_label = gtk4::Label::builder().css_classes(["pa-pill-label"]).build();
+    let range = gtk4::Button::builder()
+        .child(&range_label)
+        .css_classes(["pa-pill"])
         .build();
-    let range = gtk4::Box::builder().css_classes(["pa-pill"]).build();
-    range.append(&range_label);
     let prev = round_arrow("←");
     // The web's previous button sits 1.8 px right of the whole-pixel flow.
     prev.set_margin_start(2);

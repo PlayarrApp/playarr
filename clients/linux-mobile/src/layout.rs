@@ -268,6 +268,17 @@ fn font_px(w: &impl IsA<gtk4::Widget>) -> (f64, i32) {
     (px, fd.weight().into_glib())
 }
 
+/// Marks a control the app gave the `group` role itself (`accessible_role(Group)`), as opposed to a toolkit default.
+pub fn mark_group(w: &impl IsA<gtk4::Widget>) {
+    // SAFETY: the key is private to this module and always holds a `bool`.
+    unsafe { w.set_data("pa-group", true) };
+}
+
+fn marked_group(w: &gtk4::Widget) -> bool {
+    // SAFETY: see `mark_group`.
+    unsafe { w.data::<bool>("pa-group").is_some() }
+}
+
 fn role_of(w: &gtk4::Widget) -> &'static str {
     use gtk4::AccessibleRole as R;
     match w.accessible_role() {
@@ -285,7 +296,8 @@ fn role_of(w: &gtk4::Widget) -> &'static str {
         R::ProgressBar => "progressbar",
         R::List => "list",
         R::Search => "search",
-        R::Group => "group",
+        // Toolkit containers (libadwaita) default to Group; only a control the app marks `group` is a group.
+        R::Group if marked_group(w) => "group",
         _ => "container",
     }
 }
@@ -371,7 +383,14 @@ impl Walk<'_> {
             f64::from(paintable.intrinsic_height()),
         );
         if let Some(node) = snap.to_node() {
-            let m = graphene::Matrix::new_translate(&graphene::Point3D::new(b[0], b[1], 0.0));
+            // Paint is in the widget's own coordinates; a CSS transform on it (a scale) is read back from its bounds.
+            let (iw, ih) = (
+                paintable.intrinsic_width().max(1) as f32,
+                paintable.intrinsic_height().max(1) as f32,
+            );
+            let m = graphene::Matrix::new_scale(b[2] / iw, b[3] / ih, 1.0).multiply(&graphene::Matrix::new_translate(
+                &graphene::Point3D::new(b[0], b[1], 0.0),
+            ));
             collect(&node, &m, 1.0, None, None, &mut lp);
             factor = root_factor(&node);
         }
@@ -417,7 +436,8 @@ impl Walk<'_> {
             .find(|f| !f.border && near(f.b, b, 0.55) && (f.gradient.is_some() || f.rgba[3] * f.opacity > 0.004));
         let bordered = lp.fills.iter().any(|f| f.border && near(f.b, b, 0.55));
         let mut bg = parent_bg;
-        if let Some(f) = own {
+        // `background` is the background colour: a gradient is an image on top of it and leaves it as it is.
+        if let Some(f) = own.filter(|f| f.gradient.is_none()) {
             bg = over(f.at(b[0] + b[2] / 2.0, b[1] + b[3] / 2.0), parent_bg);
         }
         let mut radius = own.map(|f| f.radius).filter(|r| *r > 0.0);
@@ -461,58 +481,84 @@ impl Walk<'_> {
                 return (false, bg);
             }
             let (ox, oy) = l.layout_offsets();
-            #[allow(deprecated)]
-            let pad = l.style_context().padding();
-            let (ox, oy) = (ox + i32::from(pad.left()), oy + i32::from(pad.top()));
             let s = pango::SCALE as f32;
             let (px, weight) = font_px(l);
+            // One record per shaped style run (a run holds one font and one colour); neighbours on a line with the same
+            // colour are one record. Text is each run's own, the ellipsis run reading as the ellipsis.
+            let mut recs: Vec<(Rect, String, [f32; 4], f32)> = Vec::new();
             let mut it = layout.iter();
-            let mut any = false;
             loop {
-                let (_, lg) = it.line_extents();
-                let Some(line) = it.line_readonly() else { break };
-                // The drawn text is read from the shaped runs of this very layout: each run's own text, and the ellipsis glyph
-                // where Pango replaced the elided part (its run carries the ellipsis analysis flag).
-                let mut shown = String::new();
-                for run in line.runs() {
+                if let Some(run) = it.run_readonly() {
+                    let (_, lg) = it.run_extents();
                     let item = run.item();
-                    let an = item.analysis();
-                    if an.flags() & PANGO_FLAG_IS_ELLIPSIS != 0 {
-                        shown.push('\u{2026}');
+                    let piece = if item.analysis().flags() & PANGO_FLAG_IS_ELLIPSIS != 0 {
+                        "\u{2026}".to_string()
                     } else {
                         let o = item.offset() as usize;
-                        shown.push_str(text.get(o..o + item.length() as usize).unwrap_or(""));
+                        text.get(o..o + item.length() as usize).unwrap_or("").to_string()
+                    };
+                    // Glyph extent of the run without its leading and trailing blanks, from the layout's own cluster positions.
+                    let (mut x0, mut x1) = (lg.x(), lg.x() + lg.width());
+                    if !matches!(piece.as_str(), "\u{2026}") {
+                        let o = item.offset() as usize;
+                        let t = piece.trim_start();
+                        let lead = piece.len() - t.len();
+                        let t = t.trim_end();
+                        if !t.is_empty() && t.len() != piece.len() {
+                            if let Some(last) = t.chars().last() {
+                                let first = layout.index_to_pos((o + lead) as i32);
+                                let end = layout.index_to_pos((o + lead + t.len() - last.len_utf8()) as i32);
+                                x0 = first.x();
+                                x1 = end.x() + end.width();
+                            }
+                        }
                     }
-                }
-                let r = [
-                    b[0] + ox as f32 + lg.x() as f32 / s,
-                    b[1] + oy as f32 + lg.y() as f32 / s,
-                    lg.width() as f32 / s,
-                    lg.height() as f32 / s,
-                ];
-                let shown = shown.split_whitespace().collect::<Vec<_>>().join(" ");
-                if !shown.is_empty() && self.shown(r, clip) {
-                    let run = lp
+                    // The label's real transform to the root (an ancestor's CSS scale is part of it), applied to the run box.
+                    let local = graphene::Rect::new(
+                        ox as f32 + x0 as f32 / s,
+                        oy as f32 + lg.y() as f32 / s,
+                        (x1 - x0) as f32 / s,
+                        lg.height() as f32 / s,
+                    );
+                    let r = match w.compute_transform(self.root) {
+                        Some(t) => to_root(&t, &local),
+                        None => [b[0] + local.x(), b[1] + local.y(), local.width(), local.height()],
+                    };
+                    let m = lp
                         .runs
                         .iter()
                         .filter(|u| overlap(u.b, r) > 0.0)
                         .max_by(|a, c| overlap(a.b, r).total_cmp(&overlap(c.b, r)));
-                    let (col, op) = run.map_or((rgba(&l.color()), factor), |u| (u.color, u.opacity));
-                    let mut el = base(role_of(w), &shown, r, inherited * op, bg);
-                    el["color"] = json!(hex(col, true));
-                    el["fontSize"] = json!((px * 100.0).round() / 100.0);
-                    el["fontWeight"] = json!(weight);
-                    self.items.push(Item {
-                        json: el,
-                        rect: r,
-                        opaque: false,
-                        end: self.items.len() + 1,
-                    });
-                    any = true;
+                    let (col, op) = m.map_or((rgba(&l.color()), factor), |u| (u.color, u.opacity));
+                    match recs.last_mut() {
+                        Some(last) if (last.0[1] - r[1]).abs() < 0.5 && last.2 == col => {
+                            last.1.push_str(&piece);
+                            last.0 = union(Some(last.0), r);
+                        }
+                        _ => recs.push((r, piece, col, op)),
+                    }
                 }
-                if !it.next_line() {
+                if !it.next_run() {
                     break;
                 }
+            }
+            let mut any = false;
+            for (r, shown, col, op) in recs {
+                let shown = shown.split_whitespace().collect::<Vec<_>>().join(" ");
+                if shown.is_empty() || !self.shown(r, clip) {
+                    continue;
+                }
+                let mut el = base(role_of(w), &shown, r, inherited * op, bg);
+                el["color"] = json!(hex(col, true));
+                el["fontSize"] = json!((px * 100.0).round() / 100.0);
+                el["fontWeight"] = json!(weight);
+                self.items.push(Item {
+                    json: el,
+                    rect: r,
+                    opaque: false,
+                    end: self.items.len() + 1,
+                });
+                any = true;
             }
             return (any, bg);
         }

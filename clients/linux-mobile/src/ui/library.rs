@@ -424,12 +424,6 @@ impl Lib {
             let mut out = Vec::new();
             for (i, n) in names.iter().enumerate() {
                 let t = gtk4::ToggleButton::builder()
-                    // Text tiles: the web's text is the control (its box is the text run); glyph tiles are the button.
-                    .accessible_role(if glyphs {
-                        gtk4::AccessibleRole::Button
-                    } else {
-                        gtk4::AccessibleRole::Generic
-                    })
                     .css_classes(if glyphs {
                         vec!["pa-seg-tile", "view"]
                     } else {
@@ -441,12 +435,7 @@ impl Lib {
                     view_tile_child(&t, i, n);
                     crate::layout::name(&t, n);
                 } else {
-                    t.set_child(Some(
-                        &gtk4::Label::builder()
-                            .label(*n)
-                            .accessible_role(gtk4::AccessibleRole::Button)
-                            .build(),
-                    ));
+                    t.set_label(n);
                     // The web sets capitalised tile text a touch wider than GTK; the lowercase quirk text matches already.
                     if n.starts_with(char::is_uppercase) {
                         t.add_css_class("wide");
@@ -503,6 +492,7 @@ impl Lib {
                 .model(&gtk4::StringList::new(&["Any language"]))
                 .accessible_role(gtk4::AccessibleRole::Group)
                 .build();
+            crate::layout::mark_group(&dd);
             dd.add_css_class("pa-dropdown");
             dd.add_css_class("pa-filter");
             // The web's select is a bordered group holding a button with the value and a caret glyph.

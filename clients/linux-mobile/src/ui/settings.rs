@@ -28,6 +28,7 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
         .hexpand(true)
         // The web's text block sits 1.5 px above the row's centre.
         .margin_bottom(3)
+        .margin_end(12)
         .build();
     col.append(
         &gtk4::Label::builder()
@@ -36,20 +37,13 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
             .xalign(0.0)
             .build(),
     );
+    // The web keeps the description on one line and ends it with an ellipsis where the text column stops.
     col.append(
-        // The web keeps the description on one line and clips it at the card edge; a scroller reports no minimum width.
-        &gtk4::ScrolledWindow::builder()
-            .child(
-                &gtk4::Label::builder()
-                    .label(desc)
-                    .css_classes(["pa-pref-desc"])
-                    .xalign(0.0)
-                    .build(),
-            )
-            .hscrollbar_policy(gtk4::PolicyType::External)
-            .vscrollbar_policy(gtk4::PolicyType::Never)
-            .propagate_natural_height(true)
-            .hexpand(true)
+        &gtk4::Label::builder()
+            .label(desc)
+            .css_classes(["pa-pref-desc"])
+            .xalign(0.0)
+            .ellipsize(gtk4::pango::EllipsizeMode::End)
             .build(),
     );
     row.append(&col);

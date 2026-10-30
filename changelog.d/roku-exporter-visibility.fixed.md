@@ -1,0 +1,1 @@
+- Roku layout export: visibility no longer protects a scene-root guess, a surface never covers its own ancestors or descendants, opaque bundled pictures and rounded fills cover correctly, independently painted fills are exported, clipping rectangles cut boxes, node opacity is folded into fills and text colours.

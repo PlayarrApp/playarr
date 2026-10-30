@@ -43,7 +43,7 @@ PlayarrPage {
                     model: page.presets
                     MouseArea {
                         property bool navigationFocusable: true
-                        property string parityLabel: qsTr("Avatar %1").arg(index + 1)
+                        Accessible.role: Accessible.Button; Accessible.name: qsTr("Avatar %1").arg(index + 1)
                         property int parityRail: 0
                         property int parityIndex: index
                         width: 84 * Tokens.u; height: width
@@ -54,7 +54,7 @@ PlayarrPage {
                 }
             }
             // language
-            PLabel { renderType: Text.NativeRendering; x: Tokens.pad; width: parent.width - 2 * Tokens.pad; visible: page.section === "language"; wrapMode: Text.Wrap
+            FitText { x: Tokens.pad; width: parent.width - 2 * Tokens.pad; visible: page.section === "language"; wrapMode: Text.Wrap
                     text: qsTr("Playarr follows this device's language."); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(13) }
             // player
             PLabel { renderType: Text.NativeRendering; x: Tokens.pad; visible: page.section === "player"; text: qsTr("SUBTITLES"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(10); font.letterSpacing: 1.5 * Tokens.u }
@@ -95,11 +95,11 @@ PlayarrPage {
             Column {
                 x: Tokens.pad; width: parent.width - 2 * Tokens.pad; spacing: 8 * Tokens.u; visible: page.section === "server"
                 PLabel { renderType: Text.NativeRendering; text: Api.profileName; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(16) }
-                PLabel { renderType: Text.NativeRendering; width: parent.width; text: Api.serverUrl; elide: Text.ElideMiddle; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(11) }
+                FitText { width: parent.width; text: Api.serverUrl; elide: Text.ElideMiddle; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(11) }
                 PillButton { text: qsTr("Sign out"); onClicked: remorse.execute(qsTr("Signing out"), function () { Api.signOut() }) }
             }
             // lock
-            PLabel { renderType: Text.NativeRendering; x: Tokens.pad; width: parent.width - 2 * Tokens.pad; visible: page.section === "lock"; wrapMode: Text.Wrap
+            FitText { x: Tokens.pad; width: parent.width - 2 * Tokens.pad; visible: page.section === "lock"; wrapMode: Text.Wrap
                     text: qsTr("The profile PIN is set from the Playarr web app or a phone; this device asks for it when switching to a locked profile."); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(13) }
         }
         VerticalScrollDecorator {}

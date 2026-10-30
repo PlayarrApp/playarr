@@ -243,7 +243,7 @@ Item {
         else route = "/" + route
         console.log("PARITY|screen|" + route)
         if (!focus) return
-        var label = focus.parityLabel || (focus.work && (focus.work.deckTitle || focus.work.title)) || focus.text || focus.objectName || focus.accessibleName || focus.title || ""
+        var label = focus.Accessible.name || (focus.work && (focus.work.deckTitle || focus.work.title)) || focus.text || focus.objectName || focus.accessibleName || focus.title || ""
         if (focus.objectName.indexOf("parity-nav-") === 0) label = focus.objectName.slice("parity-nav-".length)
         if (focus.objectName === "parity-player-play") label = page.engine.playbackState === 1 ? "pause" : "play"
         if (focus.objectName === "parity-player-seek") label = "seek"

@@ -411,11 +411,11 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
               <Pill
                 glyph={watchlist.listed ? '✓' : '+'}
                 label={watchlist.listed ? t('discovery.watchlist.remove') : t('discovery.watchlist.add')}
-                web={{role: 'button', label: `${watchlist.listed ? '✓' : '+'} ${watchlist.listed ? t('discovery.watchlist.remove') : t('discovery.watchlist.add')}`}}
+                web={{role: 'button', label: watchlist.listed ? t('discovery.watchlist.remove') : t('discovery.watchlist.add')}}
                 disabled={watchlist.listed === null}
                 onPress={watchlist.toggle}
               />
-              <Pill glyph="+" label={t('components.mediaContextMenu.addToPlaylist')} web={{role: 'button', label: `+ ${t('components.mediaContextMenu.addToPlaylist')}`}} onPress={() => setPlaylistSheet(true)} />
+              <Pill glyph="+" label={t('components.mediaContextMenu.addToPlaylist')} web={{role: 'button', label: t('components.mediaContextMenu.addToPlaylist')}} onPress={() => setPlaylistSheet(true)} />
             </PillRow>
           }
         />
@@ -544,7 +544,7 @@ function Pill({label, glyph, primary, disabled, onPress, hasTVPreferredFocus, fo
       onBlur={() => setFocused(false)}
       onPress={onPress}
       style={{
-        minWidth: u(primary ? (web?.role === 'link' ? 165.36 : 156) : 142),
+        minWidth: u(primary ? 156 : 142),
         height: u(64),
         marginRight: u(16),
         paddingHorizontal: u(primary ? 21.6 : 16),

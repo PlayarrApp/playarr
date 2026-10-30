@@ -23,12 +23,8 @@ MouseArea {
     property real padCss: 16
     property real contentDy: 0
     property real iconDy: 0
-    property string parityRole: "button"
-    property string a11yName: text          // the accessible name; a page sets it where it differs from the visible label
-    property real focusRadius: height / 2
-    // A button with only a label is one web element, exported as its text run; one with an icon is exported by its box and its texts.
-    readonly property bool textRun: icon === "" && iconImage === "" && a11yName === text
-    property bool layoutNoEmit: textRun
+    Accessible.role: Accessible.Button
+    Accessible.name: text          // the accessible name; a page sets it where it differs from the visible label
     property real fontSize: 15 * Tokens.u
     // Web detail buttons: a small accent icon, a gap, then the label, centred and sized to their content.
     property string icon: ""
@@ -83,7 +79,7 @@ MouseArea {
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : Tokens.brandInk
             font.pixelSize: root.iconSize
         }
-        PLabel { renderType: Text.NativeRendering;
+        FitText { 
             id: label2
             anchors.verticalCenter: parent.verticalCenter
             width: Math.min(Math.ceil(tm.implicitWidth) + 1, root.width - 2 * root.padCss * Tokens.u - root.iconW - root.contentGap * Tokens.u)
@@ -96,11 +92,9 @@ MouseArea {
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : root.textInk
         }
     }
-    PLabel { renderType: Text.NativeRendering;
+    FitText { 
         id: label
         visible: root.icon === "" && root.iconImage === ""
-        property string parityRole: root.textRun ? root.parityRole : ""
-        property var radiusSource: root.textRun ? bg : null
         anchors.centerIn: parent
         font.family: root.labelFamily
         font.pixelSize: root.fontSize

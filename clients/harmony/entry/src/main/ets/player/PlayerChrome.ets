@@ -159,6 +159,8 @@ const CHROME_GRADIENT_BOTTOM: RgbaColor = { r: 12, g: 9, b: 12, a: 0.99 };
 const CHROME_TEXT_PRIMARY: RgbaColor = { r: 255, g: 255, b: 255, a: 1 };
 const CHROME_GLASS: RgbaColor = { r: 12, g: 9, b: 12, a: 1 };
 const CHROME_TEXT_SECONDARY: RgbaColor = { r: 255, g: 255, b: 255, a: 0.7 };
+/** web: the slash between the elapsed and total time is the muted text token, the two times are white */
+const CHROME_TEXT_MUTED: RgbaColor = { r: 165, g: 150, b: 158, a: 1 };
 const CHROME_TRACK_ALPHA: number = 0.28;
 const CHROME_BUFFERED_ALPHA: number = 0.46;
 
@@ -189,7 +191,7 @@ const PHONE_PLAY_SIZE: number = 44;
 // Web phone control row: seven 45.8 vp slots, the first icon centred 41.7 vp in; the second row holds the quality facts and three icons.
 const PHONE_SLOT: number = 45.8;
 const PHONE_ROW_HEIGHT: number = 46;
-const PHONE_TIME_FONT_SIZE: number = 10.2;
+const PHONE_TIME_FONT_SIZE: number = 9.92; // web: 0.62rem
 const TV_CLOSE_SIZE: number = 48;
 const TV_CLOSE_RIGHT: number = 58;
 const TV_CLOSE_TOP: number = 38;
@@ -200,7 +202,7 @@ const TV_PLAY_SIZE: number = 64;
 const TV_SEEK_SIZE: number = 64;
 const TV_ROW_GAP: number = 13.6;
 const TV_BAR_GAP: number = 0; // web: the 44 px seek row sits directly over the controls
-const TV_TIME_FONT_SIZE: number = 12;
+const TV_TIME_FONT_SIZE: number = 10.88; // web: 0.68rem
 const TV_QUALITY_WIDTH: number = 120;
 const TV_VOLUME_WIDTH: number = 64;
 const BACK_BUTTON_WIDTH_TV: number = 96;
@@ -438,6 +440,7 @@ export struct PlayerChrome {
   onToggleMute: () => void = () => {};
   onVisibilityChanged: (visible: boolean) => void = () => {};
 
+  @State private volumePercent: number = 100;
   @State private chromeOpacity: number = 1;
   @State private visible: boolean = true;
   @State private focusedCount: number = 0;
@@ -694,13 +697,41 @@ export struct PlayerChrome {
           if (this.isLive()) {
             Text('LIVE').fontFamily(nunitoAt(700, tv(TV_TIME_FONT_SIZE))).fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
           } else {
-            Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE)))
-              .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
-              
-              .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
+            // web: three spans, the times white and the slash muted, 5.6 apart
+            Row({ space: tv(5.6) }) {
+              Text(formatClockMs(this.positionMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE)))
+                .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
+                .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
+              Text('/').fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE)))
+                .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
+                .fontColor(toResourceColor(CHROME_TEXT_MUTED))
+              Text(formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE)))
+                .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
+                .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
+            }
+          }
+          // web: the mute button and the volume slider sit together, 10 apart, after the time
+          Row({ space: tv(10) }) {
+            this.tvIcon($r('app.media.player_volume'), this.onToggleMute, false, 'Mute')
+            Slider({ value: this.volumePercent, min: 0, max: 100, style: SliderStyle.OutSet })
+              .width(tv(130))
+              .height(tv(44))
+              .trackColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, 0.3))
+              .selectedColor(toResourceColor(CHROME_TEXT_PRIMARY))
+              .blockColor(toResourceColor(CHROME_TEXT_PRIMARY))
+              .accessibilityText('Volume').accessibilityRole(AccessibilityRoleType.SLIDER)
+              .onChange((value: number): void => {
+                this.volumePercent = value;
+              })
           }
           Blank()
-          this.tvIcon($r('app.media.player_volume'), this.onToggleMute, false, '')
+          // web: the audio-track button, empty while the stream has no alternative track
+          Stack()
+            .width(tv(TV_SEEK_SIZE))
+            .height(tv(TV_SEEK_SIZE))
+            .borderRadius(tv(TV_SEEK_SIZE / 2))
+            .accessibilityText('Audio: Unavailable').accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+            .focusable(true)
           this.tvIcon($r('app.media.player_subtitles'), (): void => { if (this.hasTracks) { this.onOpenTracks(); } }, true, 'Subtitles: Off')
           this.tvIcon($r('app.media.player_queue'), (): void => {}, true, 'Playlist: 1 item')
           if (this.qualityLabel.length > 0) {
@@ -721,6 +752,7 @@ export struct PlayerChrome {
           }
           this.tvIcon($r('app.media.player_info'), this.onOpenInfo, true, 'Info and playback health')
           this.tvIcon($r('app.media.player_cast'), (): void => {}, true, 'Play on another device')
+          this.tvIcon($r('app.media.player_fullscreen'), (): void => {}, true, 'Enter fullscreen')
         }
         .width('100%')
         .alignItems(VerticalAlign.Center)
@@ -796,14 +828,21 @@ export struct PlayerChrome {
         .justifyContent(FlexAlign.Center)
         .accessibilityText('Seek').accessibilityRole(AccessibilityRoleType.SLIDER)
         .position({ x: 12, y: 615.13 })
-        Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
-          .fontSize(PHONE_TIME_FONT_SIZE).lineHeight(webLineHeight(PHONE_TIME_FONT_SIZE)).halfLeading(true)
-          .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
-          .textAlign(TextAlign.Center)
-          .width(336)
-          .height(16.88)
-          
-          .position({ x: 12, y: 653.13 })
+        Row({ space: 5.6 }) {
+          Text(formatClockMs(this.positionMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
+            .fontSize(PHONE_TIME_FONT_SIZE).lineHeight(webLineHeight(PHONE_TIME_FONT_SIZE)).halfLeading(true)
+            .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
+          Text('/').fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
+            .fontSize(PHONE_TIME_FONT_SIZE).lineHeight(webLineHeight(PHONE_TIME_FONT_SIZE)).halfLeading(true)
+            .fontColor(toResourceColor(CHROME_TEXT_MUTED))
+          Text(formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
+            .fontSize(PHONE_TIME_FONT_SIZE).lineHeight(webLineHeight(PHONE_TIME_FONT_SIZE)).halfLeading(true)
+            .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
+        }
+        .width(336)
+        .height(16.88)
+        .justifyContent(FlexAlign.Center)
+        .position({ x: 12, y: 653.13 })
       }
       this.phoneSkip(true, this.canPrevious, this.onPrevious, 20, 674)
       ChromeButton({

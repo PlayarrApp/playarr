@@ -33,10 +33,10 @@ Rectangle {
             function navigationActivate() { root.profileClicked() }
             width: 44 * Tokens.u
             height: 46 * Tokens.u
-            property string a11yName: qsTr("Signed in as %1. Open profiles.").arg(Api.profileName)
-            property string parityRole: "link"
-            property real focusRadius: 14 * Tokens.u
+            Accessible.name: qsTr("Signed in as %1. Open profiles.").arg(Api.profileName)
+            Accessible.role: Accessible.Link
             onClicked: root.profileClicked()
+            Rectangle { anchors.fill: parent; radius: 14 * Tokens.u; color: root.color }
             Avatar { plateColor: root.color; anchors.centerIn: parent; anchors.verticalCenterOffset: -4 * Tokens.u; width: 21 * Tokens.u;   // web seats the avatar higher than the icons
                      source: Api.profileAvatar }
         }
@@ -50,15 +50,13 @@ Rectangle {
                 function navigationActivate() { root.selected(modelData) }
                 width: 44 * Tokens.u
                 height: 46 * Tokens.u
-                property string parityRole: "link"
-                property real focusRadius: 14 * Tokens.u
-                property string a11yName: modelData === "downloads" ? qsTr("Downloads") : modelData === "search" ? qsTr("Search") : modelData === "home" ? qsTr("Home") : modelData === "series" ? qsTr("Series") : modelData === "movies" ? qsTr("Movies") : modelData === "music" ? qsTr("Music") : qsTr("Playlists")
+                Accessible.role: Accessible.Link
+                Accessible.name: modelData === "downloads" ? qsTr("Downloads") : modelData === "search" ? qsTr("Search") : modelData === "home" ? qsTr("Home") : modelData === "series" ? qsTr("Series") : modelData === "movies" ? qsTr("Movies") : modelData === "music" ? qsTr("Music") : qsTr("Playlists")
                 onClicked: root.selected(modelData)
-                Rectangle {
+                Rectangle {   // the link's own plate: the bar's colour at rest, the ink when selected
                     anchors.fill: parent
                     radius: 14 * Tokens.u
-                    color: Tokens.primary
-                    visible: root.section === modelData
+                    color: root.section === modelData ? Tokens.primary : root.color
                 }
                 Image {
                     anchors.centerIn: parent

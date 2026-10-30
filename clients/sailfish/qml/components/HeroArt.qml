@@ -45,8 +45,8 @@ Item {
             layer.enabled: true
             layer.effect: Desaturate { desaturation: 1.0 }
         }
-        Rectangle { property bool layoutSkip: true; anchors.fill: parent; color: "black"; opacity: Tokens.dark ? 0.4 : 0 }   // brightness(.6)
-        Rectangle { property bool layoutSkip: true; anchors.fill: parent; color: "white"; opacity: Tokens.dark ? 0 : root.lightLift }
+        Rectangle { anchors.fill: parent; color: "black"; opacity: Tokens.dark ? 0.4 : 0 }   // brightness(.6)
+        Rectangle { anchors.fill: parent; color: "white"; opacity: Tokens.dark ? 0 : root.lightLift }
         Rectangle {   // the web masks the picture out over its right 28%
             anchors.centerIn: parent
             width: parent.height; height: parent.width; rotation: -90

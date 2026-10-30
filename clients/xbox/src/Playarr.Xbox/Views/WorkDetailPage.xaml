@@ -23,77 +23,64 @@
         episodes sit in the right column from x=881, where the web shows its rails.
     -->
     <Grid x:Name="Root">
-        <Grid x:Name="BackdropLayer" Width="998.4" Height="1144.8" HorizontalAlignment="Left" VerticalAlignment="Top" RenderTransformOrigin="0.5,0.5">
-            <Grid.RenderTransform>
-                <ScaleTransform ScaleX="1.04" ScaleY="1.04" />
-            </Grid.RenderTransform>
+        <!-- The web's key-art box: laid out 899.97 x 1190.59 from (133.03, -22.9) and covered by the backdrop. -->
+        <Grid x:Name="BackdropLayer" Width="899.97" Height="1190.59" Margin="133.03,-22.9,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
             <Image
                 x:Name="BackdropImage"
+                Width="899.97"
+                Height="1190.59"
                 Stretch="UniformToFill"
                 IsHitTestVisible="False" />
         </Grid>
-        <Rectangle x:Name="BackdropImageMaskWash" Width="998.4" Height="1144.8" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
-            <Rectangle.RenderTransform>
-                <ScaleTransform ScaleX="1.04" ScaleY="1.04" />
-            </Rectangle.RenderTransform>
-        </Rectangle>
-        <Rectangle x:Name="BackdropFade" Width="960" HorizontalAlignment="Left" IsHitTestVisible="False" />
+        <Rectangle x:Name="BackdropImageMaskWash" Width="899.97" Height="1190.59" Margin="133.03,-22.9,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" />
+        <Rectangle x:Name="BackdropFade" HorizontalAlignment="Stretch" IsHitTestVisible="False" />
         <Rectangle x:Name="BackdropVerticalFade" Width="998.4" Height="1080" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" />
         <Rectangle x:Name="BackdropStageWashLeft" Width="1920" Height="1080" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" />
+        <Rectangle x:Name="BackdropRightWash" Width="1190.39" Margin="729.61,0,0,0" HorizontalAlignment="Left" IsHitTestVisible="False" />
 
-        <StackPanel Width="700" Margin="154,258,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
-            <TextBlock
-                x:Name="EyebrowText"
-                FontSize="12"
-                FontWeight="Bold"
-                CharacterSpacing="120"
-                Foreground="{StaticResource PlayarrBrandInk}" />
-            <TextBlock
-                x:Name="TitleText"
-                FontSize="64"
-                FontWeight="SemiBold"
-                CharacterSpacing="-40"
-                LineHeight="62"
-                LineStackingStrategy="BlockLineHeight"
-                MaxWidth="400"
-                HorizontalAlignment="Left"
-                TextWrapping="WrapWholeWords"
-                MaxLines="3"
-                Margin="0,34,0,0" />
-            <TextBlock x:Name="EpisodeTitleText" FontSize="22" Foreground="{StaticResource PlayarrInkSoft}" Margin="0,12,0,0" Visibility="Collapsed" />
-            <TextBlock x:Name="MetaText" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource PlayarrInkSoft}" Margin="0,21,0,0" />
+        <StackPanel Width="700" Margin="154,260.19,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <TextBlock x:Name="EyebrowText" FontSize="12.29" CharacterSpacing="100" Foreground="{StaticResource PlayarrBrandInk}" />
+            <!-- One block per title line (see FocusDetail): the font's own line height, stacked 62.2 px apart. -->
+            <StackPanel x:Name="TitleLines" Margin="0,11.33,0,0" />
+            <TextBlock x:Name="EpisodeTitleText" FontSize="21.12" Foreground="{StaticResource PlayarrInkSoft}" Margin="0,1.64,0,0" Visibility="Collapsed" />
+            <StackPanel x:Name="MetaRow" Orientation="Horizontal" Spacing="13.6" Margin="0,11.2,0,0" />
             <TextBlock
                 x:Name="OverviewText"
-                Width="320"
+                Width="328"
                 HorizontalAlignment="Left"
-                FontSize="12.5"
-                LineHeight="20.5"
+                FontSize="12.86"
+                LineHeight="20.31"
+                LineStackingStrategy="BaselineToBaseline"
                 TextWrapping="WrapWholeWords"
                 MaxLines="5"
                 TextTrimming="WordEllipsis"
-                Foreground="{StaticResource PlayarrInkSoft}"
-                Margin="0,24,0,0" />
-            <StackPanel x:Name="PrimaryRow" Orientation="Horizontal" Spacing="17" Margin="0,32,0,0">
+                Foreground="{StaticResource PlayarrInkMuted}"
+                Margin="0,23.44,0,0" />
+            <StackPanel x:Name="PrimaryRow" Orientation="Horizontal" Spacing="16" Margin="0,16.49,0,0">
             <Button
                 x:Name="PlayButton"
                 MinWidth="156"
-                Height="66"
-                Padding="26,0,26,0"
-                CornerRadius="33"
+                Height="64"
+                Padding="0"
+                CornerRadius="32"
                 Background="{StaticResource PlayarrInk}"
                 BorderThickness="0"
+                RenderTransformOrigin="0.5,0.5"
                 FocusVisualPrimaryBrush="{StaticResource PlayarrFocusRing}"
                 FocusVisualPrimaryThickness="3"
                 FocusVisualSecondaryThickness="0"
                 Click="PrimaryPlay_Click">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                    <FontIcon x:Name="PlayIcon" Glyph="&#xE102;" FontFamily="Segoe MDL2 Assets" FontSize="9" Foreground="{StaticResource PlayarrSurfaceStrong}" />
-                    <TextBlock x:Name="PlayLabel" Text="Play" FontSize="11.5" FontWeight="Bold" Foreground="{StaticResource PlayarrSurfaceStrong}" />
+                <Button.RenderTransform>
+                    <ScaleTransform x:Name="PlayScale" ScaleX="1" ScaleY="1" />
+                </Button.RenderTransform>
+                <StackPanel Orientation="Horizontal" Spacing="8.8">
+                    <TextBlock x:Name="PlayIcon" Text="&#x25B6;" FontSize="10.12" Foreground="{StaticResource PlayarrBg}" VerticalAlignment="Center" />
+                    <TextBlock x:Name="PlayLabel" Text="Play" FontSize="11.9" FontWeight="Bold" Foreground="{StaticResource PlayarrBg}" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
             </StackPanel>
 
-            <StackPanel x:Name="ActionRow" Orientation="Horizontal" Spacing="14" Margin="0,16,0,0" Visibility="Collapsed" />
+            <StackPanel x:Name="ActionRow" Orientation="Horizontal" Spacing="16" Margin="0,12,0,0" Visibility="Collapsed" />
 
             <ProgressRing x:Name="LoadingRing" IsActive="False" HorizontalAlignment="Left" Width="40" Height="40" />
             <TextBlock x:Name="ErrorText" Style="{StaticResource PlayarrRailTitle}" Visibility="Collapsed" />

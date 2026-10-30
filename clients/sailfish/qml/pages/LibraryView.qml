@@ -73,23 +73,25 @@ Item {
     }
     // Dark library pages: the ghost of the first card's art along the left edge, +5 at x=0 and gone by ~180 px (static web
     // refs, movies/series/music), full down to y=420 and gone by ~540.
-    LinearGradient {
+    LinearGradient {   // a full-window layer, as the web's is; the ghost itself fills its first 150 px by 320 px
         id: ghost
         visible: Tokens.dark
-        width: 150 * Tokens.u; height: 320 * Tokens.u
+        anchors.fill: parent
+        readonly property real kx: Math.min(1, 150 * Tokens.u / width)
+        readonly property real ky: Math.min(1, 320 * Tokens.u / height)
         start: Qt.point(0, 0); end: Qt.point(width, 0)
         gradient: Gradient {
             GradientStop { position: 0; color: "#06ffffff" }
-            GradientStop { position: 0.15; color: "#05ffffff" }
-            GradientStop { position: 0.3; color: "#02ffffff" }
-            GradientStop { position: 0.6; color: "#00ffffff" }
+            GradientStop { position: 0.15 * ghost.kx; color: "#05ffffff" }
+            GradientStop { position: 0.3 * ghost.kx; color: "#02ffffff" }
+            GradientStop { position: 0.6 * ghost.kx; color: "#00ffffff" }
             GradientStop { position: 1; color: "#00ffffff" }
         }
         layer.enabled: visible
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width: ghost.width; height: ghost.height
-                gradient: Gradient { GradientStop { position: 0; color: "white" } GradientStop { position: 0.66; color: "white" } GradientStop { position: 0.86; color: "transparent" } GradientStop { position: 1; color: "transparent" } }
+                gradient: Gradient { GradientStop { position: 0; color: "white" } GradientStop { position: 0.66 * ghost.ky; color: "white" } GradientStop { position: 0.86 * ghost.ky; color: "transparent" } GradientStop { position: 1; color: "transparent" } }
             }
         }
     }
@@ -97,8 +99,7 @@ Item {
         id: filterBtn
         anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: heading.verticalCenter; verticalCenterOffset: -1.25 * Tokens.u }
         width: 44 * Tokens.u; height: width
-        property string a11yName: qsTr("Filters")
-        property real focusRadius: 14 * Tokens.u
+        Accessible.role: Accessible.Button; Accessible.name: qsTr("Filters")
         onClicked: {
             var p = pageStack.push(Qt.resolvedUrl("FiltersPage.qml"))
             p.applied.connect(function () { root.viewMode = Api.setting("lib.view", "screen"); root.reload() })
@@ -169,19 +170,19 @@ Item {
             model: root.alphabet
             MouseArea {
                 width: 44 * Tokens.u; height: 19 * Tokens.u
-                property string a11yName: modelData === "#" ? qsTr("Numbers and symbols") : modelData
-                property string parityRole: "button"
-                property real focusRadius: height / 2
+                Accessible.name: modelData === "#" ? qsTr("Numbers and symbols") : modelData
+                Accessible.role: Accessible.Button
                 onClicked: root.jumpTo(modelData)
+                Rectangle { anchors.fill: parent; radius: height / 2; color: Tokens.bg }   // the letter's own plate, the page colour at rest
                 Item {   // web focus ring on the first letter: crimson ring, page-coloured gap, clipped 1u above the rail
                     visible: root.activeLetter === modelData
                     x: (parent.width - 34 * Tokens.u) / 2; y: (index === 0 ? 2.4 : -8) * Tokens.u; width: 34 * Tokens.u; height: parent.height + (index === 0 ? 10.6 : 14) * Tokens.u; clip: true
-                    Rectangle { property bool layoutSkip: true; x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 29.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.brandPink }
-                    Rectangle { property bool layoutSkip: true; x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 24.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.bg }
+                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 29.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.brandPink }
+                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 24.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.bg }
                 }
-                Rectangle { property bool layoutSkip: true   // the web draws this plate as a shadow ring, not a background
+                Rectangle {
                             anchors.centerIn: parent; width: 22 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
-                            color: Tokens.primary }   // web: the ink plate of the active letter
+                            color: "transparent"; border.width: Math.ceil(width / 2); border.color: Tokens.primary }   // web: the ink plate of the active letter is a spread shadow ring, not a background fill
                 PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(8.8);
                         color: root.activeLetter === modelData ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft }
             }

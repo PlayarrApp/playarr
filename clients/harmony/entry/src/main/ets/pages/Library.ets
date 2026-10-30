@@ -173,7 +173,7 @@ const TOUCH_GUTTER: number = 16;
 const TOUCH_ALPHA_RAIL: number = 52;
 const TOUCH_CARD_GAP: number = 12;
 /** Web phone grid: 127.5 vp between card tops (79 vp card, caption, this gap); the first row starts 12 vp lower than ours did. */
-const TOUCH_ROW_GAP: number = 24.35; // web: 24 between the card links (103.45 high, caption included)
+const TOUCH_ROW_GAP: number = 23.95; // web: 24 between the card links (103.45 high, caption included)
 const TOUCH_GRID_TOP: number = 12;
 /** Web phone card caption (the poster card's title size at 360 vp). */
 const TOUCH_LIBRARY_TITLE_SIZE: number = 8.8; // web dump
@@ -850,7 +850,11 @@ export struct Library {
       this.items = orderWorks(nextItems, sortValue, orderValue);
       if (offset === 0) {
         this.total = total !== null ? total : -1;
-        this.setHero(this.items[0]);
+        // a late reload of the first page must not undo the hero the viewer (or the Filters button) already moved to
+        const kept: Work | undefined = this.hero;
+        if (kept === undefined || !this.items.some((w: Work): boolean => w.id === kept.id)) {
+          this.setHero(this.items[0]);
+        }
       }
       this.hasMore = page.items.length >= catalogPageSize && !reachedTotal;
       this.errorMessage = '';

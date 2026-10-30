@@ -29,11 +29,17 @@ namespace Playarr.Xbox.Views
             ("PlayarrSurface", "#1B181B", "#FBFAF9"),
             ("PlayarrSurfaceStrong", "#211D21", "#FFFFFF"),
             ("PlayarrSurfaceSoft", "#312A30", "#DFDCDD"),
-            ("PlayarrRailFill", "#1E1A1E", "#FDFDFC"),
+            ("PlayarrRailFill", "#1C191C", "#FBFAF9"),
             ("PlayarrRailLine", "#282428", "#F0EEED"),
             ("PlayarrInk", "#F4F0F1", "#382621"),
             ("PlayarrInkSoft", "#CDC1C6", "#443A40"),
             ("PlayarrInkMuted", "#C2B5BB", "#4D4248"),
+            // The hero text on the focused key art, and the caption of a focused card.
+            ("PlayarrInkHero", "#DAD6D7", "#4F3F3B"),
+            ("PlayarrFocusInk", "#FFFFFF", "#000000"),
+            // The strong pill (Open series) and the TODAY chip ink.
+            ("PlayarrPillFill", "#DFDCDD", "#4D4248"),
+            ("PlayarrPillInk", "#211D21", "#FFFFFF"),
             ("PlayarrLine", "#1CDFDCDD", "#24382621"),
             ("PlayarrLineStrong", "#3BDFDCDD", "#47382621"),
             ("PlayarrBrandInk", "#EAA6B6", "#821E36"),
@@ -93,14 +99,14 @@ namespace Playarr.Xbox.Views
         public static Brush FocusRing => (Brush)Application.Current.Resources["PlayarrFocusRing"];
 
         /// <summary>The web stage's left wash, mapped to the art layer's 960-unit width.</summary>
-        public static LinearGradientBrush KeyArtStageHorizontalWash() => new LinearGradientBrush
+        public static LinearGradientBrush KeyArtStageHorizontalWash(double fadeEnd = 0.44) => new LinearGradientBrush
         {
             StartPoint = new Windows.Foundation.Point(0, 0),
             EndPoint = new Windows.Foundation.Point(1, 0),
             GradientStops =
             {
                 new GradientStop { Color = SurfaceWithAlpha(0xFF), Offset = 0 },
-                new GradientStop { Color = SurfaceWithAlpha(0), Offset = 0.44 },
+                new GradientStop { Color = SurfaceWithAlpha(0), Offset = fadeEnd },
                 new GradientStop { Color = SurfaceWithAlpha(0), Offset = 1 },
             },
         };
@@ -152,6 +158,22 @@ namespace Playarr.Xbox.Views
                     new GradientStop { Color = Parse(IsLight ? "#EFEEEE" : "#282227"), Offset = 1 },
                 },
             };
+        }
+
+        /// <summary>
+        /// The page ground as the web builds it: a flat surface colour on the page, with the tinted wash drawn as its own
+        /// layer behind the content (a separate element, so no element's background is the wash).
+        /// </summary>
+        public static void ApplyStage(Windows.UI.Xaml.Controls.Page page)
+        {
+            page.Background = new SolidColorBrush(Surface);
+            if (page.Content is Windows.UI.Xaml.Controls.Grid grid)
+            {
+                var wash = new Windows.UI.Xaml.Shapes.Rectangle { Fill = PageStage(), IsHitTestVisible = false };
+                Windows.UI.Xaml.Controls.Grid.SetRowSpan(wash, 99);
+                Windows.UI.Xaml.Controls.Grid.SetColumnSpan(wash, 99);
+                grid.Children.Insert(0, wash);
+            }
         }
 
         /// <summary>The web image opacity, applied after the grayscale, contrast and brightness filters.</summary>

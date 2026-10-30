@@ -77,11 +77,7 @@ internal sealed class DetailScreen : IPage
 
     private void BuildHeader(Work w)
     {
-        var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
-        back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
-        back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
-        Sem.Tag(back, "button", "Back to Movies");
-        _content.Add(back);
+        _focus.Items.Add(new BackControl(_env, _t, _content, "button", "Back to Movies").Item);
         _content.Add(Ui.Heading("Movies", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         new PageSubtitle(_env, _content, "Movies").Set(w.Title, wrapIfClockBlocks: true);
     }
@@ -106,8 +102,8 @@ internal sealed class DetailScreen : IPage
         AddButton("Playback", "☷", 311.6f, y1, 142, primary: false, label: "playback settings", select: () => Toast("Playback settings are not available in this app yet."), name: "Playback settings for " + w.Title, role: "button");
         PlayIndex = _focus.Items.Count;
         AddButton(resume, "▶", 469.6f, y1, Math.Max(156f, resume.Length > 4 ? 160.6f : 0), primary: true, label: $"play {w.Title}".ToLowerInvariant(), name: "Play " + w.Title, role: "link", select: () => PlayFrom(_progress is { State: WatchState.InProgress } rp ? rp.PositionMs : null));
-        AddButton("Add to watchlist", "+", 153.6f, y2, 142, primary: false, label: "add to watchlist", select: () => Toast("The watchlist is not available in this app yet."), name: "+ Add to watchlist", role: "button");
-        AddButton("Add to Playlist", "+", 311.6f, y2, 142, primary: false, label: "add to playlist", select: () => Toast("Playlists are not available in this app yet."), name: "+ Add to Playlist", role: "button");
+        AddButton("Add to watchlist", "+", 153.6f, y2, 142, primary: false, label: "add to watchlist", select: () => Toast("The watchlist is not available in this app yet."), name: "Add to watchlist", role: "button");
+        AddButton("Add to Playlist", "+", 311.6f, y2, 142, primary: false, label: "add to playlist", select: () => Toast("Playlists are not available in this app yet."), name: "Add to Playlist", role: "button");
     }
 
     private static float GlyphWidth(string g) => g switch { "⇩" => 10.7f, "☷" => 11.5f, "+" => 7.7f, _ => 8.2f }; // advances of the fallback-font glyphs as web lays them out

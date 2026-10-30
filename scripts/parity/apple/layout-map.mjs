@@ -32,7 +32,7 @@ export function mapRaw(doc, screen, theme) {
     if (e.opacity != null && e.opacity !== 1) out.opacity = e.opacity;
     return out;
   });
-  return { screen, theme, viewport: doc.viewport, clockPinned: doc.clockPinned, elements: dropCovered(elements) };
+  return { screen, theme, viewport: doc.viewport, clockPinned: doc.clockPinned, elements: canonicalOrder(dropCovered(elements)) };
 }
 
 // Covered content is not visible: an item fully inside a later-drawn dialog (the drawer over the library) is dropped. The
@@ -48,4 +48,11 @@ function dropCovered(elements) {
 if (process.argv[1]?.endsWith("layout-map.mjs") && process.argv[2]) {
   const [, , file, screen, theme] = process.argv;
   process.stdout.write(JSON.stringify(mapRaw(JSON.parse(readFileSync(file, "utf8")), screen, theme)));
+}
+
+// The app reports items in the order its views appeared, which varies from run to run; the file is written in a fixed
+// order (position, role, text) so two identical runs give identical files. Nothing else about an element changes.
+function canonicalOrder(elements) {
+  const key = (e) => [e.rect.y, e.rect.x, e.role, e.text, e.rect.w, e.rect.h].map((v) => (typeof v === "number" ? v.toFixed(2).padStart(10, "0") : String(v))).join("|");
+  return elements.map((e, i) => [key(e), i, e]).sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] - b[1])).map((x) => x[2]);
 }

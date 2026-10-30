@@ -26,11 +26,12 @@ namespace Playarr.Xbox.Views
         public DownloadsPage()
         {
             InitializeComponent();
+            Theme.ApplyStage(this); // flat surface ground; the page wash is a separate layer, as on the web
             Ui.PageHeader(RootGrid, "Downloads", null, () => App.Navigation.GoBack());
             _scroll = new ScrollViewer { Content = _rows, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden, Margin = new Thickness(228, 190, 58, 0), VerticalAlignment = VerticalAlignment.Top, Height = 850 };
             CardFocus.ReserveFocusRoom(_scroll, top: 0, bottom: 0);
             RootGrid.Children.Add(_scroll);
-            var filters = Ui.ActionTile(Ui.FiltersIcon(), "Filters", 152, OpenFilters);
+            var filters = Ui.ActionTile(Ui.FiltersIcon(), "Filters", 151.19, OpenFilters);
             RootGrid.Children.Add(filters);
             _empty = new Grid { Visibility = Visibility.Collapsed };
             _empty.Children.Add(Ui.EmptyState("", "No downloads yet", "Titles you download to watch without a connection appear here."));

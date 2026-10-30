@@ -689,18 +689,22 @@ private struct AuthenticatedPlayarrShell: View {
                 #endif
                 HStack(alignment: .firstTextBaseline, spacing: 11) {
                     Text(clockDate.formatted(headerTimeStyle))
-                        .wm(12.5, 800, text: clockDate.formatted(headerTimeStyle))
+                        .wm(13.12, 760, text: clockDate.formatted(headerTimeStyle))
                     Text(clockDate.formatted(headerDateStyle).uppercased())
-                        .font(WM.font(8, 700)).tracking(0.6)
-                        .foregroundStyle(PlayarrStyle.inkSoft)
+                        .font(WM.font(8.32, 640)).tracking(0.6)
+                        .foregroundStyle(PlayarrStyle.ink)
+                        .parityRenderedText(clockDate.formatted(headerDateStyle).uppercased(), role: "text", size: 8.32, weight: 640, color: PlayarrStyle.ink)
                 }
                 .foregroundStyle(PlayarrStyle.ink)
                 .offset(x: proxy.size.width * 0.24, y: chromeTop + 14)
             }
             }
 
-            PlayarrLogo(size: 30)
-                .offset(x: navEdge + 24.4, y: chromeTop)
+            // The web logo is a decorative 32.09 pt image (no alt text), so it is exported as an image without a name.
+            PlayarrLogo(size: 32.09)
+                .accessibilityHidden(true)
+                .parityBox("image")
+                .offset(x: navEdge + 23.34, y: chromeTop + 5.94)
 
             // Web rail: Downloads and Search, then the four browse tabs, then the four personal tabs, each in its own pill.
             VStack(spacing: 13) {

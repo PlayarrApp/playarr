@@ -29,6 +29,7 @@ import { ProfileAvatarPanel } from '../design/components/ProfileAvatarPanel';
 import { HomeRailsPanel } from '../design/components/HomeRailsPanel';
 import { YourDataPanel } from '../design/components/YourDataPanel';
 import { QualityMatrix } from '../design/components/QualityMatrix';
+import { fitLineText } from '../design/components/FitLine';
 import { ORIGINAL_QUALITY, normaliseQuality, normaliseSubtitleMode, normaliseSubtitleLanguage } from '../core/PlayerDefaults';
 
 
@@ -131,6 +132,11 @@ export struct SettingsScreen {
   @State private openSection: string = APPEARANCE;
   /** Phone: false shows the section list, true the open section's panel. */
   @State private sectionOpen: boolean = false;
+
+  /** A phone row's description on one line: the web row clips it at 228.5 vp with a real "…". */
+  private rowCopy(id: string): string {
+    return fitLineText(this.getUIContext(), sectionCopyOf(id), 10.88, 400, 228.5);
+  }
   @State private audioLanguage: string = 'en';
   /** Web's player preference status: loading, ready, saving or an error message. */
   @State private audioStatus: string = 'loading';
@@ -311,7 +317,7 @@ export struct SettingsScreen {
     }
     .width(tv(ROW_WIDTH))
     .height(this.rowHeightOf(section))
-    .accessibilityText(section.number + ' ' + section.title + ' →').accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
+    .accessibilityText(section.number + ' ' + section.title).accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
     .backgroundColor(section.id === this.openSection ? toResourceColor(activeColors().surfaceSoft) : Color.Transparent)
     .focusable(true)
     .onFocus(() => {
@@ -647,16 +653,16 @@ export struct SettingsScreen {
                 .fontSize(16)
                 .fontWeight(FontWeight.Medium)
                 .lineHeight(webLineHeight(16)).halfLeading(true)
-                .letterSpacing(-0.54)
+                .letterSpacing((-0.54) + (!isTvMetrics() ? -0.212 : 0))
                 .fontColor(toResourceColor(activeColors().ink))
-              Text(sectionCopyOf(section.id)).fontFamily(nunitoAt(400, 10.88))
-                .fontSize(10.88)
+              Text(this.rowCopy(section.id)).fontFamily(nunitoAt(400, 10.88))
+                .fontSize(10.88).letterSpacing((!isTvMetrics() ? -0.084 : 0))
                 .lineHeight(webLineHeight(10.88)).halfLeading(true)
                 .fontColor(toResourceColor(activeColors().ink))
                 .maxLines(1)
             }
             .alignItems(HorizontalAlign.Start)
-            .width(340) // web dump: the copy is not clipped and runs under the arrow
+            .width(340)
             .position({ x: 56, y: 22.9 })
             Text('→').fontFamily(arrowFont(400))
               .fontSize(20.8).lineHeight(webLineHeight(20.8)).halfLeading(true)
@@ -664,7 +670,7 @@ export struct SettingsScreen {
               .height(88)
               .position({ x: section.id === this.openSection ? 300.2 : 295.2, y: -0.6 }) // web: the unselected rows' arrow sits 5 vp further left
           }
-          .accessibilityText(section.number + ' ' + section.title + ' ' + sectionCopyOf(section.id) + ' →').accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
+          .accessibilityText(section.number + ' ' + section.title + ' ' + this.rowCopy(section.id)).accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
           .width(328)
           .height(88)
           .margin({ left: 16, right: 16 })
@@ -685,6 +691,7 @@ export struct SettingsScreen {
     NavDestination() {
       PageShell({
         railFrostWidthPct: 65,
+        railFrostFullBox: isTvMetrics(), // web TV draws the frost as a full-width box
         title: t('settings.index.title', 'Preferences'),
         backLabel: 'Settings',
         backRole: 'button',

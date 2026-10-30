@@ -138,6 +138,8 @@ struct PlayarrArtwork: View {
             }
         }
         .clipped()
+        // The image box exists only once the artwork has loaded; the placeholder logo is not an image of the work.
+        .parityBox("image", enabled: loader.image != nil)
         .task(id: "\(work.id)-\(kind.rawValue)") {
             await loader.load(work: work, kind: kind, apiClient: apiClient)
         }
@@ -287,7 +289,6 @@ struct PlayarrMediaCard: View {
                 .frame(width: width)
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: matchesWebScreenGrid ? 8.88 : min(13, max(8, width * 0.058)), style: .continuous))
-                .parityBox("image", background: WM.artFill)
                 .parityBox("container", background: WM.artFill, radius: matchesWebScreenGrid ? 8.88 : min(13, max(8, width * 0.058)))
                 .scaleEffect(focused ? LibraryFocusMetrics.tabletArtworkScale : 1)
                 .shadow(color: PlayarrStyle.ink.opacity(0.1), radius: 17, y: 6)
@@ -313,10 +314,12 @@ struct PlayarrMediaCard: View {
                 Text(work.title)
                     .font(.custom("Avenir Next", fixedSize: width <= 210 ? 12.5 : 11).weight(.semibold))
                     .foregroundStyle(PlayarrStyle.ink)
+                    .parityRenderedText(work.title, role: "text", size: width <= 210 ? 12.5 : 11, weight: 600, color: PlayarrStyle.ink)
                     .lineLimit(1)
                 Text(work.singularKindYearLabel)
                     .font(.custom("Avenir Next", fixedSize: width <= 210 ? 10 : 8.5).weight(.semibold))
                     .foregroundStyle(PlayarrStyle.muted)
+                    .parityRenderedText(work.singularKindYearLabel, role: "text", size: width <= 210 ? 10 : 8.5, weight: 600, color: PlayarrStyle.muted)
             } else {
                 WMText(
                     work.title,
@@ -338,7 +341,6 @@ struct PlayarrMediaCard: View {
             }
         }
         .frame(width: width, alignment: .leading)
-        .parityBox("link", name: matchesWebScreenGrid ? "Open \(work.title)" : nil, radius: 12)
     }
 }
 

@@ -1,0 +1,1 @@
+- Parity webOS driver seeks the player to the exact pin position and waits until the seek bar fill shows it, so the capture no longer depends on a lagging position tick.

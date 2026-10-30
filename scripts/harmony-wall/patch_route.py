@@ -59,11 +59,29 @@ methods = """
         node.$runsError = String(err);
       }
     }
+    this.previewMeasureFrame(node);
     const kids: PvNode[] | undefined = node.$children;
     if (kids !== undefined) {
       for (const kid of kids) {
         this.previewMeasureNode(kid);
       }
+    }
+  }
+
+  // The inspector clamps a box at the window edge. The layout size of the very component comes from its FrameNode (the framework's own
+  // measured size) and, when the app gave it an id, from ComponentUtils.getRectangleById; both are saved for the export to choose from.
+  private previewMeasureFrame(node: PvNode): void {
+    if (node.$type === 'Text' || node.$ID === undefined) {
+      return;
+    }
+    try {
+      const frame: FrameNode | null = this.getUIContext().getFrameNodeByUniqueId(node.$ID);
+      if (frame !== null) {
+        const size: Size = frame.getMeasuredSize();
+        node.$frame = new PvFrame(size.width, size.height);
+      }
+    } catch (err) {
+      node.$frameError = String(err);
     }
   }
 
@@ -84,12 +102,19 @@ methods = """
       // parity layout export: the component tree (box, text, font, colours) goes to the bridge, which keeps it for the capture driver
       try {
         const tree: string = this.getUIContext().getFilteredInspectorTree(['$rect', 'content', 'text', 'fontSize', 'fontColor', 'fontFamily', 'fontWeight',
-          'backgroundColor', 'borderRadius', 'opacity', 'letterSpacing', 'textAlign', 'maxLines', 'lineHeight', 'id', 'visibility', 'textCase', 'accessibilityText', 'accessibilityDescription', 'accessibilityTextHint', 'blendMode']);
+          'backgroundColor', 'borderRadius', 'opacity', 'letterSpacing', 'textAlign', 'maxLines', 'lineHeight', 'id', 'visibility', 'textCase', 'accessibilityText', 'accessibilityDescription', 'accessibilityTextHint', 'textOverflow', 'blendMode', 'lineSpacing', 'halfLeading']);
         this.previewReq.request('http://127.0.0.1:%s/layout-put?id=' + encodeURIComponent(name.substring(11)),
           { method: http.RequestMethod.POST, extraData: this.previewMeasured(tree), connectTimeout: 5000, readTimeout: 5000 }).catch((): void => {});
       } catch (err) {
         previewReport('dbg=' + encodeURIComponent('dumplayout-failed:' + JSON.stringify(err)));
       }
+      return;
+    }
+    if (name.indexOf('hide:') === 0 || name === 'show:all') {
+      // parity occlusion probe: patch_hide.py keyed every component and bound its visibility to this AppStorage string, so the declarative tree
+      // itself hides the named nodes (Visibility.Hidden keeps their layout) and re-renders; show:all puts them back.
+      AppStorage.setOrCreate<string>('pvHid', name === 'show:all' ? '' : '|' + name.substring(5).split(',').join('|') + '|');
+      previewReport('dbg=' + encodeURIComponent('probe:' + name.substring(0, 4)));
       return;
     }
     if (name.indexOf('focus:') === 0) {
@@ -125,9 +150,9 @@ methods = """
     }
   }
 """ % (port, port)
-s = s.replace("\n@Entry", "\ninterface PvAttrs {\n  accessibilityDescription?: string;\n}\n\ninterface PvNode {\n  $type: string;\n  $rect: string;\n  $attrs?: PvAttrs;\n  $children?: PvNode[];\n  $runs?: PvLine[];\n  $runsError?: string;\n}\n\nclass PreviewRouteParams {\n  kind: string;\n  constructor(kind: string) { this.kind = kind; }\n}\n\nclass PreviewDetailParams {\n  workId: string;\n  constructor(workId: string) { this.workId = workId; }\n}\n\nclass PreviewPlayerParams {\n  mediaFileId: string;\n  workId: string = '';\n  constructor(mediaFileId: string) { this.mediaFileId = mediaFileId; }\n}\n\n@Entry", 1)
+s = s.replace("\n@Entry", "\ninterface PvAttrs {\n  accessibilityDescription?: string;\n  content?: string;\n  textOverflow?: string;\n  fontSize?: string;\n  fontFamily?: string;\n  fontWeight?: string;\n  letterSpacing?: string;\n}\n\nclass PvFrame {\n  w: number;\n  h: number;\n  constructor(w: number, h: number) { this.w = w; this.h = h; }\n}\n\ninterface PvNode {\n  $type: string;\n  $ID?: number;\n  $frame?: PvFrame;\n  $frameError?: string;\n  $rect: string;\n  $attrs?: PvAttrs;\n  $children?: PvNode[];\n  $runs?: PvLine[];\n  $runsError?: string;\n}\n\nclass PreviewRouteParams {\n  kind: string;\n  constructor(kind: string) { this.kind = kind; }\n}\n\nclass PreviewDetailParams {\n  workId: string;\n  constructor(workId: string) { this.workId = workId; }\n}\n\nclass PreviewPlayerParams {\n  mediaFileId: string;\n  workId: string = '';\n  constructor(mediaFileId: string) { this.mediaFileId = mediaFileId; }\n}\n\n@Entry", 1)
 s = s.replace("\n  @Builder\n  previewRoutes(", methods + "\n  @Builder\n  previewRoutes(", 1)
-s = s.replace("import { ROUTES } from '../navigation/Routes';", "import { http } from '@kit.NetworkKit';\nimport { PvLine, pvTextLines } from '../util/PreviewText';\nimport { isTvMetrics } from '../design/Metrics';\nimport { ROUTES } from '../navigation/Routes';", 1)
+s = s.replace("import { ROUTES } from '../navigation/Routes';", "import { http } from '@kit.NetworkKit';\nimport { FrameNode } from '@kit.ArkUI';\nimport { PvLine, pvTextLines } from '../util/PreviewText';\nimport { isTvMetrics } from '../design/Metrics';\nimport { ROUTES } from '../navigation/Routes';", 1)
 s = s.replace("  aboutToAppear(): void {\n", "  aboutToAppear(): void {\n    this.startPreviewRoutePoll();\n", 1)
 assert 'this.startPreviewRoutePoll();' in s and 'previewPollOnce' in s
 open(p, 'w').write(s)

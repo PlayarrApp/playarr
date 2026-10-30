@@ -59,8 +59,9 @@ s = s.replace("    .hideTitleBar(true)\n  }\n}", "    .hideTitleBar(true)\n    .
 assert '.navDestination(this.previewRoutes)' in s
 open(p, 'w').write(s)
 
-# The Previewer window is larger than the stage (TV 2400 x 1740 px, stage at (240, 60); phone 1800 x 2700 px, stage 360 x 780 vp at (60, 60) vp)
-# so no box is clamped by the window; the stage keeps its fixed size and offset, the capture crops it out and the exporter subtracts the offset.
+# The Previewer window is larger than the stage (TV 3000 x 1740 px, stage at (240, 60); phone 1800 x 3600 px, stage 360 x 780 vp at (60, 60) vp)
+# the stage keeps its fixed size and offset, the capture crops it out and the exporter subtracts the offset. Boxes the inspector still clamps at the
+# window's trailing edge are restored by the exporter from the measured size (its limits list what it cannot restore).
 s = open(p).read()
 if '.clip(false)' not in s:
     if os.environ.get('DEVICE', 'tv') == 'tv':

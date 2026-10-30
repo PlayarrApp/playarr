@@ -11,7 +11,8 @@
 //   ANDROID_ADB_SERVER_PORT  the adb server the vega CLI uses, if it is not the default one
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, unlinkSync } from "node:fs";
+import { PNG } from "pngjs";
 import { tmpdir } from "node:os";
 import { join, dirname, basename } from "node:path";
 import { intoHome as pickProfile } from "./firetv-profile-pick.mjs";
@@ -246,7 +247,8 @@ export async function createDriver({ out } = {}) {
       for (let i = 0; i < 4; i++) {
         await settled(5000);
         const after = JSON.stringify((await state(8000).catch(() => ({}))).focus ?? null);
-        if (after !== before) return;
+        // An answer without a focus is a late answer, not a move.
+        if (after !== before && after !== "null") return;
         await sleep(1200);
       }
       await press(key);
@@ -319,13 +321,36 @@ export async function createDriver({ out } = {}) {
       await sleep(1500);
       // The layout document of the same screen state goes next to the capture: <out>/layout/<theme>/<screen>.json.
       const theme = basename(dirname(file));
-      if (theme === "dark" || theme === "light") {
-        const layout = await layoutDocument();
-        const dir = join(dirname(dirname(file)), "layout", theme);
-        mkdirSync(dir, { recursive: true });
-        writeFileSync(join(dir, `${basename(file, ".png")}.json`), JSON.stringify({ screen: basename(file, ".png"), theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: pinnedClock !== null, elements: process.env.PARITY_LAYOUT_DEBUG ? layout : layout.map(({ src, ...element }) => element) }));
-      }
+      const layout = theme === "dark" || theme === "light" ? await layoutDocument() : null;
       await execFileP("import", ["-window", "root", "-crop", "1920x1080+0+0", "+repage", file], { env });
+      if (!layout) return;
+      // Elements a later opaque view covers are flagged by the app; the real screen decides: hide the covering views, capture
+      // again, and an element whose box pixels changed was covered by them (the pixels shown there were the cover's, not its own).
+      const flagged = layout.filter((e) => e.covered);
+      let drop = new Set();
+      if (flagged.length) {
+        const again = `${file}.uncovered.png`;
+        await command({ cmd: "cover", on: "1" }, 1800);
+        await sleep(800);
+        await execFileP("import", ["-window", "root", "-crop", "1920x1080+0+0", "+repage", again], { env });
+        await command({ cmd: "cover", on: "0" }, 1800);
+        const [shown, bare] = [PNG.sync.read(readFileSync(file)), PNG.sync.read(readFileSync(again))];
+        for (const e of flagged) {
+          const x0 = Math.max(0, Math.floor(e.rect.x)), y0 = Math.max(0, Math.floor(e.rect.y));
+          const x1 = Math.min(shown.width, Math.ceil(e.rect.x + e.rect.w)), y1 = Math.min(shown.height, Math.ceil(e.rect.y + e.rect.h));
+          let changed = 0;
+          for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+            const i = (shown.width * y + x) * 4;
+            if (Math.abs(shown.data[i] - bare.data[i]) + Math.abs(shown.data[i + 1] - bare.data[i + 1]) + Math.abs(shown.data[i + 2] - bare.data[i + 2]) > 24) changed++;
+          }
+          if (changed > 0.01 * Math.max(1, (x1 - x0) * (y1 - y0))) drop.add(e);
+        }
+        unlinkSync(again);
+      }
+      const kept = layout.filter((e) => !drop.has(e)).map(({ src, covered, ...element }) => (process.env.PARITY_LAYOUT_DEBUG ? { ...element, src } : element));
+      const dir = join(dirname(dirname(file)), "layout", theme);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, `${basename(file, ".png")}.json`), JSON.stringify({ screen: basename(file, ".png"), theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: pinnedClock !== null, elements: kept }));
     },
     async play(c, expect) {
       await command({ cmd: "play", file: c.file }, 500);
