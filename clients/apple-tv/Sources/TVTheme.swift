@@ -696,6 +696,7 @@ private struct TVNavVectorIcon: View {
                     context.fill(path.applying(transform), with: .foreground)
                 }
             }
+            .drawingGroup() // one cached bitmap: a vector icon re-drawn after a hide and show antialiased differently
             .frame(width: TVNavIconVector.renderedSize, height: TVNavIconVector.renderedSize)
             .accessibilityHidden(true)
             .parityBox("image")
