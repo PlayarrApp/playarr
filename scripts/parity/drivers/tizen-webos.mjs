@@ -77,6 +77,19 @@ function installLoopbackArt() {
   const sa = Element.prototype.setAttribute;
   Element.prototype.setAttribute = function (n, v) { return sa.call(this, n, this instanceof HTMLImageElement && n === "src" ? fix(v) : v); };
 }
+// The web refs are captured with caret-color transparent (FREEZE_CSS in web.mjs): the blinking text caret is not app layout. Same rule on the device page, set at page start.
+function installCaretHide() {
+  const add = () => {
+    if (document.getElementById("parity-caret-hide")) return;
+    const style = document.createElement("style");
+    style.id = "parity-caret-hide";
+    style.textContent = "*,*::before,*::after{caret-color:transparent!important}";
+    (document.head || document.documentElement).appendChild(style);
+  };
+  if (document.documentElement) add();
+  document.addEventListener("DOMContentLoaded", add);
+}
+
 // Keeps the playback listener the app registers on AVPlay, so a capture can deliver the position tick of a paused seek (AVPlay sends none while paused).
 function tapAvplayListener() {
   try {
@@ -133,7 +146,7 @@ export async function createDriver() {
     await new Promise((r, j) => { socket.onopen = r; socket.onerror = j; });
     // Records the Media Session action handlers (the now-playing buttons) on every new document, as the web driver does.
     await cdp("Page.enable");
-    await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(${pageHook})()` });
+    await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(${pageHook})();(${installCaretHide})()` });
     if (TIZEN_MIRROR) await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `window.__mirrorPause = true;(${installLoopbackArt})();` });
     if (pin) {
       // The same pin the web driver gives the browser: zone, locale and a fixed Date (wall time still advances), for this document and every new one.
@@ -458,7 +471,7 @@ export async function createDriver() {
       if (device === "tizen") {
         // No CDP here: the pin is a script kept in the app's localStorage, which the debug build's netlog.js runs at page start, before the app's first render.
         if (timeZone !== "UTC") throw new Error(`tizen stable capture unsupported for ${timeZone}: the page pin renders UTC only`);
-        const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});(${installLoopbackArt})();(${tapAvplayListener})();window.__parityPinned = true;`;
+        const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});(${installLoopbackArt})();(${tapAvplayListener})();(${installCaretHide})();window.__parityPinned = true;`;
         tizenPinScript = Buffer.from(source).toString("base64");
         return;
       }
