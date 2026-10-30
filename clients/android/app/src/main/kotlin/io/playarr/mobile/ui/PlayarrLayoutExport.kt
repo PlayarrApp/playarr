@@ -274,14 +274,16 @@ internal object PlayarrLayoutExport {
                 ?: (if (editable) config.getOrNull(SemanticsProperties.EditableText)?.text else null)
                 ?: config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }.orEmpty()
             // The border box as laid out (a scroll container clips what it shows, not the control's box): the node's own coordinates through every layer.
-            val b = node.layoutInfo.coordinates.takeIf { it.isAttached && it.size.width > 0 }?.let { c ->
+            // A control's border box is where its own semantics modifier sits in the chain: padding applied after a clickable is content, not part of the box.
+            val ownCoords = node.layoutInfo.getModifierInfo().firstOrNull { it.modifier is androidx.compose.ui.node.SemanticsModifierNode }?.coordinates?.takeIf { it.isAttached && it.size.width > 0 } ?: node.layoutInfo.coordinates
+            val b = ownCoords.takeIf { it.isAttached && it.size.width > 0 }?.let { c ->
                 val p = c.localToRoot(androidx.compose.ui.geometry.Offset.Zero); val q = c.localToRoot(androidx.compose.ui.geometry.Offset(c.size.width.toFloat(), c.size.height.toFloat()))
                 androidx.compose.ui.geometry.Rect(minOf(p.x, q.x), minOf(p.y, q.y), maxOf(p.x, q.x), maxOf(p.y, q.y))
             } ?: node.boundsInRoot
             val x = b.left + ctx.dx; val y = b.top + ctx.dy
             val e = JSONObject().put("text", name).put("role", kind).put("rect", rect(x, y, b.width, b.height, ctx.unit))
                 .put("color", JSONObject.NULL).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
-            val nodeCoords = node.layoutInfo.coordinates
+            val nodeCoords = ownCoords
             val nodeScale = if (nodeCoords.isAttached && nodeCoords.size.width > 0) nodeCoords.localToRoot(androidx.compose.ui.geometry.Offset(nodeCoords.size.width.toFloat(), 0f)).x.minus(nodeCoords.localToRoot(androidx.compose.ui.geometry.Offset.Zero).x) / nodeCoords.size.width else 1f
             val ownDensity = node.layoutInfo.density.density
             // The radius is the outline the control's own surface resolved to at paint time; the clamp uses the unclipped size (a clipped strip keeps its corners).

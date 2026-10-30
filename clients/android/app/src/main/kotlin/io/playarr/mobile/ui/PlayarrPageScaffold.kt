@@ -92,6 +92,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -269,6 +270,7 @@ private fun PlayarrSheetFrame(
                 footer = currentFooter.value,
                 initialFocus = currentInitialFocus.value,
                 blurUnderlay = android.os.Build.VERSION.SDK_INT >= 31,
+                paneTitle = paneTitle,
                 content = { currentContent.value(this) },
             )
         }
@@ -306,7 +308,7 @@ private fun PlayarrSheetFrame(
                 if (parityNoInsets) androidx.core.view.WindowCompat.getInsetsController(w, view).hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
             }
         }
-        PhoneDrawerPanel(titleContent, kicker, closeLabel, onClose, dismissible, footer, initialFocus, blurUnderlay = false, content = content)
+        PhoneDrawerPanel(titleContent, kicker, closeLabel, onClose, dismissible, footer, initialFocus, blurUnderlay = false, paneTitle = paneTitle, content = content)
     }
 }
 
@@ -320,6 +322,7 @@ private fun PhoneDrawerPanel(
     footer: (@Composable RowScope.() -> Unit)?,
     initialFocus: FocusRequester?,
     blurUnderlay: Boolean,
+    paneTitle: String?,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val focus = remember { FocusRequester() }
@@ -331,6 +334,8 @@ private fun PhoneDrawerPanel(
     Box(
         Modifier.fillMaxSize()
             .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } }
+            // The pane title sits on the node that paints the drawer surface, so the dialog is exported with that fill.
+            .then(if (paneTitle != null) Modifier.semantics { this.paneTitle = paneTitle } else Modifier)
             .parityBackground("container", WebSurfaceStrong.copy(alpha = if (blurUnderlay) 0.94f else 0.985f))
     ) {
         Column(
