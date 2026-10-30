@@ -213,3 +213,11 @@ b {
     }
   }
 }
+
+/* The detail meta row (type, runtime, year, genres) is plain text in a 10.56 px font: its inherited 1.5 is 15.84 px, which Chromium 85 truncates to 15 (0.84 px
+   short, the largest single loss on a detail page, which is centred, so every block moves). Half a pixel more rounds it to 16 (0.16 px). */
+@supports not (aspect-ratio: 1) {
+  .tv-detail-meta > * {
+    line-height: calc(1.5em + 0.5px);
+  }
+}
