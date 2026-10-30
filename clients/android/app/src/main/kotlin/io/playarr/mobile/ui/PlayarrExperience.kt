@@ -2169,7 +2169,7 @@ private fun ExperienceNavigation(
                     modifier = Modifier.height(46.dp).width(if (isTelevision) 46.dp else 44.dp).semantics { contentDescription = tvProfile.description }.parityShape(14f),
                 ) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        PlayarrProfileAvatar(userId = tvProfile.userId, preference = tvProfile.avatar, modifier = Modifier.size(21.2.dp).offset(y = if (isTelevision) 0.dp else (-3.2).dp).parityBox("container", radius = 999f).parityBox("image"), glyphSize = 13.sp) // web: 39 device px
+                        PlayarrProfileAvatar(userId = tvProfile.userId, preference = tvProfile.avatar, modifier = Modifier.size(21.2.dp).offset(y = if (isTelevision) 0.dp else (-3.2).dp).parityBox("container", radius = 999f), artworkModifier = Modifier.parityBox("image"), glyphSize = 13.sp) // web: 39 device px
                     }
                 }
                 }
