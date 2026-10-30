@@ -5024,6 +5024,12 @@ sub layoutNavDock()
             end if
         end if
     end for
+    ' The dock has three groups; the fourth panel and shadow of the scene file stay hidden instead of drawing a stray face.
+    for g = groupRanges.Count() to m.navGroupBgs.Count() - 1
+        m.navGroupBgs[g].visible = false
+        spare = m.top.findNode("navGroupShadow" + g.ToStr())
+        if spare <> invalid then spare.visible = false
+    end for
 end sub
 
 function firstEnabledNavIndex() as Integer
