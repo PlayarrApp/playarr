@@ -26,7 +26,7 @@ namespace Playarr.Xbox.Views
             host.Children.Add(backButton);
             var titles = new StackPanel { Margin = new Thickness(226.63, 58.16, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
             var titleText = new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"], FontSize = 33.6, FontFamily = WebFont.Face(580), FontWeight = WebFont.Weight(580), LineHeight = 46, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, CharacterSpacing = -52 };
-            LayoutExport.SetRole(titleText, "heading");
+            LayoutExport.Heading(titleText);
             var subtitleText = new TextBlock { Text = subtitle ?? string.Empty };
             LayoutHeader(titles, titleText, subtitleText);
             host.Children.Add(titles);
@@ -129,8 +129,7 @@ namespace Playarr.Xbox.Views
         {
             var button = RoundButton("", onClick);
             button.Margin = new Thickness(153.59, 56.16, 0, 0);
-            LayoutExport.Tag(button, "link", "Back to Home");
-            LayoutExport.SetSplit(button, true);
+            LayoutExport.Named(button, "Back to Home");
             button.HorizontalAlignment = HorizontalAlignment.Left;
             button.VerticalAlignment = VerticalAlignment.Top;
             // The web draws Back as the text arrow, small and lightweight, not an icon-font arrow.
@@ -195,7 +194,6 @@ namespace Playarr.Xbox.Views
             var tile = new StackPanel { Spacing = 5.6 };
             tile.Children.Add(icon);
             tile.Children.Add(new TextBlock { Text = label, FontSize = 8.26, FontWeight = FontWeights.Bold, CharacterSpacing = 20, Foreground = Res("PlayarrInkMuted"), HorizontalAlignment = HorizontalAlignment.Center });
-            LayoutExport.SetRole(icon, "image");
             var button = new Button
             {
                 Width = 62, Height = 72, Margin = new Thickness(0, top, 12.47, 0), Padding = new Thickness(0), CornerRadius = new CornerRadius(14),
@@ -205,8 +203,7 @@ namespace Playarr.Xbox.Views
                 FocusVisualPrimaryBrush = Theme.FocusRing, FocusVisualPrimaryThickness = new Thickness(3), FocusVisualSecondaryThickness = new Thickness(0),
             };
             button.Click += (s, e) => onClick();
-            LayoutExport.Tag(button, "button", label);
-            LayoutExport.SetSplit(button, true);
+            LayoutExport.Named(button, label);
             return button;
         }
 

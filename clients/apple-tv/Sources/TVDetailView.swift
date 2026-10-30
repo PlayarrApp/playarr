@@ -355,6 +355,7 @@ struct TVWorkDetailView: View {
                 .parityLayout(text: text, size: 11.9, weight: Int(TVTheme.cssWeight(.bold)), color: light ? DesignTokens.Color.backgroundBase : Color.white)
         }
         .foregroundStyle(light ? DesignTokens.Color.backgroundBase : Color.white)
+        .accessibilityLabel(playName ?? text) // the play glyph is decoration (web: aria-hidden)
         .frame(width: 156, height: 64)
         .parityBox(light ? "button" : "link", text: playName, radius: 32, fill: light ? DesignTokens.Stage.ink : Color(red: 0xa5 / 255, green: 0x27 / 255, blue: 0x45 / 255))
         // Web: the focused Play (the default focus on load) is a darker crimson (165, 39, 69) inside the control ring

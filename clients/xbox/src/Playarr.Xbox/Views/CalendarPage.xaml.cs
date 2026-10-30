@@ -98,7 +98,6 @@ namespace Playarr.Xbox.Views
         {
             var pill = Ui.Pill(text, onClick, minWidth);
             pill.Padding = new Thickness(21, 0, 21, 0);
-            LayoutExport.SetSplit(pill, true);
             pill.Background = new SolidColorBrush(Colors.Transparent);
             pill.Content = Ui.Text(text, 14.72, new FontWeight { Weight = 720 }, "PlayarrInkSoft");
             return pill;
@@ -109,8 +108,7 @@ namespace Playarr.Xbox.Views
         {
             var button = Ui.RoundButton(string.Empty, onClick);
             button.Background = new SolidColorBrush(Colors.Transparent);
-            LayoutExport.Tag(button, "button", arrow == "\u2190" ? "Previous" : "Next");
-            LayoutExport.SetSplit(button, true);
+            LayoutExport.Named(button, arrow == "\u2190" ? "Previous" : "Next");
             button.Content = new TextBlock { Text = arrow, FontSize = 14.72, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), Foreground = Ui.Res("PlayarrInkSoft"), CharacterSpacing = 135, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = arrow == "\u2192" ? new Thickness(0, 0, 15.6, 0) : new Thickness(0) };
             return button;
         }
@@ -375,7 +373,6 @@ namespace Playarr.Xbox.Views
             var status = Ui.Text(_anchor.ToString("MMMM yyyy", Uk), 19.2, FontWeights.Normal, "PlayarrInk");
             status.LineHeight = 26;
             status.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
-            LayoutExport.Tag(status, "status");
             Canvas.SetLeft(status, left);
             Canvas.SetTop(status, 163);
             canvas.Children.Add(status);
@@ -435,7 +432,7 @@ namespace Playarr.Xbox.Views
                 var grouped = entry.Members != null && entry.Members.Count > 1;
                 var title = grouped ? $"{entry.Title} \u00b7 {entry.Members!.Count}\u00d7" : entry.Title;
                 var button = new Border { Width = 226, Height = 44, CornerRadius = new CornerRadius(4) };
-                LayoutExport.Tag(button, "button", $"{title}, {TonePillLabel(entry)}, {day.ToString("dddd d MMMM", Uk)}");
+                LayoutExport.Named(button, $"{title}, {TonePillLabel(entry)}, {day.ToString("dddd d MMMM", Uk)}");
                 Canvas.SetLeft(button, 5.8);
                 Canvas.SetTop(button, 1.8 + row * 45);
                 cell.Children.Add(button);
@@ -549,7 +546,7 @@ namespace Playarr.Xbox.Views
 
                 // The web's sticky day heading: a 44 px row on the page ground, 32 px clear above and below.
                 var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Height = 44, Width = 1033.38, Margin = new Thickness(0, list.Children.Count == 0 ? 0 : 32, 0, 32), Background = Ui.Res(Theme.IsLight ? "PlayarrSurface" : "PlayarrBg") };
-                LayoutExport.SetRole(heading, "heading");
+                LayoutExport.Heading(heading);
                 var dayTitle = DayTitle(day);
                 dayTitle.VerticalAlignment = VerticalAlignment.Center;
                 heading.Children.Add(dayTitle);
@@ -646,8 +643,7 @@ namespace Playarr.Xbox.Views
                     FocusVisualSecondaryThickness = new Thickness(0),
                 };
                 open.Click += (s, e) => App.Navigation.Navigate(typeof(WorkDetailPage), workId);
-                LayoutExport.SetSplit(open, true);
-                LayoutExport.Tag(open, "button", entry.MediaKind == "movie" ? "Open movie" : "Open series");
+                LayoutExport.Named(open, entry.MediaKind == "movie" ? "Open movie" : "Open series");
                 actions.Children.Add(open);
                 var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 9.6 };
                 label.Children.Add(Ui.Text("+", 14.72, new FontWeight { Weight = 720 }, "PlayarrInkSoft"));
@@ -665,8 +661,7 @@ namespace Playarr.Xbox.Views
                     FocusVisualPrimaryThickness = new Thickness(3),
                     FocusVisualSecondaryThickness = new Thickness(0),
                 };
-                LayoutExport.Tag(watch, "button", "+ Add to watchlist");
-                LayoutExport.SetSplit(watch, true);
+                LayoutExport.Named(watch, "+ Add to watchlist");
                 watch.Click += async (s, e) =>
                 {
                     try
@@ -726,7 +721,7 @@ namespace Playarr.Xbox.Views
                 card.Height = canvas.Height;
                 card.HorizontalContentAlignment = HorizontalAlignment.Left;
                 card.VerticalContentAlignment = VerticalAlignment.Top;
-                var thumb = LayoutExport.Tag(new Border { Width = 40, Height = 60, CornerRadius = new CornerRadius(6), Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"] }, "image");
+                var thumb = new Border { Width = 40, Height = 60, CornerRadius = new CornerRadius(6), Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"] };
                 if (Uri.TryCreate(entry.PosterUrl, UriKind.Absolute, out var thumbUri))
                 {
                     thumb.Child = new Image { Source = new BitmapImage(thumbUri) { DecodePixelWidth = 80 }, Stretch = Stretch.UniformToFill };
@@ -761,8 +756,7 @@ namespace Playarr.Xbox.Views
                 canvas.Children.Add(metaRow);
                 canvas.Margin = new Thickness(-1, 0, 0, 0); // the card's 1 px border must not move its contents
                 card.Content = canvas;
-                LayoutExport.Tag(card, "button", string.Join(" ", new[] { entry.Title, webLine2Text, TimeLabel(entry), ReleaseLabel(entry), KindLabel(entry), TonePillLabel(entry) }.Where(x => x.Length > 0)));
-                LayoutExport.SetSplit(card, true);
+                LayoutExport.Named(card, string.Join(" ", new[] { entry.Title, webLine2Text, TimeLabel(entry), ReleaseLabel(entry), KindLabel(entry), TonePillLabel(entry) }.Where(x => x.Length > 0)));
                 return card;
             }
 
@@ -770,7 +764,7 @@ namespace Playarr.Xbox.Views
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             // Availability is the entry's left accent (owner rule: have it versus not, never the library).
-            var poster = LayoutExport.Tag(new Border { Width = web ? 40 : 34, Height = web ? 60 : 52, CornerRadius = new CornerRadius(web ? 6 : 3), Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"] }, "image");
+            var poster = new Border { Width = web ? 40 : 34, Height = web ? 60 : 52, CornerRadius = new CornerRadius(web ? 6 : 3), Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"] };
             if (Uri.TryCreate(entry.PosterUrl, UriKind.Absolute, out var posterUri))
             {
                 poster.Child = new Image { Source = new BitmapImage(posterUri) { DecodePixelWidth = web ? 80 : 68 }, Stretch = Stretch.UniformToFill };
@@ -799,8 +793,7 @@ namespace Playarr.Xbox.Views
             card.Content = row;
             if (web)
             {
-                LayoutExport.Tag(card, "button", string.Join(" ", new[] { entry.Title, Join(Code(entry), entry.Subtitle ?? string.Empty), TimeLabel(entry), ReleaseLabel(entry), KindLabel(entry), TonePillLabel(entry) }.Where(x => x.Length > 0)));
-                LayoutExport.SetSplit(card, true);
+                LayoutExport.Named(card, string.Join(" ", new[] { entry.Title, Join(Code(entry), entry.Subtitle ?? string.Empty), TimeLabel(entry), ReleaseLabel(entry), KindLabel(entry), TonePillLabel(entry) }.Where(x => x.Length > 0)));
             }
 
 

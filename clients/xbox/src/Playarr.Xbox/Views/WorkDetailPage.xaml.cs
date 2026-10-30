@@ -58,10 +58,9 @@ namespace Playarr.Xbox.Views
             BackdropVerticalFade.Fill = Theme.KeyArtVerticalWash();
             BackdropStageWashLeft.Fill = Theme.KeyArtStageWashLeft();
             PlaybackButton = Ui.WithIcon(Ui.Filled(Ui.Pill("Playback", OpenPlaybackDrawer, 142)), "\u2637");
-            LayoutExport.SetSplit(PlaybackButton, true);
             PlaybackButton.Height = 64;
             WebFont.Apply(EpisodeTitleText, 570);
-            LayoutExport.SetRole(EpisodeTitleText, "heading");
+            LayoutExport.Heading(EpisodeTitleText);
             // Web: the focused primary action turns brand pink with white ink (the resting one is the ink pill).
             PlayButton.GotFocus += (s, e) => PaintPlay(true);
             PlayButton.LostFocus += (s, e) => PaintPlay(false);
@@ -122,7 +121,6 @@ namespace Playarr.Xbox.Views
             };
             _header.Subtitle.Text = _viewModel.Title;
             Windows.UI.Xaml.Automation.AutomationProperties.SetName(_header.Back, "Back to " + _header.Title.Text);
-            LayoutExport.SetRole(_header.Back, "button");
             Windows.UI.Xaml.Automation.AutomationProperties.SetName(PlaybackButton, "Playback settings for " + _viewModel.Title);
             // The web header: the title beside the subtitle after a divider (not pink), as every other page.
             Ui.LayoutHeader(_header.Titles, _header.Title, _header.Subtitle);
@@ -230,7 +228,6 @@ namespace Playarr.Xbox.Views
         private void NamePlay()
         {
             Windows.UI.Xaml.Automation.AutomationProperties.SetName(PlayButton, PlayLabel.Text + " " + _viewModel.Title);
-            LayoutExport.SetRole(PlayButton, _viewModel.IsSeries ? "button" : "link");
         }
 
         private bool _focusPrimary = true;
@@ -722,7 +719,7 @@ namespace Playarr.Xbox.Views
             var root = new StackPanel { Width = 268, Tag = chapter };
             root.Children.Add(art);
             root.Children.Add(caption);
-            LayoutExport.Tag(root, "link", $"Play {title} from {chapter.Title ?? $"Chapter {chapter.Index + 1}"}");
+            LayoutExport.Named(root, $"Play {title} from {chapter.Title ?? $"Chapter {chapter.Index + 1}"}");
             return root;
         }
 
@@ -889,7 +886,6 @@ namespace Playarr.Xbox.Views
             playlist.Height = 64;
             playlist.MinWidth = 142;
             ActionRow.Children.Add(playlist);
-            foreach (var pill in new[] { download, watch, playlist }) { LayoutExport.SetSplit(pill, true); }
         }
 
         private async void OpenPlaylistDrawer()
@@ -1009,7 +1005,7 @@ namespace Playarr.Xbox.Views
         }
 
         /// <summary>The detail page's rail title: the web draws it at 16.5 px (Home's rail titles are 19), in the same 26 px line.</summary>
-        private static TextBlock DetailRailTitle(string text) => LayoutExport.Tag(new TextBlock
+        private static TextBlock DetailRailTitle(string text) => LayoutExport.Heading(new TextBlock
         {
             Text = text,
             Style = (Style)Application.Current.Resources["PlayarrRailTitle"],
@@ -1019,7 +1015,7 @@ namespace Playarr.Xbox.Views
             CharacterSpacing = -31,
             LineHeight = 24,
             LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
-        }, "heading");
+        });
 
         private static FrameworkElement EpisodeCard(Work? series, int seasonNumber, EpisodeDetail detail, (double? Percent, bool Unwatched) watch)
         {
@@ -1108,7 +1104,7 @@ namespace Playarr.Xbox.Views
             else if (watch.Unwatched)
             {
                 // .tv-watch-unseen: a brand dot with a white ring in the top right corner.
-                art.Children.Add(LayoutExport.Tag(new Ellipse
+                art.Children.Add(new Ellipse
                 {
                     Width = 13,
                     Height = 13,
@@ -1119,7 +1115,7 @@ namespace Playarr.Xbox.Views
                     Stroke = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(240, 255, 255, 255)),
                     StrokeThickness = 2,
                     IsHitTestVisible = false,
-                }, "img"));
+                });
             }
 
             art.Children.Add(new TextBlock
@@ -1141,7 +1137,7 @@ namespace Playarr.Xbox.Views
             var root = new StackPanel { Width = 268, Tag = detail };
             root.Children.Add(art);
             root.Children.Add(caption);
-            LayoutExport.Tag(root, "link", $"{episode.EpisodeNumber:00} {EpisodeCode(seasonNumber, episode.EpisodeNumber)} {episode.Title}");
+            LayoutExport.Named(root, $"{episode.EpisodeNumber:00} {EpisodeCode(seasonNumber, episode.EpisodeNumber)} {episode.Title}");
             return root;
         }
 

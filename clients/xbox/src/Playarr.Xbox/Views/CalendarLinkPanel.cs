@@ -153,8 +153,6 @@ namespace Playarr.Xbox.Views
             ScrollViewer.SetHorizontalScrollBarVisibility(_url, ScrollBarVisibility.Auto);
             SetLabel(_copy, "Copy link", "PlayarrPillInk");
             SetLabel(_reset, "Reset link", "PlayarrInk");
-            LayoutExport.SetRole(_url, "textbox");
-            LayoutExport.SetRole(_qr, "img");
             _state.Visibility = Visibility.Collapsed;
             AddText("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.", 13.82, "PlayarrInkMuted").LineHeight = 20.74;
             _body.Children.Add(_error);
@@ -169,7 +167,7 @@ namespace Playarr.Xbox.Views
             var heading = AddText("ADD IT TO YOUR CALENDAR APP", 9.6, "PlayarrInkMuted");
             heading.FontWeight = new FontWeight { Weight = 720 };
             heading.CharacterSpacing = 120;
-            LayoutExport.SetRole(heading, "heading");
+            LayoutExport.Heading(heading);
             var steps = new StackPanel { Spacing = 8 };
             foreach (var step in new[] { "Google Calendar: Other calendars (+) > From URL, then paste the link.", "Apple Calendar: File > New Calendar Subscription, then paste the link.", "Outlook: Add calendar > Subscribe from web, then paste the link." })
             {

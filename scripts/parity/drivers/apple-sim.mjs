@@ -418,7 +418,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       await assertCurrentUser();
       // A library page (and the Filters drawer over it) is captured only once its titles have loaded: an empty library behind the
       // drawer scored 78. Bounded at 40 s; a page that never reports a count (not a library) is not held up.
-      if (mac && /^\/(movies|series|music)/.test(state().route ?? "")) {
+      if (/^\/(movies|series|music)/.test(state().route ?? "")) { // tvOS too: a tvOS series light capture was taken before its grid loaded (run 40949685683)
         for (let i = 0; i < 160 && !(state().items > 0); i += 1) await sleep(250);
         if (!(state().items > 0)) console.log("  library still empty after 40 s, capturing anyway");
         await sleep(1500); // artwork for the first screenful

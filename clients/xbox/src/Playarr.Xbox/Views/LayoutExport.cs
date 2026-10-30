@@ -1,13 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.UI;
 using Windows.UI.Xaml;
+using Windows.UI.Xaml.Automation.Peers;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Documents;
 using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Media.Imaging;
 
 namespace Playarr.Xbox.Views
 {
@@ -19,43 +23,64 @@ namespace Playarr.Xbox.Views
     /// </summary>
     internal static class LayoutExport
     {
-        /// <summary>The web role (heading, link, button, tab, textbox, search, img, status ...) an element exports as; unset elements derive one from their type.</summary>
-        public static readonly DependencyProperty RoleProperty = DependencyProperty.RegisterAttached("Role", typeof(string), typeof(LayoutExport), new PropertyMetadata(null));
-
-        /// <summary>A button the web exports as the box plus a separate text element (round letter and arrow buttons).</summary>
-        public static readonly DependencyProperty SplitProperty = DependencyProperty.RegisterAttached("Split", typeof(bool), typeof(LayoutExport), new PropertyMetadata(false));
-
-        public static void SetSplit(DependencyObject element, bool value) => element.SetValue(SplitProperty, value);
-
-        /// <summary>Export a text block's runs as separate elements at this separator (the web's meta line is one span per part).</summary>
-        public static readonly DependencyProperty SplitOnProperty = DependencyProperty.RegisterAttached("SplitOn", typeof(string), typeof(LayoutExport), new PropertyMetadata(null));
-
-        public static void SetSplitOn(DependencyObject element, string separator) => element.SetValue(SplitOnProperty, separator);
-
-        public static void SetRole(DependencyObject element, string role) => element.SetValue(RoleProperty, role);
-
-        public static string? GetRole(DependencyObject element) => (string?)element.GetValue(RoleProperty);
-
-        /// <summary>Tags a control the way the web's accessibility tree names it: role and accessible name (also read by screen readers).</summary>
-        public static T Tag<T>(T element, string role, string? name = null) where T : DependencyObject
+        /// <summary>Names a control the way a screen reader reads it (the automation name the native peer reports).</summary>
+        public static T Named<T>(T element, string name) where T : DependencyObject
         {
-            SetRole(element, role);
-            if (name != null)
-            {
-                Windows.UI.Xaml.Automation.AutomationProperties.SetName(element, name);
-            }
-
+            Windows.UI.Xaml.Automation.AutomationProperties.SetName(element, name);
             return element;
         }
 
-        public static string Build(string screen, string theme)
+        /// <summary>Marks a text block as a heading the way the platform does (automation heading level); the peer reports it.</summary>
+        public static T Heading<T>(T element) where T : DependencyObject
+        {
+            Windows.UI.Xaml.Automation.AutomationProperties.SetHeadingLevel(element, Windows.UI.Xaml.Automation.Peers.AutomationHeadingLevel.Level1);
+            return element;
+        }
+
+        private static AutomationPeer? PeerOf(FrameworkElement element) => FrameworkElementAutomationPeer.FromElement(element) ?? FrameworkElementAutomationPeer.CreatePeerForElement(element);
+
+        /// <summary>The role the native automation peer reports for the element (UIA control type, heading level); null for plain layout and paint containers.</summary>
+        private static string? NativeRole(FrameworkElement element)
+        {
+            if (Windows.UI.Xaml.Automation.AutomationProperties.GetHeadingLevel(element) != Windows.UI.Xaml.Automation.Peers.AutomationHeadingLevel.None)
+            {
+                return "heading";
+            }
+
+            return PeerOf(element)?.GetAutomationControlType() switch
+            {
+                AutomationControlType.Button => "button",
+                AutomationControlType.Hyperlink => "link",
+                AutomationControlType.Text => "text",
+                AutomationControlType.Image => "image",
+                AutomationControlType.Edit => "textbox",
+                AutomationControlType.Slider => "slider",
+                AutomationControlType.TabItem => "tab",
+                AutomationControlType.ListItem => "listitem",
+                AutomationControlType.DataItem => "listitem",
+                AutomationControlType.CheckBox => "checkbox",
+                _ => null,
+            };
+        }
+
+        /// <summary>The accessible name: the automation name the app set, else what the peer derives (content text).</summary>
+        private static string NameOf(FrameworkElement element)
+        {
+            var name = Windows.UI.Xaml.Automation.AutomationProperties.GetName(element);
+            return string.IsNullOrEmpty(name) ? PeerOf(element)?.GetName() ?? string.Empty : name;
+        }
+
+        public static async Task<string> BuildAsync(string screen, string theme)
         {
             var root = (FrameworkElement)Window.Current.Content;
             var scale = root.ActualWidth > 0 ? 1920.0 / root.ActualWidth : 1.0;
             var elements = new List<object>();
             // A page that paints an opaque solid background (the player's black stage) hides the window ground behind it.
             _rootCovered = FindPage(root) is { Background: SolidColorBrush { Color.A: 255 } };
+            Candidates.Clear();
             Walk(root, root, scale, elements);
+            var frame = await FrameHashAsync();
+            elements = await KeepVisibleAsync(root, elements);
             return Newtonsoft.Json.JsonConvert.SerializeObject(new
             {
                 screen,
@@ -64,6 +89,7 @@ namespace Playarr.Xbox.Views
                 probe = Probe(),
                 textProbe = TextProbe(root),
                 clockPinned = ParityClock.IsPinned && ParityClock.Today == new DateTime(2026, 10, 7),
+                frame,
                 elements,
             });
         }
@@ -128,7 +154,7 @@ namespace Playarr.Xbox.Views
                         chars.Add(rect.IsEmpty ? new double[0] : new[] { Math.Round(rect.X, 1), Math.Round(rect.Y, 1), Math.Round(rect.Width, 1), Math.Round(rect.Height, 1) });
                     }
 
-                    found.Add(new { block.Text, block.ActualWidth, block.ActualHeight, advance = Advance(block, block.Text.Trim()), chars });
+                    found.Add(new { block.Text, block.ActualWidth, block.ActualHeight, chars });
                 }
 
                 for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
@@ -142,25 +168,6 @@ namespace Playarr.Xbox.Views
         }
 
         private static bool _rootCovered;
-
-        /// <summary>The content root of a list item that carries its own export role: the item itself is exported with that role and name.</summary>
-        private static bool IsItemContent(FrameworkElement element)
-        {
-            if (GetRole(element) != "link")
-            {
-                return false;
-            }
-
-            for (var n = VisualTreeHelper.GetParent(element); n != null; n = VisualTreeHelper.GetParent(n))
-            {
-                if (n is SelectorItem item)
-                {
-                    return ReferenceEquals(item.ContentTemplateRoot, element);
-                }
-            }
-
-            return false;
-        }
 
         /// <summary>The visible part of a box: its bounds cut by every scrolling ancestor's viewport; empty when scrolled away.</summary>
         private static Rect Clipped(FrameworkElement element, Rect rect, FrameworkElement root, double scale)
@@ -181,62 +188,115 @@ namespace Playarr.Xbox.Views
             return rect;
         }
 
-        /// <summary>Whether something drawn above covers the element at every sample of a 3x3 grid (native hit testing, as the web check does with elementFromPoint).</summary>
-        private static bool Occluded(FrameworkElement element, Rect rect)
+        /// <summary>A candidate element with the thing to hide and the pixel box to compare when it is hidden.</summary>
+        private sealed class Candidate
         {
-            try
+            public Candidate(FrameworkElement owner, Rect box, object item) { Owner = owner; Box = box; Item = item; }
+
+            public FrameworkElement Owner { get; }
+
+            public Rect Box { get; }
+
+            public object Item { get; }
+        }
+
+        private static readonly List<Candidate> Candidates = new();
+
+        private static void Emit(List<object> output, FrameworkElement owner, Rect box, object item)
+        {
+            output.Add(item);
+            Candidates.Add(new Candidate(owner, box, item));
+        }
+
+        private static async Task<(byte[] Pixels, int Width, int Height)> GrabAsync(FrameworkElement root)
+        {
+            var bitmap = new RenderTargetBitmap();
+            await bitmap.RenderAsync(root, 1920, 1080);
+            var buffer = await bitmap.GetPixelsAsync();
+            return (buffer.ToArray(), bitmap.PixelWidth, bitmap.PixelHeight);
+        }
+
+        /// <summary>Hides only what the element itself draws (its fill, or the element for a leaf) and returns the undo.</summary>
+        private static Action Hide(FrameworkElement owner)
+        {
+            switch (owner)
             {
-                // Like the web's check, an element that takes no pointer input (a decorative dot or glow) is never counted as covered.
-                for (DependencyObject n = element; n != null; n = VisualTreeHelper.GetParent(n))
-                {
-                    if (n is UIElement { IsHitTestVisible: false })
-                    {
-                        return false;
-                    }
-                }
-
-                var host = element.TransformToVisual(null).TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
-                var covered = 0;
-                foreach (var fx in new[] { 0.2, 0.5, 0.8 })
-                {
-                    foreach (var fy in new[] { 0.2, 0.5, 0.8 })
-                    {
-                        var point = new Point(host.X + host.Width * fx, host.Y + host.Height * fy);
-                        var top = VisualTreeHelper.FindElementsInHostCoordinates(point, Window.Current.Content).FirstOrDefault();
-                        if (top == null || ReferenceEquals(top, element) || IsAncestor(top, element) || IsAncestor(element, top) || !Paints(top))
-                        {
-                            return false;
-                        }
-
-                        covered++;
-                    }
-                }
-
-                return covered == 9;
-            }
-            catch (Exception)
-            {
-                return false;
+                case Border { Background: { } fill } border:
+                    border.Background = null;
+                    return () => border.Background = fill;
+                case Panel { Background: { } fill } panel:
+                    panel.Background = null;
+                    return () => panel.Background = fill;
+                case Windows.UI.Xaml.Shapes.Shape shape:
+                    var (f, s) = (shape.Fill, shape.Stroke);
+                    shape.Fill = null;
+                    shape.Stroke = null;
+                    return () => { shape.Fill = f; shape.Stroke = s; };
+                default:
+                    var opacity = owner.Opacity;
+                    owner.Opacity = 0;
+                    return () => owner.Opacity = opacity;
             }
         }
 
-        private static bool IsAncestor(DependencyObject ancestor, DependencyObject node)
+        /// <summary>
+        /// Visible on the rendered screen: the app renders itself with and without the element's own paint and compares the
+        /// pixels inside its box. An element whose removal changes nothing is covered (or paints nothing) and is not exported.
+        /// </summary>
+        private static async Task<List<object>> KeepVisibleAsync(FrameworkElement root, List<object> elements)
         {
-            for (var n = VisualTreeHelper.GetParent(node); n != null; n = VisualTreeHelper.GetParent(n))
+            var (before, width, height) = await GrabAsync(root);
+            var hidden = new HashSet<object>();
+            foreach (var candidate in Candidates)
             {
-                if (ReferenceEquals(n, ancestor))
+                var x0 = Math.Max(0, (int)Math.Floor(candidate.Box.X));
+                var y0 = Math.Max(0, (int)Math.Floor(candidate.Box.Y));
+                var x1 = Math.Min(width, (int)Math.Ceiling(candidate.Box.Right));
+                var y1 = Math.Min(height, (int)Math.Ceiling(candidate.Box.Bottom));
+                if (x1 <= x0 || y1 <= y0)
                 {
-                    return true;
+                    hidden.Add(candidate.Item);
+                    continue;
+                }
+
+                var undo = Hide(candidate.Owner);
+                byte[] after;
+                try
+                {
+                    after = (await GrabAsync(root)).Pixels;
+                }
+                finally
+                {
+                    undo();
+                }
+
+                var changed = false;
+                for (var y = y0; y < y1 && !changed; y++)
+                {
+                    var from = (y * width + x0) * 4;
+                    for (var i = from; i < from + (x1 - x0) * 4 && !changed; i++)
+                    {
+                        changed = before[i] != after[i];
+                    }
+                }
+
+                if (!changed)
+                {
+                    hidden.Add(candidate.Item);
                 }
             }
 
-            return false;
+            Candidates.Clear();
+            return elements.Where(e => !hidden.Contains(e)).ToList();
         }
 
-        /// <summary>An element that hides what lies beneath it: an image or an (almost) opaque fill.</summary>
-        private static bool Paints(UIElement top) => top is Image || (top is FrameworkElement f && OpaqueFill(f));
-
-        private static bool OpaqueFill(FrameworkElement f) => (f is Border b ? b.Background : f is Panel p ? p.Background : f is Control c ? c.Background : null) is SolidColorBrush { Color.A: >= 128 };
+        /// <summary>A hash of the app's own render of the screen: the same value before and after a screenshot shows the layout export belongs to the frame that was captured.</summary>
+        public static async Task<string> FrameHashAsync()
+        {
+            var root = (FrameworkElement)Window.Current.Content;
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            return BitConverter.ToString(sha.ComputeHash((await GrabAsync(root)).Pixels)).Replace("-", string.Empty).ToLowerInvariant();
+        }
 
         private static Page? FindPage(DependencyObject node)
         {
@@ -265,18 +325,9 @@ namespace Playarr.Xbox.Views
 
             if (node is FrameworkElement element && element.ActualWidth >= 1 && element.ActualHeight >= 1 && (!(element is Page) || element is Page { Background: not null }))
             {
-                if (!(_rootCovered && ReferenceEquals(element, root)) && !IsItemContent(element))
+                if (!(_rootCovered && ReferenceEquals(element, root)))
                 {
                     Add(element, root, scale, output);
-                }
-                if (GetRole(element) == "image")
-                {
-                    return; // a drawn icon is one image, not its strokes
-                }
-
-                if (element is Button { Content: TextBlock } && element.GetValue(SplitProperty) is not true && (GetRole(element) == null || GetRole(element) == "button"))
-                {
-                    return; // the web's label button is one element carrying the text run and its style
                 }
             }
 
@@ -289,72 +340,31 @@ namespace Playarr.Xbox.Views
 
         private static void Add(FrameworkElement element, FrameworkElement root, double scale, List<object> output)
         {
-            string? role = GetRole(element);
+            string? role = NativeRole(element);
             string? text = null;
             string? color = null;
             double? fontSize = null;
             int? fontWeight = null;
             var rect = Bounds(element, root, scale);
-            var name = Windows.UI.Xaml.Automation.AutomationProperties.GetName(element);
-            if (element is SelectorItem { ContentTemplateRoot: FrameworkElement tagged } && GetRole(tagged) is { } itemRole)
+            FrameworkElement owner = element;
+            var name = NameOf(element);
+            if (element is SelectorItem { ContentTemplateRoot: FrameworkElement tagged } && !string.IsNullOrEmpty(Windows.UI.Xaml.Automation.AutomationProperties.GetName(tagged)))
             {
-                role = itemRole;
                 name = Windows.UI.Xaml.Automation.AutomationProperties.GetName(tagged);
-                rect = Bounds(tagged, root, scale); // the link is the card, not the (taller) list slot around it
-            }
-
-            if (element is TextBlock split && split.GetValue(SplitOnProperty) is string separator && split.Text.Contains(separator))
-            {
-                AddRuns(split, separator, root, scale, output);
-                return;
             }
 
             if (element is TextBlock block)
             {
-                text = block.Text;
-                if (string.IsNullOrWhiteSpace(text))
+                if (string.IsNullOrWhiteSpace(block.Text))
                 {
                     return;
                 }
 
-                role ??= "text";
-                color = Hex(block.Foreground);
-                fontSize = Math.Round(block.FontSize, 2);
-                fontWeight = WebFont.WeightOf(block);
-                color = Hex(block.Foreground);
-                AddLines(block, 0, text.Length, role, root, scale, output);
+                AddLines(block, 0, block.Text.Length, role ?? "text", root, scale, output);
                 return;
-            }
-            else if (element is Button { Content: TextBlock drawerLabel } && element.GetValue(SplitProperty) is not true && !string.IsNullOrWhiteSpace(drawerLabel.Text) && (role == null || role == "button"))
-            {
-                role = "button";
-                text = string.IsNullOrEmpty(name) ? drawerLabel.Text : name;
-                color = Hex(drawerLabel.Foreground);
-                fontSize = Math.Round(drawerLabel.FontSize, 2);
-                fontWeight = WebFont.WeightOf(drawerLabel);
-                rect = TextRun(drawerLabel, root, scale) ?? rect;
             }
             else if (role != null)
             {
-                text = string.IsNullOrEmpty(name) ? null : name;
-                if (element is SelectorItem && !string.IsNullOrEmpty(name)) { text = name; }
-            }
-            else if (element is Image)
-            {
-                role = "image";
-            }
-            else if (element is Button { Content: TextBlock label } labelButton && element.GetValue(SplitProperty) is not true && !string.IsNullOrWhiteSpace(label.Text))
-            {
-                role = "button";
-                text = string.IsNullOrEmpty(name) ? label.Text : name;
-                color = Hex(label.Foreground);
-                fontSize = Math.Round(label.FontSize, 2);
-                fontWeight = WebFont.WeightOf(label);
-                rect = TextRun(label, root, scale) ?? rect;
-            }
-            else if (element is Button || element is ToggleButton || element is ListViewItem || element is GridViewItem)
-            {
-                role ??= "button";
                 text = string.IsNullOrEmpty(name) ? null : name;
             }
             else if (element is Page stage)
@@ -385,7 +395,7 @@ namespace Playarr.Xbox.Views
                 return;
             }
 
-            if (Clipped(element, rect, root, scale).IsEmpty || Occluded(element, rect))
+            if (Clipped(element, rect, root, scale).IsEmpty)
             {
                 return;
             }
@@ -394,7 +404,7 @@ namespace Playarr.Xbox.Views
             // A radius is drawn in the element's own units: carry it through the same transforms as the box.
             var drawn = Bounds(element, root, scale);
             var radiusScale = element.ActualWidth > 0 ? drawn.Width / (element.ActualWidth * scale) : 1.0;
-            output.Add(new
+            Emit(output, owner, rect, new
             {
                 text,
                 role,
@@ -409,7 +419,7 @@ namespace Playarr.Xbox.Views
             if (element is Border { Background: ImageBrush })
             {
                 // A picture fill is a container (the plate) and the image drawn on it, as the web's avatar is.
-                output.Add(new
+                Emit(output, owner, rect, new
                 {
                     text,
                     role = "image",
@@ -421,20 +431,6 @@ namespace Playarr.Xbox.Views
                     radius = radius > 0 ? (double?)Math.Round(radius * scale * radiusScale, 1) : null,
                     opacity = EffectiveOpacity(element) is var shown && shown < 0.995 ? (double?)Math.Round(shown, 2) : null,
                 });
-            }
-        }
-
-        private static void AddRuns(TextBlock block, string separator, FrameworkElement root, double scale, List<object> output)
-        {
-            var start = 0;
-            foreach (var part in block.Text.Split(new[] { separator }, StringSplitOptions.None))
-            {
-                var begin = start;
-                start += part.Length + separator.Length;
-                if (part.Length > 0)
-                {
-                    AddLines(block, begin, part.Length, "text", root, scale, output);
-                }
             }
         }
 
@@ -452,6 +448,7 @@ namespace Playarr.Xbox.Views
             {
                 var transform = block.TransformToVisual(root);
                 var lines = new List<(Rect Box, int From, int To)>();
+                var rights = new List<double>();
                 // Text pointer offsets count the structure tokens before the first character: offsets 0 and 1 resolve to the start
                 // of the run and of the first character, so character 0 is the first later offset whose rectangle starts where
                 // offset 0's does.
@@ -476,16 +473,29 @@ namespace Playarr.Xbox.Views
                         continue;
                     }
 
+                    // A trimmed block draws its ellipsis over the characters that do not fit: only the ones inside the block are shown.
+                    if (block.IsTextTrimmed && rect.Right > block.ActualWidth + 0.5)
+                    {
+                        continue;
+                    }
+
+                    // The glyph's right edge is where the displayed layout starts the next character on the same line.
+                    // The caret rectangle looking back from the next offset sits on this character's trailing edge, also at a wrap or the end of the text.
+                    // A character rectangle has no width: the right edge of a glyph is where the next character starts, and for the last one where the text ends.
+                    var next = (i + 1 < block.Text.Length ? block.ContentStart.GetPositionAtOffset(i + shift + 1, LogicalDirection.Forward) : block.ContentEnd)?.GetCharacterRect(i + 1 < block.Text.Length ? LogicalDirection.Forward : LogicalDirection.Backward) ?? Rect.Empty;
+                    var edge = !next.IsEmpty && Math.Abs(next.Y - rect.Y) < 1 && next.X >= rect.X ? next.X : rect.Right;
                     var at = lines.FindIndex(l => Math.Abs(l.Box.Y - rect.Y) < 1);
                     if (at < 0)
                     {
                         lines.Add((rect, i, i + 1));
+                        rights.Add(block.Text[i] == ' ' ? rect.X : edge);
                     }
                     else
                     {
                         var l = lines[at];
                         var union = new Rect(Math.Min(l.Box.X, rect.X), l.Box.Y, Math.Max(l.Box.Right, rect.Right) - Math.Min(l.Box.X, rect.X), Math.Max(l.Box.Height, rect.Height));
                         lines[at] = (union, l.From, i + 1);
+                        if (block.Text[i] != ' ') { rights[at] = Math.Max(rights[at], edge); }
                     }
                 }
 
@@ -494,78 +504,47 @@ namespace Playarr.Xbox.Views
                 {
                     var from = k == 0 ? offset : lines[k].From;
                     var to = k + 1 < lines.Count ? lines[k + 1].From : offset + length;
-                    var text = block.Text.Substring(from, to - from).Trim();
+                    var trimmed = block.IsTextTrimmed && k == lines.Count - 1;
+                    if (trimmed)
+                    {
+                        to = lines[k].To;
+                    }
+
+                    var text = block.Text.Substring(from, to - from).Trim() + (trimmed ? "\u2026" : string.Empty);
                     if (text.Length == 0)
                     {
                         continue;
                     }
 
-                    // Left edge and line box height are the platform's character rectangles; the width is the platform's own advance
-                    // width of that line's text in the same face (the character rectangles do not report the full run).
+                    // Left edge, line box height and right edge are all read from the displayed block's own character rectangles.
                     var first = lines[k].Box;
-                    var r = transform.TransformBounds(new Rect(first.X, first.Y, Advance(block, text), first.Height));
+                    var r = transform.TransformBounds(new Rect(first.X, first.Y, Math.Max(0, (trimmed ? block.ActualWidth : rights[k]) - first.X), first.Height));
                     if (r.Right * scale <= 0 || r.Bottom * scale <= 0 || r.X * scale >= 1920 || r.Y * scale >= 1080)
                     {
                         continue;
                     }
 
-                    if (Clipped(block, new Rect(r.X * scale, r.Y * scale, r.Width * scale, r.Height * scale), root, scale).IsEmpty || Occluded(block, r))
+                    if (Clipped(block, new Rect(r.X * scale, r.Y * scale, r.Width * scale, r.Height * scale), root, scale).IsEmpty)
                     {
                         continue;
                     }
 
-                    output.Add(new
+                    Emit(output, block, new Rect(r.X * scale, r.Y * scale, r.Width * scale, r.Height * scale), new
                     {
                         text,
                         role,
                         rect = new { x = Math.Round(r.X * scale, 1), y = Math.Round(r.Y * scale, 1), w = Math.Round(r.Width * scale, 1), h = Math.Round(r.Height * scale, 1) },
                         color = Hex(block.Foreground),
                         background = BackgroundBehind(block, includeSelf: false),
-                        fontSize = Math.Round(block.FontSize * (block.ActualWidth > 0 ? r.Width / Math.Max(1e-6, Advance(block, text)) : 1), 2),
+                        fontSize = Math.Round(block.FontSize * Math.Abs(transform.TransformBounds(new Rect(0, 0, 1, 1)).Height) * scale, 2),
                         fontWeight = WebFont.WeightOf(block),
                         opacity = EffectiveOpacity(block) is var seen && seen < 0.995 ? (double?)Math.Round(seen, 2) : null,
-                        // A chip's label is the web element that draws the chip: it carries the chip's corner radius.
-                        radius = VisualTreeHelper.GetParent(block) is Border { CornerRadius: { TopLeft: > 0 } } chip && ReferenceEquals(chip.Child, block) ? (double?)Math.Round(chip.CornerRadius.TopLeft, 2) : null,
                     });
                 }
             }
             catch (Exception)
             {
                 // A block whose character rectangles cannot be read is left out rather than guessed.
-            }
-        }
-
-        /// <summary>The platform's advance width of <paramref name="text"/> set in the block's face, size and spacing on one line.</summary>
-        private static double Advance(TextBlock block, string text)
-        {
-            var probe = new TextBlock
-            {
-                Text = text,
-                FontFamily = block.FontFamily,
-                FontSize = block.FontSize,
-                FontWeight = block.FontWeight,
-                FontStyle = block.FontStyle,
-                FontStretch = block.FontStretch,
-                CharacterSpacing = block.CharacterSpacing,
-                TextWrapping = TextWrapping.NoWrap,
-            };
-            probe.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            return probe.DesiredSize.Width;
-        }
-
-        /// <summary>The glyph run of a single-line label inside a button: first character left edge, the platform's advance width of the label, native line box height, transformed.</summary>
-        private static Rect? TextRun(TextBlock block, FrameworkElement root, double scale)
-        {
-            try
-            {
-                var first = block.ContentStart.GetCharacterRect(LogicalDirection.Forward);
-                var last = block.ContentEnd.GetCharacterRect(LogicalDirection.Backward);
-                var r = block.TransformToVisual(root).TransformBounds(new Rect(first.X, first.Y, Advance(block, block.Text.Trim()), Math.Max(first.Height, last.Height)));
-                return new Rect(r.X * scale, r.Y * scale, r.Width * scale, r.Height * scale);
-            }
-            catch (Exception)
-            {
-                return null;
             }
         }
 

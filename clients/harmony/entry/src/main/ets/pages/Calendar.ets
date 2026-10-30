@@ -871,7 +871,7 @@ export struct ReleaseCalendar {
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().inkSoft))
           }
-          .accessibilityText((this.listed ? '✓ Remove from watchlist' : '+ Add to watchlist')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+          .accessibilityText((this.listed ? 'Remove from watchlist' : 'Add to watchlist')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .height(tv(PANEL_BUTTON_HEIGHT))
           .padding({ left: tv(PANEL_BUTTON_PADDING), right: tv(PANEL_BUTTON_PADDING) })
           .borderRadius(tv(PANEL_BUTTON_HEIGHT / 2))

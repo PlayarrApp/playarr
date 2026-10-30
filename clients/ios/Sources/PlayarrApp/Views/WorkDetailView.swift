@@ -863,6 +863,7 @@ struct WorkDetailView: View {
                 .font(DesignFont.font(8.75 * tabletScale, 820))
                 .tracking(0.08 * 8.75 * tabletScale)
                 .foregroundStyle(PlayarrStyle.brandInk)
+                .parityRenderedText("S\(String(format: "%02d", seasonNumber)) · E\(String(format: "%02d", episode.episodeNumber))", role: "text", size: 8.75 * tabletScale, weight: 820, color: PlayarrStyle.brandInk)
                 .overlay {
                     TabletDetailFrameDiagnostic(element: "kicker", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
                 }
@@ -1026,12 +1027,12 @@ struct WorkDetailView: View {
 
     private func tabletSeriesActionLabel(_ title: String, systemImage: String, tabletScale: CGFloat) -> some View {
         Label(title, systemImage: systemImage)
-            .wm(7.9228 * tabletScale, 610, color: PlayarrStyle.ink)
+            .wm(7.9228 * tabletScale, 610, color: PlayarrStyle.ink, text: title)
             .foregroundStyle(PlayarrStyle.ink)
             .lineLimit(1)
             .padding(.horizontal, 16 * tabletScale)
             .frame(minWidth: 104 * tabletScale, minHeight: 57.359 * tabletScale)
-            .background(PlayarrStyle.surfaceStrong.opacity(0.72), in: Capsule())
+            .parityShape("container", color: PlayarrStyle.surfaceStrong.opacity(0.72), in: Capsule(), radius: 30)
             .shadow(color: PlayarrStyle.ink.opacity(0.12), radius: 19 * tabletScale)
             .contentShape(Capsule())
     }
@@ -1844,8 +1845,7 @@ struct TabletTitleLabel: UIViewRepresentable {
         ])
         #if DEBUG
         (label as? ParityMeasuredLabel)?.configure(
-            weight: 560, size: fontSize, colour: PlayarrStyle.ink, backdrop: environment.parityBackdrop, environment: environment,
-            paint: environment.parityPaint, covered: environment.parityCovered
+            backdrop: environment.parityBackdrop, environment: environment, paint: environment.parityPaint, inCover: environment.parityInCover
         )
         #endif
     }
@@ -1859,65 +1859,71 @@ struct TabletTitleLabel: UIViewRepresentable {
 }
 
 #if DEBUG
-/// A UILabel that reports its laid-out lines to the parity export: each line's glyph-run bounds (baseline, ascent and
-/// descent of the font), the characters it shows (with the ellipsis when cut), in window coordinates.
+/// A UILabel that draws its text through one TextKit layout and reports that same layout's lines to the parity export:
+/// the glyph-run bounds of each line (baseline, ascent and descent of the font that line draws), the characters it shows
+/// (the ellipsis when TextKit cut the line), the font size and weight the drawn font really has, in window coordinates.
 final class ParityMeasuredLabel: UILabel {
     private let id = UUID()
-    private var weight = 400
-    private var size: CGFloat = 0
-    private var colour = Color.primary
     private var backdrop = ParityBackdrop()
     private var environment = EnvironmentValues()
     private var paint = ParityPaint()
-    private var covered: CGRect?
+    private var inCover = false
 
-    func configure(weight: Int, size: CGFloat, colour: Color, backdrop: ParityBackdrop, environment: EnvironmentValues, paint: ParityPaint, covered: CGRect?) {
-        self.weight = weight; self.size = size; self.colour = colour; self.backdrop = backdrop
-        self.environment = environment; self.paint = paint; self.covered = covered
-        setNeedsLayout()
+    func configure(backdrop: ParityBackdrop, environment: EnvironmentValues, paint: ParityPaint, inCover: Bool) {
+        self.backdrop = backdrop; self.environment = environment; self.paint = paint; self.inCover = inCover
+        accessibilityTraits.insert(.header)
+        setNeedsDisplay()
     }
 
-    func retire() { Task { @MainActor in ParityLayoutRegistry.shared.remove(id) } }
+    func retire() { MainActor.assumeIsolated { ParityLayoutRegistry.shared.remove(id) } }
 
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        publish()
-    }
-
-    private func publish() {
-        guard let attributed = attributedText, bounds.width > 0, window != nil else { return }
+    override func drawText(in rect: CGRect) {
+        guard let attributed = attributedText, rect.width > 0 else { super.drawText(in: rect); return }
         let storage = NSTextStorage(attributedString: attributed)
         let manager = NSLayoutManager()
-        let container = NSTextContainer(size: CGSize(width: bounds.width, height: .greatestFiniteMagnitude))
+        let container = NSTextContainer(size: CGSize(width: rect.width, height: .greatestFiniteMagnitude))
         container.lineFragmentPadding = 0
         container.maximumNumberOfLines = numberOfLines
         container.lineBreakMode = lineBreakMode
         manager.addTextContainer(container)
         storage.addLayoutManager(manager)
-        manager.ensureLayout(for: container)
-        let drawnFont = (attributed.attribute(.font, at: 0, effectiveRange: nil) as? UIFont) ?? .systemFont(ofSize: size)
-        let raise = (attributed.attribute(.baselineOffset, at: 0, effectiveRange: nil) as? CGFloat) ?? 0
-        let string = attributed.string as NSString
+        let glyphs = manager.glyphRange(for: container)
+        let origin = textRect(forBounds: rect, limitedToNumberOfLines: numberOfLines).origin
+        manager.drawGlyphs(forGlyphRange: glyphs, at: origin)
+        report(manager: manager, container: container, storage: storage, origin: origin)
+    }
+
+    private func report(manager: NSLayoutManager, container: NSTextContainer, storage: NSTextStorage, origin: CGPoint) {
+        let string = storage.string as NSString
         var lines: [ParityLayoutRegistry.Item] = []
-        let hex = parityHex(colour, environment)
         manager.enumerateLineFragments(forGlyphRange: manager.glyphRange(for: container)) { fragment, _, _, glyphs, _ in
             var shown = glyphs
             let cut = manager.truncatedGlyphRange(inLineFragmentForGlyphAt: glyphs.location)
             if cut.location != NSNotFound { shown = NSRange(location: glyphs.location, length: max(0, cut.location - glyphs.location)) }
             let characters = manager.characterRange(forGlyphRange: shown, actualGlyphRange: nil)
+            guard characters.length > 0 else { return }
             var line = string.substring(with: characters).trimmingCharacters(in: .whitespacesAndNewlines)
             if cut.location != NSNotFound { line += "\u{2026}" }
-            let drawn = manager.boundingRect(forGlyphRange: glyphs, in: container)
-            let baseline = fragment.minY + manager.location(forGlyphAt: glyphs.location).y - raise
-            let local = CGRect(x: drawn.minX, y: baseline - drawnFont.ascender, width: drawn.width, height: drawnFont.ascender - drawnFont.descender)
-            let rect = self.convert(local, to: nil)
-            let centre = CGPoint(x: rect.midX, y: rect.midY)
+            let attributes = storage.attributes(at: characters.location, effectiveRange: nil)
+            guard let font = attributes[.font] as? UIFont else { return }
+            let raise = (attributes[.baselineOffset] as? CGFloat) ?? 0
+            let used = manager.boundingRect(forGlyphRange: shown, in: container)
+            let baseline = origin.y + fragment.minY + manager.location(forGlyphAt: glyphs.location).y - raise
+            let local = CGRect(x: origin.x + used.minX, y: baseline - font.ascender, width: used.width, height: font.ascender - font.descender)
+            let rect = self.paint.drawn(self.convert(local, to: nil))
             guard !line.isEmpty, let opacity = self.paint.effective(rect) else { return }
-            lines.append(.init(text: line, role: "heading", size: self.size, weight: self.weight, color: hex, rect: rect,
-                               background: self.backdrop.rgb(at: centre, self.environment).hex, opacity: opacity, coveredBy: self.covered))
+            let colour = ((attributes[.foregroundColor] as? UIColor) ?? .label).resolvedColor(with: self.traitCollection)
+            var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+            colour.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+            let hex = String(format: "#%02x%02x%02x", Int((red * 255).rounded()), Int((green * 255).rounded()), Int((blue * 255).rounded()))
+            let variation = CTFontCopyVariation(font as CTFont) as? [NSNumber: NSNumber]
+            let weight = variation?[NSNumber(value: 2003265652)]?.intValue // the 'wght' axis of the font really drawn
+            let centre = CGPoint(x: rect.midX, y: rect.midY)
+            lines.append(.init(text: line, role: "heading", size: font.pointSize * CGFloat(self.paint.scale), weight: weight, color: hex, rect: rect,
+                               background: self.backdrop.rgb(at: centre, self.environment).hex, opacity: opacity, inCover: self.inCover))
         }
         let runs = lines
-        Task { @MainActor in
+        MainActor.assumeIsolated {
             ParityLayoutRegistry.shared.markAlive(id)
             ParityLayoutRegistry.shared.setTextRuns(id, runs)
         }

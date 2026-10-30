@@ -246,7 +246,7 @@ namespace Playarr.Xbox.Views
             }
 
             var section = new StackPanel { Spacing = 34.65, Margin = new Thickness(53, 0, 0, RailsPanel.Children.Count == 0 ? -0.15 : 0) };
-            section.Children.Add(LayoutExport.Tag(new TextBlock { Text = rail.Title, Style = (Style)Application.Current.Resources["PlayarrRailTitle"], FontSize = 17.66, FontFamily = WebFont.Face(610), FontWeight = WebFont.Weight(610), CharacterSpacing = -31, LineHeight = 24, Margin = new Thickness(0, 0, 0, 2), LineStackingStrategy = Windows.UI.Xaml.LineStackingStrategy.BlockLineHeight }, "heading"));
+            section.Children.Add(LayoutExport.Heading(new TextBlock { Text = rail.Title, Style = (Style)Application.Current.Resources["PlayarrRailTitle"], FontSize = 17.66, FontFamily = WebFont.Face(610), FontWeight = WebFont.Weight(610), CharacterSpacing = -31, LineHeight = 24, Margin = new Thickness(0, 0, 0, 2), LineStackingStrategy = Windows.UI.Xaml.LineStackingStrategy.BlockLineHeight }));
             if (RailsPanel.Children.Count == 0)
             {
                 list.Margin = new Thickness(list.Margin.Left, list.Margin.Top + 1.15, list.Margin.Right, list.Margin.Bottom); // the first rail's cards sit 1.15 px lower on the web

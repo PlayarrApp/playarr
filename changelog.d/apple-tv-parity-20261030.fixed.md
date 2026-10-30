@@ -1,0 +1,1 @@
+- Apple TV and Mac: library preview keeps the last focused title, Mac drawers close on Escape, and the back button draws and reports the web disc.

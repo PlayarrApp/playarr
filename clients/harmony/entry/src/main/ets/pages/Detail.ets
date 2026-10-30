@@ -2363,7 +2363,7 @@ struct Detail {
     if (label === t('pages.workDetail.playbackButtonLabel', 'Playback')) {
       return 'Playback settings for ' + title;
     }
-    return (glyph.length > 0 ? glyph + ' ' : '') + label;
+    return label; // the glyph is drawn, not part of the name (web: the control's name is its label)
   }
 
   /** A movie's Play opens the player (a link); every other pill acts in place (a button). */

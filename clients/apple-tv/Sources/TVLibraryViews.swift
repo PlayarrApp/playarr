@@ -488,7 +488,7 @@ struct TVHomeView: View {
         // Production HStack shell already owns the nav column; only pad the
         // residual gap past that width toward SPA rail origin.
         let navColumn = DesignTokens.Shell.navItemSize
-            + DesignTokens.Shell.navGroupPadding * 2
+            + DesignTokens.Shell.navGroupPaddingH * 2
             + DesignTokens.Shell.navEdge * 2
         let leadingPad = max(24, x0 - navColumn)
 
@@ -1371,8 +1371,10 @@ struct TVSearchView: View {
                 .foregroundStyle(DesignTokens.Color.textDisabled)
                 .parityLayout(text: "Find any available movie, series, artist or playlist.", size: 13.82, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
                 .frame(maxWidth: 280, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
                 .lineSpacing(2.4)
-                .placed(x: 153.6, y: 268.2 + 56 + DesignTokens.Shell.searchPromptTopGap, w: 280)
+                // below the 76 pt field (172.8 to 248.8) and the 54 pt margin plus the line's own 1 pt
+                .placed(x: 153.6, y: 172.8 + 76 + DesignTokens.Shell.searchPromptTopGap + 1, w: 280)
             idleEmptyState
         case .loading:
             ProgressView("Searching…")
@@ -1424,19 +1426,24 @@ struct TVSearchView: View {
             Color.clear.frame(width: 506, height: 60)
                 .parityBox("textbox", text: "Search your libraries and playlists")
                 .placed(x: 62, y: 8, w: 506, h: 60)
-            if frozen {
+            // The placeholder is a native label (web: a text row inside the field); the field itself is transparent.
+            if !hasQuery || frozen {
                 Text(hasQuery ? query.wrappedValue : "Search your libraries and playlists")
-                    .font(TVTheme.font(size: 17, weight: .medium))
+                    .font(TVTheme.font(size: 17.66, weight: .regular))
                     .foregroundStyle(hasQuery ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
-                    .parityLayout(text: hasQuery ? query.wrappedValue : "Search your libraries and playlists", size: 17, weight: Int(TVTheme.cssWeight(.medium)), color: hasQuery ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
-                    .placed(x: 66, y: 0, w: 480, h: 76)
-            } else {
-                TextField("Search your libraries and playlists", text: query)
-                    .font(TVTheme.font(size: 17, weight: .medium))
+                    .lineLimit(1)
+                    .parityLayout(text: hasQuery ? query.wrappedValue : "Search your libraries and playlists", size: 17.66, weight: Int(TVTheme.cssWeight(.regular)), color: hasQuery ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
+                    .allowsHitTesting(false)
+                    .placed(x: 62, y: 0, w: 480, h: 76)
+            }
+            if !frozen {
+                TextField("", text: query)
+                    .font(TVTheme.font(size: 17.66, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.textPrimary)
+                    .accessibilityLabel("Search your libraries and playlists")
                     .focused($searchFieldFocused)
                     .onSubmit(onSubmit)
-                    .placed(x: 66, y: 0, w: 480, h: 76)
+                    .placed(x: 62, y: 0, w: 480, h: 76)
             }
             if hasQuery {
                 Text("Clear")
@@ -1700,6 +1707,8 @@ struct TVLibraryKindView: View {
         if let selectedID, let match = items.first(where: { $0.id == selectedID }) {
             return match
         }
+        // focus is on the header or the drawer: the preview keeps the title last focused (web)
+        if let lastFocusedID, let match = items.first(where: { $0.id == lastFocusedID }) { return match }
         return items.first
     }
 
@@ -2024,10 +2033,10 @@ struct TVLibraryKindView: View {
         let padL: CGFloat = 48 // the 48 px focused-card shadow blur also stays inside the scroll view, so no hard edge shows at x 759
         // Row pitch: the web's rows are 240.4 apart (tops 162, 402, 643, 883); a 2026-10-18 hosted run with a 27.4 gap gave
         // tops 401, 640, 879, so the Mac's caption is about 1 pt shorter than the web's and the gap makes up the rest.
-        let rowGap: CGFloat = 28.5
+        let rowGap: CGFloat = 27.0 // the caption frame is fixed (17.9), so both platforms share the web pitch (213.4 + 27 = 240.4)
         #else
         let padL: CGFloat = 0
-        let rowGap: CGFloat = 27.9 // web row pitch 240.4
+        let rowGap: CGFloat = 27.0 // web row pitch 240.4 (213.4 card plus 27)
         #endif
         let gridWidth = size.width - 783.4 + padL
         let padR: CGFloat = 0
@@ -2190,7 +2199,7 @@ struct TVLibraryKindView: View {
                         .parityLayout(text: work.title, size: 11.9, weight: 610, color: isSelected ? Color.white : DesignTokens.Color.textPrimary, tracking: -0.18) // web: the focused card's text is white
                         .lineLimit(1)
                         .padding(.leading, 1.91) // web: the title sits 1.91 pt inside the card
-                        .frame(width: width, alignment: .leading)
+                        .frame(width: width, height: 17.9, alignment: .topLeading) // web: a 17.9 pt caption line, so the card is 213.4 tall
                 }
             }
             .frame(width: width, alignment: .leading)

@@ -7,6 +7,28 @@
 import { nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
+import type { UIContext } from '@kit.ArkUI';
+
+/** The start of `content` that, with a "…" where it was cut, fits `width` vp on one line (web `text-overflow: ellipsis`); `content` itself when it fits. */
+export function fitLineText(ui: UIContext, content: string, fontPx: number, weight: number, width: number): string {
+  const measure = (text: string): number => ui.px2vp(ui.getMeasureUtils().measureText({
+    textContent: text, fontSize: fontPx, fontFamily: nunitoAt(weight, fontPx), fontWeight: weight,
+  }));
+  if (measure(content) <= width) {
+    return content;
+  }
+  let lo: number = 0;
+  let hi: number = content.length;
+  while (lo < hi) {
+    const mid: number = Math.ceil((lo + hi) / 2);
+    if (measure(content.substring(0, mid).trimEnd() + '…') <= width) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return content.substring(0, lo).trimEnd() + '…';
+}
 
 @Component
 export struct FitLine {

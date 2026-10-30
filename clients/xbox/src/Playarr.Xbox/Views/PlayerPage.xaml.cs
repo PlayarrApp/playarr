@@ -55,16 +55,10 @@ namespace Playarr.Xbox.Views
         {
             InitializeComponent();
             // Roles the layout export reports (the web's names for these parts): the video, the slider, and each control's drawn icon.
-            LayoutExport.SetRole(PlayerElement, "video");
-            LayoutExport.SetRole(VideoSurface, "video");
-            LayoutExport.SetRole(Scrubber, "slider");
-            LayoutExport.SetRole(VolumeSlider, "textbox");
-            LayoutExport.SetRole(TimeText, "container"); // the web's time readout wraps its spans in a container
             foreach (var control in new[] { CloseButton, PrevButton, PlayPauseButton, NextButton, MuteButton, AudioButton, SubtitlesButton, QueueButton, InfoButton, DeviceButton, FullscreenButton })
             {
                 if (control.Content is Grid icon)
                 {
-                    LayoutExport.SetRole(icon, "image");
                 }
             }
 
