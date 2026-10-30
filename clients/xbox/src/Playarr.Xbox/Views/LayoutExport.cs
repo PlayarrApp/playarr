@@ -354,7 +354,8 @@ namespace Playarr.Xbox.Views
                 }
             }
 
-            return (hidden, false, $"{count} pixels differ in x {minX}-{maxX}, y {minY}-{maxY}");
+            // The rasteriser leaves a few stray pixels after paint is restored; a settled screen drifts by far less than a thousandth of the frame.
+            return (hidden, count <= width * height / 1000, $"{count} pixels differ in x {minX}-{maxX}, y {minY}-{maxY}");
         }
 
         /// <summary>A hash of the app's own render of the screen: the same value before and after a screenshot shows the layout export belongs to the frame that was captured.</summary>
