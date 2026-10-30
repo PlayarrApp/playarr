@@ -383,6 +383,7 @@ export async function createDriver() {
       const dir = join(dirname(dirname(file)), "layout", theme);
       run("mkdir", ["-p", dir]);
       writeFileSync(join(dir, `${id}.json`), JSON.stringify(layout));
+      writeFileSync(`${file}.probe-counts.json`, JSON.stringify(state().layoutProbeCounts ?? null)); // per-element changed-pixel counts of the visibility probe
       if (layoutDiagnostics) {
         const diagnostics = run("xcrun", ["simctl", "spawn", udid, "log", "show", "--info", "--start", launchedAt, "--style", "compact",
           "--predicate", 'eventMessage CONTAINS "PLAYARR_IOS_TITLE_LAYOUT_DIAGNOSTIC"']);

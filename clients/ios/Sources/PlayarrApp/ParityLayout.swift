@@ -302,6 +302,13 @@ final class ParityLayoutRegistry {
         return drawn ? Shot(bytes: bytes, width: width, height: height, scale: scale) : nil
     }
 
+    /// Largest per-channel difference of two RGBA pixels (anti-aliasing and dithering noise stays far below hiding a real layer).
+    private static func channelDelta(_ a: UInt32, _ b: UInt32) -> Int {
+        var largest = 0
+        for shift in stride(from: 0, to: 24, by: 8) { largest = max(largest, abs(Int((a >> UInt32(shift)) & 0xff) - Int((b >> UInt32(shift)) & 0xff))) }
+        return largest
+    }
+
     /// Number of pixels inside `rect` that differ between `hidden` and `base` and between `hidden` and `after`, where
     /// `base` and `after` agree (so animation and moving video never count; the player is paused when it is captured).
     private func changedCount(_ rect: CGRect, hidden: Shot, base: Shot, after: Shot) -> Int {
@@ -314,7 +321,7 @@ final class ParityLayoutRegistry {
             let wh = ph.bindMemory(to: UInt32.self), wb = pb.bindMemory(to: UInt32.self), wa = pa.bindMemory(to: UInt32.self)
             for y in y0..<y1 {
                 let row = y * hidden.width
-                for x in x0..<x1 where wh[row + x] != wb[row + x] && wh[row + x] != wa[row + x] && wb[row + x] == wa[row + x] {
+                for x in x0..<x1 where wb[row + x] == wa[row + x] && wh[row + x] != wb[row + x] && Self.channelDelta(wh[row + x], wb[row + x]) >= 12 {
                     count += 1
                 }
             }
@@ -369,7 +376,7 @@ final class ParityLayoutRegistry {
                 }
                 for id in batch.ids { for item in byID[id]! {
                     let c = counts[ProbeKey(id: id, slot: item.slot)] ?? []
-                    if c.count == 2, c.allSatisfy({ $0 > 0 }) { visible.insert(ProbeKey(id: id, slot: item.slot)) }
+                    if c.count == 2, c.allSatisfy({ $0 >= 6 }) { visible.insert(ProbeKey(id: id, slot: item.slot)) }
                     log.append(["role": item.role, "text": item.text ?? "", "w": Int(item.rect.width), "h": Int(item.rect.height), "counts": c])
                 } }
             }
