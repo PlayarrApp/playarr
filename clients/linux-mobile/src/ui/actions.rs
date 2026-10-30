@@ -20,8 +20,9 @@ fn row(icon: &str, label: &str, _tone: Tone) -> gtk4::Button {
     let content = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
     let mark = gtk4::Label::builder()
         .label(glyph(icon))
-        .css_classes(["pa-row-glyph", icon])
+        .css_classes(["pa-row-glyph", "pa-fallback-box", icon])
         .xalign(0.0)
+        .valign(gtk4::Align::Center)
         .width_request(42)
         .build();
     crate::layout::decorative(&mark);

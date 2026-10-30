@@ -28,8 +28,9 @@ layout() {
 for t in $THEMES; do
   rm -f -- "$O/$t"/*.png
   "$H/pmrun.sh" </dev/null; sleep 15; "$H/pmfocus.sh"
+  # calendar-link goes last: the display can keep a remnant of the closed panel's close-button ring on the next screen.
   # One route per call, each retried: a display repaint glitch can outlast one stability window.
-  for r in home movies series music calendar-month calendar-week calendar-agenda calendar-link search "film:$FILM" "series-detail:$SERIES" settings filters profiles actions; do
+  for r in home movies series music calendar-month calendar-week calendar-agenda search "film:$FILM" "series-detail:$SERIES" settings filters profiles actions calendar-link; do
     for try in 1 2 3; do WAIT=${WAIT:-45} "$H/pmcap3.sh" "$O/$t" "theme:$t" "$r" </dev/null && break; [ "$try" = 3 ] && exit 1; done
     case $r in film:*) n=film-detail;; series-detail:*) n=series-detail;; *) n=$r;; esac
     layout "$t" "$n"
