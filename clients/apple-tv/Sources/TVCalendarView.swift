@@ -53,7 +53,7 @@ struct TVCalendarView: View {
             TVStageWash()
             // Web `ListPanel`: the frosted right-hand surface the agenda list sits on (x 729.6, 1190.4 wide, full height).
             TVRailPanelGradient(width: 1190.4, bleed: false)
-            agendaDetail(entry, item: item, today: model.today)
+            agendaDetail(entry, item: item, today: model.today, model: model)
         }
 
         TVPageHeader(title: "Calendar", backName: "Back to home")
@@ -595,7 +595,7 @@ struct TVCalendarView: View {
 
     /// Web agenda details panel (`ItemDetails`, stage): kicker, the big title, code and release time, the status pill
     /// and the server's actions.
-    private func agendaDetail(_ entry: CalendarEntry, item: CalendarItem, today: String) -> some View {
+    private func agendaDetail(_ entry: CalendarEntry, item: CalendarItem, today: String, model: CalendarViewModel) -> some View {
         let title = Self.title(of: item)
         let lines = max(1, TVTextWrap.lines(title, weight: 560, size: 69.12, kern: -4.98, width: 379.5).count)
         let metaY = 307.5 + 62.2 * CGFloat(lines) + 27
@@ -631,54 +631,54 @@ struct TVCalendarView: View {
                     .parityLayout(text: overview, size: 13.82, weight: 600, color: soft)
                     .placed(x: 153.6, y: metaY + 86, w: 455, h: 19)
             }
-            actionButtons(entry, y: metaY + (entry.overview?.isEmpty == false ? 130.6 : 87.2))
+            actionButtons(entry, model: model, y: metaY + (entry.overview?.isEmpty == false ? 130.6 : 87.2))
         }
     }
 
     /// The server's actions for the entry, rendered as given (`CalendarAction`: enabled, reason, active). A server
     /// without computed actions gets the earlier behaviour: open when the title is in the catalogue, else request
     /// and watchlist.
-    private func actionButtons(_ entry: CalendarEntry, y: CGFloat) -> some View {
-        var plan: [(label: String, width: CGFloat, primary: Bool, enabled: Bool)] = []
+    private func actionButtons(_ entry: CalendarEntry, model: CalendarViewModel, y: CGFloat) -> some View {
+        var plan: [(label: String, width: CGFloat, primary: Bool, enabled: Bool, kind: String)] = []
         var hints: [String] = []
         let play = entry.action(.play) ?? entry.action(.resume)
         if let play, play.enabled {
             let resume = play.kind == .resume
-            plan.append((resume ? "Resume" : "Play", resume ? 96 : 72, true, true))
+            plan.append((resume ? "Resume" : "Play", resume ? 96 : 72, true, true, resume ? "resume" : "play"))
         }
         let open = entry.actions.isEmpty ? (entry.workID != nil ? CalendarAction(action: "open") : nil) : entry.action(.open)
         let hasOpen = open?.enabled == true
         if hasOpen {
             let label = entry.mediaKind == "episode" ? "Open series" : "Open"
-            plan.append((label, entry.mediaKind == "episode" ? 123.1 : 72, plan.isEmpty, true))
+            plan.append((label, entry.mediaKind == "episode" ? 123.1 : 72, plan.isEmpty, true, "open"))
         }
         if !hasOpen, plan.isEmpty { hints.append("This title is not in your catalogue yet.") }
         let request = entry.actions.isEmpty ? (hasOpen ? nil : CalendarAction(action: "request")) : entry.action(.request)
         if let request {
             if request.active {
-                plan.append(("Requested", 118, false, false))
+                plan.append(("Requested", 118, false, false, "requested"))
             } else {
-                plan.append(("Request", 96, plan.isEmpty, request.enabled))
+                plan.append(("Request", 96, plan.isEmpty, request.enabled, "request"))
                 if !request.enabled, let reason = request.reason { hints.append(reason) }
             }
         }
         let watchlist = entry.actions.isEmpty ? (hasOpen ? nil : CalendarAction(action: "watchlist")) : entry.action(.watchlist)
         if let watchlist {
             if watchlist.enabled {
-                plan.append((watchlist.active ? "\u{2212}  Remove from watchlist" : "+  Add to watchlist", watchlist.active ? 215 : 179.3, false, true))
+                plan.append((watchlist.active ? "\u{2212}  Remove from watchlist" : "+  Add to watchlist", watchlist.active ? 215 : 179.3, false, true, "watchlist"))
             } else if let reason = watchlist.reason {
                 hints.append(reason)
             }
         }
         var x: CGFloat = 153.6
-        var placed: [(String, CGFloat, CGFloat, Bool, Bool)] = []
+        var placed: [(String, CGFloat, CGFloat, Bool, Bool, String)] = []
         for item in plan {
-            placed.append((item.label, x, item.width, item.primary, item.enabled))
+            placed.append((item.label, x, item.width, item.primary, item.enabled, item.kind))
             x += item.width + 9.6
         }
         return ZStack(alignment: .topLeading) {
             ForEach(Array(placed.enumerated()), id: \.offset) { _, item in
-                button(item.0, x: item.1, width: item.2, primary: item.3, enabled: item.4, y: y)
+                button(item.0, kind: item.5, entry: entry, model: model, x: item.1, width: item.2, primary: item.3, enabled: item.4, y: y)
             }
             ForEach(Array(hints.enumerated()), id: \.offset) { index, hint in
                 Text(hint)
@@ -690,14 +690,16 @@ struct TVCalendarView: View {
         }
     }
 
-    private func button(_ label: String, x: CGFloat, width: CGFloat, primary: Bool, enabled: Bool, y: CGFloat) -> some View {
+    /// One of the server's actions for the entry, doing what it says: Play and Resume open the player, Open the title's page,
+    /// Request and the watchlist entry call the server and then refresh the window.
+    @ViewBuilder
+    private func button(_ label: String, kind: String, entry: CalendarEntry, model: CalendarViewModel, x: CGFloat, width: CGFloat, primary: Bool, enabled: Bool, y: CGFloat) -> some View {
         // Web: a leading "+" / minus glyph is its own run, 9.6 pt before the label; the control is named by the label alone.
         let ink = primary ? DesignTokens.Stage.onAccent : DesignTokens.Color.textSecondary
         let weight = Int(primary ? 720 : 900)
         let glyph: String? = (label.hasPrefix("+  ") || label.hasPrefix("\u{2212}  ")) ? String(label.prefix(1)) : nil
         let name = glyph == nil ? label : String(label.dropFirst(3))
-        return Button(action: {}) {
-          HStack(spacing: 9.6) {
+        let face = HStack(spacing: 9.6) {
             if let glyph {
                 Text(glyph)
                     .font(TVTheme.font(size: 14.72, css: 720))
@@ -708,20 +710,56 @@ struct TVCalendarView: View {
                 .font(TVTheme.font(size: 14.72, css: primary ? 720 : 900))
                 .foregroundStyle(ink)
                 .parityLayout(text: name, size: 14.72, weight: weight, color: ink)
-          }
-          .frame(width: width, height: 58)
-          .parityBox("button", text: name, radius: 29, fill: primary ? DesignTokens.Stage.accent : DesignTokens.Color.backgroundElevated, opacity: enabled ? 1 : 0.5)
-          .background(
-              Capsule()
-                  .fill(primary ? DesignTokens.Stage.accent : DesignTokens.Color.backgroundElevated)
-                  .overlay(Capsule().stroke(DesignTokens.Stage.inkMuted.opacity(primary ? 0 : 0.35), lineWidth: 1))
-          )
+        }
+        .frame(width: width, height: 58)
+        .parityBox("button", text: name, radius: 29, fill: primary ? DesignTokens.Stage.accent : DesignTokens.Color.backgroundElevated, opacity: enabled ? 1 : 0.5)
+        .background(
+            Capsule()
+                .fill(primary ? DesignTokens.Stage.accent : DesignTokens.Color.backgroundElevated)
+                .overlay(Capsule().stroke(DesignTokens.Stage.inkMuted.opacity(primary ? 0 : 0.35), lineWidth: 1))
+        )
+        let playTarget = (entry.action(.play) ?? entry.action(.resume))?.mediaFileID
+        let openTarget = entry.action(.open)?.workID ?? entry.workID
+        Group {
+            if kind == "play" || kind == "resume", let playTarget {
+                NavigationLink {
+                    TVPlayerView(mediaFileID: playTarget, title: entry.title, apiClient: environment.apiClient, suggestionsWorkID: entry.workID)
+                } label: { face }
+            } else if kind == "open", let openTarget {
+                NavigationLink { TVWorkDetailLoader(workID: openTarget) } label: { face }
+            } else {
+                Button { perform(kind, entry: entry, model: model) } label: { face }
+                    .disabled(!enabled)
+            }
         }
         .buttonStyle(TVFocusableCardButtonStyle())
-        .disabled(true) // the parity agenda draws these controls but does not act on them; inert, so they take no focus
+        .focusEffectDisabled()
         .accessibilityLabel(name)
         .opacity(enabled ? 1 : 0.5)
         .placed(x: x, y: y, w: width, h: 58)
+    }
+
+    /// The server-side actions: request the title, add it to or remove it from the watchlist. The window is refreshed so the
+    /// button shows the state the server now reports.
+    private func perform(_ kind: String, entry: CalendarEntry, model: CalendarViewModel) {
+        guard let snapshot = entry.snapshot else { return }
+        let transport = environment.apiClient
+        Task {
+            switch kind {
+            case "request":
+                _ = try? await RequestsClient(transport: transport).request(snapshot)
+            case "watchlist":
+                let client = WatchlistClient(transport: transport)
+                if entry.action(.watchlist)?.active == true {
+                    if let resolved = try? await client.resolve(snapshot) { try? await client.remove(titleKey: resolved.title.titleKey) }
+                } else {
+                    _ = try? await client.add(snapshot)
+                }
+            default:
+                break
+            }
+            await model.refresh()
+        }
     }
 
     private static func title(of item: CalendarItem) -> String {

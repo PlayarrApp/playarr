@@ -211,7 +211,7 @@ struct TVWorkDetailView: View {
             actionPill("Download", glyph: "\u{21E9}", x: 153.6, y: buttonsY, width: 142, name: "Download \(work.title)") { showDownloadNote = true }
             actionPill("Playback", glyph: "\u{2637}", x: 311.6, y: buttonsY, width: 142, name: "Playback settings for \(work.title)")
             moviePlay(detail, x: 469.6, y: buttonsY)
-            actionPill("Add to watchlist", glyph: "+", x: 153.6, y: buttonsY + 76, width: 142)
+            actionPill("Add to watchlist", glyph: "+", x: 153.6, y: buttonsY + 76, width: 142) { addToWatchlist(work) }
             actionPill("Add to Playlist", glyph: "+", x: 311.6, y: buttonsY + 76, width: 142)
         }
     }
@@ -276,7 +276,7 @@ struct TVWorkDetailView: View {
                     .placed(x: 153.6, y: synopsisY, w: 336, h: 20.3 * CGFloat(synopsisLines), alignment: .topLeading)
             }
             seriesStart(detail, ordered: ordered, x: 153.6, y: buttonsY)
-            actionPill("Add to watchlist", glyph: "+", x: 325.6, y: buttonsY, width: 142)
+            actionPill("Add to watchlist", glyph: "+", x: 325.6, y: buttonsY, width: 142) { addToWatchlist(work) }
             actionPill("Add to Playlist", glyph: "+", x: 483.6, y: buttonsY, width: 142)
         }
     }
@@ -293,6 +293,13 @@ struct TVWorkDetailView: View {
     }
 
     // MARK: Buttons
+
+    /// Web "Add to watchlist": the title goes onto the caller's watchlist (idempotent on the server).
+    private func addToWatchlist(_ work: Work) {
+        let client = WatchlistClient(transport: apiClient)
+        let snapshot = TitleSnapshot(work: work)
+        Task { _ = try? await client.add(snapshot) }
+    }
 
     private func pillBackground(_ primary: Bool, light: Bool = false) -> some View {
         Capsule().fill(

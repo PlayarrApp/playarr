@@ -341,6 +341,16 @@ final class TVPlayerViewModel {
     private(set) var isPlaying = false
     private(set) var qualityLabel = TVParityLaunch.livePlayer != nil ? "Original \u{00B7} 0.3 Mbps" : "Original"
     private(set) var selectedQualityID = "original"
+    /// The player's own state for the chrome's transport controls (mute, tracks, queue).
+    private(set) var isMuted = false
+    private(set) var audioTracks: [PlayerTrack] = []
+    private(set) var subtitleTracks: [PlayerTrack] = []
+    private(set) var selectedAudioID: String?
+    private(set) var selectedSubtitleID: String?
+    /// Entries played before the current one, most recent last (Previous episode).
+    private(set) var playedBefore: [PlaybackQueueEntry] = []
+    @ObservationIgnored private var playingSubtitle: String?
+    @ObservationIgnored private var goingBack = false
     @ObservationIgnored private var positionObservation: AnyCancellable?
     let engine: PlayerEngine
     /// End card / up-next countdown; see `EndOfPlaybackMachine`.
@@ -471,7 +481,12 @@ final class TVPlayerViewModel {
         startPaused: Bool = false
     ) async {
         endOfPlayback.playbackResumed()
+        if let prior = lastMediaFileID, prior != mediaFileID, !startPaused, resumeAtSeconds == nil, !goingBack {
+            playedBefore.append(PlaybackQueueEntry(mediaFileID: prior, title: currentTitle, subtitle: playingSubtitle))
+        }
+        goingBack = false
         currentTitle = title
+        playingSubtitle = currentSubtitle
         lastMediaFileID = mediaFileID
         state = .negotiating
         canRetryFailure = true
@@ -512,6 +527,8 @@ final class TVPlayerViewModel {
             // A recovered session keeps the viewer's play state: a paused player stays paused.
             if !startPaused { engine.play() }
             state = .ready
+            isMuted = engine.isMuted
+            await loadTracks()
             activeMediaFileID = mediaFileID
             if resumeAtSeconds == nil { sessionRecoveries = 0 }
             startHeartbeat()
@@ -527,6 +544,65 @@ final class TVPlayerViewModel {
     }
 
     func setSubtitle(_ subtitle: String?) { currentSubtitle = subtitle }
+
+    /// Whether Previous episode and Next episode have something to go to (the web disables them otherwise).
+    var hasPrevious: Bool { !playedBefore.isEmpty }
+    var hasNext: Bool { endOfPlayback.nextEntry != nil }
+    /// Entries after the current one, in order.
+    var upcoming: [PlaybackQueueEntry] { endOfPlayback.machine.queue }
+
+    func toggleMute() {
+        engine.isMuted.toggle()
+        isMuted = engine.isMuted
+    }
+
+    func loadTracks() async {
+        audioTracks = await engine.availableAudioTracks()
+        subtitleTracks = await engine.availableSubtitleTracks()
+        selectedAudioID = audioTracks.first(where: \.isDefault)?.id ?? audioTracks.first?.id
+        selectedSubtitleID = nil
+    }
+
+    func selectAudio(_ id: String?) {
+        engine.selectAudioTrack(id: id)
+        selectedAudioID = id
+    }
+
+    func selectSubtitle(_ id: String?) {
+        engine.selectSubtitleTrack(id: id)
+        selectedSubtitleID = id
+    }
+
+    /// Plays the next queued entry now; the one that was playing becomes the previous one.
+    func playNext() {
+        let queue = endOfPlayback.machine.queue
+        guard let next = queue.first else { return }
+        endOfPlayback.setQueue(Array(queue.dropFirst()), advance: endOfPlayback.machine.advance)
+        subtitleFor(next)
+        Task { await play(mediaFileID: next.mediaFileID, title: next.title) }
+    }
+
+    /// Plays the entry before this one; this one goes back to the head of the queue.
+    func playPrevious() {
+        guard let previous = playedBefore.popLast(), let current = lastMediaFileID else { return }
+        let queue = endOfPlayback.machine.queue
+        endOfPlayback.setQueue([PlaybackQueueEntry(mediaFileID: current, title: currentTitle, subtitle: playingSubtitle)] + queue,
+                               advance: endOfPlayback.machine.advance)
+        goingBack = true
+        subtitleFor(previous)
+        Task { await play(mediaFileID: previous.mediaFileID, title: previous.title) }
+    }
+
+    private func subtitleFor(_ entry: PlaybackQueueEntry) { currentSubtitle = entry.subtitle }
+
+    /// The lines "Info and playback health" lists: how the stream is delivered and at what quality.
+    var healthLines: [String] {
+        var lines: [String] = []
+        if let playbackMode { lines.append("Delivery: \(playbackMode.rawValue)") }
+        lines.append("Quality: \(qualityLabel)")
+        if duration > 0 { lines.append(String(format: "Position: %d of %d seconds", Int(position), Int(duration))) }
+        return lines
+    }
 
     func togglePlay() {
         if isPlaying {
@@ -602,6 +678,11 @@ final class TVPlayerViewModel {
 
     /// Stops and returns only once the progress write has been delivered.
     func stopAndFlush() async { await stop().value }
+
+    func seek(to seconds: Double) {
+        let target = min(max(0, seconds), duration > 0 ? duration : seconds)
+        Task { await engine.seek(to: target) }
+    }
 
     func seek(by seconds: Double) {
         let target = min(max(0, position + seconds), duration > 0 ? duration : position + seconds)
