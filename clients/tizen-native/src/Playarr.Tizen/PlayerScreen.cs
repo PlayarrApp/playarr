@@ -140,7 +140,7 @@ internal sealed class PlayerScreen : IPage
         Sem.Tag(host, "button", buttonName);
         host.Add(Ui.Icon(icon, 22, 22, 20, new Rgba(1, 1, 1)));
         _controls.Add(host);
-        if (dim) return; // web: previous and next are disabled (not focusable) when nothing precedes or follows
+        if (disabledLook) return; // web: a disabled button (no previous, no next, no audio track) is not focusable
         var ring = Ring.Make(36, 36, 18, new Rgba(1, 1, 1), themed: false); ring.PositionX = x - 12; ring.PositionY = y - 12; ring.Show(false);
         _controls.Add(ring);
         _focus.Items.Add(new Focusable { Rect = () => new Box(x - 22, y - 22, 64, 64), Label = label, Select = select ?? (() => { }), Style = f => ring.Show(f) });
