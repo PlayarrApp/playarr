@@ -9,6 +9,7 @@ web weight).
 
 Needs fontTools and uharfbuzz:  python3 scripts/make_font_data.py <path to docs/parity/fonts/NunitoSans-wght-web.ttf>
 """
+import copy
 import itertools
 import json
 import sys
@@ -18,6 +19,10 @@ import uharfbuzz as hb
 from fontTools.ttLib import TTFont
 from fontTools.varLib import instancer
 
+# Roku sizes a Label as ceil(ascent) + ceil(descent) + 1 px, 2 to 3 px taller than the web's line box (1.364 em for this font). The
+# ascent (where the baseline falls) stays; each band of font sizes gets the descent whose Label height rounds to the web's:
+# NunitoSans-<weight>-<band>.ttf, chosen by source/Fonts.brs PlayarrBandFor. Units of 1000 per em.
+BANDS = (("a", 105), ("b", 220), ("c", 280), ("d", 325))
 WEIGHTS = (300, 400, 500, 600, 700, 800, 900)
 CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,:;'’‘-–—·•!?()[]&/+%#@\"“”…←→×°$*_=<>|~\\^{}"
 out = Path(__file__).resolve().parents[1] / "fonts"
@@ -41,6 +46,15 @@ for weight in WEIGHTS:
     instance["OS/2"].usWinAscent = instance["OS/2"].sTypoAscender
     instance["OS/2"].usWinDescent = -instance["OS/2"].sTypoDescender
     instance.save(out / f"NunitoSans-{weight}.ttf")
+    for band, descent in BANDS:
+        cut = copy.deepcopy(instance)
+        cut["OS/2"].usWinDescent = descent
+        cut["OS/2"].sTypoDescender = -descent
+        cut["hhea"].descent = -descent
+        for table in ("GPOS", "GSUB", "GDEF", "STAT"):  # the channel places words itself, from the JSON tables
+            if table in cut:
+                del cut[table]
+        cut.save(out / f"NunitoSans-{weight}-{band}.ttf")
 
 # Advance tables at every 10 of 300 to 900: glyphs come from the nearest instance, positions from the exact weight.
 for weight in range(300, 901, 10):
