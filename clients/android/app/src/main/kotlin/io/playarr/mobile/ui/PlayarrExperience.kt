@@ -477,6 +477,7 @@ private fun Modifier.tabletHeroBackdrop(stage: Float): Modifier = layout { measu
     layout(width + start, constraints.maxHeight) { placeable.place(start, 0) }
 }
     .graphicsLayer { scaleX = 1.04f; scaleY = 1.04f; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f) }
+    .parityBox("image", opacity = heroArtOpacity(webIsDark))
     .heroBackdropFade(true)
 
 private fun Modifier.tvHeroBackdrop(): Modifier =
@@ -3803,7 +3804,9 @@ internal fun ExperienceLandscapeCard(
             innerModifier = Modifier.parityBackground("container", if (webSearch) WebSurfaceStrong else WebSurfaceSoft, radius = if (webPhone) 8f else if (webTvStyle) 12.48f else 10f)
                 .then(if (!webPhone && !webTvStyle && (focused || selected)) Modifier.border(1.dp, WebInk.copy(alpha = 0.62f), RoundedCornerShape(10.dp)) else Modifier),
         ) {
-            AuthenticatedArtwork(
+            // A loaded thumbnail (opaque) covers the artwork under it, so the artwork is composed only until then.
+            var thumbnailLoaded by remember(mediaFileId, homeView) { mutableStateOf(false) }
+            if (!thumbnailLoaded) AuthenticatedArtwork(
                 work = work,
                 placeholderSize = if (webPhone) (if (webHome) 9.28.sp else if (webSearch) 8.96.sp else 10.88.sp) else 12.sp,
                 kinds = if (homeView == PlayarrHomeViewPreference.Cover) {
@@ -3823,6 +3826,7 @@ internal fun ExperienceLandscapeCard(
                     accessToken = accessToken,
                     contentDescription = displayTitle,
                     modifier = Modifier.fillMaxSize(),
+                    onLoaded = { thumbnailLoaded = true },
                 )
             }
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
@@ -4812,7 +4816,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                             Box(
                                 modifier = Modifier
                                     .size(24.dp * alphaCss)
-                                    .parityShape(999f)
+                                    .then(if (active) Modifier.parityShape(999f) else Modifier)
                                     .then(if (active) Modifier.focusRequester(letterFocus) else Modifier)
                                     .webFocusRing(letterFocused, offset = 1.dp)
                                     .onFocusChanged { letterFocused = it.isFocused }
@@ -10533,8 +10537,10 @@ internal fun AuthenticatedArtwork(
     var exposureGain by remember(resolved) { mutableStateOf(1f) }
     if (serverAccess == null || resolved == null) {
         if (serverAccess != null && resolved == null && captureToken != null) androidx.compose.runtime.SideEffect { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) }
-        Box(modifier.parityCaptureArtwork(captureToken, captureKey).background(WebSurfaceSoft), contentAlignment = Alignment.Center) {
-            Text(work.title, color = WebInkMuted, fontSize = placeholderSize, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(12.dp))
+        androidx.compose.runtime.CompositionLocalProvider(io.playarr.shared.designsystem.page.LocalParityImagePlaceholder provides true) {
+            Box(modifier.parityCaptureArtwork(captureToken, captureKey).background(WebSurfaceSoft), contentAlignment = Alignment.Center) {
+                Text(work.title, color = WebInkMuted, fontSize = placeholderSize, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(12.dp))
+            }
         }
         return
     }
@@ -10600,6 +10606,8 @@ internal fun AuthenticatedMediaThumbnail(
     artworkUrl: ((String) -> String)? = null,
     /** Shown centred behind the image while it loads and when it fails, so a tile is never an empty box. */
     fallbackLabel: String? = null,
+    /** Called once the picture has loaded and covers whatever is drawn under it. */
+    onLoaded: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val captureToken = parityCaptureGenerationToken()
@@ -10635,18 +10643,20 @@ internal fun AuthenticatedMediaThumbnail(
             model = request,
             contentDescription = contentDescription,
             contentScale = ContentScale.Crop,
-            onSuccess = { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
+            onSuccess = { onLoaded(); PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
             onError = { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey, failed = true) },
             modifier = modifier.parityCaptureArtwork(captureToken, captureKey),
         )
     } else {
+        // The label stands in while the picture loads or fails; a loaded (opaque) thumbnail covers it, so it is no longer composed.
+        var loaded by remember(request) { mutableStateOf(false) }
         Box(modifier.background(WebSurfaceSoft), contentAlignment = Alignment.Center) {
-            ThumbnailFallbackLabel(fallbackLabel)
+            if (!loaded) ThumbnailFallbackLabel(fallbackLabel)
             AsyncImage(
                 model = request,
                 contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
-                onSuccess = { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
+                onSuccess = { loaded = true; PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
                 onError = { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
                 modifier = Modifier.fillMaxSize().parityCaptureArtwork(captureToken, captureKey),
             )

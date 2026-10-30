@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.layerAlpha
 import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityShape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -801,13 +802,13 @@ private fun PlayerRoundButton(
         modifier = modifier
             .then(if (focusKey != null) Modifier.playerTracked(focusKey) else Modifier)
             .size(webVw(44f, 3.8f, 64f))
-            .parityShape(999f, alpha = if (enabled) 1f else 0.28f)
-            .then(if (enabled) Modifier else Modifier.graphicsLayer { alpha = 0.28f })
+            .parityShape(999f)
+            .then(if (enabled) Modifier else Modifier.layerAlpha(0.28f))
             .playerFocusRing(source, CircleShape)
             .semantics { this.contentDescription = contentDescription },
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp).parityBox("image", opacity = if (enabled) 1f else 0.28f))
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp).parityBox("image"))
         }
     }
 }
