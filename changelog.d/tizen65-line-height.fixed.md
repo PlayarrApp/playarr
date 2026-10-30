@@ -1,0 +1,1 @@
+- Tizen 6.5 parity lane: the Tizen web package is now run and scored in a pinned Chromium 85 (`DEVICE=tizen65` in the tizen-webos driver, `run-tizen65.sh`), and its legacy CSS rewrite rounds fractional unitless `line-height` values to the nearest pixel on engines without `aspect-ratio`, so wrapped text and everything below it no longer sit up to 2 px higher than on web.

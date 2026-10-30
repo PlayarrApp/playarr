@@ -112,6 +112,20 @@ WEBOS_OUT=<legend dir>/webos scripts/parity/tizen-webos/run-webos.sh
 `WEBOS_DISPLAY` (default `:26`) and `WEBOS_CDP` (default `9226`) name the simulator's display and inspector port.
 Extra arguments go to `suite-run.mjs` (`--screens home,movies`, `--themes dark`).
 
+### Tizen 6.5 engine (Chromium 85)
+
+The Tizen web package's oldest supported engine is Tizen 6.5 (Chromium 85), which the Tizen 10 emulator above cannot exercise: it runs
+`:has()`, `aspect-ratio`, `:is()` and `inset` natively, so the legacy rewrites (`clients/tv-web/tooling/legacy-tv-css.mjs`,
+`legacy-aspect-ratio.mjs`, the `mirror.ts` translate fallback and the Vite target) never run there. The Tizen Studio repository has no TV 6.5
+emulator image (only Mobile, Wearable and IoT 6.5, and the TV 10 extension), and no real Tizen 6.5 TV is available, so the stand-in is a pinned
+Chromium 85 build (Chromium snapshot r782790, 85.0.4183.0) on its own Xvfb display with the Tizen 6.5 user agent, loading the built
+`apps/tv-tizen/dist`. `drivers/tizen-webos.mjs` runs it as `DEVICE=tizen65` (inspector keys and page evaluation like webOS, ImageMagick root grab,
+layout read from the real page). Software rasterising with one raster thread keeps twin runs identical.
+Run it with `scripts/parity/tizen-webos/run-tizen65.sh` (setup in its header); the legend row is "Samsung Tizen 6.5" (dir `tizen65`, cand `dev`).
+Documented exceptions: **player controls** (stock Chromium has no H.264, so the parity clip has no frames; the Tizen emulator shows it through
+AVPlay) is not captured, and Chromium 85 truncates fractional line heights to whole pixels, which the Tizen package counters by rounding them
+(`legacy-tv-css.mjs`).
+
 ### Tizen web package: debug build on the emulator
 
 The Tizen web run has its own emulator instance (a qcow2 overlay on the clean TV image, own VM name, own Xvfb display, own
