@@ -1,0 +1,1 @@
+- VIDAA only: the arrow glyphs (U+2190, U+2192) use a bundled DejaVu Sans subset, so they match the web reference width; other clients are unchanged.
