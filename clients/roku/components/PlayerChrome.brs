@@ -72,7 +72,6 @@ sub playerChromeBuild()
     m.pcTimeNow = pgLabel(g, 302.8, 981.8, 0, 16, "0:00", 10.88, 400, "playerInk")
     m.pcTimeSep = pgLabel(g, 330.4, 981.8, 0, 16, "/", 10.88, 400, "playerSeparator")
     m.pcTimeEnd = pgLabel(g, 339.1, 981.8, 0, 16, "0:00", 10.88, 400, "playerInk")
-    m.pcMuteIcon = pgIcon(g, 396.8, 980, 20, "player-volume.png", "playerInk")
 
     ' Quality pill (.player-quality-button): HD glyph and the current quality.
     ' Transparent at rest like web; the fill shows with focus (web hover and expanded).
@@ -114,7 +113,6 @@ sub playerChromeBuild()
     A11yStamp(m.pcPlayBg, true)
     m.pcPrevMark = pgMark(g, "button", "Previous episode", 70, 958, 64, 64, 50)
     m.pcNextMark = pgMark(g, "button", "Next episode", 225.2, 958, 64, 64, 50)
-    m.pcMuteMark = pgMark(g, "button", "Mute", 374.8, 958, 64, 64, 50)
     m.pcAudioMark = pgMark(g, "button", "", 1224, 958, 64, 64, 50)
     m.pcSubsMark = pgMark(g, "button", "Subtitles: Off", 1301.6, 958, 64, 64, 50)
     m.pcQueueMark = pgMark(g, "button", "Playlist: 1 item", 1379.2, 958, 64, 64, 50)
@@ -149,24 +147,6 @@ function pcRound64(parent as Object, x as Float, y as Float, role as String) as 
     parent.AppendChild(poster)
     return poster
 end function
-
-' Mute toggles the Video node's own mute field (the stick's volume itself belongs to the remote and the TV).
-sub playerToggleMute()
-    m.pcMuted = not (m.pcMuted = true)
-    if m.video.hasField("mute") then m.video.mute = m.pcMuted
-    playerMuteDraw()
-end sub
-
-sub playerMuteDraw()
-    name = "Mute"
-    icon = "player-volume.png"
-    if m.pcMuted = true
-        name = "Unmute"
-        icon = "player-muted.png"
-    end if
-    m.pcMuteIcon.uri = "pkg:/images/" + icon
-    pgRename(m.pcMuteMark, name)
-end sub
 
 function pcFullRound(parent as Object, x as Float, y as Float, w as Float, h as Float, role as String, alpha as Integer, outline as Boolean) as Object
     poster = CreateObject("roSGNode", "Poster")
@@ -241,7 +221,6 @@ function playerChromeItems() as Object
     if n > 0 and m.playbackEpisodeIndex > 0 then items.Push({ id: "prev", x: 70, y: 958, w: 64, h: 64 })
     items.Push({ id: "play", x: 147.6, y: 958, w: 64, h: 64 })
     if n > 0 and m.playbackEpisodeIndex < n - 1 then items.Push({ id: "next", x: 225.2, y: 958, w: 64, h: 64 })
-    items.Push({ id: "mute", x: 374.8, y: 958, w: 64, h: 64 })
     items.Push({ id: "audio", x: 1224, y: 958, w: 64, h: 64 })
     items.Push({ id: "subs", x: 1301.6, y: 958, w: 64, h: 64 })
     items.Push({ id: "queue", x: 1379.2, y: 958, w: 64, h: 64 })
@@ -345,8 +324,6 @@ sub playerChromeActivate(id as String)
         playAdjacentEpisode(-1)
     else if id = "next"
         playAdjacentEpisode(1)
-    else if id = "mute"
-        playerToggleMute()
     else if id = "quality"
         playerMenuOpen()
     else
@@ -731,10 +708,6 @@ function playerFocusLabel() as String
     if id = "close" then return "close"
     if id = "prev" then return "previous episode"
     if id = "next" then return "next episode"
-    if id = "mute"
-        if m.pcMuted = true then return "unmute"
-        return "mute"
-    end if
     if id = "audio"
         label = ""
         if m.pcPlaybackInfo <> invalid and m.pcPlaybackInfo.audio_tracks <> invalid
