@@ -1,0 +1,1 @@
+- Samsung Tizen (native): the player drops the mute button, volume slider and fullscreen button, as the Samsung web player does (system volume only); parity web refs for this client use the Samsung platform bundle, and the Movies reference waits for a settled preview.
