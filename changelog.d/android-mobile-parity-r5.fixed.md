@@ -1,0 +1,1 @@
+- Android phone and tablet parity round 5: the capture publishes the screenshot the layout export was verified against, the tablet navigation avatar and the calendar poster placeholder are hooked on what is drawn, the tablet calendar toolbar and profile rail use the web's css px sizes, and the calendar-link and tablet filters screens are captured.

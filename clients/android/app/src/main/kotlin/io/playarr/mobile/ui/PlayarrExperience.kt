@@ -2286,6 +2286,9 @@ private fun TelevisionNavigationContent(
     web: TvNavMetrics?,
 ) {
     val groups = televisionDestinationGroups(destinations)
+    // On a tablet the rail is drawn in css px: web puts the profile group 6.9 px lower, closer to the version label.
+    val tabletStage = LocalStageScale.current
+    val tabletPull = if (web != null && tabletStage != 1f) 6.9f else 0f
     // Web `.app-nav`: the groups start at y 119.1 under the logo; the profile group and the version sit at its foot.
     Column(
         modifier = modifier.fillMaxHeight().padding(
@@ -2321,8 +2324,9 @@ private fun TelevisionNavigationContent(
                     onClick = profile.onClick,
                     entryFocus = null,
                     description = profile.description,
+                    slotIsImage = false,
                 ) {
-                    PlayarrProfileAvatar(userId = profile.userId, preference = profile.avatar, modifier = Modifier.size(20.dp).parityBox("container", radius = 999f), glyphSize = 10.sp)
+                    PlayarrProfileAvatar(userId = profile.userId, preference = profile.avatar, modifier = Modifier.size(20.dp).parityBox("container", radius = 999f), artworkModifier = Modifier.parityBox("image"), glyphSize = 10.sp)
                 }
             }
             Text(
@@ -2335,7 +2339,14 @@ private fun TelevisionNavigationContent(
                 fontFamily = webMonoFamily,
                 softWrap = false,
                 maxLines = 1,
-                modifier = Modifier.padding(top = if (web == null) 2.6.dp else 8.4.dp).width(77.5.dp).wrapContentWidth(unbounded = true),
+                modifier = Modifier.padding(top = if (web == null) 2.6.dp else (8.4f - minOf(8.4f, tabletPull)).dp)
+                    .layout { measurable, constraints ->
+                        // Tablet web: the profile group ends 1.4 css px above the version, the rail drew it 8.3 px above (see tabletPull).
+                        val cut = (tabletPull - 8.4f).coerceAtLeast(0f).dp.roundToPx()
+                        val placeable = measurable.measure(constraints)
+                        layout(placeable.width, (placeable.height - cut).coerceAtLeast(0)) { placeable.place(0, -cut) }
+                    }
+                    .width(77.5.dp).wrapContentWidth(unbounded = true),
             )
         }
     }
@@ -2374,6 +2385,8 @@ private fun TvNavTile(
     entryFocus: FocusRequester?,
     description: String? = null,
     web: TvNavMetrics? = null,
+    /** The icon slot is a measured image; an avatar slot hooks its own preset artwork instead. */
+    slotIsImage: Boolean = true,
     icon: @Composable () -> Unit,
 ) {
     val contentEntry = LocalTvContentEntry.current
@@ -2417,7 +2430,7 @@ private fun TvNavTile(
         // Web `.app-nav-link`: the 20 px icon 15.2 px down, the 8.832 px label 4.8 px under it.
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Top) {
             Spacer(Modifier.height(web?.iconTop ?: 15.2.dp))
-            Box(Modifier.size(20.dp).parityBox("image"), contentAlignment = Alignment.Center) { icon() }
+            Box(Modifier.size(20.dp).then(if (slotIsImage) Modifier.parityBox("image") else Modifier), contentAlignment = Alignment.Center) { icon() }
             Text(
                 label,
                 fontSize = web?.labelSize ?: 8.832.sp,
@@ -10050,7 +10063,10 @@ private fun ExperiencePlayerScreen(
         var tick = 0
         while (true) {
             timeline = viewModel.timelineSnapshot()
-            if (++tick % 4 == 0) parityLog("player positionMs=${timeline.positionMs}")
+            if (++tick % 4 == 0) {
+                parityLog("player positionMs=${timeline.positionMs}")
+                parityLog("player bufferedMs=${timeline.bufferedPositionMs}")
+            }
             kotlinx.coroutines.delay(250)
         }
     }
