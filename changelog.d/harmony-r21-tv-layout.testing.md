@@ -1,0 +1,1 @@
+- Harmony parity r21: HarmonyOS TV Settings cards sit 1.3 px tighter, the series Similar Titles rail 1.8 px lower, and the Play/Start pill label and glyph are offset to web's measured positions, so more boxes of the layout export match web.

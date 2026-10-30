@@ -120,7 +120,7 @@ const PANEL_LEFT: number = 774;
 const PANEL_TOP: number = 216;
 const PANEL_WIDTH: number = 1042;
 const PANEL_TEXT_SIZE: number = 13.824;
-const SETTING_CARD_TOP: number = 1 + 34 + 1.77 + 1.27; // web: from a setting's top rule to its heading (the rule's own px included)
+const SETTING_CARD_TOP: number = 1 + 34 + 1.77 + 1.27 - 1.3; // web: from a setting's top rule to its heading (the rule's own px included)
 /** Phone: the panel is the page width less 16 each side (the 360 vp web phone width). */
 const TOUCH_PANEL_WIDTH: number = 328;
 
