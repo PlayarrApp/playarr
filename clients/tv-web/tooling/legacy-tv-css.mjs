@@ -315,7 +315,7 @@ function addChromium85Fallbacks(root) {
       // Only clamped text blocks (-webkit-line-clamp): they hold plain text, so the pixel value an em length computes to is not inherited by a child with another font size.
       const rule = declaration.parent;
       const inKeyframes = rule?.parent?.type === "atrule" && /keyframes$/i.test(rule.parent.name);
-      const clamped = rule?.nodes?.some((node) => node.type === "decl" && node.prop === "-webkit-line-clamp");
+      const clamped = rule?.nodes?.some((node) => node.type === "decl" && (node.prop === "-webkit-line-clamp" || node.prop === "font-size"));
       if (rule?.type === "rule" && !inKeyframes && clamped) {
         const rounded = rule.clone({ nodes: [] });
         rounded.append(postcss.decl({ prop: "line-height", value: `calc(${declaration.value.trim()}em + 0.5px)` }));
