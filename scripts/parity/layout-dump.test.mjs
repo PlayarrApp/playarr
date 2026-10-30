@@ -306,3 +306,12 @@ test("a text run's right edge excludes the trailing letter-spacing of its last g
   assert.equal(wrapped.elements.length, 2);
   assert.ok(wrapped.elements.every((e) => Math.abs(e.rect.w - (2 * 12 + 2 * 10 - 10)) < 0.1), JSON.stringify(wrapped.elements.map((e) => e.rect.w)));
 });
+
+test("a percentage border radius resolves against the element's own box, capped at half the short side", { skip }, async () => {
+  const d = await dump(`<button class="abs" style="top:0;width:44px;height:44px;border-radius:50%;background:#123456" aria-label="c"></button>
+    <button class="abs" style="top:60px;width:100px;height:40px;border-radius:50%;background:#123456" aria-label="p"></button>
+    <button class="abs" style="top:120px;width:100px;height:40px;border-radius:10%;background:#123456" aria-label="q"></button>
+    <button class="abs" style="top:180px;width:100px;height:40px;border-radius:999px;background:#123456" aria-label="r"></button>`);
+  const radius = Object.fromEntries(d.elements.filter((e) => e.role === "button").map((e) => [e.text, e.radius]));
+  assert.deepEqual(radius, { c: 22, p: 20, q: 4, r: 20 });
+});
