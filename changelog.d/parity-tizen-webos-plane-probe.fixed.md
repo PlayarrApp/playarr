@@ -1,0 +1,1 @@
+- Parity layout dump for the Tizen web client now measures the AVPlay plane by toggling it and diffing the rendered screen instead of assuming its rectangle, and the webOS and Tizen pages hide the text caret as the web refs do.
