@@ -91,11 +91,14 @@ each key waits for two distinct settled frames, and a frame takes seconds to ren
   app's `vidaaLongPress.ts` turns that into a hold and opens the actions panel.
 - Back: the remote service swallows `KEY_BACK`, `KEY_RETURN` and `KEY_EXIT` (the page sees no key and no history event; `KEY_EXIT`
   leaves the app). The driver therefore asks the debug page, through the receiver's one-shot command channel, to dispatch the key the app
-  documents as VIDAA's Back button (Backspace, keyCode 8, `isVidaaBackKey`). The real remote's Back button is not exercised; owner check.
-  Measured with listeners on keydown, keyup, popstate, hashchange, visibilitychange, blur, focus and pagehide: `KEY_BACK`, `KEY_RETURN` and
-  `KEY_BACK_LONG_PRESS` produce no event at all although the page has history entries, so a history sentinel cannot help; the app already
-  accepts keyCode 8, 461, 10009, Escape, BrowserBack and GoBack. Because the injected key is not a remote key press, a D-pad check whose keys
-  include Back is scored failed with the reason "injected back" (`takeInjectedBack` in the driver, read by `suite-run.mjs`).
+  documents as VIDAA's Back button (Backspace, keyCode 8, `isVidaaBackKey`). Owner check, 30 Oct 2026: with the debug key logger
+  (`mirrorKeyLog=1`, `/__mirror/keylog`) the physical remote's Back reached the page as `keydown`/`keyup` key "Backspace", code
+  "Backspace", keyCode 8, and no popstate or hashchange. The injected command dispatches exactly key/code/keyCode Backspace/Backspace/8, so it
+  is equivalent to the remote's Back and D-pad checks that use it are scored normally ("injected Backspace = remote Back, owner press
+  30 Oct"). The app handles it: injected Back took the TV from the player to the film detail and from there to /movies. On home, Back is a
+  no-op on the web and on VIDAA (`tvBackNavigationTarget` returns null for the root route; no exit prompt).
+  Broker limitation, not an app bug: the MQTT `KEY_BACK`, `KEY_RETURN` and `KEY_BACK_LONG_PRESS` produce no page event at all (measured with
+  listeners on keydown, keyup, popstate, hashchange, visibilitychange, blur, focus and pagehide).
 - `player-controls`: the page is held on the clip's 2.000 s frame, paused, controls visible, focus dropped (a page job, as in the Tizen and
   Vega runs), and the capture is refused unless the position reads back as 2.000.
 - Time zone: a TV cannot change its zone, so the debug build reads local time as UTC (`mirrorUtc=1`: Date local getters, the default Intl zone

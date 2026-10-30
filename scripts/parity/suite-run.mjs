@@ -343,7 +343,6 @@ if (only.includes("dpad")) {
           const startOk = !at || samePosition(at, d.start); // a driver without position cannot assert the start
           if (!startOk) throw new Error(`wrong start ${at.rail}:${at.index}, expected ${d.start.rail}:${d.start.index}`);
         }
-        driver.takeInjectedBack?.(); // only a Back inside the check's own keys counts
         await press(d.keys);
         await waitReady(d.id, "focus");
         const focused = await driver.focused(); assertNotInterrupted();
@@ -354,8 +353,6 @@ if (only.includes("dpad")) {
         if (d.observe === "state") { const location = await driver.location(); assertNotInterrupted(); actual = { ...actual, label: `${location.split("?")[0].split("/").filter(Boolean).map((s, i) => (i ? ":id" : s)).join("/")}` }; }
       } catch (e) { if (signalReceived) throw e; assertNotInterrupted(); why = e.message.split("\n")[0]; console.log(`ERR dpad ${d.id}: ${why}`); }
       assertNotInterrupted();
-      // A driver that can only inject Back into the page (VIDAA: the remote's own Back never arrives) cannot pass a check that needs it.
-      if (driver.takeInjectedBack?.()) why ||= "injected back";
       if (!actual?.label) { why ||= "the driver reported no focused item"; }
       else if (!why) agreed = true;
     }
