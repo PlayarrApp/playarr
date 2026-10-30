@@ -484,6 +484,8 @@ export async function createDriver() {
     supports: device === "webos" && !tizen65 ? { nowPlaying: true, downloads: true, notifications: true, "grouped-downloads": true } : {},
     async start() {
       if (device === "webos") {
+        // Chromium shows a link's address in a status bubble over the page while the pointer rests on it: park the pointer outside the 1920x1080 page, on the larger Xvfb screen.
+        if (tizen65) execFileSync("python3", [XCLICK, display, "park", "1990", "1190"], { stdio: "ignore" });
         await cdpConnect();
         if (TIZEN_MIRROR) {
           await cdp("Page.navigate", { url: mirrorEntry("/") });
