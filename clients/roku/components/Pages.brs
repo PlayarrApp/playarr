@@ -118,6 +118,7 @@ end function
 
 function pgRadiusFor(h as Float, r as Float) as Integer
     if r >= 82 then return 82
+    if r = 29 and h >= 56 and h <= 60 then return 29
     if r >= 25 then return 25
     if r >= 12 then return 12
     return 6
@@ -2196,6 +2197,8 @@ sub renderCalendarAgenda(entries as Object)
             m.pageHead.AppendChild(hg)
             ' The pinned heading is the web's bg-coloured box; the panel's lighter wash is laid over it as a bitmap.
             pgRect(hg, 775, ay, 1060, 58, "agendaHead")
+            ' The heading itself is web's 1033 x 44 box at the list's left edge, painted in the same colour as the pinned cover.
+            pgRect(hg, 783.4, ay, 1033.4, 44, "agendaHead").id = "a11y|heading|0|"
             pgTint(hg, 775, ay, 1060, 58, "panel")
             headRole = "ink"
             if day = today then headRole = "accent"
@@ -2298,7 +2301,7 @@ sub renderCalendarMonth(entries as Object)
         if Mid(day, 6, 2) <> monthOf
             pgRect(m.pageBody, x, y, cw, ch, "ink", 12).id = "a11y|container|0|"
         else
-            ' A day of the month draws no fill of its own (it shows the page behind it): its cell is the focus target registered below.
+            pgRect(m.pageBody, x, y, cw, ch, "surface").id = "a11y|container|0|"
         end if
     end for
     for rr = 0 to rows
@@ -2307,6 +2310,8 @@ sub renderCalendarMonth(entries as Object)
     for c = 0 to 7
         pgRect(m.pageBody, gx + c * cw, gy, 1, ch * rows, "line")
     end for
+    firstStop = m.pageItems.Count()
+    weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     for i = 0 to days - 1
         day = calAddDays(r.start, i)
         x = gx + (i mod 7) * cw
@@ -2339,16 +2344,26 @@ sub renderCalendarMonth(entries as Object)
             if chips[k].status = "Missing" then dotRole = "danger"
             pgRound(m.pageBody, x + 11.4, cy + 17.6, 8.8, 8.8, 4.4, dotRole)
             pgMark(m.pageBody, "container", "", x + 11.4, cy + 17.6, 8.8, 8.8, 50)
+            ' The chip is a control: web names it "Title, Status, Weekday D Month" and it is 226 x 44 (a later chip is cut by the next one).
+            chipH = 44.0
+            if k < shown - 1 then chipH = 25.4
+            chipName = chips[k].title + ", " + chips[k].status + ", " + weekdays[calWeekday(day)] + " " + Val(Mid(day, 9, 2)).ToStr() + " " + calendarMonthName(Val(Mid(day, 6, 2)), false)
+            pgHit(m.pageBody, "button", chipName, x + 5.8, cy, 226, chipH, 0)
+            if k = 0 and day = today then todayIdx = m.pageItems.Count()
+            pgFocusable(x + 5.8, cy, 226, chipH, 6, "cell", day)
             pgLabel(m.pageBody, x + 27.4, cy + 12.5, cw - 38, 17, text, 12.48, 400, "ink", { maxLines: 1 })
         end for
         numRole = "ink"
         if Mid(day, 6, 2) <> monthOf then numRole = "inkMuted"
         pgLabel(m.pageBody, x + 8.8, y + 117.9, 60, 18, Val(Mid(day, 9, 2)).ToStr(), 12.8, 640, numRole)
         if n > shown then pgLabel(m.pageBody, x + 60, y + ch - 24, cw - 70, 16, "+" + (n - shown).ToStr() + " more", 11, 600, "inkMuted", { horizAlign: "right" })
-        if day = today then todayIdx = m.pageItems.Count()
-        pgFocusable(x + 1, y + 1, cw - 1, ch - 1, 6, "cell", day)
+        ' A day with chips is reached through its chips; an empty day keeps the whole-cell stop that opens it in the agenda.
+        if shown = 0
+            if day = today then todayIdx = m.pageItems.Count()
+            pgFocusable(x + 1, y + 1, cw - 1, ch - 1, 6, "cell", day)
+        end if
     end for
-    m.pageFocusIdx = m.pageItems.Count() - days + 0
+    m.pageFocusIdx = firstStop
     if todayIdx > 0 then m.pageFocusIdx = todayIdx
 end sub
 
