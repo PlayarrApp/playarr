@@ -7175,8 +7175,7 @@ private fun VideoDetailCopy(
                 chips.forEachIndexed { index, item ->
                     Text(
                         item,
-                        // Chromium's 15 px glyph box sits 0.6 dp under the 14.4 dp one Compose centres (whole pixels at 1920).
-                        modifier = if (LocalStageScale.current == 1f) Modifier.offset(y = 1.dp) else Modifier,
+                        modifier = Modifier,
                         color = if (index == 0) WebInkSoft else WebInkMuted,
                         // Web `.tv-detail-meta`: clamp(7.68, 0.55 vw, 10.88) css px (10.56 at 1920).
                         fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp,
@@ -7195,8 +7194,7 @@ private fun VideoDetailCopy(
                 color = WebInkMuted,
                 // Web `.tv-detail-synopsis`: clamp(9.28, 0.67 vw, 13.44) css px, line height 1.58 (12.864 / 20.325 at 1920).
                 fontSize = webVw(9.28f, 0.67f, 13.44f).value.sp,
-                // Compose rounds a fractional line pitch up to whole pixels (21 px for 20.325); rounded down it stays within 0.7 px of web over five lines.
-                lineHeight = (if (LocalStageScale.current == 1f) kotlin.math.floor(webVw(9.28f, 0.67f, 13.44f).value * 1.58f) else webVw(9.28f, 0.67f, 13.44f).value * 1.58f).sp,
+                                lineHeight = (webVw(9.28f, 0.67f, 13.44f).value * 1.58f).sp,
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
                 // Tablet web measured at 1280 x 800 for series episodes: the synopsis is 3 dp lower and 347 dp wide (the actions row below keeps its place).
