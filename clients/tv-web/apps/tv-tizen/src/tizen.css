@@ -221,3 +221,13 @@ b {
     line-height: calc(1.5em + 0.5px);
   }
 }
+
+/* The detail kicker is one line of 12.288 px text whose 1.5 line height (18.432 px) Chromium 85 truncates to 18, so the title and everything below sit 0.43 px high.
+   At the 1920 px TV width the dropped fraction goes back as padding (the block keeps the web height). */
+@media (min-width: 1920px) and (max-width: 1920px) {
+  @supports not (aspect-ratio: 1) {
+    .tv-detail-copy > .tv-detail-kicker {
+      padding-bottom: 0.43px;
+    }
+  }
+}
