@@ -90,7 +90,14 @@ internal static class LayoutExport
         {
             if (index < 0 || index >= ctx.Nodes.Count) continue;
             var n = ctx.Nodes[index]; var v = ctx.Views[n.Id];
-            if (n.PaintOnly && !whole)
+            if (v is TextField input && !whole)
+            {
+                // an input draws nothing of its own while it is empty (its placeholder is a sibling label), so hiding it changes no pixel: its box is painted loud instead, which shows on the real screen only where the field is topmost
+                var bc = input.BackgroundColor; var fill = new Color(bc.R, bc.G, bc.B, bc.A);
+                input.BackgroundColor = loud;
+                Restores.Add(() => input.BackgroundColor = fill);
+            }
+            else if (n.PaintOnly && !whole)
             {
                 // NUI hands back live objects (a Color bound to the view), so the values are copied before the paint is changed
                 var bc = v.BackgroundColor; var fill = new Color(bc.R, bc.G, bc.B, bc.A); var bcol = v.BorderlineColor; var border = new Color(bcol.R, bcol.G, bcol.B, bcol.A); var sh = v.BoxShadow;
