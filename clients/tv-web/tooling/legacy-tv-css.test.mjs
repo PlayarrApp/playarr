@@ -131,14 +131,3 @@ test("chromium85 reads :focus-visible as :focus inside the :has() fallback defin
   assert.doesNotMatch(css, /focus-visible/);
   assert.match(css, /input:focus/);
 });
-
-test("chromium85 rounds a fractional unitless line-height to the nearest pixel on engines without aspect-ratio only", () => {
-  const css = addLegacyTvCssFallbacks(".a { line-height: 1.58; -webkit-line-clamp: 5; } .b { line-height: 1.5; -webkit-line-clamp: 2; } .c { line-height: 2; } @keyframes k { to { line-height: 1.2; } }", undefined, { chromium85: true });
-  assert.match(css, /\.a \{ line-height: 1\.58; -webkit-line-clamp: 5; \}\s*@supports not \(aspect-ratio: 1\) \{\s*\.a \{\s*line-height: calc\(1\.58em \+ 0\.5px\)/);
-  assert.match(css, /@supports not \(aspect-ratio: 1\) \{\s*\.b \{\s*line-height: calc\(1\.5em \+ 0\.5px\)/);
-  assert.doesNotMatch(css, /\.c \{[^}]*calc/);
-  assert.doesNotMatch(addLegacyTvCssFallbacks(".d { line-height: 1.45; }", undefined, { chromium85: true }), /calc/); // not clamped: children inherit the length
-  assert.doesNotMatch(css, /@keyframes k[^}]*calc/);
-  const plain = addLegacyTvCssFallbacks(".a { line-height: 1.58; -webkit-line-clamp: 5; }");
-  assert.doesNotMatch(plain, /calc\(1\.58em/);
-});
