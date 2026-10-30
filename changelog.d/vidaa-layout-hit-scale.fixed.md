@@ -1,0 +1,1 @@
+- Layout export measures the factor between rect space and hit-test space on the page before it decides which elements another layer covers, so a browser that fits its stage with a body transform (the VIDAA TV) no longer drops uncovered elements as occluded.

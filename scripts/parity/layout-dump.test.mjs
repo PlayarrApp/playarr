@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { chromium } from "playwright-core";
-import { layoutPageFn, volatileFor } from "./layout-dump.mjs";
+import { hitScalePageFn, layoutExpressionScaled, layoutPageFn, volatileFor } from "./layout-dump.mjs";
 
 const exe = [process.env.PARITY_CHROME, "/usr/bin/chromium", "/usr/bin/google-chrome-stable", "/usr/bin/google-chrome"].find((p) => p && existsSync(p));
 const skip = exe ? false : "no Chromium on this host";
@@ -281,4 +281,20 @@ test("a volatile element cut by ellipsis, a vertical line clamp and an input val
   await assert.rejects(dump(`<p style="width:60px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden">one two three four five six seven eight nine ten</p>`), /not measurable/);
   await assert.rejects(dump(`<input class="abs" value="typed" style="width:100px">`), /value of an input/);
   assert.ok((await dump(`<input class="abs" value="" style="width:100px" aria-label="Empty">`)).elements.length === 1);
+});
+
+test("hit-test scale: 1 where rect space and hit-test space agree; a scaled hit space is applied to the sample points", { skip }, async () => {
+  const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
+  try {
+    const page = await browser.newPage({ viewport: { width: 400, height: 300 } });
+    await page.setContent(`<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#fff;font:16px sans-serif}.abs{position:absolute}</style>
+      <span class="abs" style="left:300px;top:200px">three</span><span class="abs" style="left:100px;top:100px">two</span>
+      <div class="abs" style="left:0;top:0;width:60px;height:60px;background:#00f"></div>`);
+    assert.equal(await page.evaluate(hitScalePageFn), 1);
+    const plain = await page.evaluate(([f, v, o]) => new Function(`return (${f})`)()(v, o), [layoutPageFn.toString(), [], {}]);
+    assert.deepEqual(await page.evaluate(([f, v, o]) => new Function(`return (${f})`)()(v, o), [layoutPageFn.toString(), [], { hitScale: 1 }]), plain);
+    assert.equal((await page.evaluate(layoutExpressionScaled("home"))).occluded, plain.occluded);
+    const shifted = await page.evaluate(([f, v, o]) => new Function(`return (${f})`)()(v, o), [layoutPageFn.toString(), [], { hitScale: 0.1 }]); // every sample point of "three" lands inside the blue square, which then covers it
+    assert.ok(plain.elements.some((e) => e.text === "three") && !shifted.elements.some((e) => e.text === "three"));
+  } finally { await browser.close(); }
 });

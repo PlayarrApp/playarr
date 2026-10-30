@@ -13,6 +13,7 @@ export const volatileFor = (screen) => [...(VOLATILE["*"] ?? []), ...(VOLATILE[s
 
 export function layoutPageFn(volatile, opts) {
   var planes = (opts && opts.opaquePlanes) || [];
+  var hitScale = (opts && opts.hitScale) || 1;
   var round = function (n) { return Math.round(n * 100) / 100; };
   var hex2 = function (n) { var s = Math.round(n).toString(16); return s.length < 2 ? "0" + s : s; };
   var parse = function (c) {
@@ -238,7 +239,7 @@ export function layoutPageFn(volatile, opts) {
       for (var a = 0; a < 3; a++) for (var c = 0; c < 3; c++) {
         var px = l + (rt - l) * fr[a], py = t + (b - t) * fr[c];
         if (planeAt(px, py)) continue;
-        var hits = document.elementsFromPoint(px, py), hidden = false;
+        var hits = document.elementsFromPoint(px * hitScale, py * hitScale), hidden = false;
         for (var h = 0; h < hits.length; h++) {
           if (el.contains(hits[h]) || hits[h].contains(el)) break;
           if (covers(hits[h], el)) { hidden = true; break; }
@@ -353,6 +354,30 @@ export function layoutPageFn(volatile, opts) {
   return { viewport: { w: innerWidth, h: innerHeight, dpr: devicePixelRatio }, elements: rows, occluded: dropped };
 }
 
+/** Page function: the factor between the rect space of getBoundingClientRect and the point space of elementsFromPoint. 1 on a browser whose two agree (every ref and
+ *  emulator); a browser that fits its stage with a body transform but reports untransformed rects (the VIDAA TV browser) answers the viewport/stage ratio. Measured on the
+ *  real page: each candidate is tried on the visible elements' own centres and the one whose topmost hit is the element (or inside it) most often wins; 1 wins ties. */
+export function hitScalePageFn() {
+  var cands = [1];
+  var vw = window.visualViewport ? window.visualViewport.width : document.documentElement.clientWidth;
+  if (innerWidth > 0 && Math.abs(vw / innerWidth - 1) > 0.01) cands.push(vw / innerWidth);
+  if (cands.length === 1 || !document.elementsFromPoint) return 1;
+  var els = Array.prototype.slice.call(document.querySelectorAll("h1,h2,h3,p,span,a,button,img,label,li")).filter(function (e) {
+    var r = e.getBoundingClientRect(), st = getComputedStyle(e);
+    return r.width >= 6 && r.height >= 6 && r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight && st.visibility !== "hidden" && st.display !== "none" && st.pointerEvents !== "none";
+  }).slice(0, 80);
+  var best = 1, bestN = -1;
+  cands.forEach(function (c) {
+    var n = 0;
+    els.forEach(function (e) {
+      var r = e.getBoundingClientRect(), hits = document.elementsFromPoint((r.left + r.width / 2) * c, (r.top + r.height / 2) * c);
+      if (hits.length && (hits[0] === e || e.contains(hits[0]))) n++;
+    });
+    if (n > bestN) { bestN = n; best = c; }
+  });
+  return best;
+}
+
 /** Run the page function in a Playwright page and return the schema document. */
 export async function dumpLayout(page, { screen, theme }) {
   const doc = await page.evaluate(layoutExpression(screen));
@@ -361,3 +386,6 @@ export async function dumpLayout(page, { screen, theme }) {
 
 /** Expression for an inspector eval (TV drivers): returns the same { viewport, elements }. */
 export const layoutExpression = (screen, opts) => `(${layoutPageFn.toString()})(${JSON.stringify(volatileFor(screen))}, ${JSON.stringify(opts ?? {})})`;
+
+/** Inspector or mirror-job expression for a browser whose hit-test space can differ from its rect space: measures the factor on the page, then runs the exporter with it. */
+export const layoutExpressionScaled = (screen, opts) => `(function () { var hitScale = (${hitScalePageFn.toString()})(); return (${layoutPageFn.toString()})(${JSON.stringify(volatileFor(screen))}, Object.assign({}, ${JSON.stringify(opts ?? {})}, { hitScale: hitScale })); })()`;

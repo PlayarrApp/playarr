@@ -1,0 +1,1 @@
+- The VIDAA parity web references have their own `tv-vidaa` group (xbox user agent, video hidden) because the TV mirror cannot carry the video picture; the debug mirror build also pins local time to UTC (`mirrorUtc=1`), and a D-pad check that needs an injected Back is scored failed with the reason "injected back".

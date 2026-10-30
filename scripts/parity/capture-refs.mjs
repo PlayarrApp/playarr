@@ -43,6 +43,8 @@ const PLATFORM_UA = {
   xbox: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; Xbox; Xbox One) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edge/44.18363.8131",
   // Roku keeps the xbox UA's platform identity (no hosted Clients link) and adds the first-party token that hides in-app volume and fullscreen.
   roku: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; Xbox; Xbox One) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edge/44.18363.8131 PlayarrRoku/1.0",
+  // VIDAA: the TV browser's own UA (the web client selects its VIDAA profile from it, so the system-volume player controls are hidden as on the TV).
+  vidaa: "Mozilla/5.0 (X11; Linux armv7l) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.5563.146 Odin/111.5563.5.1 Safari/537.36 Model/VIDAA-MT9602 VIDAA/9.0(Hisense;SmartTV;55A51HXVT;MTK9602/V0000.09.09O.P1015;UHD;55A5HX;)",
   "android-mobile": "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36 PlayarrAndroidMobile/1.0",
 };
 const suite = JSON.parse(readFileSync(join(here, "suite.json"), "utf8"));

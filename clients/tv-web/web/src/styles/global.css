@@ -345,6 +345,13 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* The VIDAA TV browser rounds every glyph advance to a whole pixel under optimizeLegibility (a 17.66px heading measures 2% narrower than the
+   same text on the web), so its text runs shorter than the design. geometricPrecision gives it the fractional advances every other engine uses. */
+html[data-platform="tv-vidaa"] body {
+  text-rendering: geometricPrecision;
+  font-family: "DejaVu Arrows", var(--font);
+}
+
 h1,
 h2,
 h3,

@@ -19,7 +19,7 @@ reference is web mobile at the device's own size. The legend dir is the client's
 | HarmonyOS TV | DevEco Previewer (`scripts/harmony-wall/preview.sh`, run locally; images are region-locked) | Previewer key input | Previewer screenshot | Previewer renders UI only: no real playback | `harmony` |
 | Xbox | UWP app sideloaded on a GitHub-hosted Windows runner (`parity-xbox.yml`, dispatch only, static server, clock pinned by the app under `parity.on`); reproduce with `scripts/parity/xbox/run-hosted.sh <legend dir> [ref]` | Keyboard arrows through `xbox-io` (the app maps them as the D-pad) | Runner screen capture | No real console video path; runner font rasteriser differs from the browser's; on-screen keyboard for text | `xbox` |
 | macOS (Apple TV app) | The Apple TV app on a Mac, inside its own simulator folder only | Keyboard arrows | Window capture, never the desktop | Muted; never stream or capture the desktop | `macos` |
-| Hisense VIDAA | Real TV: MQTT remote plus the debug mirror build | MQTT remote key messages | Debug mirror build screenshots | Hardware only, no emulator | `vidaa` (pending) |
+| Hisense VIDAA | Real TV: MQTT remote plus the debug mirror build | MQTT remote key messages | Debug mirror build screenshots | Hardware only, no emulator; Back is sent to the page as Backspace (see below) | `vidaa` |
 | Roku Streaming Stick 4K | Real device, developer mode | ECP key presses | `plugin_inspect` screenshots | No emulator; screenshot has no video plane | `roku` (pending) |
 
 ### Fire TV (Vega OS): how the run works
@@ -69,6 +69,48 @@ Playing to about 2 s and pressing pause lands anywhere in a window, so the progr
 Harmony occlusion: no ArkUI, Inspector, `ComponentUtils` or UiTest API returns the topmost component at a screen point (UiTest finds by attribute, runs on a device, and the Previewer has no `hdc`), and `FrameNode.commonAttribute` does not re-render a declarative node. So the capture measures the rendered screen with an app-side hook: `patch_hide.py` (preview build only) gives every component a stable key (`.id('pvhN')`) and binds its visibility to an AppStorage string (`@StorageLink('pvHid')` per struct); `hide:<keys>` sets that string, so the declarative tree hides the nodes (layout kept) and re-renders. The exporter's geometry only flags elements that may be covered; `capture.py` hides each flagged key, checks the app reports the node `Visibility.Hidden`, takes a second screenshot and diffs the element's box exactly, minus the noise between two unchanged shots. Unchanged pixels mean the element is not drawn and it is dropped; any element that could not be measured (global builders have no key, hide not reported, screen unsettled) stays exported and is counted as `unmeasured`. A control text must change when hidden, or the probe is void. Results are saved as `layout-probe/<theme>/<screen>.json` and replayed by `layout_replay.py`. A screenshot is kept only if the screen is unchanged after the tree dump (a mismatch aborts the capture). `player-controls` is probed like every other screen; the preview build stops the buffering spinner (`enableLoading(false)`), the only moving pixels there, so its frame settles. A key is `pvhN.I`: the source call plus the struct instance (`pvNextInst`), repeated instances of one component are separate keys, and non-Text nodes repeat the key in `accessibilityDescription` because a later `.id()` (patch_state's `pcard`) replaces the id. The diff is strict: any R, G or B channel differing at all.
 
 Harmony limit: the Windows Previewer mocks AVPlayer, so the app never reaches a real paused 2.000 s. The preview build routes the player controller to a stand-in (`patch_player.py`, `PreviewPlayer.ets`) that lands on the pinned 2.000 s and stays paused, and replaces the surface XComponent by an empty Column so the app's black stage shows; position and pause state are the stand-in's, and the capture log prints what the page shows. The web ref for this screen is captured with the video picture hidden (`tv-harmony` group in `web-refs.json`), so only the chrome is compared. Player-controls therefore stays below 100% on Harmony until a device or real player is available.
+
+### Hisense VIDAA: the one-command run
+
+The real TV loads the debug-mirror build (`pnpm run build:debug-mirror` in `clients/tv-web/web`) from `scripts/vidaa/receiver.py`, which is
+started with the build directory and a scratch directory (`MIRROR_DIST`, `MIRROR_RECOVERY_DATA`) and the static server's `parity.env`
+values, so the page signs in to the static parity account (`open-debug --seed`) and never to the live server. The clock is frozen by
+the build (`mirrorNow`). Exactly one MQTT session reaches the TV: the keepalive service; every command goes through its broker via the
+CLI wrapper (`PLAYARR_VIDAA_CLI`). Reproduce the run:
+
+    PLAYARR_VIDAA_CLI=<vidaa wrapper> scripts/parity/vidaa/run.sh <fresh out dir>
+
+It writes `<out>/{dark,light}/<screen>.png`, `<out>/layout/<theme>/<screen>.json`, `dpad.json` and `build.json`. A run takes about two hours:
+each key waits for two distinct settled frames, and a frame takes seconds to render on the TV.
+
+- Layout export: the driver queues the shared exporter (`layout-dump.mjs`) as a job at the receiver; the page runs it on its own DOM right
+  before and after it renders the frame and posts the result with the frame under the job's request id. The screenshot and the layout
+  of a screen both come from that one frame; a frame whose id differs, that rendered an error, whose page changed while it rendered, or whose
+  route, focus or text differ from the settled page is refused. Visibility is decided on the real page (`elementsFromPoint`). The TV
+  browser fits its stage with a body `transform`: `getBoundingClientRect` ignores it but `elementsFromPoint` uses the scaled space, so the
+  exporter measures the factor on the page (`hitScalePageFn`) instead of assuming one.
+- Long press: `select:long` is the remote's own `KEY_OK_LONG_PRESS`, which the page receives as repeat Enter keydowns plus a keyup; the
+  app's `vidaaLongPress.ts` turns that into a hold and opens the actions panel.
+- Back: the remote service swallows `KEY_BACK`, `KEY_RETURN` and `KEY_EXIT` (the page sees no key and no history event; `KEY_EXIT`
+  leaves the app). The driver therefore asks the debug page, through the receiver's one-shot command channel, to dispatch the key the app
+  documents as VIDAA's Back button (Backspace, keyCode 8, `isVidaaBackKey`). Owner check, 30 Oct 2026 (fresh batteries; an earlier press with flat batteries is not evidence): with the debug key logger
+  (`mirrorKeyLog=1`, `/__mirror/keylog`, film detail page) the physical remote's Back reached the page as `keydown` (1793374072568) and `keyup`
+  (1793374072804), key "Backspace", code "Backspace", keyCode 8, and no popstate, hashchange or pagehide; the app then showed /movies (a pushed
+  entry, history length 2 to 3). The injected command dispatches exactly key/code/keyCode Backspace/Backspace/8, so it
+  is equivalent to the remote's Back and D-pad checks that use it are scored normally ("injected Backspace = remote Back, owner press
+  30 Oct"). The app handles it: an injected Back also took the TV from the player to the film detail and from there to /movies. On home, Back is a
+  no-op on the web and on VIDAA (`tvBackNavigationTarget` returns null for the root route; no exit prompt).
+  Broker limitation, not an app bug: the MQTT `KEY_BACK`, `KEY_RETURN` and `KEY_BACK_LONG_PRESS` produce no page event at all (measured with
+  listeners on keydown, keyup, popstate, hashchange, visibilitychange, blur, focus and pagehide).
+- `player-controls`: the page is held on the clip's 2.000 s frame, paused, controls visible, focus dropped (a page job, as in the Tizen and
+  Vega runs), and the capture is refused unless the position reads back as 2.000.
+- Time zone: a TV cannot change its zone, so the debug build reads local time as UTC (`mirrorUtc=1`: Date local getters, the default Intl zone
+  and `toLocale*String`), as the web references are taken in UTC. `mirrorNow` then keeps its `Z`.
+- Detail pages: like the web and webOS drivers, the capture returns scrolled boxes to the top first (the focus-scroll to the first episode card
+  must not show in the capture).
+- Web refs: VIDAA has its own `tv-vidaa` group in `web-refs.json` (xbox user agent, `hideVideo`): the TV mirror frame cannot carry the video
+  picture, so the player-controls ref is taken with the video hidden. Refresh it with `capture-refs.mjs --groups tv-vidaa --screens player-controls`.
+- Limits: no player checks, downloads or build identity (the readiness mode stays standard).
 
 ### Tizen native: the one-command run
 
