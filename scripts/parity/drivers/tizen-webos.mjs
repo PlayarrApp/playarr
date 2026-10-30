@@ -138,6 +138,7 @@ export async function createDriver() {
     // Records the Media Session action handlers (the now-playing buttons) on every new document, as the web driver does.
     await cdp("Page.enable");
     await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(${pageHook})()` });
+    if (tizen65) await cdp("Page.addScriptToEvaluateOnNewDocument", { source: readFileSync(new URL("../tizen-webos/avplay-shim.js", import.meta.url), "utf8") });
     if (TIZEN_MIRROR) await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `window.__mirrorPause = true;(${installLoopbackArt})();` });
     if (pin) {
       // The same pin the web driver gives the browser: zone, locale and a fixed Date (wall time still advances), for this document and every new one.
@@ -197,7 +198,8 @@ export async function createDriver() {
       if (v.requestVideoFrameCallback) await new Promise((res) => { v.requestVideoFrameCallback(() => res()); setTimeout(res, 3000); });
       return v.paused && Math.abs(v.currentTime - ${t}) < 0.001;
     })()`);
-    if (device === "tizen") {
+    const avplay = device === "tizen" || tizen65; // the Tizen 6.5 stand-in plays through the AVPlay shim (tizen-webos/avplay-shim.js)
+    if (avplay) {
       // Tizen plays through AVPlay, a native plane. Method of docs/parity/DEVICES.md: hold the clip paused at exactly 2000 ms (seek while
       // paused, no play-then-pause), read the position back from the player, and refuse the capture unless it is paused on that frame.
       const av = `(() => { const a = window.webapis && window.webapis.avplay; return a ? a.getState() : "none"; })()`;
@@ -227,10 +229,10 @@ export async function createDriver() {
       await sleep(1000);
     }
     // A late play() or a timer can resume playback: hold the frame until it stays paused for two checks 0.7 s apart.
-    let held = device === "tizen" ? 2 : 0;
+    let held = avplay ? 2 : 0;
     for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2.03)) ? held + 1 : 0; await sleep(700); }
     if (held < 2) throw new Error("player did not hold a paused frame at 2 s");
-    if (device !== "tizen") {
+    if (!avplay) {
       // The seek bar fill follows the last position tick the app received, which can lag the paused position by a few frames. Hand the app the position the
       // video really holds (a timeupdate, as the Tizen path does with the AVPlay position) and refuse the capture until the fill shows that position.
       const synced = `(() => { const v = document.querySelector("video"), f = document.querySelector(".player-seek-progress"); return !!v && !!f && Math.abs(parseFloat(f.style.width) - 100 * v.currentTime / v.duration) < 0.15; })()`;
