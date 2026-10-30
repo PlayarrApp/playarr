@@ -96,9 +96,9 @@ internal sealed class ProfilesScreen : IPage
         var subL = Ui.Text(sub, 0, Circle + 42.3f, 9.408f, 690, _t.InkMuted, Circle, 14.112f, HorizontalAlignment.Center, upper: true, spacing: 0.42f);
         var disc = new View { Size = new Size(Circle, Circle), CornerRadius = Circle / 2, BorderlineWidth = 1, BorderlineColor = Ui.LineA(_t, 0.15f), BackgroundImage = Ui.ResPath($"avatars/plate-{preset}.png") };
         Sem.Tag(disc, "container");
-        disc.Add(glow); disc.Add(art); disc.Add(ring);
+        disc.Add(art); disc.Add(ring);
         nameBase = nameL.PositionY; subBase = subL.PositionY;
-        holder.Add(disc); holder.Add(nameL); holder.Add(subL);
+        holder.Add(glow); holder.Add(disc); holder.Add(nameL); holder.Add(subL);
         Sem.Tag(holder, "button", label);
         _body.Add(holder);
         _focus.Items.Add(new Focusable
@@ -109,7 +109,7 @@ internal sealed class ProfilesScreen : IPage
                 cardFocused = f;
                 // web: the whole card scales 1.045 about its centre and lifts 8 px; the circle grows a further 3.5 % inside it
                 holder.Scale = f ? new Vector3(1.045f, 1.045f, 1) : new Vector3(1, 1, 1); holder.PositionY = CircleY + (f ? -8 : 0);
-                disc.Scale = f ? new Vector3(1.035f, 1.035f, 1) : new Vector3(1, 1, 1);
+                disc.Scale = glow.Scale = f ? new Vector3(1.035f, 1.035f, 1) : new Vector3(1, 1, 1);
                 ring.Show(f); glow.Show(f); },
         });
     }
@@ -125,8 +125,8 @@ internal sealed class ProfilesScreen : IPage
         Sem.Tag(disc, "container");
         disc.Add(Ui.Text("+", 0, 64.4f, 76.8f, 300, _t.InkSoft, Circle, 115.2f, HorizontalAlignment.Center));
         var (ring, glow) = Widgets.RailRing(_t, Circle, Circle, Circle / 2);
-        disc.Add(glow); disc.Add(ring);
-        holder.Add(disc);
+        disc.Add(ring);
+        holder.Add(glow); holder.Add(disc); // the glow sits behind the painted circle (the circle is opaque, so it only shows outside)
         Sem.Tag(holder, "button", "Sign in Add another profile");
         holder.Add(Ui.Text("Sign in", 0, Circle + 8.4f, 17.28f, 700, _t.InkSoft, Circle, 25.92f, HorizontalAlignment.Center));
         holder.Add(Ui.Text("Add another profile", 0, Circle + 42.3f, 9.408f, 690, _t.InkMuted, Circle, 14.112f, HorizontalAlignment.Center, upper: true, spacing: 0.42f));
@@ -135,7 +135,7 @@ internal sealed class ProfilesScreen : IPage
         {
             Rect = () => new Box(x, CircleY, Circle, Circle), Label = "sign in, add another profile",
             Select = () => _env.SignOut(),
-            Style = f => { holder.Scale = f ? new Vector3(1.045f, 1.045f, 1) : new Vector3(1, 1, 1); holder.PositionY = CircleY + (f ? -8 : 0); disc.Scale = f ? new Vector3(1.035f, 1.035f, 1) : new Vector3(1, 1, 1); ring.Show(f); glow.Show(f); },
+            Style = f => { holder.Scale = f ? new Vector3(1.045f, 1.045f, 1) : new Vector3(1, 1, 1); holder.PositionY = CircleY + (f ? -8 : 0); disc.Scale = glow.Scale = f ? new Vector3(1.035f, 1.035f, 1) : new Vector3(1, 1, 1); ring.Show(f); glow.Show(f); },
         });
     }
 
