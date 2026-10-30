@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import AVFoundation
 
 /// Parity layout export (docs/parity/LAYOUT.md). Views that opt in with `.parityLayout(...)` report their own style
 /// values (text, size, weight, colour) and their frame in the app window; the registry writes them to
@@ -302,26 +303,46 @@ final class ParityLayoutRegistry {
         return drawn ? Shot(bytes: bytes, width: width, height: height, scale: scale) : nil
     }
 
-    /// True when any pixel inside `rect` differs between `a` and `b`; pixels that differ between two identical frames
-    /// (`base` against `again`, i.e. animation or video) do not count.
-    private func changed(_ rect: CGRect, _ a: Shot, _ b: Shot, base: Shot, again: Shot) -> Bool {
-        let x0 = max(0, Int((rect.minX * a.scale).rounded(.down))), x1 = min(a.width, Int((rect.maxX * a.scale).rounded(.up)))
-        let y0 = max(0, Int((rect.minY * a.scale).rounded(.down))), y1 = min(a.height, Int((rect.maxY * a.scale).rounded(.up)))
-        guard x1 > x0, y1 > y0 else { return false }
-        return a.bytes.withUnsafeBytes { pa in b.bytes.withUnsafeBytes { pb in base.bytes.withUnsafeBytes { p0 in again.bytes.withUnsafeBytes { p1 in
-            let wa = pa.bindMemory(to: UInt32.self), wb = pb.bindMemory(to: UInt32.self)
-            let w0 = p0.bindMemory(to: UInt32.self), w1 = p1.bindMemory(to: UInt32.self)
-            for y in y0..<y1 {
-                let row = y * a.width
-                for x in x0..<x1 where wa[row + x] != wb[row + x] && w0[row + x] == w1[row + x] { return true }
+    /// Pixel rectangles (screen scale) of every video layer: moving frames are not evidence of visibility.
+    private func videoMasks(_ window: UIWindow, scale: CGFloat) -> [CGRect] {
+        var found: [CGRect] = []
+        func walk(_ layer: CALayer) {
+            if layer is AVPlayerLayer {
+                let frame = layer.convert(layer.bounds, to: window.layer)
+                found.append(CGRect(x: frame.minX * scale, y: frame.minY * scale, width: frame.width * scale, height: frame.height * scale))
             }
-            return false
-        } } } }
+            for sub in layer.sublayers ?? [] { walk(sub) }
+        }
+        walk(window.layer)
+        return found
+    }
+
+    /// Number of pixels inside `rect` that differ between `hidden` and `base` and between `hidden` and `after`, where
+    /// `base` and `after` agree (so animation and video never count) and outside the video masks.
+    private func changedCount(_ rect: CGRect, hidden: Shot, base: Shot, after: Shot, masks: [CGRect]) -> Int {
+        let s = hidden.scale
+        let x0 = max(0, Int((rect.minX * s).rounded(.down))), x1 = min(hidden.width, Int((rect.maxX * s).rounded(.up)))
+        let y0 = max(0, Int((rect.minY * s).rounded(.down))), y1 = min(hidden.height, Int((rect.maxY * s).rounded(.up)))
+        guard x1 > x0, y1 > y0 else { return 0 }
+        var count = 0
+        hidden.bytes.withUnsafeBytes { ph in base.bytes.withUnsafeBytes { pb in after.bytes.withUnsafeBytes { pa in
+            let wh = ph.bindMemory(to: UInt32.self), wb = pb.bindMemory(to: UInt32.self), wa = pa.bindMemory(to: UInt32.self)
+            for y in y0..<y1 {
+                let row = y * hidden.width
+                for x in x0..<x1 where wh[row + x] != wb[row + x] && wh[row + x] != wa[row + x] && wb[row + x] == wa[row + x] {
+                    if masks.contains(where: { $0.contains(CGPoint(x: x, y: y)) }) { continue }
+                    count += 1
+                }
+            }
+        } } }
+        return count
     }
 
     /// Toggle-and-diff on the real screen: each element's view is hidden through the parity hook, the window is rendered
     /// again, and the element counts as visible only when pixels change inside its own frame. Elements are hidden in
-    /// batches of mutually disjoint frames. Returns the finished document, or nil when the probe could not run.
+    /// batches of mutually disjoint frames. Each batch runs twice (hide, settle, capture, show, settle, capture) and an
+    /// element is visible only when both rounds change pixels against the frame before and the frame after.
+    /// Returns the finished document, or nil when the probe could not run.
     private func probe() async -> Data? {
         guard let window = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first else { return nil }
         let candidates = snapshot().candidates.filter { $0.toggle != nil }
@@ -329,11 +350,12 @@ final class ParityLayoutRegistry {
         ParityHide.shared.ids = []
         defer { ParityHide.shared.ids = []; ParityLaunch.record("layoutProbing", false) }
         var visible = Set<ProbeKey>()
+        var log: [[String: Any]] = []
+        let settle: UInt64 = 250_000_000
         if !candidates.isEmpty {
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            guard let base = capture(window) else { return nil }
-            try? await Task.sleep(nanoseconds: 150_000_000)
-            guard let again = capture(window) else { return nil }
+            try? await Task.sleep(nanoseconds: settle)
+            guard var base = capture(window) else { return nil }
+            let masks = videoMasks(window, scale: base.scale)
             var byID: [UUID: [Item]] = [:], idOrder: [UUID] = []
             for item in candidates { if let id = item.toggle { if byID[id] == nil { idOrder.append(id) }; byID[id, default: []].append(item) } }
             func union(_ items: [Item]) -> CGRect { items.dropFirst().reduce(items[0].rect) { $0.union($1.rect) }.insetBy(dx: -2, dy: -2) }
@@ -345,13 +367,31 @@ final class ParityLayoutRegistry {
                 } else { batches.append(([id], [area])) }
             }
             for batch in batches {
-                guard !Task.isCancelled else { return nil }
-                ParityHide.shared.ids = Set(batch.ids)
-                try? await Task.sleep(nanoseconds: 90_000_000)
-                guard let hidden = capture(window) else { return nil }
-                for id in batch.ids { for item in byID[id]! where changed(item.rect, base, hidden, base: base, again: again) { visible.insert(ProbeKey(id: id, slot: item.slot)) } }
+                var counts: [ProbeKey: [Int]] = [:]
+                for round in 0..<2 {
+                    guard !Task.isCancelled else { return nil }
+                    ParityHide.shared.ids = Set(batch.ids)
+                    try? await Task.sleep(nanoseconds: settle)
+                    guard let hidden = capture(window) else { return nil }
+                    ParityHide.shared.ids = []
+                    try? await Task.sleep(nanoseconds: settle)
+                    guard let after = capture(window) else { return nil }
+                    for id in batch.ids { for item in byID[id]! {
+                        let key = ProbeKey(id: id, slot: item.slot)
+                        var row = counts[key] ?? [0, 0]
+                        row[round] = max(row[round], changedCount(item.rect, hidden: hidden, base: base, after: after, masks: masks))
+                        counts[key] = row
+                    } }
+                    base = after
+                }
+                for id in batch.ids { for item in byID[id]! {
+                    let c = counts[ProbeKey(id: id, slot: item.slot)] ?? []
+                    if c.count == 2, c.allSatisfy({ $0 > 0 }) { visible.insert(ProbeKey(id: id, slot: item.slot)) }
+                    log.append(["role": item.role, "text": item.text ?? "", "w": Int(item.rect.width), "h": Int(item.rect.height), "counts": c])
+                } }
             }
             ParityHide.shared.ids = []
+            ParityLaunch.record("layoutProbeCounts", log)
             // A probe in which nothing changed means the hook did not work, not that nothing is visible.
             if visible.isEmpty { return nil }
         }
