@@ -496,10 +496,9 @@ sub nameCard(content as Object, circle as Boolean, hasNumber as Boolean)
         linkName = "Open " + content.title
     end if
     m.cardLink.width = m.cardArtW
-    ' The web link spans the art and the title line; the meta line below it sits outside the link.
+    ' The link spans the art and the title line (the meta line below it sits outside): its box ends where the title's measured glyph run ends.
     last = m.title
-    ' The web's title line box runs 1.5 px below the glyph box (line-height over content area).
-    m.cardLink.height = PlayarrTextBottom(last) + 1.5
+    m.cardLink.height = PlayarrTextBottom(last)
     if m.cardLink.height < m.posterBg.height then m.cardLink.height = m.posterBg.height
     m.cardLink.scaleRotateCenter = [m.cardArtW / 2, m.cardLink.height / 2]
     linkRadius = 0

@@ -3236,12 +3236,11 @@ end sub
 
 ' Web /search page header: back circle, title, result count (after a divider or under the title) and the pill field with its
 ' magnifier and Clear. Built once; the XML ring and fill (searchFieldBg, searchFieldRing) are the pill itself.
-' Semantics of the search field (its pill, the placeholder box) and of the empty-state badge; ECP prints node ids.
+' Semantics of the search field (its pill) and of the empty-state badge; ECP prints node ids.
 sub searchA11y()
     searchBg = m.top.findNode("searchFieldBg")
     searchBg.id = "a11y|search|999|"
     A11yStamp(searchBg, true)
-    m.top.findNode("searchFieldBox").id = "a11y|textbox|0|Search your libraries and playlists"
     m.top.findNode("searchEmptyIcon").id = "a11y|container|66|"
 end sub
 
