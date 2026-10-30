@@ -295,29 +295,27 @@ final class TVParityLayoutRegistry {
         let occluded = visibility == nil ? 0 : ordered.filter { entry in
             entry.0.rect.width > 0 && entry.0.rect.height > 0 && entry.0.rect.intersects(screen) && entry.1 != true
         }.count
-        var raws = ordered.filter { entry in
+        let raws = ordered.filter { entry in
             entry.0.rect.width > 0 && entry.0.rect.height > 0 && entry.0.rect.intersects(screen) && (visibility == nil || entry.1 == true)
         }.map { entry -> [String: Any] in
             var out = raw(entry.0)
             if let bounds = entry.2 { out["visibleBounds"] = ["x": Double(bounds.minX), "y": Double(bounds.minY), "w": Double(bounds.width), "h": Double(bounds.height)] }
             return out
         }
-        let visibleRects = ordered.filter { visibility != nil && $0.1 == true }.map { $0.0.rect }
-        // An accessibility entry cannot be hidden and re-rendered: it is on screen when what it holds is, that is when a visible
-        // reported item lies inside it or it lies inside one.
-        for var entry in accessibilityElements(onlyPresented: top > 0) where entry.rect.width > 0 && entry.rect.height > 0 && entry.rect.intersects(screen) {
-            if visibility != nil {
-                let centre = CGPoint(x: entry.rect.midX, y: entry.rect.midY)
-                guard visibleRects.contains(where: { $0.contains(centre) || entry.rect.contains(CGPoint(x: $0.midX, y: $0.midY)) }) else { continue }
-            }
-            entry.background = nil
-            var entryRaw = raw(entry); entryRaw["source"] = "ax"; raws.append(entryRaw)
+        // An accessibility entry cannot be hidden and re-rendered, so on its own it is not shown to be on screen: it is not exported.
+        // What the app reports itself (every control carries a parityBox) is measured; entries with no reported view behind them are
+        // listed in the document for the record and left out of the layout.
+        var unbacked: [[String: Any]] = []
+        for entry in accessibilityElements(onlyPresented: top > 0) where entry.rect.width > 0 && entry.rect.height > 0 && entry.rect.intersects(screen) {
+            let backed = ordered.contains { $0.0.text == entry.text && $0.0.rect.intersects(entry.rect) }
+            if !backed { unbacked.append(["text": entry.text ?? "", "role": entry.role, "rect": ["x": Double(entry.rect.minX), "y": Double(entry.rect.minY), "w": Double(entry.rect.width), "h": Double(entry.rect.height)]]) }
         }
         var document: [String: Any] = [
             "viewport": ["w": 1920.0, "h": 1080.0, "dpr": 1.0],
             "clockPinned": TVParityLaunch.pinnedClock,
             "raw": raws,
             "occluded": occluded,
+            "axUnbacked": unbacked,
         ]
         if let captureID { document["captureID"] = captureID }
         if let visibility { document["visibility"] = visibility.rendered ? "rendered" : "unavailable" }
