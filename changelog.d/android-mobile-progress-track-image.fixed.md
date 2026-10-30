@@ -1,0 +1,1 @@
+- Android phone and tablet: watch-progress tracks are real images in the layout export, matching the web `img` tracks.
