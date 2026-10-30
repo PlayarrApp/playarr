@@ -492,6 +492,10 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
           }
           where = ` [${n} px differ, max ${mx}, box ${x0},${y0}-${x1},${y1}]`;
         } catch { where = " [frames not comparable]"; }
+        try { // evidence for diagnosis: the saved frame and the one after the measurement, beside the capture
+          writeFileSync(join(dirname(themeDir), `${id}.bind-after.png`), after);
+          writeFileSync(join(dirname(themeDir), `${id}.bind-shot.png`), shot);
+        } catch { /* evidence only */ }
         throw new Error(`the screen changed while the layout was measured (${id}): PNG and layout are not one render${where}`);
       }
       rmSync(join(base, "parity-layout-request"), { force: true });
