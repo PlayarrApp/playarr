@@ -3851,7 +3851,7 @@ internal fun ExperienceLandscapeCard(
                 )
             }
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) (if (LocalStageScale.current != 1f) (3f / LocalStageScale.current).dp else 3.08.dp) else 3.dp).parityBackground("img", Color.White.copy(alpha = 0.2f))) {
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) (if (LocalStageScale.current != 1f) (3f / LocalStageScale.current).dp else 3.08.dp) else 3.dp).parityBackground("img", Color.White.copy(alpha = 0.2f)).semantics { role = Role.Image }) {
                     // Web `.tv-watch-progress` (white 20%) and its `i` fill: `--brand` (#cf3157) in both themes.
                     Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", Color(0xFFCF3157)))
                 }
@@ -4008,7 +4008,7 @@ private fun PlayarrUnwatchedDot(modifier: Modifier = Modifier, size: Dp = 12.dp,
             else Modifier)
             .parityBackground("img", UnwatchedDotColour, CircleShape, radius = 999f)
             .border(2.dp, Color.White.copy(alpha = 0.94f), CircleShape)
-            .semantics { contentDescription = label },
+            .semantics { role = Role.Image; contentDescription = label },
     )
 }
 
@@ -7870,7 +7870,7 @@ private fun WebEpisodeDetailCard(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 11.5.dp, bottom = 8.8.dp),
             )
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).parityBackground("img", Color.White.copy(alpha = 0.28f))) {
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).parityBackground("img", Color.White.copy(alpha = 0.28f)).semantics { role = Role.Image }) {
                     Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", WebAccent))
                 }
             }

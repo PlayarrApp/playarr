@@ -119,7 +119,7 @@ internal object PlayarrLayoutExport {
                         // A layer alpha is not an element: its alpha is multiplied into everything below it.
                         if (box.kind == "alpha") continue
                         val x = b.left + ctx.dx; val y = b.top + ctx.dy
-                        val e = JSONObject().put("text", if (box.kind == "video") ownerLabel(tree, box.id) else "").put("role", if (box.kind == "image") "image" else if (box.kind == "fill") "container" else box.kind)
+                        val e = JSONObject().put("text", if (box.kind == "video") ownerLabel(tree, box.id) else "").put("role", if (box.kind == "image") "image" else if (box.kind == "fill") "container" else if (box.kind == "img") (if (ownerIsImage(tree, box.id)) "img" else "container") else box.kind)
                             .put("rect", rect(x, y, b.width, b.height, unit)).put("color", JSONObject.NULL).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
                         val drawn = box.drawnRadiusPx ?: tree.own.values.firstOrNull { box.id in it }?.firstNotNullOfOrNull { ctx.boxes[it]?.drawnRadiusPx }
                         // A plain-rectangle paint inside a clipping parent keeps the clip's declared radius.
@@ -195,11 +195,17 @@ internal object PlayarrLayoutExport {
         var next = 0
         /** The content description each node declares itself (before its children's are merged into it). */
         val ownLabel = mutableMapOf<Int, List<String>>()
+        /** Nodes that declare the standard image role themselves. */
+        val imageRole = mutableSetOf<Int>()
     }
 
     /** The accessible name the semantics node that carries this box declares (its own content description), or empty: never a label handed to the debug record. */
     private fun ownerLabel(tree: Tree, boxId: Int): String =
         tree.own.entries.firstOrNull { boxId in it.value }?.let { tree.ownLabel[it.key] }?.joinToString(" ").orEmpty()
+
+    /** Whether the semantics node that carries this box declares the platform image role: a status dot or progress track is exported as an image only when the app says so. */
+    private fun ownerIsImage(tree: Tree, boxId: Int): Boolean =
+        tree.own.entries.firstOrNull { boxId in it.value }?.let { it.key in tree.imageRole } ?: false
 
     private fun chains(node: SemanticsNode, above: List<Int>, hidden: Boolean, out: Tree) {
         val own = node.config.filter { it.key.name == io.playarr.shared.designsystem.page.PARITY_BOX_KEY_NAME }.map { it.value as Int }.sorted()
@@ -208,6 +214,7 @@ internal object PlayarrLayoutExport {
         out.own[node.id] = own; out.chain[node.id] = chain
         out.order[node.id] = out.next++
         node.config.getOrNull(SemanticsProperties.ContentDescription)?.let { out.ownLabel[node.id] = it }
+        if (node.config.getOrNull(SemanticsProperties.Role) == Role.Image) out.imageRole += node.id
         if (hide) out.hiddenBoxes += own
         node.children.forEach { chains(it, chain, hide, out) }
         out.end[node.id] = out.next - 1
@@ -235,8 +242,8 @@ internal object PlayarrLayoutExport {
         }
     }
 
-    /** The paint the platform text layout draws character [index] of line [line] with: the layout's paint plus the metric-affecting spans over that character. Null when the layout does not expose it. */
-    private fun shapedRunPaint(result: TextLayoutResult, line: Int, index: Int): android.text.TextPaint? = runCatching {
+    /** The platform layout that shaped line [line] of [result], with the line's index inside it and the paragraph's first character index. Null when the layout does not expose it. */
+    private fun platformLine(result: TextLayoutResult, line: Int): Triple<android.text.Layout, Int, Int>? = runCatching {
         // The compose text classes that hold the platform layout are internal, so they are read by reflection (the debug export only).
         val multi = result.multiParagraph
         val infos = multi.javaClass.methods.first { it.name.startsWith("getParagraphInfoList") }.invoke(multi) as List<*>
@@ -249,11 +256,22 @@ internal object PlayarrLayoutExport {
         val field = generateSequence<Class<*>>(paragraph.javaClass) { it.superclass }.flatMap { it.declaredFields.asSequence() }.first { it.type.name == "androidx.compose.ui.text.android.TextLayout" }
         val textLayout = field.also { it.isAccessible = true }.get(paragraph)!!
         val platform = textLayout.javaClass.methods.first { it.name == "getLayout" }.invoke(textLayout) as android.text.Layout
+        Triple(platform, line - (info.javaClass.methods.first { it.name == "getStartLineIndex" }.invoke(info) as Int), info.javaClass.methods.first { it.name == "getStartIndex" }.invoke(info) as Int)
+    }.onFailure { parityLog("platform layout failed ${it.javaClass.simpleName} ${it.message?.take(100)}") }.getOrNull()
+
+    /** The paint the platform text layout draws character [index] of line [line] with: the layout's paint plus the metric-affecting spans over that character. Null when the layout does not expose it. */
+    private fun shapedRunPaint(result: TextLayoutResult, line: Int, index: Int): android.text.TextPaint? = runCatching {
+        val (platform, _, paragraphStart) = platformLine(result, line)!!
         val paint = android.text.TextPaint(platform.paint)
-        val local = index - (info.javaClass.methods.first { it.name == "getStartIndex" }.invoke(info) as Int)
+        val local = index - paragraphStart
         (platform.text as? android.text.Spanned)?.getSpans(local, local + 1, android.text.style.MetricAffectingSpan::class.java)?.forEach { it.updateMeasureState(paint) }
         paint
     }.onFailure { parityLog("shaped paint failed ${it.javaClass.simpleName} ${it.message?.take(100)}") }.getOrNull()
+
+    /** The string the platform text engine draws for an ellipsized end (its own constant, read from the framework; the export fails when the framework hides it). */
+    private fun platformEllipsis(): String = runCatching {
+        android.text.TextUtils::class.java.getMethod("getEllipsisString", android.text.TextUtils.TruncateAt::class.java).invoke(null, android.text.TextUtils.TruncateAt.END) as String
+    }.onFailure { parityLog("platform ellipsis unavailable ${it.javaClass.simpleName} ${it.message?.take(100)}") }.getOrNull() ?: error("the platform ellipsis string is unavailable")
 
     private fun r2(v: Float) = Math.round(v * 100) / 100.0
     private fun rect(x: Float, y: Float, w: Float, h: Float, unit: Float) = JSONObject().put("x", r2(x * unit)).put("y", r2(y * unit)).put("w", r2(w * unit)).put("h", r2(h * unit))
@@ -291,17 +309,23 @@ internal object PlayarrLayoutExport {
                         val runStyle = spans.filter { it.start <= rs && it.end > rs }.fold(style) { acc, sp -> acc.merge(sp.item) }
                         val colour = runStyle.color.takeIf { it.alpha > 0f && it != androidx.compose.ui.graphics.Color.Unspecified } ?: continue
                         val size = runStyle.fontSize.value * input.density.fontScale * input.density.density
-                        val runText = raw.substring(rs, re) + if (layout.isLineEllipsized(i) && k == cuts.size - 2) "\u2026" else ""
+                        // An ellipsized line: the platform layout reports how many characters it replaced and the line's drawn extent, ellipsis included.
+                        val ellipsized = layout.isLineEllipsized(i) && k == cuts.size - 2
+                        val platformLine = if (ellipsized) checkNotNull(platformLine(layout, i)) { "platform layout of the ellipsized line unavailable" } else null
+                        val ellipsisCount = platformLine?.let { (pl, local, _) -> pl.getEllipsisCount(local) } ?: 0
+                        check(!ellipsized || ellipsisCount > 0) { "compose reports an ellipsized line the platform layout did not ellipsize" }
+                        val runText = raw.substring(rs, re) + if (ellipsized) platformEllipsis() else ""
                         // The run's content area: the drawn line's own baseline minus and plus the ascent and descent of the font the shaped layout drew the run with.
                         // The paint is the one android.text.Layout draws with: the layout's own paint with the metric-affecting spans (typeface, size, letter spacing) the shaping applied to this run.
                         val drawPaint = checkNotNull(shapedRunPaint(layout, i, rs)) { "shaped paint of '${raw.substring(rs, re).take(20)}' unavailable" }
                         val fm = drawPaint.fontMetrics
                         val ascent = -fm.ascent; val descent = fm.descent
                         val baseline = layout.getLineBaseline(i)
-                                                val lo = (rs until re).minOf { layout.getBoundingBox(it).left }; val hi = (rs until re).maxOf { layout.getBoundingBox(it).right }
-                        // An ellipsized line draws the engine's ellipsis after its last visible character: it is part of the text and of the width.
-                        val ellipsis = layout.isLineEllipsized(i) && k == cuts.size - 2
-                        val hiEnd = if (ellipsis) hi + drawPaint.measureText("\u2026") else hi
+                        // The drawn ellipsis is part of the text and of the width: the platform layout's own line extent covers it.
+                        // The ellipsis sits at the end of the line in its paragraph direction: that side grows to the platform line's extent.
+                        val rtl = platformLine?.let { (pl, local, _) -> pl.getParagraphDirection(local) == android.text.Layout.DIR_RIGHT_TO_LEFT } ?: false
+                        val lo = (rs until re).minOf { layout.getBoundingBox(it).left }.let { l -> if (rtl) platformLine?.let { (pl, local, _) -> minOf(l, pl.getLineLeft(local)) } ?: l else l }
+                        val hiEnd = (rs until re).maxOf { layout.getBoundingBox(it).right }.let { r -> if (!rtl) platformLine?.let { (pl, local, _) -> maxOf(r, pl.getLineRight(local)) } ?: r else r }
                         // The run's four corners through the node's transform (a rotation or unequal scale still gives its bounding box).
                         val corners = listOf(lo to baseline - ascent, hiEnd to baseline - ascent, lo to baseline + descent, hiEnd to baseline + descent).map { (cx, cy) -> coords.localToRoot(androidx.compose.ui.geometry.Offset(cx, cy)) }
                         val x = corners.minOf { it.x } + ctx.dx; val y = corners.minOf { it.y } + ctx.dy; val w = corners.maxOf { it.x } - corners.minOf { it.x }; val h = corners.maxOf { it.y } - corners.minOf { it.y }
@@ -334,7 +358,9 @@ internal object PlayarrLayoutExport {
         val editable = config.contains(SemanticsProperties.EditableText) || config.contains(SemanticsActions.SetText)
         val slider = config.contains(SemanticsProperties.ProgressBarRangeInfo) && config.contains(SemanticsActions.SetProgress)
         val clickable = config.contains(SemanticsActions.OnClick)
-        if ((clickable || role != null || editable || slider || config.contains(SemanticsProperties.PaneTitle)) && !(slider && insideSlider) && node.layoutInfo.isPlaced && !node.boundsInWindow.isEmpty) {
+        // A painted status dot or track the app marks with the image role is exported from its paint record (rect, colour, name); the semantics node is that same element.
+        val paintedImage = role == Role.Image && ctx.ownBoxes(node).any { it.kind == "img" }
+        if (!paintedImage && (clickable || role != null || editable || slider || config.contains(SemanticsProperties.PaneTitle)) && !(slider && insideSlider) && node.layoutInfo.isPlaced && !node.boundsInWindow.isEmpty) {
             val kind = when {
                 config.contains(SemanticsProperties.PaneTitle) -> "dialog"
                 editable -> "textbox"
