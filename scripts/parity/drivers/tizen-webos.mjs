@@ -597,7 +597,7 @@ export async function createDriver() {
       await guard();
     },
     // Used by the shared runner before the first key of a player check (alongside the webOS wait in key()).
-    async playhead() { await guard(); const value = await ev(`(() => { const v = document.querySelector("video"); if (v) return v.currentTime; try { return window.webapis.avplay.getCurrentTime() / 1000; } catch (e) { return null; } })()`); await guard(); return value; },
+    async playhead() { await guard(); const value = await ev(`(() => { try { const a = window.webapis.avplay; if (a.getState() !== "NONE") return a.getCurrentTime() / 1000; } catch (e) {} const v = document.querySelector("video"); return v ? v.currentTime : null; })()`); await guard(); return value; },
     async panelOpen() { await guard(); const value = !!(await ev(`[...document.querySelectorAll(".player-quality-menu")].some((m) => m.getBoundingClientRect().width > 0)`)); await guard(); return value; },
     async location() { await guard(); const value = (await ev("location.hash.replace(/^#/, '')")) ?? null; await guard(); return value; },
     async focused() {
