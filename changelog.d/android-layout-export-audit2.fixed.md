@@ -1,0 +1,1 @@
+- Android layout export: no export-only roles, one record per real paint (glass, Surface), control boxes are the full border box with their own paint, radius and alpha, hero opacity read from the painter, text runs span all glyph boxes and are clipped per run, calendar pill radius from the pill's drawn outline.

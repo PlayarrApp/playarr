@@ -1,6 +1,7 @@
 package io.playarr.mobile.ui
 
 import io.playarr.shared.designsystem.page.parityBackground
+import io.playarr.shared.designsystem.page.parityPaint
 import io.playarr.shared.designsystem.page.parityShape
 import androidx.compose.ui.graphics.compositeOver
 import io.playarr.shared.designsystem.page.parityBox
@@ -605,7 +606,7 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
             if (selected) {
                 // `.calendar-entry.is-selected`: a 4 px left border and 1 px borders in ink, plus a 1 px inset ring, so the
                 // padding box has a rounder inner left edge than the outer shape.
-                Modifier.drawBehind {
+                Modifier.parityPaint("fill", fill, shape).drawBehind {
                     val r = 12.dp.toPx()
                     val left = 4.dp.toPx()
                     val line = 1.dp.toPx()
@@ -2077,12 +2078,12 @@ private fun CalendarTonePill(tone: CalendarPillTone, phone: Boolean = false) {
         },
     )
     Box(
-        Modifier.parityBackground("fill", androidx.compose.ui.graphics.lerp(WebSurface, toneColour, 0.14f), CircleShape, radius = 999f)
+        Modifier.parityBackground("textfill", androidx.compose.ui.graphics.lerp(WebSurface, toneColour, 0.14f), CircleShape, radius = 999f)
             .border(1.dp, toneColour.copy(alpha = 0.6f), CircleShape)
             .padding(horizontal = 10.4.dp, vertical = 2.88.dp),
     ) {
         Text(label, color = WebInk, fontSize = if (phone) 10.24.sp else 13.44.sp, lineHeight = if (phone) 14.336.sp else 18.8.sp, fontWeight = FontWeight(750), style = WebTextStyle, maxLines = 1,
-            modifier = Modifier.parityShape(999f))
+            modifier = Modifier)
     }
 }
 
@@ -2092,7 +2093,7 @@ private fun CalendarTodayBadge(tv: Boolean = false) {
     val ink = if (tv) io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent else WebInk.copy(alpha = 0.9f)
     Box(Modifier.border(1.dp, ink.copy(alpha = 0.6f), CircleShape).padding(horizontal = 8.dp, vertical = 1.6.dp)) {
         Text(playarrString(PlayarrString.CalendarToday).uppercase(), color = ink, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight(640), letterSpacing = 0.896.sp, style = WebTextStyle,
-            modifier = if (tv) Modifier.offset(y = (-1.4).dp) else Modifier)
+            modifier = (if (tv) Modifier.offset(y = (-1.4).dp) else Modifier))
     }
 }
 
