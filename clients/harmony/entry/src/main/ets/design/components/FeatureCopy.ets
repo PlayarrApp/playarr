@@ -225,11 +225,11 @@ export struct FeatureCopy {
         Row({ space: tv(12.8) }) {
           ForEach(
             this.metaRuns,
-            (run: string) => {
+            (run: string, runIndex: number) => {
               Text(run).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(COPY_TEXT_FONT_SIZE)))
                 .fontSize(tv(COPY_TEXT_FONT_SIZE)).lineHeight(webLineHeight(tv(COPY_TEXT_FONT_SIZE))).halfLeading(true)
                 .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
-                .letterSpacing((this.libraryCopy ? -0.14 : -0.3) + 0.236) // web's run is narrower than ArkUI lays it out (agenda: 7-8 px over on 18 and 34 characters at +0.236)
+                .letterSpacing((this.libraryCopy ? -0.14 : -0.3) + 0.236 + (!this.libraryCopy && runIndex === 0 ? -0.104 : 0)) // agenda's first run (18 characters) is 1.9 wider than web's; web's run is narrower than ArkUI lays it out (agenda: 7-8 px over on 18 and 34 characters at +0.236)
                 .fontColor(this.copyTextColor())
             },
             (run: string, index: number) => `${index}-${run}`
