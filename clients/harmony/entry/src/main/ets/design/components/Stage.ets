@@ -423,13 +423,23 @@ export struct Stage {
     }
   }
 
+  /** False for the empty-string key art the pages pass when they have none (a resource or a picture counts as art). */
+  private hasKeyArt(): boolean {
+    return typeof this.keyArt !== 'string' || this.keyArt.length > 0;
+  }
+
   build() {
     Stack() {
-      this.keyArtLayer()
-      this.horizontalScrimLayer()
-      this.verticalScrimLayer()
+      // Web draws the key art, its two scrims and the right wash only when the page has art; without it the page shows one wash box.
+      if (this.hasKeyArt()) {
+        this.keyArtLayer()
+        this.horizontalScrimLayer()
+        this.verticalScrimLayer()
+      }
       this.stageWashLeftLayer()
-      this.stageWashRightLayer()
+      if (this.hasKeyArt()) {
+        this.stageWashRightLayer()
+      }
       this.railFrostLayer()
       this.titlePanelLayer()
       this.railPanelLayer()
