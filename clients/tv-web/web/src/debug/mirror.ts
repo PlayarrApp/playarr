@@ -96,6 +96,16 @@ for (const type of ["keydown", "keyup"] as const) {
   }, true);
 }
 
+// Navigation and visibility events the TV may raise instead of a key (a Back that never arrives as a keydown shows up here).
+for (const type of ["popstate", "hashchange", "visibilitychange", "pagehide", "blur", "focus"] as const) {
+  window.addEventListener(type, () => {
+    const now = realNow();
+    keyLog.push(`${type} +${lastKeyAt ? now - lastKeyAt : 0}`);
+    lastKeyAt = now;
+    if (keyLog.length > 12) keyLog.shift();
+  }, true);
+}
+
 function layoutEnv(): Record<string, unknown> {
   const root = document.documentElement;
   const mq = (q: string) => window.matchMedia(q).matches;
@@ -164,6 +174,45 @@ function probeFontSizes(): unknown[] {
   });
 }
 
+// A parity driver queues one layout job at the receiver ({ id, expr }: the shared layout exporter, docs/parity/LAYOUT.md). The page reads
+// its own DOM with that expression right before and right after it renders a frame, and posts the result under the job id in the same
+// frame, so a layout is always paired with the picture it was measured for. Debug build only.
+interface LayoutJob { id: string; expr: string }
+async function fetchLayoutJob(token: string): Promise<LayoutJob | null> {
+  try {
+    const res = await fetchWithTimeout(`${window.location.origin}/__mirror/job?t=${encodeURIComponent(token)}`, {}, 3000);
+    const job = (await res.json()) as Partial<LayoutJob>;
+    return typeof job.id === "string" && typeof job.expr === "string" ? { id: job.id, expr: job.expr } : null;
+  } catch {
+    return null;
+  }
+}
+async function runLayoutJob(job: LayoutJob): Promise<unknown> {
+  try {
+    return await (0, eval)(job.expr);
+  } catch (err) {
+    return { error: String((err && (err as Error).message) || err).slice(0, 300) };
+  }
+}
+// The TV's remote service swallows Back (KEY_BACK, KEY_RETURN and KEY_EXIT never reach the page as a key or a history event; KEY_EXIT leaves the app), so a driver can
+// ask the page for the one key the app documents for VIDAA's Back button (isVidaaBackKey: Backspace, keyCode 8). Only that key is accepted; the receiver hands a command over once.
+function pollKeyCommand(token: string): void {
+  window.setInterval(async () => {
+    try {
+      const res = await fetchWithTimeout(`${window.location.origin}/__mirror/cmd?t=${encodeURIComponent(token)}`, {}, 3000);
+      const cmd = (await res.json()) as { id?: string; key?: string };
+      if (cmd.key !== "back") return;
+      const init = { key: "Backspace", code: "Backspace", keyCode: 8, which: 8, bubbles: true, cancelable: true } as KeyboardEventInit;
+      const target = document.activeElement ?? document.body;
+      target.dispatchEvent(new KeyboardEvent("keydown", init));
+      target.dispatchEvent(new KeyboardEvent("keyup", init));
+    } catch {
+      // the next poll tries again
+    }
+  }, 700);
+}
+const pageState = () => JSON.stringify([routeWithQuery(), focusInfo(), visibleText()]);
+
 export function startDebugMirror(): void {
   const maybeToken = readToken();
   if (!maybeToken) return;
@@ -193,6 +242,7 @@ export function startDebugMirror(): void {
   let pending = false;
   let timer = 0;
   let seq = 0;
+  let lastJobId = "";
 
   // Identity heartbeat from a Web Worker, so rendering (which blocks this thread for seconds) cannot starve it. The page re-verifies the
   // identity every 2 s and hands the worker the result; the worker asks the server who is current every 2 s and reports that to the
@@ -249,6 +299,7 @@ export function startDebugMirror(): void {
     if (this === window.localStorage && (key === MIRROR_PROFILE_SESSIONS_KEY || key === MIRROR_ACTIVE_PROFILE_KEY || key === LIVE_SESSION_KEY)) syncCredentials();
   };
   syncCredentials();
+  pollKeyCommand(token);
   let verifying = false;
   window.setInterval(() => {
     if (verifying) return;
@@ -277,6 +328,11 @@ export function startDebugMirror(): void {
     busy = true;
     try {
       const started = realNow();
+      const job = await fetchLayoutJob(token);
+      const newJob = job !== null && job.id !== lastJobId ? job : null;
+      if (newJob) lastJobId = newJob.id;
+      const layoutBefore = newJob ? JSON.stringify(await runLayoutJob(newJob)) : null;
+      const stateBefore = newJob ? pageState() : null;
       let image: string | null = null;
       let captureError: string | null = null;
       let initialIdentity: MirrorIdentity | null = null;
@@ -375,8 +431,10 @@ export function startDebugMirror(): void {
         captureError = String((err && (err as Error).message) || err).slice(0, 300);
       } finally {
         restoreArtwork();
-        
       }
+      // The layout and the page state are read again after the render: a job frame is usable only when nothing moved while it rendered.
+      const layoutAfter = newJob ? await runLayoutJob(newJob) : null;
+      const layoutStable = newJob ? layoutBefore === JSON.stringify(layoutAfter) && stateBefore === pageState() : null;
       const body: Record<string, unknown> = {
         sentinel: MIRROR_SENTINEL,
         seq: ++seq,
@@ -394,6 +452,7 @@ export function startDebugMirror(): void {
         captureError,
         probe: probeFontSizes(),
         image,
+        ...(newJob ? { requestId: newJob.id, layout: layoutAfter, layoutStable } : {}),
       };
       let currentIdentity = initialIdentity;
       if (initialIdentity?.status === "ok") {

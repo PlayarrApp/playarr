@@ -24,6 +24,7 @@ RECOVERY_DATA = required_dir("MIRROR_RECOVERY_DATA")
 FRAMES = Path(os.environ.get("MIRROR_FRAMES_DIR", RECOVERY_DATA / "frames")).resolve()
 FRAMES.mkdir(parents=True, exist_ok=True)
 PORT = int(os.environ.get("MIRROR_PORT", "18742"))
+KEEP_FRAMES = 60
 HOST = os.environ.get("MIRROR_HOST", "0.0.0.0")
 TOKEN = ""
 for line in (Path.home() / ".secrets").read_text().splitlines():
@@ -70,6 +71,8 @@ def seed_page(secrets):
             "const n=new URLSearchParams(location.search).get('next')||'/';location.replace(/^\\/(?!\\/)/.test(n)?n:'/');</script>" % json.dumps(data)).encode()
 
 
+CMD = {}  # the one in-page key a driver queued: {"id", "key"}; the page polls it, dispatches the key once, and the id marks it as done
+JOB = {}  # the layout job a driver queued: {"id", "expr"}; the page runs it with its next frame and posts the result under the same id
 lock = threading.Lock()
 STATS_LOCK = threading.Lock()
 STATS = {}
@@ -228,6 +231,38 @@ class H(BaseHTTPRequestHandler):
                 HEARTBEAT = {"identity": keep, "receivedAt": time.time()}
             count_stat("heartbeat_accepted")
             return self._ok(204)
+        if path == "/__mirror/job":
+            if not self._authed():
+                return self._ok(403, b'{"error":"token"}')
+            n = int(self.headers.get("Content-Length", "0"))
+            if n <= 0 or n > 262_144:
+                return self._ok(413, b"{}")
+            try:
+                data = json.loads(self.rfile.read(n))
+            except ValueError:
+                return self._ok(400, b"{}")
+            if not isinstance(data, dict) or not isinstance(data.get("id"), str) or not isinstance(data.get("expr"), str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", data["id"]):
+                return self._ok(400, b'{"error":"invalid_job"}')
+            global JOB
+            with STATS_LOCK:
+                JOB = {"id": data["id"], "expr": data["expr"]}
+            return self._ok(204)
+        if path == "/__mirror/cmd":
+            if not self._authed():
+                return self._ok(403, b'{"error":"token"}')
+            n = int(self.headers.get("Content-Length", "0"))
+            if n <= 0 or n > 1024:
+                return self._ok(413, b"{}")
+            try:
+                data = json.loads(self.rfile.read(n))
+            except ValueError:
+                return self._ok(400, b"{}")
+            if not isinstance(data, dict) or data.get("key") != "back" or not isinstance(data.get("id"), str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", data["id"]):
+                return self._ok(400, b'{"error":"invalid_cmd"}')
+            global CMD
+            with STATS_LOCK:
+                CMD = {"id": data["id"], "key": "back"}
+            return self._ok(204)
         if path == "/__mirror/identity-status":
             if not self._authed():
                 return self._ok(403, b'{"error":"token"}')
@@ -361,6 +396,9 @@ class H(BaseHTTPRequestHandler):
                 LAST_KEYS = ks
             d["receivedAt"] = time.time()
             (FRAMES / (stem + ".json")).write_text(json.dumps(d))
+            for old in sorted(FRAMES.glob("frame-*.json"))[:-KEEP_FRAMES]:  # only the newest frames are kept
+                old.unlink(missing_ok=True)
+                old.with_suffix(".jpg").unlink(missing_ok=True)
         count_stat("frame_post_accepted")
         self._ok(200, b'{"ok":true}')
 
@@ -372,6 +410,15 @@ class H(BaseHTTPRequestHandler):
         if u.path.startswith("/__mirror/"):
             if not self._authed():
                 return self._ok(403, b'{"error":"token"}')
+            if u.path == "/__mirror/cmd":
+                global CMD
+                with STATS_LOCK:
+                    cmd, CMD = dict(CMD), {}  # handed over once: a reloaded page must not replay an old command
+                return self._ok(200, json.dumps(cmd).encode())
+            if u.path == "/__mirror/job":
+                with STATS_LOCK:
+                    job = dict(JOB)
+                return self._ok(200, json.dumps(job).encode())
             if u.path == "/__mirror/heartbeat.json":
                 with STATS_LOCK:
                     hb = dict(HEARTBEAT)
@@ -415,6 +462,23 @@ class H(BaseHTTPRequestHandler):
                     RECOVERY_CODE_AT = 0
                 return self._ok(200, json.dumps({"code": code}).encode())
             metas = sorted(FRAMES.glob("frame-*.json"))
+            if u.path in ("/__mirror/frame.json", "/__mirror/frame.png"):
+                # The frame a layout job produced, found by its request id (newest first), so a layout is never paired with another frame's picture.
+                want = parse_qs(u.query).get("id", [""])[0]
+                for m in reversed(metas):
+                    try:
+                        meta = json.loads(m.read_bytes())
+                    except ValueError:
+                        continue
+                    if want and meta.get("requestId") == want:
+                        if u.path.endswith(".json"):
+                            return self._ok(200, json.dumps(meta).encode())
+                        j = m.with_suffix(".jpg")
+                        if not j.exists():
+                            break
+                        b = j.read_bytes()
+                        return self._ok(200, b, "image/png" if b[:4] == b"\x89PNG" else "image/jpeg")
+                return self._ok(404, b"{}")
             if u.path == "/__mirror/latest.json":
                 return self._ok(200, metas[-1].read_bytes() if metas else b"{}")
             if u.path == "/__mirror/latest.jpg":
