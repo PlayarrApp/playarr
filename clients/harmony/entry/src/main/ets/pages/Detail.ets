@@ -378,6 +378,8 @@ struct DetailRowArtworkCard {
   @Prop activeRailFactor: number = 1;
   @Prop episodeCaption: string = '';
   @Prop episodeNumberOverlay: string = '';
+  /** A name the card is announced by when its text is not the name (web's movie chapters: "Play <title> from <chapter>"). */
+  @Prop nameOverride: string = '';
   @Prop artWash: number = 0;
   @Prop focusId: string = '';
   @Prop ringOn: boolean = false;
@@ -394,7 +396,7 @@ struct DetailRowArtworkCard {
     PosterCard({
       variant: this.variant,
       linkRadius: 12,
-      accessibleName: this.episodeCaption.length === 0 && this.episodeNumberOverlay.length === 0 ? 'Open ' + this.title : '',
+      accessibleName: this.nameOverride.length > 0 ? this.nameOverride : (this.episodeCaption.length === 0 && this.episodeNumberOverlay.length === 0 ? 'Open ' + this.title : ''),
       title: this.title,
       subtitle: this.subtitle,
       artwork: this.artworkStore.getArtwork(this.rowId),
@@ -2221,6 +2223,7 @@ struct Detail {
       subtitle: (item as DetailRow).subtitle,
       episodeCaption: (item as DetailRow).episodeCaption ?? '',
       episodeNumberOverlay: ((item as DetailRow).episodeNumberOverlay ?? ''), // parenthesised: the capture patch anchors on the series card's line
+      nameOverride: this.detail !== null && this.detail.work.kind === 'movie' ? 'Play ' + this.detail.work.title + ' from ' + (item as DetailRow).title : '',
       artWash: 0.32,
       titleFontSize: isTvMetrics() ? 11.904 : 12.4,
       subtitleFontSize: isTvMetrics() ? 8.832 : 9.5,
@@ -2244,6 +2247,7 @@ struct Detail {
           subtitle: this.tvCopySubtitle(),
           metaChips: this.detail !== null ? metaChips(this.detail, this.hasResumeTarget() ? this.resumePlan : null) : [],
           synopsis: this.tvCopySynopsis(),
+          synopsisMaxWidth: 310,
           strongSynopsis: false,
         })
         this.tvActions()

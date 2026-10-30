@@ -1,0 +1,1 @@
+- HarmonyOS parity: the TV Preferences and filter drawer spacing and button names follow web, the film synopsis wraps where web does, a film chapter is named "Play <title> from <chapter>", and the parity preview player holds the pinned 2.000 s position so the player controls show a real progress fill.

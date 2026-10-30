@@ -107,6 +107,8 @@ export struct FeatureCopy {
    * ellipsis. Empty string hides it entirely -- the home Stage hero
    * renders no synopsis in the source design (only Detail supplies one). */
   @Prop synopsis: string = '';
+  /** TV detail: web wraps the film synopsis before the 316 px run that the default 324 px column would still hold. */
+  @Prop synopsisMaxWidth: number = SYNOPSIS_MAX_WIDTH;
   /** Home only: web's Home hero sits its meta 4 vp higher and its synopsis 3 vp further from it than the Library/Detail panel. Added to
    * the gaps above the meta lines and the synopsis (vp, may be negative). */
   @Prop metaGapAdjust: number = 0;
@@ -259,7 +261,7 @@ export struct FeatureCopy {
           .lineHeight(webLineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))).lineSpacing(webLineSpacing(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT), tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))).halfLeading(true)
           .letterSpacing((tv((this.libraryCopy || this.strongSynopsis) ? SYNOPSIS_LETTER_SPACING : -0.24)) + -0.181)
           .fontColor((this.libraryCopy || this.strongSynopsis) ? this.copyTextColor() : toResourceColor(activeColors().inkMuted))
-          .constraintSize({ maxWidth: tv(this.libraryCopy ? LIBRARY_SYNOPSIS_MAX_WIDTH : SYNOPSIS_MAX_WIDTH) })
+          .constraintSize({ maxWidth: tv(this.libraryCopy ? LIBRARY_SYNOPSIS_MAX_WIDTH : this.synopsisMaxWidth) })
           .maxLines(SYNOPSIS_MAX_LINES)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .margin({ top: tv(GAP_META_SYNOPSIS + this.synopsisGapAdjust + (this.libraryCopy ? 5.76 : (this.strongSynopsis ? 1.42 : 5.58))) })

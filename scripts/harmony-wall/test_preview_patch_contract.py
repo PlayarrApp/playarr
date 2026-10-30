@@ -29,10 +29,16 @@ class PreviewPatchContractTests(unittest.TestCase):
         self.assertIn("unseen: this.episodeUnseen(item as DetailRow),", self.patch_state)
         self.assertIn("ringOn: !isTvMetrics() && this.nextUpEpisodeId() === (item as DetailRow).id,", self.detail_source)
 
-    def test_preview_never_touches_the_player(self):
-        # the player must negotiate for real: no surface swap, no injected position, pause state or quality label
+    def test_preview_replaces_only_the_platform_player(self):
+        # the app negotiates for real and draws its own progress fill; the preview swaps just the stub AVPlayer for one that honours the 2.000 s pin
         self.assertNotIn("pages/Player.ets", self.patch_state)
         self.assertFalse((HERE / "patch_player_hold.py").exists())
+        patcher = (HERE / "patch_player.py").read_text(encoding="utf-8")
+        self.assertIn("player = await media.createAVPlayer();", patcher)
+        stand_in = (HERE / "overlay/src/main/ets/util/PreviewPlayer.ets").read_text(encoding="utf-8")
+        self.assertIn("PARITY_POSITION_MS: number = 2000", stand_in)
+        self.assertIn("this.emitState('paused')", stand_in)
+        self.assertNotIn("emitState('playing')", stand_in)  # the held player never advances, so it never reports playing
 
     def test_watchlist_resolve_is_counted_as_pending(self):
         patched = patch_state.detail(self.detail_source)
