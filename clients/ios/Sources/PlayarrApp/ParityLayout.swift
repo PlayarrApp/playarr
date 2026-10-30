@@ -128,14 +128,16 @@ final class ParityLayoutRegistry {
         var visited = 0
         func visit(_ object: NSObject, depth: Int, paint: ParityPaint? = nil) {
             var paint = paint
-            if let identifier = (object as? UIAccessibilityIdentification)?.accessibilityIdentifier, identifier.hasPrefix(Self.paintIdentifierPrefix),
+            // SwiftUI's accessibility nodes do not declare the identification protocol, so the identifier is read by selector.
+            let identifier = Self.identifier(of: object)
+            if let identifier, identifier.hasPrefix(Self.paintIdentifierPrefix),
                let id = UUID(uuidString: String(identifier.dropFirst(Self.paintIdentifierPrefix.count))), let region = paintRegions[id] {
                 paint = region
             }
             guard visited < 4000, depth < 40 else { return }
             if let view = object as? UIView, view.isHidden || view.alpha <= 0 { return }
             // Parity-only probes (readiness flags) are not content.
-            if (object as? UIAccessibilityIdentification)?.accessibilityIdentifier?.hasPrefix("parity.") == true { return }
+            if identifier?.hasPrefix("parity.") == true { return }
             visited += 1
             if object.isAccessibilityElement {
                 let traits = object.accessibilityTraits
@@ -172,6 +174,11 @@ final class ParityLayoutRegistry {
         }
         visit(window, depth: 0)
         return (found, clippedAway)
+    }
+
+    private static func identifier(of object: NSObject) -> String? {
+        guard object.responds(to: NSSelectorFromString("accessibilityIdentifier")) else { return nil }
+        return object.value(forKey: "accessibilityIdentifier") as? String
     }
 
     private func snapshot() -> Data? {
@@ -510,7 +517,11 @@ private struct ParityLayoutModifier: ViewModifier {
         let paint = environment.parityPaint
         let drawn = frame // the global frame already includes ancestors' transforms
         guard enabled, frame.width > 0 else { ParityLayoutRegistry.shared.remove(id); return }
-        guard let opacity = paint.effective(drawn) else { ParityLayoutRegistry.shared.hide(id); return }
+        guard let opacity = paint.effective(drawn) else {
+            // Offscreen content is simply not on screen; only content inside the screen that a clip or mask removes is occluded.
+            if drawn.intersects(CGRect(origin: .zero, size: UIScreen.main.bounds.size)) { ParityLayoutRegistry.shared.hide(id) } else { ParityLayoutRegistry.shared.remove(id) }
+            return
+        }
         ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size.map { $0 * CGFloat(paint.scale) }, weight: weight, color: hex, rect: drawn, tracking: tracking, background: (box.map { environment.parityBackdrop.adding($0, environment) } ?? environment.parityBackdrop).rgb(at: CGPoint(x: drawn.midX, y: drawn.midY), environment).hex, radius: radius * CGFloat(paint.scale), opacity: opacity, painted: box != nil, inCover: environment.parityInCover))
     }
 }
@@ -608,7 +619,10 @@ private struct ParityRenderedTextModifier: ViewModifier {
             // the offset inside the view follows the ancestors' scale.
             let rect = CGRect(x: frame.minX + line.rect.minX * factor, y: frame.minY + line.rect.minY * factor, width: line.rect.width * factor, height: line.rect.height * factor)
             let background = environment.parityBackdrop.rgb(at: CGPoint(x: rect.midX, y: rect.midY), environment).hex
-            guard let opacity = paint.effective(rect) else { dropped += 1; return nil }
+            guard let opacity = paint.effective(rect) else {
+                if rect.intersects(CGRect(origin: .zero, size: UIScreen.main.bounds.size)) { dropped += 1 }
+                return nil
+            }
             // A line whose characters cannot be read back from the layout is not exported with the whole source string.
             guard strings.count == lines.count, !strings[index].isEmpty else { return nil }
             return ParityLayoutRegistry.Item(text: strings[index], role: role,
