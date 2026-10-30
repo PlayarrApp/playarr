@@ -526,8 +526,10 @@ export async function createDriver() {
       return `${info.sha}@${info.builtAt}`;
     },
     // Fonts decoded, no loading placeholders, every visible image settled, two frames painted: the same bar the web driver holds before a capture.
-    async waitReady() {
+    async waitReady({ phase } = {}) {
       await guard();
+      // A player D-pad key press: the controls hide a few seconds after the last input, so image settling (which polls for seconds) would let them go; the player has no images to settle.
+      if (phase === "focus" && (await ev(`/^#\\/player\\//.test(location.hash)`))) return;
       if (!(await until(`document.fonts.status === "loaded" && !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-spinner")`, 60000))) throw new Error("fonts or loading placeholders did not settle");
       await settleVisibleImages();
       await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
@@ -640,7 +642,7 @@ export async function createDriver() {
     // Known state for the player checks on the Tizen 6.5 lane (tizen65 only): the AVPlay shim (tizen-webos/avplay-shim.js, decodes nothing) is PLAYING past 0.5 s,
     // the controls are up and focus is on play/pause. The shim D-pad proves the focus and controls logic only, not decoding or the native plane (up to 30 s, else throws).
     async playerReady() {
-      if (!tizen65) throw new Error("stable capture unsupported: playerReady is the Tizen 6.5 AVPlay shim lane only");
+      if (!tizen65) return this.playerReadyPlatform();
       await guard();
       const ready = `(() => { try { const a = window.webapis.avplay, c = document.querySelector(".player-controls");
         if (a.getState() === "PAUSED" && a.getCurrentTime() < 59000) a.play();
@@ -655,6 +657,30 @@ export async function createDriver() {
     },
     // Used by the shared runner before the first key of a player check (alongside the webOS wait in key()).
     async playhead() { await guard(); const value = await ev(`(() => { try { const a = window.webapis.avplay; if (a.getState() !== "NONE") return a.getCurrentTime() / 1000; } catch (e) {} const v = document.querySelector("video"); return v ? v.currentTime : null; })()`); await guard(); return value; },
+    // Player D-pad checks start from the state web waits for: the title playing past 0.5 s, controls up, focus on play/pause (data-player-default-focus).
+    // The capture left the clip paused at 2 s: resume it with the player's own transport (play()), then reveal the controls with a key if they hid.
+    async playerReadyPlatform() {
+      await guard();
+      const playing = `(() => { const c = document.querySelector(".player-controls"); const shown = !!c && !c.classList.contains("is-hidden"); const v = document.querySelector("video");
+        let t = null, state = null; if (v) { state = v.paused ? "PAUSED" : "PLAYING"; t = v.currentTime; } else { try { const a = webapis.avplay; state = a.getState(); t = a.getCurrentTime() / 1000; } catch (e) {} }
+        return { shown, state, t, focus: !!document.activeElement && !!document.activeElement.closest("[data-player-default-focus]") }; })()`;
+      const resume = `(() => { const v = document.querySelector("video"); try { if (v) { if (v.paused) v.play(); } else if (webapis.avplay.getState() === "PAUSED") webapis.avplay.play(); } catch (e) {} return true; })()`;
+      const t0 = Date.now();
+      let steady = 0;
+      while (Date.now() - t0 < 90000) {
+        const st = await ev(playing);
+        // two reads 1 s apart and the playhead past 1.5 s: the app's own focus hand-off has settled
+        steady = st.state === "PLAYING" && st.t > 1.5 && st.shown && st.focus ? steady + 1 : 0;
+        if (steady >= 1) { await guard(); return; }
+        if (st.state === "PAUSED") await ev(resume);
+        if (st.state === "PLAYING" && st.shown && !st.focus) { await sleep(1000); continue; }
+        // Once playing, the app hands focus to the video surface and hides the controls on inactivity; the first arrow key then only reveals them with
+        // focus on play/pause (the app's own rule, the state web is in). A key while they are still up would act, so wait for them to hide.
+        if (!st.shown) await this.key("up");
+        await sleep(1000);
+      }
+      throw new Error("player did not reach playing with controls up and focus on play/pause");
+    },
     async panelOpen() { await guard(); const value = !!(await ev(`[...document.querySelectorAll(".player-quality-menu")].some((m) => m.getBoundingClientRect().width > 0)`)); await guard(); return value; },
     async location() { await guard(); const value = (await ev("location.hash.replace(/^#/, '')")) ?? null; await guard(); return value; },
     async focused() {
