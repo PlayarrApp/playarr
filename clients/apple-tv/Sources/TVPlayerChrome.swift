@@ -13,6 +13,32 @@ struct TVPlayerChromeState {
     var qualityLabel: String
     var selectedQualityID: String
     var menuOpen: Bool
+    var isMuted = false
+    var audioTracks: [PlayerTrack] = []
+    var subtitleTracks: [PlayerTrack] = []
+    var selectedAudioID: String?
+    var selectedSubtitleID: String?
+    var hasPrevious = false
+    var hasNext = false
+    /// The entries queued after the current one.
+    var upcoming: [PlaybackQueueEntry] = []
+    var currentTitle = ""
+    var healthLines: [String] = []
+
+    var audioLabel: String {
+        guard !audioTracks.isEmpty else { return "Audio: Unavailable" }
+        let selected = audioTracks.first { $0.id == selectedAudioID } ?? audioTracks[0]
+        return "Audio: \(selected.displayName)"
+    }
+
+    var subtitleLabel: String {
+        "Subtitles: \(subtitleTracks.first { $0.id == selectedSubtitleID }?.displayName ?? "Off")"
+    }
+
+    var playlistLabel: String {
+        let count = 1 + upcoming.count
+        return "Playlist: \(count) \(count == 1 ? "item" : "items")"
+    }
 }
 
 #if canImport(UIKit)
@@ -46,6 +72,18 @@ struct TVPlayerChrome: View {
     var onClose: () -> Void = {}
     var onTogglePlay: () -> Void = {}
     var onToggleQualityMenu: () -> Void = {}
+    var onMinimise: () -> Void = {}
+    var onPrevious: () -> Void = {}
+    var onNext: () -> Void = {}
+    var onMute: () -> Void = {}
+    var onSelectAudio: (String?) -> Void = { _ in }
+    var onSelectSubtitle: (String?) -> Void = { _ in }
+    var onPlayEntry: (PlaybackQueueEntry) -> Void = { _ in }
+    /// Seeks to an absolute position in seconds (the scrubber's adjustable action and, on the Mac, its drag).
+    var onSeek: (Double) -> Void = { _ in }
+    /// Nil where the platform has nothing to do: tvOS is always full screen, and neither client casts.
+    var onFullscreen: (() -> Void)? = nil
+    var onCast: (() -> Void)? = nil
     /// Hidden controls leave only the black stage; the scrim recedes downward (web: 240 ms ease).
     var controlsVisible = true
     /// Focus owned by the player view so it survives the per-tick rebuild after a seek.
@@ -66,7 +104,6 @@ struct TVPlayerChrome: View {
                 endPoint: .bottom
             )
             .frame(width: 1920, height: 518.4)
-            .parityBox("container", fill: Color.black)
             .placed(x: 0, y: 561.6, w: 1920, h: 518.4)
             .offset(y: controlsVisible ? 0 : 518.4)
             .opacity(controlsVisible ? 1 : 0)
@@ -89,22 +126,28 @@ struct TVPlayerChrome: View {
 
     private var topButtons: some View {
         ZStack(alignment: .topLeading) {
-            HStack(spacing: 8.8) {
-                Image(systemName: "arrow.down.right.and.arrow.up.left")
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(width: 20, height: 20)
-                    .parityBox("image")
-                Text("Minimise")
-                    .font(TVTheme.font(size: 11.2, css: 700))
-                    .tracking(0.22)
-                    .parityLayout(text: "Minimise", size: 11.2, weight: 700, color: Color.white, tracking: 0.22)
+            Button(action: onMinimise) {
+                HStack(spacing: 8.8) {
+                    Image(systemName: "arrow.down.right.and.arrow.up.left")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 20, height: 20)
+                        .parityBox("image")
+                    Text("Minimise")
+                        .font(TVTheme.font(size: 11.2, css: 700))
+                        .tracking(0.22)
+                        .parityLayout(text: "Minimise", size: 11.2, weight: 700, color: Color.white, tracking: 0.22)
+                }
+                .foregroundStyle(Color.white)
+                .frame(width: 124, height: 48)
+                .parityBox("button", text: "Minimise player", radius: 999, fill: Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255), alpha: 0.81)
+                .background(Capsule().fill(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.81)))
+                .overlay(Capsule().stroke(Color.white.opacity(0.14), lineWidth: 1))
+                .shadow(color: Color.black.opacity(0.28), radius: 12, y: 8)
+                .parityFocusTag("Minimise player")
             }
-            .foregroundStyle(Color.white)
-            .frame(width: 124, height: 48)
-            .parityBox("button", text: "Minimise player", radius: 999, fill: Color(red: 10 / 255, green: 8 / 255, blue: 9 / 255))
-            .background(Capsule().fill(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.81)))
-            .overlay(Capsule().stroke(Color.white.opacity(0.14), lineWidth: 1))
-            .shadow(color: Color.black.opacity(0.28), radius: 12, y: 8)
+            .buttonStyle(TVFocusableCardButtonStyle())
+            .focusEffectDisabled()
+            .accessibilityLabel("Minimise player")
             .placed(x: 1678, y: 37.8, w: 124, h: 48)
 
             Button(action: onClose) {
@@ -114,13 +157,16 @@ struct TVPlayerChrome: View {
                     .frame(width: 14, height: 22)
                     .parityBox("image")
                     .frame(width: 48, height: 48)
-                    .parityBox("button", text: "Close player", radius: 999, fill: Color(red: 7 / 255, green: 6 / 255, blue: 6 / 255))
+                    .parityBox("button", text: "Close player", radius: 999, fill: Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255), alpha: 0.58)
                     .background(Circle().fill(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58)))
                     .overlay(Circle().stroke(Color.white.opacity(0.14), lineWidth: 1))
                     .shadow(color: Color.black.opacity(0.28), radius: 12, y: 8)
+                    .parityFocusTag("Close player")
             }
             .buttonStyle(TVFocusableCardButtonStyle())
-            .disabled(!interactive) // not .focusable: on a Button it adds a second, inert focus target
+            .accessibilityLabel("Close player")
+            .focusEffectDisabled()
+            .disabled(!controlsVisible) // not .focusable: on a Button it adds a second, inert focus target
             .modifier(TVFocusTag(binding: focus, control: .close))
             .placed(x: 1814, y: 37.8, w: 48, h: 48)
         }
@@ -128,35 +174,84 @@ struct TVPlayerChrome: View {
 
     // MARK: Scrubber
 
+    /// The scrubber is a slider: the Mac exposes a real `Slider` to accessibility (drag seeks), tvOS an adjustable element
+    /// (up and down on the accessibility rotor, left and right on the remote seek by 10 s); Select toggles play.
     private var scrubber: some View {
         let fraction = state.duration > 0 ? min(max(state.position / state.duration, 0), 1) : 0
         let progress = 1780 * fraction
-        return Button(action: onTogglePlay) {
-            TVScrubberBody(progress: progress)
-        }
-        .buttonStyle(TVFocusableCardButtonStyle())
-        .disabled(!interactive) // not .focusable: on a Button it adds a second, inert focus target
-        .modifier(TVFocusTag(binding: focus, control: .scrubber))
-        .parityBox("slider", text: "Seek", fill: Color.black)
-        .placed(x: 70, y: 914, w: 1780, h: 44)
+        let value = "\(Self.clock(state.position)) of \(Self.clock(state.duration))"
+        let body = TVScrubberBody(progress: progress, showsFocus: !frozen)
+            .contentShape(Rectangle())
+            .focusable(controlsVisible)
+            .modifier(TVFocusTag(binding: focus, control: .scrubber))
+            .parityBox("slider", text: "Seek")
+        #if os(macOS)
+        return body
+            .gesture(DragGesture(minimumDistance: 0).onChanged { drag in
+                guard state.duration > 0 else { return }
+                onSeek(state.duration * min(max(drag.location.x / 1780, 0), 1))
+            })
+            .accessibilityRepresentation {
+                Slider(value: Binding(get: { state.position }, set: { onSeek($0) }), in: 0...max(state.duration, 1))
+                    .accessibilityLabel("Seek")
+                    .accessibilityValue(value)
+            }
+            .placed(x: 70, y: 914, w: 1780, h: 44)
+        #else
+        return body
+            .onTapGesture(perform: onTogglePlay)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Seek")
+            .accessibilityValue(value)
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment: onSeek(min(state.position + 10, max(state.duration, 0)))
+                case .decrement: onSeek(max(state.position - 10, 0))
+                @unknown default: break
+                }
+            }
+            .placed(x: 70, y: 914, w: 1780, h: 44)
+        #endif
     }
-
-    private var interactive: Bool { !frozen && controlsVisible }
 
     // MARK: Transport
 
-    /// A 20 pt icon inside its 64 pt round control (web: icon buttons are 64 x 64 with the icon centred), named as the web names it.
-    private func icon(_ symbol: String, x: CGFloat, y: CGFloat = 980, opacity: Double = 0.92, name: String? = nil, disabled: Bool = false) -> some View {
+    /// The 20 pt icon inside its 64 pt round control (web: icon buttons are 64 x 64 with the icon centred). A control the
+    /// player has nothing to do for is disabled and drawn at 0.28 (web: Previous and Next episode without a queue).
+    private func iconLabel(_ symbol: String, opacity: Double, enabled: Bool, name: String) -> some View {
         Image(systemName: symbol)
             .font(.system(size: 17, weight: .regular))
-            .foregroundStyle(Color.white.opacity(disabled ? 1 : opacity))
+            .foregroundStyle(Color.white.opacity(opacity))
             .frame(width: 20, height: 20)
-            .parityBox("image", fill: Color.black, opacity: disabled ? 0.28 : 1)
+            .parityBox("image", opacity: enabled ? 1 : 0.28)
             .frame(width: 64, height: 64)
-            .parityBox("button", text: name, radius: 50, fill: Color.black, opacity: disabled ? 0.28 : 1)
-            .opacity(disabled ? 0.28 : 1)
-            .accessibilityLabel(name ?? "")
-            .placed(x: x - 22, y: y - 22, w: 64, h: 64, alignment: .center)
+            .parityBox("button", text: name, radius: 50, opacity: enabled ? 1 : 0.28)
+            .opacity(enabled ? 1 : 0.28)
+            .parityFocusTag(name)
+    }
+
+    private func icon(_ symbol: String, x: CGFloat, opacity: Double = 0.92, name: String, enabled: Bool = true, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            iconLabel(symbol, opacity: opacity, enabled: enabled, name: name)
+        }
+        .buttonStyle(TVFocusableCardButtonStyle())
+        .focusEffectDisabled()
+        .disabled(!enabled)
+        .accessibilityLabel(name)
+        .placed(x: x - 22, y: 958, w: 64, h: 64, alignment: .center)
+    }
+
+    /// An icon that opens a menu of choices (audio, subtitles, playlist, info).
+    private func iconMenu<Items: View>(_ symbol: String, x: CGFloat, name: String, @ViewBuilder items: () -> Items) -> some View {
+        Menu {
+            items()
+        } label: {
+            iconLabel(symbol, opacity: 0.92, enabled: true, name: name)
+        }
+        .buttonStyle(TVFocusableCardButtonStyle())
+        .focusEffectDisabled()
+        .accessibilityLabel(name)
+        .placed(x: x - 22, y: 958, w: 64, h: 64, alignment: .center)
     }
 
     private static func clock(_ seconds: Double) -> String {
@@ -167,7 +262,7 @@ struct TVPlayerChrome: View {
 
     private var transport: some View {
         ZStack(alignment: .topLeading) {
-            icon("backward.end", x: 92, name: "Previous episode", disabled: true)
+            icon("backward.end", x: 92, name: "Previous episode", enabled: state.hasPrevious, action: onPrevious)
             Button(action: onTogglePlay) {
                 Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
                     .font(.system(size: 20, weight: .regular))
@@ -176,43 +271,59 @@ struct TVPlayerChrome: View {
                     .parityBox("image")
                     .frame(width: 64, height: 64)
                     .background(Circle().fill(Color.white.opacity(0.14)))
+                    .parityFocusTag(state.isPlaying ? "Pause" : "Play")
             }
-            .parityBox("button", text: state.isPlaying ? "Pause" : "Play", radius: 50, fill: Color(red: 0x24 / 255, green: 0x24 / 255, blue: 0x24 / 255))
+            .parityBox("button", text: state.isPlaying ? "Pause" : "Play", radius: 50, fill: Color.white, alpha: 0.14)
             .buttonStyle(TVFocusableCardButtonStyle())
+            .focusEffectDisabled()
             .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
-            .disabled(!interactive) // not .focusable: on a Button it adds a second, inert focus target
+            .disabled(!controlsVisible) // not .focusable: on a Button it adds a second, inert focus target
             .modifier(TVFocusTag(binding: focus, control: .play))
             .placed(x: 147.6, y: 958, w: 64, h: 64)
-            icon("forward.end", x: 247.2, name: "Next episode", disabled: true)
+            icon("forward.end", x: 247.2, name: "Next episode", enabled: state.hasNext, action: onNext)
             HStack(spacing: 0) {
                 Text(Self.clock(state.position))
                     .font(TVTheme.font(size: 10.88, css: 400))
                     .foregroundStyle(Color.white)
+                    .parityLayout(text: Self.clock(state.position), size: 10.88, weight: 400, color: Color.white)
                 Text(" / ")
                     .font(TVTheme.font(size: 10.88, css: 400))
                     .foregroundStyle(Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
+                    .parityLayout(text: " / ", size: 10.88, weight: 400, color: Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
                 Text(Self.clock(state.duration))
                     .font(TVTheme.font(size: 10.88, css: 400))
                     .foregroundStyle(Color.white)
+                    .parityLayout(text: Self.clock(state.duration), size: 10.88, weight: 400, color: Color.white)
             }
             .fixedSize()
             .frame(width: 58.39, height: 16.31, alignment: .leading)
-            .parityBox("container", text: "\(Self.clock(state.position)) / \(Self.clock(state.duration))", fill: Color.black, textStyle: (10.88, 400, Color.white))
             .placed(x: 302.78, y: 981.84, w: 58.39, h: 16.31)
-            icon("speaker.wave.2.fill", x: 396.77, opacity: 0.4, name: "Mute")
-            // the volume control: a 130 x 44 hit area, drawn without a track as on the web reference
-            Color.clear.frame(width: 130, height: 44)
-                .accessibilityLabel("Volume")
-                .parityBox("textbox", text: "Volume", fill: Color.black)
-                .placed(x: 448.77, y: 968, w: 130, h: 44)
+            icon(state.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill", x: 396.77, opacity: 0.4, name: state.isMuted ? "Unmute" : "Mute", action: onMute)
         }
     }
 
     private var rightGroup: some View {
         ZStack(alignment: .topLeading) {
-            icon("speaker.wave.2.fill", x: 1245.9, opacity: 0.4, name: "Audio: Unavailable")
-            icon("text.rectangle", x: 1323.5, name: "Subtitles: Off")
-            icon("text.line.last.and.arrowtriangle.forward", x: 1401.1, name: "Playlist: 1 item")
+            iconMenu("speaker.wave.2.fill", x: 1245.9, name: state.audioLabel) {
+                if state.audioTracks.isEmpty {
+                    Text("No audio tracks to choose from")
+                }
+                ForEach(state.audioTracks) { track in
+                    Button((track.id == state.selectedAudioID ? "\u{2713} " : "") + track.displayName) { onSelectAudio(track.id) }
+                }
+            }
+            iconMenu("text.rectangle", x: 1323.5, name: state.subtitleLabel) {
+                Button((state.selectedSubtitleID == nil ? "\u{2713} " : "") + "Off") { onSelectSubtitle(nil) }
+                ForEach(state.subtitleTracks) { track in
+                    Button((track.id == state.selectedSubtitleID ? "\u{2713} " : "") + track.displayName) { onSelectSubtitle(track.id) }
+                }
+            }
+            iconMenu("text.line.last.and.arrowtriangle.forward", x: 1401.1, name: state.playlistLabel) {
+                Text("Now playing: \(state.currentTitle)")
+                ForEach(state.upcoming) { entry in
+                    Button(entry.title) { onPlayEntry(entry) }
+                }
+            }
             Button(action: onToggleQualityMenu) {
                 HStack(spacing: 11.8) {
                     Text("HD")
@@ -230,18 +341,22 @@ struct TVPlayerChrome: View {
                 }
                 .padding(.horizontal, 15.5)
                 .frame(width: 173.4, height: 60.5, alignment: .leading)
+                .parityBox("button", text: "Quality: \(state.qualityLabel)", radius: 999, fill: state.menuOpen ? Color.white : nil, alpha: 0.15)
                 .background(Capsule().fill(Color.white.opacity(state.menuOpen ? 0.15 : 0)))
                 .frame(width: 160.45, height: 56)
-                .parityBox("button", text: "Quality: \(state.qualityLabel)", radius: 999, fill: Color.black)
+                .parityFocusTag("Quality: \(state.qualityLabel)")
             }
             .buttonStyle(TVFocusableCardButtonStyle())
-            .disabled(!interactive) // not .focusable: on a Button it adds a second, inert focus target
+            .focusEffectDisabled()
+            .disabled(!controlsVisible) // not .focusable: on a Button it adds a second, inert focus target
             .modifier(TVFocusTag(binding: focus, control: .quality))
             .accessibilityLabel("Quality: \(state.qualityLabel)")
             .placed(x: 1456.6, y: 959.8, w: 173.4, h: 60.5)
-            icon("info.circle", x: 1652.8, name: "Info and playback health")
-            icon("macbook.and.iphone", x: 1730.4, name: "Play on another device")
-            icon("arrow.up.left.and.arrow.down.right", x: 1808, name: "Enter fullscreen")
+            iconMenu("info.circle", x: 1652.8, name: "Info and playback health") {
+                ForEach(state.healthLines, id: \.self) { Text($0) }
+            }
+            icon("macbook.and.iphone", x: 1730.4, name: "Play on another device", enabled: onCast != nil, action: onCast ?? {})
+            icon("arrow.up.left.and.arrow.down.right", x: 1808, name: "Enter fullscreen", enabled: onFullscreen != nil, action: onFullscreen ?? {})
         }
     }
 
@@ -375,8 +490,11 @@ private struct TVFocusTag: ViewModifier {
 /// The scrubber track in local coordinates. When focused it shows the web focus treatment: a 3 px
 /// white ring around the track and the thumb enlarged to 24 px, white with an accent ring.
 private struct TVScrubberBody: View {
-    @Environment(\.isFocused) private var isFocused
+    @Environment(\.isFocused) private var focusedByRemote
     let progress: CGFloat
+    /// The parity route draws the static (unfocused) control.
+    var showsFocus = true
+    private var isFocused: Bool { showsFocus && focusedByRemote }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -398,6 +516,9 @@ private struct TVScrubberBody: View {
         }
         .frame(width: 1780, height: 44, alignment: .topLeading)
         .animation(.easeOut(duration: DesignTokens.FocusMotion.transitionSeconds), value: isFocused)
+        #if DEBUG && (os(tvOS) || os(macOS))
+        .onChange(of: focusedByRemote) { _, now in TVParityState.setFocus("Seek", now) }
+        #endif
     }
 }
 

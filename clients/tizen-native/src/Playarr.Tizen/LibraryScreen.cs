@@ -108,7 +108,7 @@ internal sealed class LibraryScreen : IPage
             hit.Add(dot); _letterDots[letter] = dot;
             var l = letter;
             var lbl = Ui.Text(letter.ToString(), 1869, ly - 1, 9.216f, 400, _t.InkMuted, 21, 13, HorizontalAlignment.Center);
-            _root.Add(lbl); _letterLabels[letter] = lbl;
+            lbl.PositionX -= hit.PositionX; lbl.PositionY -= hit.PositionY; hit.Add(lbl); _letterLabels[letter] = lbl; // web: the button holds its letter
             var ringL = Ring.Make(24, 24, 12, new Rgba(1, 1, 1)); ringL.PositionX = -5; ringL.PositionY = -5; ringL.Show(false); dot.Add(ringL);
             _side.Add(new Focusable
             {

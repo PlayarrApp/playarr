@@ -99,6 +99,32 @@ internal static class Ui
         return p;
     }
 
+    /// <summary>The layer a drawer draws its content in: a child of the dialog panel (web nests the content in the dialog), laid out in screen coordinates.</summary>
+    public static View DrawerLayer(View panel)
+    {
+        var layer = new View { PositionX = -panel.PositionX, Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight) };
+        Sem.Tag(layer, "none");
+        panel.Add(layer);
+        return layer;
+    }
+
+    /// <summary>
+    /// Turns a text label into the web's pill: the label itself draws the fill, border and rounded corners over a box of <paramref name="w"/> x <paramref name="h"/>
+    /// (the web span is that pill), and its line stays where it was drawn (the label's top becomes padding). The label's own radius and fill are what the exporter reads.
+    /// </summary>
+    public static TextLabel Pill(TextLabel label, float x, float y, float w, float h, Rgba fill, float radius, Color? border = null, float borderWidth = 0)
+    {
+        var top = label.PositionY;
+        label.PositionX = x; label.PositionY = y;
+        label.WidthResizePolicy = ResizePolicyType.Fixed; label.HeightResizePolicy = ResizePolicyType.Fixed;
+        label.Size = new Size(w * TextScale, h * TextScale);
+        label.Padding = new Extents(0, 0, (ushort)Math.Round(top * TextScale), 0);
+        if (fill.A > 0) label.BackgroundColor = C(fill);
+        label.CornerRadius = FullRadius(radius, w, h) * TextScale;
+        if (borderWidth > 0 && border is { } b) { label.BorderlineWidth = borderWidth * TextScale; label.BorderlineColor = b; }
+        return label;
+    }
+
     public static Color LineA(PlayarrTheme t, float alpha) => new(t.Line.R, t.Line.G, t.Line.B, alpha);
 
     public static void Restart(this global::Tizen.NUI.Timer t) { t.Stop(); t.Start(); }

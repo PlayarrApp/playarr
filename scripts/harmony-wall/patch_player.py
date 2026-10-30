@@ -1,8 +1,20 @@
 # Preview-only (never committed): the Previewer's AVPlayer raises no events, so the player page never leaves 0:00. Route the controller's two
 # media.createAVPlayer() calls to the parity stand-in (overlay util/PreviewPlayer.ets), which lands on the pinned 2.000 s and stays paused.
-# Usage: patch_player.py <AvPlayerController.ets>
-import sys
+# The Previewer also draws a grey "Preview not available for this component." placeholder over an XComponent, which a device with a paused
+# video never shows (the app's own black stage shows through): with a second argument (Player.ets) the XComponent is replaced by an empty Column
+# that keeps the same size and accessible video role, so the black stage stays visible.
+# Usage: patch_player.py <AvPlayerController.ets> [<Player.ets>]
+import re, sys
 
+def surface(path):
+    t = open(path).read()
+    pat = re.compile(r"XComponent\(\{\s*id: 'playarr-player-surface',.*?\}\)", re.S)
+    assert len(pat.findall(t)) == 1, path + ": XComponent anchor missing"
+    open(path, "w").write(pat.sub("Column()", t))
+
+
+if len(sys.argv) > 2:
+    surface(sys.argv[2])
 p = sys.argv[1]
 s = open(p).read()
 if "createParityPlayer" in s:

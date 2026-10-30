@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # pull-captures.sh <run-id> <tv|phone> <legend-dir>: download one Harmony wall run's captures into the legend folder
-# (dark screens as dev/<id>.png, light as dev/light/<id>.png, plus build.json). Needs an authenticated gh. Never run on a failed run.
+# (dark screens as dev/<id>.png, light as dev/light/<id>.png, plus build.json, dev/layout, dev/layout-raw and dev/layout-probe). Needs an authenticated gh. Never run on a failed run.
 set -euo pipefail
 RUN=${1:?run id}; DEVICE=${2:?tv or phone}; DEST=${3:?legend dir}
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
@@ -18,4 +18,7 @@ for L in $(find "$TMP" -type d -name layout | grep -v _debug); do mkdir -p "$DES
 D=$(find "$TMP" -name dpad.json | head -1); [ -z "$D" ] || cp "$D" "$DEST/dev/dpad.json"
 cp "$(find "$TMP" -name build.json | sort | head -1)" "$DEST/dev/build.json"
 cat "$DEST/dev/build.json"
-for L in $(find "$TMP" -type d -name layout-raw); do mkdir -p "$DEST/layout-raw"; cp -r "$L/." "$DEST/layout-raw/"; done  # kept beside dev/, not in the legend cand dir
+# the exporter's raw trees and the occlusion probe's measurements are part of the capture: they live in dev/ beside the layout they produced
+for K in layout-raw layout-probe; do
+  for L in $(find "$TMP" -type d -name "$K" | grep -v _debug); do mkdir -p "$DEST/dev/$K"; cp -r "$L/." "$DEST/dev/$K/"; done
+done

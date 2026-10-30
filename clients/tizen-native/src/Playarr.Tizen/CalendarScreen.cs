@@ -211,6 +211,9 @@ internal sealed class CalendarScreen : IPage
                     var row = new View { PositionX = 5.8f, PositionY = 1.8f + k * 25.4f, Size = new Size(226, 44) }; // the event row (dot and title); the day cell is the focus target
                     row.Add(Ui.Box(5.6f, ly + 4.1f - row.PositionY, 8.8f, 8.8f, dot, 4.4f));
                     var multi = e.Members is { Count: > 1 } m ? $" · {m.Count}×" : "";
+                    row.CornerRadius = 4; // web .calendar-chip: a 4 px rounded button named by its text, tone and day
+                    var tone = CalendarRules.Tone(e, _today);
+                    Sem.Tag(row, "button", $"{e.Title + multi}, {(tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" })}, {day.ToString("dddd d MMMM", CultureInfo.GetCultureInfo("en-GB"))}");
                     row.Add(Ui.Text(e.Title + multi, 21.6f, ly - row.PositionY, 12.48f, multi.Length > 0 ? 700 : 400, _t.Ink, CellW - 36, 14.976f));
                     cell.Add(row);
                 }
@@ -316,11 +319,8 @@ internal sealed class CalendarScreen : IPage
     /// <summary>web .calendar-today-tag: the day heading's colour as a 1 px outline, no fill, small upper-case text.</summary>
     private void TodayTag(View parent, float x, float y)
     {
-        var tag = Ui.Box(x, y, 60.5f, 22, new Rgba(0, 0, 0, 0), 11);
-        tag.BorderlineWidth = 1; tag.BorderlineColor = Ui.C(_t.Accent);
-        Sem.Tag(tag, "none");
-        tag.Add(Sem.Tag(Ui.Text("Today", 0, 1.7f, 11.2f, 640, _t.Accent, 60.5f, 16.8f, HorizontalAlignment.Center, upper: true, spacing: 0.9f), "text"));
-        parent.Add(tag);
+        var tag = Ui.Pill(Ui.Text("Today", 0, 1.7f, 11.2f, 640, _t.Accent, 60.5f, 16.8f, HorizontalAlignment.Center, upper: true, spacing: 0.9f), x, y, 60.5f, 22, new Rgba(0, 0, 0, 0), 11, Ui.C(_t.Accent), 1);
+        parent.Add(Sem.Tag(tag, "text"));
     }
 
     private void RenderAgenda(DateTime start)
@@ -374,11 +374,8 @@ internal sealed class CalendarScreen : IPage
         var tone = CalendarRules.Tone(e, _today);
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
-        var pill = Ui.Box(mx, sub.Length == 0 ? my - 0.46f : my, pw, 26.6f, new Rgba(ToneColor(tone).R * 0.14f + _t.Surface.R * 0.86f, ToneColor(tone).G * 0.14f + _t.Surface.G * 0.86f, ToneColor(tone).B * 0.14f + _t.Surface.B * 0.86f), 13.3f); // web color-mix(tone 14 %, --surface)
-        pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
-        pill.Add(Sem.Tag(Ui.Text(label, 0, 2.95f, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), "text"));
-        Sem.Tag(pill, "none");
-        card.Add(pill);
+        var pill = Ui.Pill(Ui.Text(label, 0, 2.95f, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), mx, sub.Length == 0 ? my - 0.46f : my, pw, 26.6f, new Rgba(ToneColor(tone).R * 0.14f + _t.Surface.R * 0.86f, ToneColor(tone).G * 0.14f + _t.Surface.G * 0.86f, ToneColor(tone).B * 0.14f + _t.Surface.B * 0.86f), 13.3f, new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f), 1); // web color-mix(tone 14 %, --surface)
+        card.Add(Sem.Tag(pill, "text"));
         // web: the whole entry is one button named by its text parts; its children sit on the surface
         Sem.Tag(card, "button", string.Join(" ", new[] { e.Title, sub }.Concat(parts).Append(label).Where(t => t.Length > 0)));
         var ring = Ring.Make(w, h, 12, new Rgba(1, 1, 1)); ring.Show(false); card.Add(ring);
@@ -412,10 +409,8 @@ internal sealed class CalendarScreen : IPage
         Ui.MetaRow(_panel, string.Join("     ", new[] { code.Length > 0 ? code + (e.Subtitle is { Length: > 0 } ? " \u00b7 " + e.Subtitle : "") : null, day }.Where(x => x is not null)!), 153.6f, my + 1.6f, 13.056f, 600, DetailsPanel.Soft(_t), 19.584f); // glyph-run top calibration
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
-        var pill = Ui.Box(153.6f, my + 37.9f, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);
-        pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
-        pill.Add(Sem.Tag(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), "text"));
-        _panel.Add(pill);
+        var pill = Ui.Pill(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), 153.6f, my + 37.9f, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f, new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f), 1);
+        _panel.Add(Sem.Tag(pill, "text"));
         var overviewLines = Ui.Paragraph(_panel, e.Overview ?? "", 153.6f, my + 86f, 13.824f, 600, DetailsPanel.Soft(_t), 336, 21.842f, 0, 5);
         var by = my + 111f + 21.842f * overviewLines; // web: the buttons follow the synopsis
         var open = Ui.Box(153.6f, by, 124, 58, _t.Accent, 29);

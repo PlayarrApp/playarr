@@ -4781,13 +4781,13 @@ private fun PhoneSettingsIndex(isAdmin: Boolean, onOpen: (SettingsSection) -> Un
                 // Web numbers the sections by their place in the full list (an admin-only row leaves a gap: 07, 09).
                 val number = settingsSectionNumber(phoneSettingsIndex.indexOfFirst { it.first == candidate })
                 val rowLabel = number + " " + playarrString(candidate.label) + " " + playarrString(description)
-                Row(
+                // The link is the whole 88 px row: the padding sits on an inner Row, so the exported link box is the row's border box.
+                Box(
                     Modifier.fillMaxWidth().height(with(androidx.compose.ui.platform.LocalDensity.current) { phoneSettingsRowHeightPx(index, density).toDp() })
                         .then(if (active) Modifier.background(WebSurfaceSoft) else Modifier)
-                        
-                        .clickable { onOpen(candidate) }
-                        .padding(horizontal = 12.dp, vertical = 16.dp),
+                        .clickable { onOpen(candidate) },
                 ) {
+                Row(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 16.dp)) {
                     Text(
                         number, color = WebInk, fontSize = 8.96.sp, lineHeight = 13.44.sp,
                         fontWeight = FontWeight(760), style = WebTextStyle, modifier = Modifier.width(44.dp),
@@ -4812,6 +4812,7 @@ private fun PhoneSettingsIndex(isAdmin: Boolean, onOpen: (SettingsSection) -> Un
                             modifier = Modifier.offset(x = if (active) 5.dp else 0.dp),
                         )
                     }
+                }
                 }
             }
         }

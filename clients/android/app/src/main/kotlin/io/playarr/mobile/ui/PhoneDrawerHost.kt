@@ -10,7 +10,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.isTraversalGroup
-import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 
 /** The single in-activity phone drawer. It keeps the existing navigation in the activity window. */
@@ -71,7 +70,6 @@ internal fun PhoneDrawerHostPane(
     Box(
         Modifier.fillMaxSize()
             .semantics {
-                paneTitle = pane.title
                 isTraversalGroup = true
             },
     ) {

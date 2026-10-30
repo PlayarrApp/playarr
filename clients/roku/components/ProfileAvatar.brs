@@ -54,7 +54,7 @@ sub onContentChanged()
     else if content.statusText = "PIN REQUIRED"
         name = content.title + ", PIN required"
     end if
-    m.profileButton.id = "a11y|button|0|" + name
+    m.profileButton.id = "hit|button|0|" + name
     ' The button spans the avatar down to the end of the status line as Roku lays it out.
     sb = PlayarrTextBottom(m.status)
     if sb > 0 then m.profileButton.height = sb - m.profileButton.translation[1]

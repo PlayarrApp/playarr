@@ -45,6 +45,10 @@ def patch(s, counter):
         full = "pvKey(%s, '%s')" % ("this.pvInst" if owner is not None else "0", key)
         also = "" if m.group(1) == "Text" else ".accessibilityDescription(%s)" % full
         inserts.append((after, ".id(%s)%s.visibility(pvVis(%s, %s))" % (full, also, "this.pvHid" if owner is not None else "''", full)))
+        # a TextInput also gets its own controller under the same key, so the export can read where its text is drawn (PreviewText.ets pvInputRect)
+        opts = re.match(r"\s*\{", s[m.end():end])
+        if m.group(1) == "TextInput" and opts and "controller" not in s[m.end():end]:
+            inserts.append((m.end() + opts.end(), " controller: pvTic(%s)," % full))
         if owner is not None:
             used.add(owner)
     n = len(inserts)
@@ -66,7 +70,7 @@ for base, _, names in sorted(os.walk(ROOT)):
             continue
         rel = os.path.relpath(os.path.join(ROOT, "util", "PreviewText"), base).replace(os.sep, "/")
         rel = rel if rel.startswith(".") else "./" + rel
-        imp = "import { pvVis, pvKey, pvNextInst } from '%s';\n" % rel
+        imp = "import { pvVis, pvKey, pvNextInst, pvTic } from '%s';\n" % rel
         last = [x.end() for x in re.finditer(r"(?m)^import .*?;[ \t]*\n", t, re.S)]
         t = imp + t if not last else t[:last[-1]] + imp + t[last[-1]:]
         open(path, "w", encoding="utf-8").write(t)

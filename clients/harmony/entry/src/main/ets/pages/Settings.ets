@@ -120,6 +120,7 @@ const PANEL_LEFT: number = 774;
 const PANEL_TOP: number = 216;
 const PANEL_WIDTH: number = 1042;
 const PANEL_TEXT_SIZE: number = 13.824;
+const SETTING_CARD_TOP: number = 1 + 34 + 1.77 + 1.27; // web: from a setting's top rule to its heading (the rule's own px included)
 /** Phone: the panel is the page width less 16 each side (the 360 vp web phone width). */
 const TOUCH_PANEL_WIDTH: number = 328;
 
@@ -135,7 +136,7 @@ export struct SettingsScreen {
 
   /** A phone row's description on one line: the web row clips it at 228.5 vp with a real "…". */
   private rowCopy(id: string): string {
-    return fitLineText(this.getUIContext(), sectionCopyOf(id), 10.88, 400, 228.5);
+    return fitLineText(this.getUIContext(), sectionCopyOf(id), 10.88, 400, 228.5, isTvMetrics() ? 0 : -0.084); // the tracking the row's Text is drawn with
   }
   @State private audioLanguage: string = 'en';
   /** Web's player preference status: loading, ready, saving or an error message. */
@@ -342,7 +343,7 @@ export struct SettingsScreen {
         saveThemeChoice(value as ThemeModeSetting);
       },
     })
-    this.settingDivider()
+    Column() {
     ChoiceSegments({
       heading: t('settings.appearance.homeViewTitle', 'Home screen artwork'),
       description: t('settings.appearance.homeViewDescription', 'Show portrait covers instead of wide media thumbnails on the home screen.'),
@@ -355,7 +356,11 @@ export struct SettingsScreen {
         saveAppearance('homeView', value);
       },
     })
-    this.settingDivider()
+    }
+    .width(tv(this.panelWidth()))
+    .padding({ top: tv(SETTING_CARD_TOP) })
+    .border({ width: { top: 1 }, color: toResourceColorWithAlpha(activeColors().ink, 0.083) }) // web: the setting's own box, a 1 px rule on its top edge
+    Column() {
     ChoiceSegments({
       heading: t('settings.appearance.artworkSizeTitle', 'Artwork size'),
       description: t('settings.appearance.artworkSizeDescription', 'Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.'),
@@ -368,16 +373,10 @@ export struct SettingsScreen {
         saveAppearance('artworkSize', value);
       },
     })
-  }
-
-  /** Web `.appearance-setting + .appearance-setting`: a 1 px rule between settings. */
-  @Builder
-  private settingDivider(): void {
-    Divider()
-      .width(tv(this.panelWidth()))
-      .strokeWidth(1)
-      .color(toResourceColorWithAlpha(activeColors().ink, 0.083))
-      .margin({ bottom: tv(34 + 1.77 + 1.27) }) // web: 41 px from the rule to the next heading, 1.27 more than r14 laid out
+    }
+    .width(tv(this.panelWidth()))
+    .padding({ top: tv(SETTING_CARD_TOP) })
+    .border({ width: { top: 1 }, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
   }
 
   @Builder
@@ -691,7 +690,7 @@ export struct SettingsScreen {
     NavDestination() {
       PageShell({
         railFrostWidthPct: 65,
-        railFrostFullBox: isTvMetrics(), // web TV draws the frost as a full-width box
+        railFrostFullBox: false, // web: the detail panel is its own 65% wide box
         title: t('settings.index.title', 'Preferences'),
         backLabel: 'Settings',
         backRole: 'button',
