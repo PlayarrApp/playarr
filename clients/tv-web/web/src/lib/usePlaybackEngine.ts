@@ -1,4 +1,10 @@
 import { shouldKeepEngineAttached } from "./playerMounting";
+import {
+  audioSwitchRequest,
+  nativeAudioTracksFor,
+  shouldExposeSourceAudioTracks,
+  switchNativeAudioTrack,
+} from "./audioTrackSwitch";
 import { sourceAudioTracksFromInfo } from "./sourceAudioTracks";
 import { createProgressGate, safePlay } from "./playbackProgress";
 import {
@@ -1402,6 +1408,16 @@ export function usePlaybackEngine(
         return;
       }
 
+      const nativeTracks = nativeAudioTracksFor(
+        videoRef.current,
+        negotiation.kind === "ready" ? negotiation.mode : undefined,
+        sourceAudioTracks.length
+      );
+      if (nativeTracks && switchNativeAudioTrack(nativeTracks, sourceAudioTracks, trackId)) {
+        setSelectedSourceAudioTrackId(trackId);
+        return;
+      }
+
       const current = engineRef.current?.getState() ?? engineState;
       const absolutePositionSeconds =
         current.currentTimeSeconds + sourceOffsetSecondsRef.current;
@@ -1411,11 +1427,11 @@ export function usePlaybackEngine(
         positionSeconds: absolutePositionSeconds,
         shouldPlay,
       };
-      const request = {
-        ...negotiationRequestRef.current,
-        startPositionMs: Math.max(0, Math.round(absolutePositionSeconds * 1000)),
-        audioStreamIndex,
-      };
+      const request = audioSwitchRequest(
+        negotiationRequestRef.current,
+        absolutePositionSeconds,
+        audioStreamIndex
+      );
       negotiationRequestRef.current = request;
       loadedForUrl.current = null;
       setQualitySwitching(true);
@@ -1482,8 +1498,10 @@ export function usePlaybackEngine(
       client,
       engineState,
       mediaFileId,
+      negotiation,
       recordTerminalEvent,
       selectedSourceAudioTrackId,
+      sourceAudioTracks,
       stopActiveSession,
     ]
   );
@@ -1714,10 +1732,10 @@ export function usePlaybackEngine(
     },
     [engineState, fixedDurationSeconds]
   );
-  const exposeSourceAudioTracks =
-    negotiation.kind === "ready" &&
-    negotiation.mode === "hls" &&
-    sourceAudioTracks.length > 0;
+  const exposeSourceAudioTracks = shouldExposeSourceAudioTracks(
+    negotiation,
+    sourceAudioTracks.length
+  );
   const exposeSourceSubtitleTracks =
     negotiation.kind === "ready" &&
     sourceSubtitleTracks.length > 0;

@@ -1,0 +1,1 @@
+- The web player (web, TV web, webOS and Tizen web) now offers audio-track selection in direct play too, whenever the file has two or more audio tracks. Safari switches the track natively; other browsers renegotiate playback with `audioStreamIndex` and resume at the same position, keeping play state and subtitles, as the Android TV app does.
