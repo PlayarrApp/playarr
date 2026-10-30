@@ -297,6 +297,7 @@ dropdown.pa-filter arrow, dropdown.pa-filter image { -gtk-icon-size: 8px; min-wi
 .pa-cal-controls .pa-pill { min-height: 42px; }
 .pa-cal-controls .pa-pill { padding: 0 20px; }
 .pa-cal-controls .pa-pill.round { padding: 0; }
+.pa-cal-controls .pa-pill.range { padding: 0 19px 0 20px; }
 .pa-cal-controls .pa-pill.round { min-width: 42px; }
 .pa-edge-fade-v { background: linear-gradient(180deg, alpha(@pa_bg, 0) 0%, alpha(@pa_bg, 0.11) 25%, alpha(@pa_bg, 0.35) 50%, alpha(@pa_bg, 0.59) 75%, alpha(@pa_bg, 0.7) 100%); }
 /* Week columns: rounded white cards with a curved availability bar, as the web. */
@@ -379,7 +380,7 @@ progressbar.pa-progress progress { background: @pa_brand; min-height: 3px; borde
 .pa-seg-tile:checked .pa-vg { border-color: @pa_body; }
 
 /* The web's select: a 320 x 58.8 group (soft fill, 12 px corners) around a 44 px button inset 7 px. */
-dropdown.pa-dropdown.pa-filter { background: alpha(@pa_soft, 0.64); border-radius: 12px; padding: 7px 7px 7px 7px; }
+dropdown.pa-dropdown.pa-filter { background: alpha(@pa_soft, 0.64); border-radius: 12px; padding: 8px 7px 7px 7px; }
 dropdown.pa-dropdown.pa-filter > button { min-height: 42px; border-radius: 10px; padding: 0 12px; background: alpha(@pa_soft, 0.64); font-size: 8.96px; font-weight: 680; }
 .pa-seg-tile.view { padding: 0; min-height: 48px; }
 
