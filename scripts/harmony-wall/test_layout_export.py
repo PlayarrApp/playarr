@@ -291,6 +291,12 @@ class LayoutExportTest(unittest.TestCase):
         self.assertIn("video", [e["role"] for e in doc["elements"]])
         self.assertTrue(any("placeholder text" in l for l in doc["limits"]))
 
+    def test_a_replacement_column_declared_as_video_does_not_claim_the_placeholder(self):
+        col = {"$type": "Column", "$rect": "[0.00, 0.00],[1080.00, 600.00]", "$attrs": {"accessibilityText": "", "accessibilityTextHint": "pvrole:120"}}
+        doc = export(column([col]), "x", "dark", (360, 780, 3))
+        self.assertIn("video", [e["role"] for e in doc["elements"]])
+        self.assertFalse(any("placeholder text" in l for l in doc["limits"]))
+
 
 if __name__ == "__main__":
     unittest.main()
