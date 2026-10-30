@@ -97,6 +97,7 @@ namespace Playarr.Xbox.Views
                 probe = Probe(),
                 textProbe = TextProbe(root),
                 occluded,
+                visibility = VisibilityLog,
                 clockPinned = ParityClock.IsPinned && ParityClock.Today == new DateTime(2026, 10, 7),
                 frame,
                 elements,
@@ -316,10 +317,53 @@ namespace Playarr.Xbox.Views
             return false;
         }
 
+        /// <summary>Per-element evidence of the last visibility pass (diagnosis only, not part of the schema).</summary>
+        private static List<string> VisibilityLog = new();
+
+        private static bool PixelEqual(byte[] a, byte[] b, int i) => a[i] == b[i] && a[i + 1] == b[i + 1] && a[i + 2] == b[i + 2];
+
+        private static bool InMask(List<Rect> masks, int x, int y)
+        {
+            foreach (var m in masks)
+            {
+                if (x >= m.X && x < m.Right && y >= m.Y && y < m.Bottom)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Video surfaces change every frame, so their pixels are never evidence either way.</summary>
+        private static List<Rect> VideoBoxes(FrameworkElement root)
+        {
+            var boxes = new List<Rect>();
+            var scale = root.ActualWidth > 0 ? 1920.0 / root.ActualWidth : 1.0;
+            void Visit(DependencyObject node)
+            {
+                if (node is FrameworkElement { ActualWidth: >= 1 } fe && (node is MediaPlayerElement || node is MediaElement || node is SwapChainPanel))
+                {
+                    var r = fe.TransformToVisual(root).TransformBounds(new Rect(0, 0, fe.ActualWidth, fe.ActualHeight));
+                    boxes.Add(new Rect(r.X * scale, r.Y * scale, r.Width * scale, r.Height * scale));
+                }
+
+                for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
+                {
+                    Visit(VisualTreeHelper.GetChild(node, i));
+                }
+            }
+
+            Visit(root);
+            return boxes;
+        }
+
         private static async Task<(HashSet<object> Hidden, bool Stable, string Diff)> ToggleAllAsync(FrameworkElement root)
         {
             var (before, width, height) = await GrabAsync(root);
             var hidden = new HashSet<object>();
+            var log = new List<string>();
+            var masks = VideoBoxes(root);
             foreach (var candidate in Candidates)
             {
                 var x0 = Math.Max(0, (int)Math.Floor(candidate.Box.X));
@@ -332,38 +376,58 @@ namespace Playarr.Xbox.Views
                     continue;
                 }
 
-                var undo = Hide(candidate.Owner);
-                byte[] after;
-                try
+                // Evidence, not a threshold: with the element hidden a pixel counts only if it differs from both the frame before
+                // and the frame after the element is shown again while those two agree exactly. Two rounds must both find paint.
+                var rounds = new int[2];
+                var baseline = before;
+                for (var round = 0; round < 2; round++)
                 {
-                    after = (await GrabAsync(root)).Pixels;
-                }
-                finally
-                {
-                    undo();
-                }
-
-                // Rasteriser noise moves a few pixels by a level or two between renders; paint is what moves enough pixels by enough.
-                var moved = 0;
-                for (var y = y0; y < y1; y++)
-                {
-                    var from = (y * width + x0) * 4;
-                    for (var i = from; i < from + (x1 - x0) * 4; i += 4)
+                    var undo = Hide(candidate.Owner);
+                    byte[] hiddenFrame;
+                    try
                     {
-                        if (Math.Abs(before[i] - after[i]) >= 3 || Math.Abs(before[i + 1] - after[i + 1]) >= 3 || Math.Abs(before[i + 2] - after[i + 2]) >= 3)
+                        await Task.Delay(16);
+                        hiddenFrame = (await GrabAsync(root)).Pixels;
+                    }
+                    finally
+                    {
+                        undo();
+                    }
+
+                    await Task.Delay(16);
+                    var shown = (await GrabAsync(root)).Pixels;
+                    var proven = 0;
+                    for (var y = y0; y < y1; y++)
+                    {
+                        for (var x = x0; x < x1; x++)
                         {
-                            moved++;
+                            if (InMask(masks, x, y))
+                            {
+                                continue;
+                            }
+
+                            var i = (y * width + x) * 4;
+                            if (PixelEqual(baseline, shown, i) && !PixelEqual(hiddenFrame, baseline, i))
+                            {
+                                proven++;
+                            }
                         }
                     }
+
+                    rounds[round] = proven;
+                    baseline = shown;
                 }
 
-                var changed = moved >= 16;
-                if (!changed && !IsFocusableAndOnTop(candidate.Owner, candidate.Box))
+                var changed = rounds[0] > 0 && rounds[1] > 0;
+                var focusable = !changed && IsFocusableAndOnTop(candidate.Owner, candidate.Box);
+                log.Add($"{candidate.Owner.GetType().Name} {Math.Round(candidate.Box.X)},{Math.Round(candidate.Box.Y)} {Math.Round(candidate.Box.Width)}x{Math.Round(candidate.Box.Height)} r1={rounds[0]} r2={rounds[1]} {(changed ? "visible" : focusable ? "focusable" : "covered")}");
+                if (!changed && !focusable)
                 {
                     hidden.Add(candidate.Item);
                 }
             }
 
+            VisibilityLog = log;
             var final = (await GrabAsync(root)).Pixels;
             if (final.SequenceEqual(before))
             {
