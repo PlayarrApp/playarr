@@ -220,6 +220,8 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
     let thumb = gtk4::Picture::builder()
         .content_fit(gtk4::ContentFit::Cover)
         .can_shrink(true)
+        .overflow(gtk4::Overflow::Hidden)
+        .css_classes(["pa-thumb-img"])
         .build();
     // A blank 40 x 60 box sizes the frame; the poster is an overlay, so its own size cannot widen it.
     let sizer = gtk4::Box::new(gtk4::Orientation::Vertical, 0);

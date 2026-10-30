@@ -9,7 +9,11 @@ use std::rc::Rc;
 
 /// Returns the tab pages and the floating navigation (added by the app above every page, so detail pages keep it).
 pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>) -> (gtk4::Widget, gtk4::Widget) {
-    let pages = gtk4::Stack::builder().accessible_role(gtk4::AccessibleRole::Generic).vexpand(true).css_classes(["pa-page"]).build();
+    let pages = gtk4::Stack::builder()
+        .accessible_role(gtk4::AccessibleRole::Generic)
+        .vexpand(true)
+        .css_classes(["pa-page"])
+        .build();
     let lib = |kind: &'static str, title: &str| library::build(app.clone(), client.clone(), imgs.clone(), kind, title);
     let tabs: Vec<(&str, gtk4::Widget)> = vec![
         ("downloads", super::downloads::page(&app, client.clone())),
@@ -45,6 +49,8 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
         .halign(gtk4::Align::Center)
         .valign(gtk4::Align::Center)
         .margin_bottom(7)
+        .overflow(gtk4::Overflow::Hidden)
+        .css_classes(["pa-nav-avatar"])
         .build();
     avatar_box.append(&avatar);
     me.set_child(Some(&avatar_box));

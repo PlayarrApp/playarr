@@ -209,6 +209,7 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         .build();
     // The web profiles page pins a Clients link to the bottom right corner.
     let clients = gtk4::Button::builder()
+        .accessible_role(gtk4::AccessibleRole::Link)
         .css_classes(["pa-pill", "small", "pa-clients-link"])
         .halign(gtk4::Align::End)
         .valign(gtk4::Align::End)
@@ -465,7 +466,7 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
         .css_classes(["pa-plain", "pa-profile"])
         .valign(gtk4::Align::Start)
         .build();
-    crate::layout::name(&b, "Sign in ADD ANOTHER PROFILE");
+    crate::layout::name(&b, "Sign in Add another profile");
     // Bottom-aligned with the 162 px current avatar, as on the web.
     b.set_margin_top(15);
     let app = app.clone();

@@ -305,6 +305,8 @@ fn role_of(w: &gtk4::Widget) -> &'static str {
 }
 
 struct Item {
+    /// The widget that paints this record.
+    widget: gtk4::Widget,
     json: Value,
     rect: Rect,
     /// Paints a box with alpha of 0.5 or more (or an image): it covers what is painted before it.
@@ -566,6 +568,7 @@ impl Walk<'_> {
                 el["fontSize"] = json!((px * 100.0).round() / 100.0);
                 el["fontWeight"] = json!(weight);
                 self.items.push(Item {
+                    widget: w.clone(),
                     json: el,
                     rect: r,
                     opaque: false,
@@ -641,6 +644,7 @@ impl Walk<'_> {
         }
         let el = base(role, &text, rect, opacity, bg);
         self.items.push(Item {
+            widget: w.clone(),
             json: el,
             rect,
             opaque,
@@ -660,6 +664,7 @@ impl Walk<'_> {
                     }
                     let at = self.items.len() + 1;
                     self.items.push(Item {
+                        widget: w.clone(),
                         json: j,
                         rect: f.b,
                         opaque: false,
@@ -695,6 +700,119 @@ fn child_text(w: &gtk4::Widget) -> String {
     parts.join(" ")
 }
 
+/// The screen as the renderer draws it: width, height and premultiplied BGRA pixels.
+fn render(root: &gtk4::Widget) -> Option<(usize, usize, Vec<u8>)> {
+    let (w, h) = (root.width(), root.height());
+    if w <= 0 || h <= 0 {
+        return None;
+    }
+    let paintable = gtk4::WidgetPaintable::new(Some(root));
+    let snap = gtk4::Snapshot::new();
+    paintable.snapshot(&snap, f64::from(w), f64::from(h));
+    let node = snap.to_node()?;
+    let renderer = root.native()?.renderer()?;
+    let tex = renderer.render_texture(&node, Some(&graphene::Rect::new(0.0, 0.0, w as f32, h as f32)));
+    let (tw, th) = (tex.width() as usize, tex.height() as usize);
+    let mut buf = vec![0u8; tw * th * 4];
+    tex.download(&mut buf, tw * 4);
+    Some((tw, th, buf))
+}
+
+type Frame = (usize, usize, Vec<u8>);
+
+/// The largest channel difference between two renders inside `r`.
+fn peak_diff(a: &Frame, b: &Frame, r: Rect, viewport: Rect) -> u8 {
+    let sx = a.0 as f32 / viewport[2].max(1.0);
+    let sy = a.1 as f32 / viewport[3].max(1.0);
+    let c = clip_rect(r, viewport);
+    let (x0, x1) = (
+        (c[0] * sx).floor() as usize,
+        (((c[0] + c[2]) * sx).ceil() as usize).min(a.0),
+    );
+    let (y0, y1) = (
+        (c[1] * sy).floor() as usize,
+        (((c[1] + c[3]) * sy).ceil() as usize).min(a.1),
+    );
+    let mut peak = 0;
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let o = (y * a.0 + x) * 4;
+            for k in 0..4 {
+                peak = peak.max(a.2[o + k].abs_diff(b.2[o + k]));
+            }
+        }
+    }
+    peak
+}
+
+/// Lets the main loop draw a frame after a change, so the next render reads the tree as the renderer has it.
+fn settle() {
+    let ctx = gtk4::glib::MainContext::default();
+    for _ in 0..2 {
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        while ctx.iteration(false) {}
+    }
+}
+
+/// A render with `hide` widgets at opacity 0 (and the widgets restored afterwards). A screen with nothing left to draw
+/// is a blank frame.
+fn render_hiding(root: &gtk4::Widget, hide: &[gtk4::Widget], like: &Frame) -> Frame {
+    let saved: Vec<f64> = hide.iter().map(|w| w.opacity()).collect();
+    for w in hide {
+        w.set_opacity(0.0);
+    }
+    settle();
+    let f = render(root);
+    for (w, o) in hide.iter().zip(saved) {
+        w.set_opacity(o);
+    }
+    f.unwrap_or_else(|| (like.0, like.1, vec![0u8; like.2.len()]))
+}
+
+/// Of the records the geometry calls covered, those the rendered screen shows no more than half of. A record is
+/// measured by hiding it: its widget goes to opacity 0 and the screen is drawn again. What that changes inside its box is
+/// what the screen shows of it (`seen`); the same measure with the covering widgets hidden as well is what it would show
+/// unobstructed (`open`). A cover that paints at alpha 0.5 or more leaves at most half of `open`, which is how the web
+/// scorer defines occluded, so a record is hidden when `seen` is no more than half of `open`. Screens that do not repeat
+/// exactly between two draws (video, animation) keep their records.
+fn confirm_hidden(
+    root: &gtk4::Widget,
+    items: &[Item],
+    candidates: &[(usize, Vec<usize>)],
+    viewport: Rect,
+) -> Vec<usize> {
+    if candidates.is_empty() {
+        return Vec::new();
+    }
+    let (Some(base), Some(again)) = (render(root), render(root)) else {
+        return Vec::new();
+    };
+    let mut hidden = Vec::new();
+    let mut by_cover: std::collections::BTreeMap<Vec<usize>, Vec<usize>> = Default::default();
+    for (i, cover) in candidates {
+        by_cover.entry(cover.clone()).or_default().push(*i);
+    }
+    for (cover, group) in by_cover {
+        let cover_w: Vec<gtk4::Widget> = cover.iter().map(|&c| items[c].widget.clone()).collect();
+        let open_base = render_hiding(root, &cover_w, &base);
+        for i in group {
+            let r = items[i].rect;
+            if peak_diff(&base, &again, r, viewport) > 0 {
+                continue;
+            }
+            let mut both = cover_w.clone();
+            both.push(items[i].widget.clone());
+            let open = peak_diff(&open_base, &render_hiding(root, &both, &base), r, viewport);
+            let one = [items[i].widget.clone()];
+            let seen = peak_diff(&base, &render_hiding(root, &one, &base), r, viewport);
+            if u32::from(seen) * 2 <= u32::from(open) + 8 {
+                hidden.push(i);
+            }
+        }
+    }
+    hidden
+}
+
 /// Writes the layout of `root` to `path`; `screen` and `theme` label the document.
 pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Result<(), String> {
     let viewport = [0.0, 0.0, root.width() as f32, root.height() as f32];
@@ -709,6 +827,7 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
     let n = walk.items.len();
     let mut keep = vec![true; n];
     let mut occluded = 0;
+    let mut candidates: Vec<(usize, Vec<usize>)> = Vec::new();
     #[allow(clippy::needless_range_loop)]
     // `keep` and the items are indexed together and the cover search runs ahead of `i`
     for i in 0..n {
@@ -718,22 +837,36 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
             continue;
         }
         let end = walk.items[i].end.max(i + 1);
+        let mut cover: Vec<usize> = Vec::new();
         let covered = [0.2_f32, 0.5, 0.8].iter().all(|fy| {
             [0.2_f32, 0.5, 0.8].iter().all(|fx| {
                 let (px, py) = (r[0] + r[2] * fx, r[1] + r[3] * fy);
-                walk.items[end..].iter().any(|o| {
+                let hit = (end..n).find(|&j| {
+                    let o = &walk.items[j];
                     o.opaque
                         && px >= o.rect[0]
                         && px <= o.rect[0] + o.rect[2]
                         && py >= o.rect[1]
                         && py <= o.rect[1] + o.rect[3]
-                })
+                });
+                if let Some(j) = hit {
+                    if !cover.contains(&j) {
+                        cover.push(j);
+                    }
+                }
+                hit.is_some()
             })
         });
         if covered {
-            keep[i] = false;
-            occluded += 1;
+            cover.sort_unstable();
+            candidates.push((i, cover));
         }
+    }
+    // The cover is a candidate only: the rendered screen decides. Hiding the record's widget and drawing the screen again
+    // must leave its box unchanged, or it is visible and stays.
+    for i in confirm_hidden(root, &walk.items, &candidates, viewport) {
+        keep[i] = false;
+        occluded += 1;
     }
     let elements: Vec<Value> = walk
         .items

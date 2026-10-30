@@ -98,6 +98,9 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
         .css_classes(["pa-key-art", "pa-khero"])
         .valign(gtk4::Align::Start)
         .build();
+    // The web draws the art 1.04 times as wide as the phone, from the left edge and 4 px above the top.
+    art.set_margin_top(-4);
+    art.set_margin_end(-14);
     art.set_size_request(-1, 223);
     let fade = |h: i32, class: &str| {
         let b = gtk4::Box::builder()
@@ -116,7 +119,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
 
     let page = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     page.add_css_class("pa-page-fill");
-    page.set_margin_bottom(32);
     let status = gtk4::Label::builder()
         .label("Loading…")
         .css_classes(["pa-muted"])
@@ -663,6 +665,8 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         }
     }
     if let Some((outer, _)) = band {
+        // The band ends 2 px lower than its content on the web; the page keeps its total.
+        page.add_css_class("banded");
         page.append(&outer);
     }
     // Nothing watched: the page opens at its top (the web refs), not at the first season.
