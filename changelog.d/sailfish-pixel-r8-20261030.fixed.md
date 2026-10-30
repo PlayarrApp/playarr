@@ -1,0 +1,1 @@
+Sailfish: the navigation bar no longer draws a second translucent plate behind idle links, the Home key art fades in at the web's position and its side mask spans the whole picture, nav icons are rasterised from a larger source, and the calendar link code is drawn unsmoothed so repeated captures match to the pixel.
