@@ -9,6 +9,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { PNG } from "pngjs";
 import { checkLayout } from "../layout-check.mjs";
 import { basename, dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -171,13 +172,87 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   // Asks the app for its layout and returns the document text, or null when none arrived.
   const requestLayout = async (theme, screen) => {
     await shell("run-as", pkg, "rm", "-f", "files/parity-layout.json").catch(() => {});
-    await shell("am", "broadcast", "-a", "io.playarr.mobile.PARITY_LAYOUT", "-p", pkg, "--es", "screen", screen, "--es", "theme", theme);
+    await shell("am", "broadcast", "-a", "io.playarr.mobile.PARITY_LAYOUT", "-p", pkg, "--es", "screen", screen, "--es", "theme", theme, "--ez", "rendered", "true");
     for (let i = 0; i < 20; i++) {
       await sleep(500);
       const json = await adb("exec-out", "run-as", pkg, "cat", "files/parity-layout.json").catch(() => "");
       if (json.startsWith("{")) return json;
     }
     return null;
+  };
+  // Real-screen occlusion (docs/parity/LAYOUT.md): the app flags the elements that lie wholly inside a higher window's opaque container. Toggle and diff:
+  // hide every window below the top one, screenshot again, and keep a flagged element only if the pixels in its own rectangle changed (the lower window showed there).
+  // A flagged fill (a drawer panel) is read from the screenshot: the most common colour among the pixels of its rectangle that no other exported element's rectangle covers.
+  const sampleFills = (layout, shown) => {
+    const img = PNG.sync.read(shown);
+    for (const e of layout.elements) {
+      if (!e.sampled) continue;
+      delete e.sampled;
+      const x0 = Math.max(0, Math.floor(e.rect.x)), y0 = Math.max(0, Math.floor(e.rect.y));
+      const x1 = Math.min(img.width, Math.ceil(e.rect.x + e.rect.w)), y1 = Math.min(img.height, Math.ceil(e.rect.y + e.rect.h));
+      const inner = layout.elements.filter((o) => o !== e && o.rect.x < x1 && o.rect.x + o.rect.w > x0 && o.rect.y < y1 && o.rect.y + o.rect.h > y0 && o.rect.w * o.rect.h < e.rect.w * e.rect.h);
+      const counts = new Map();
+      for (let y = y0; y < y1; y += 2) for (let x = x0; x < x1; x += 2) {
+        if (inner.some((o) => x >= Math.floor(o.rect.x) - 1 && x <= Math.ceil(o.rect.x + o.rect.w) && y >= Math.floor(o.rect.y) - 1 && y <= Math.ceil(o.rect.y + o.rect.h))) continue;
+        const i = (img.width * y + x) * 4, key = (img.data[i] << 16) | (img.data[i + 1] << 8) | img.data[i + 2];
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+      let best = null;
+      for (const [k, n] of counts) if (!best || n > best[1]) best = [k, n];
+      if (best) e.background = `#${best[0].toString(16).padStart(6, "0")}`;
+    }
+  };
+  const resolveCovered = async (layout, shown) => {
+    const flagged = layout.elements.filter((e) => e.covered);
+    const sameWindow = flagged.filter((e) => e.coverIds);
+    const windowLevel = flagged.filter((e) => !e.coverIds);
+    sampleFills(layout, shown);
+    const img = PNG.sync.read(shown);
+    // Pixels of the element's own rectangle that differ between the screen as shown and the screen with something hidden.
+    const changedFraction = (e, other) => {
+      const x0 = Math.max(0, Math.floor(e.rect.x)), y0 = Math.max(0, Math.floor(e.rect.y));
+      const x1 = Math.min(img.width, Math.ceil(e.rect.x + e.rect.w)), y1 = Math.min(img.height, Math.ceil(e.rect.y + e.rect.h));
+      let changed = 0, total = 0;
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+        const i = (img.width * y + x) * 4;
+        total++;
+        if (Math.abs(img.data[i] - other.data[i]) + Math.abs(img.data[i + 1] - other.data[i + 1]) + Math.abs(img.data[i + 2] - other.data[i + 2]) > 24) changed++;
+      }
+      return total ? changed / total : 0;
+    };
+    const hiddenShot = async (windows, ids) => {
+      try {
+        await shell("am", "broadcast", "-a", "io.playarr.mobile.PARITY_COVER", "-p", pkg, "--ez", "on", windows ? "true" : "false", "--es", "ids", ids.length ? ids.join(",") : "none");
+        await sleep(800);
+        return PNG.sync.read(await grab());
+      } finally {
+        await shell("am", "broadcast", "-a", "io.playarr.mobile.PARITY_COVER", "-p", pkg, "--ez", "on", "false", "--es", "ids", "none");
+        await sleep(500);
+      }
+    };
+    const drop = new Set();
+    // Elements under a higher window: hide that window's cover (every lower window); an element whose own pixels do not change was not showing.
+    if (windowLevel.length) {
+      const bare = await hiddenShot(true, []);
+      for (const e of windowLevel) if (changedFraction(e, bare) === 0) drop.add(e);
+    }
+    // Elements under a later painted box of the same window: hide the covers' paint. Hiding must not remove an ancestor of a candidate in the same pass, so candidates are grouped.
+    const groups = [];
+    for (const e of sameWindow) {
+      const g = groups.find((g) => !e.coverIds.some((id) => g.members.some((m) => m.chainIds.includes(id))) && !g.hide.some((id) => e.chainIds.includes(id)));
+      if (g) { g.members.push(e); for (const id of e.coverIds) if (!g.hide.includes(id)) g.hide.push(id); }
+      else groups.push({ members: [e], hide: [...e.coverIds] });
+    }
+    for (const g of groups) {
+      const bare = await hiddenShot(false, g.hide);
+      for (const e of g.members) if (changedFraction(e, bare) >= 0.9) drop.add(e);
+    }
+    for (const e of layout.elements) { delete e.covered; delete e.coverIds; delete e.chainIds; }
+    // The screen must be back as it was, else the frame kept would not be the one described.
+    if (flagged.length && !(await grab()).equals(shown)) return false;
+    layout.elements = layout.elements.filter((e) => !drop.has(e));
+    layout.occluded = drop.size;
+    return true;
   };
   const grab = async () => env.PARITY_XDISPLAY
     ? (await execBounded("import", ["-window", "root", "png:-"], { encoding: "buffer", maxBuffer: 64 << 20, env: { ...env, DISPLAY: env.PARITY_XDISPLAY }, label: "screen capture import" })).stdout
@@ -436,10 +511,12 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
         if (json === null) continue;
         const after = await grab();
         if (!before.equals(after)) { await sleep(500); continue; }
+        const layout = json ? JSON.parse(json) : null;
+        if (layout && !(await resolveCovered(layout, before))) { await sleep(500); continue; }
         writeFileSync(file, before);
-        if (json) {
+        if (layout) {
           mkdirSync(dirname(layoutFile), { recursive: true });
-          writeFileSync(layoutFile, JSON.stringify(checkLayout(JSON.parse(json), theme)));
+          writeFileSync(layoutFile, JSON.stringify(checkLayout(layout, theme)));
         }
         return;
       }

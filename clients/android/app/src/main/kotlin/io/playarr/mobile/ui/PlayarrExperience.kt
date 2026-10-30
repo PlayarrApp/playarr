@@ -10146,18 +10146,22 @@ private fun ExperiencePlayerScreen(
                         playing = playbackState.playWhenReady,
                     )
                 } else {
+                    // The surface is named for accessibility (release builds too): once on the Compose node and once on the native view TalkBack reaches.
+                    val videoSurfaceName = playarrString(PlayarrString.PlayerVideoSurface)
                     androidx.compose.ui.viewinterop.AndroidView(
-                        modifier = Modifier.fillMaxSize().parityBox("video", label = playarrString(PlayarrString.PlayerVideoSurface)),
+                        modifier = Modifier.fillMaxSize().semantics { contentDescription = videoSurfaceName }.parityBox("video"),
                         factory = { context ->
                             androidx.media3.ui.PlayerView(context).apply {
                                 player = viewModel.player.rawPlayer
                                 useController = false
+                                contentDescription = videoSurfaceName
                             }
                         },
                         // Re-bind on every recomposition (layout and PiP size changes) so the surface
                         // never stays attached to a stale or detached player.
                         update = { view ->
                             if (view.player !== viewModel.player.rawPlayer) view.player = viewModel.player.rawPlayer
+                            if (view.contentDescription != videoSurfaceName) view.contentDescription = videoSurfaceName
                         },
                     )
                 }

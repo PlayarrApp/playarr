@@ -1883,7 +1883,10 @@ private fun calendarEntryDetail(entry: CalendarEntry): String {
 private fun CalendarPoster(url: String?, modifier: Modifier) {
     val shape = RoundedCornerShape(8.dp)
     if (url.isNullOrBlank()) {
-        Box(modifier.background(WebSurfaceSoft, shape))
+        // No poster: only a painted Box is drawn, so a parity image hook on this slot is a container.
+        androidx.compose.runtime.CompositionLocalProvider(io.playarr.shared.designsystem.page.LocalParityImagePlaceholder provides true) {
+            Box(modifier.background(WebSurfaceSoft, shape))
+        }
     } else {
         AsyncImage(
             model = url,
