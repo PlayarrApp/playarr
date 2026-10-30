@@ -6,6 +6,7 @@
  * discovery titles open native detail; remote titles expose request/watchlist actions where the web does.
  */
 import React, {useContext, useEffect, useMemo, useRef, useState} from 'react';
+import {PARITY_CONTROL} from '../debug/parityControl';
 import {Animated, Easing, Pressable, TextInput, View} from 'react-native';
 import type {DiscoverTitle, PlaylistResponse, WatchProgress, Work} from '@playarr-tv/api-client';
 import {useAsyncData} from '@playarr-tv/api-client/react';
@@ -227,6 +228,8 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
           {...lx('textbox', t('pages.search.searchPlaceholder'))}
           returnKeyType="search"
           hasTVPreferredFocus
+          // Parity builds draw no blinking caret (the web refs set caret-color transparent), so two captures match.
+          {...(PARITY_CONTROL ? {caretHidden: true, cursorColor: 'transparent', selectionColor: 'transparent'} : null)}
           style={{flex: 1, marginLeft: u(13), padding: 0, height: u(60), color: colour.ink, fontSize: u(17.28), textAlignVertical: 'center', ...sans(400)}}
         />
         {/* The placeholder is drawn as a native Text over the empty input, so the row is laid-out text the exporter can read. */}

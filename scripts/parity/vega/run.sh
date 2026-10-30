@@ -27,5 +27,11 @@ suite() { node suite-run.mjs --driver ./drivers/firetv.mjs --skip-player --out "
 if [ "$only" = all ] || [ "$only" = screens ]; then suite --via route --only screens --screens "$screens" --extra-screens calendar-link; fi
 if [ "$only" = all ] || [ "$only" = dpad ]; then suite --via route --only dpad; fi
 repo="$(git rev-parse --show-toplevel)"
-printf '{"branch":"%s","sha":"%s","pr":%s,"captured_at":"%s","server":"static server"}\n' \
-  "$(git -C "$repo" branch --show-current)" "$(git -C "$repo" rev-parse --short HEAD)" "${PARITY_PR:-null}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$out/build.json"
+# build.json names what was installed when the build was made: PLAYARR_FIRETV_BUILD_INFO is the JSON the build step wrote
+# ({"branch","sha","pr"}). Without it the checkout is named, which is only right when the build came from this checkout's HEAD.
+if [ -n "${PLAYARR_FIRETV_BUILD_INFO:-}" ] && [ -r "$PLAYARR_FIRETV_BUILD_INFO" ]; then
+  node -e 'const b=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log(JSON.stringify({branch:b.branch,sha:b.sha,pr:b.pr??null,captured_at:process.argv[2],server:"static server"}))' "$PLAYARR_FIRETV_BUILD_INFO" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$out/build.json"
+else
+  printf '{"branch":"%s","sha":"%s","pr":%s,"captured_at":"%s","server":"static server"}\n' \
+    "$(git -C "$repo" branch --show-current)" "$(git -C "$repo" rev-parse --short HEAD)" "${PARITY_PR:-null}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$out/build.json"
+fi

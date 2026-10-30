@@ -314,6 +314,25 @@ export async function createDriver({ out } = {}) {
       }
       return null;
     },
+    // A frame is taken only when two consecutive captures are pixel-identical (a fade, a shimmer or a caret still moving shows as a
+    // difference); a screen that never settles fails the capture.
+    async stableCapture(file) {
+      const grab = async (to) => {
+        await execFileP("import", ["-window", "root", "-crop", "1920x1080+0+0", "+repage", to], { env });
+        return PNG.sync.read(readFileSync(to)).data;
+      };
+      let previous = await grab(file);
+      for (let i = 0; i < 8; i++) {
+        await sleep(700);
+        const again = `${file}.next.png`;
+        const next = await grab(again);
+        if (Buffer.compare(previous, next) === 0) { unlinkSync(again); return; }
+        writeFileSync(file, readFileSync(again));
+        unlinkSync(again);
+        previous = next;
+      }
+      throw new Error(`the screen never settled (two consecutive frames differ): ${file}`);
+    },
     async screenshot(file) {
       const s = await state();
       if (!s.route || s.route === "/profiles" && !file.includes("profiles")) throw new Error(`not a content screen: ${s.route}`);
@@ -322,7 +341,7 @@ export async function createDriver({ out } = {}) {
       // The layout document of the same screen state goes next to the capture: <out>/layout/<theme>/<screen>.json.
       const theme = basename(dirname(file));
       const layout = theme === "dark" || theme === "light" ? await layoutDocument() : null;
-      await execFileP("import", ["-window", "root", "-crop", "1920x1080+0+0", "+repage", file], { env });
+      await this.stableCapture(file);
       if (!layout) return;
       // Elements a later opaque view covers are flagged by the app; the real screen decides: hide the covering views, capture
       // again, and an element whose box pixels changed was covered by them (the pixels shown there were the cover's, not its own).

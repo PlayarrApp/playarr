@@ -95,8 +95,12 @@ export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines
   const single = lh !== undefined && (lines === 1 || lh < content);
   const run = textRun(uf(size), weight, {letterSpacing: ls === undefined ? undefined : uf(ls), lineHeight: lh === undefined ? undefined : uf(single ? content : lh), mono});
   const lead = lh === undefined ? 0 : (lh - content) / 2;
-  // Parity builds record the CSS size, weight and laid-out lines of every run for the layout exporter.
+  // Parity builds record the laid-out lines of every run for the layout exporter. A run that wraps is then drawn as one real Text
+  // per line (the renderer reports one box per Text, not per wrapped line), so every line's own bounds are measured. The last
+  // line keeps the rest of the source, so a run that was cut short with an ellipsis is still cut short.
   const node = React.useRef<object | null>(null);
+  const [pieces, setPieces] = useState<string[] | null>(null);
+  React.useEffect(() => setPieces(null), [children]);
   const parity = PARITY_CONTROL
     ? {
         ref: (instance: object | null) => {
@@ -105,9 +109,37 @@ export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines
         onTextLayout: (event: NativeSyntheticEvent<TextLayoutEventData>) => {
           registerLines(node.current, event.nativeEvent.lines);
           onTextLayout?.(event);
+          const found = event.nativeEvent.lines;
+          if (lines !== 1 && typeof children === 'string' && found.length > 1 && !pieces) {
+            const out: string[] = [];
+            let at = 0;
+            found.forEach((line, index) => {
+              if (index === found.length - 1) {
+                out.push(children.slice(at).trim());
+                return;
+              }
+              const text = (line as {text?: string}).text ?? '';
+              const hit = text ? children.indexOf(text.trim(), at) : -1;
+              if (hit < 0) return;
+              out.push(text.trim());
+              at = hit + text.trim().length;
+            });
+            if (out.length === found.length) setPieces(out);
+          }
         },
       }
     : {onTextLayout};
+  if (pieces) {
+    return (
+      <>
+        {pieces.map((piece, index) => (
+          <T key={index} size={size} weight={weight} ls={ls} lh={lh} dy={dy} color={color} upper={upper} mono={mono} lines={1} heading={heading} generic={generic} group={group} style={style}>
+            {piece}
+          </T>
+        ))}
+      </>
+    );
+  }
   return (
     <Text
       numberOfLines={lines}
