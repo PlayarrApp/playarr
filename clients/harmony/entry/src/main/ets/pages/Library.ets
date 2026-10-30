@@ -850,7 +850,11 @@ export struct Library {
       this.items = orderWorks(nextItems, sortValue, orderValue);
       if (offset === 0) {
         this.total = total !== null ? total : -1;
-        this.setHero(this.items[0]);
+        // a late reload of the first page must not undo the hero the viewer (or the Filters button) already moved to
+        const kept: Work | undefined = this.hero;
+        if (kept === undefined || !this.items.some((w: Work): boolean => w.id === kept.id)) {
+          this.setHero(this.items[0]);
+        }
       }
       this.hasMore = page.items.length >= catalogPageSize && !reachedTotal;
       this.errorMessage = '';

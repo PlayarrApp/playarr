@@ -18,12 +18,21 @@ function PlayarrInstanceWeight(weight as Integer) as Integer
     return w
 end function
 
-function PlayarrFontPath(weight as Integer, mono = false as Boolean) as String
+' The font file's descent band for a pixel size: Roku sizes a Label as ceil(ascent) + ceil(descent) + 1, so each band carries the
+' descent that makes the Label as tall as the web's line box (scripts/make_font_data.py).
+function PlayarrBandFor(size as Integer) as String
+    if size <= 12 then return "a"
+    if size <= 23 then return "b"
+    if size <= 39 then return "c"
+    return "d"
+end function
+
+function PlayarrFontPath(weight as Integer, mono = false as Boolean, size = 0 as Integer) as String
     if mono
         if weight >= 600 then return "pkg:/fonts/JetBrainsMono-700.ttf"
         return "pkg:/fonts/JetBrainsMono-400.ttf"
     end if
-    return "pkg:/fonts/NunitoSans-" + PlayarrInstanceWeight(weight).ToStr() + ".ttf"
+    return "pkg:/fonts/NunitoSans-" + PlayarrInstanceWeight(weight).ToStr() + "-" + PlayarrBandFor(size) + ".ttf"
 end function
 
 ' A Font node takes an integer size: a fractional web size rounds to the nearest pixel (within the scorer's 0.5 px).
@@ -32,8 +41,8 @@ function PlayarrMakeFont(weight as Integer, size as Float, mono = false as Boole
     g = GetGlobalAA()
     if g[key] <> invalid then return g[key]
     font = CreateObject("roSGNode", "Font")
-    font.uri = PlayarrFontPath(weight, mono)
     font.size = Int(size + 0.5)
+    font.uri = PlayarrFontPath(weight, mono, font.size)
     g[key] = font
     if g.fontMeta = invalid then g.fontMeta = {}
     g.fontMeta[font.uri + "|" + Str(font.size)] = { px: size, weight: weight }
@@ -117,7 +126,7 @@ function PlayarrTypeFor(scope as String, id as String) as Dynamic
             profilesLangLabel: { size: 11.52, weight: 720, tracking: 0 }
             searchEmptyHint: { size: 13.82, weight: 400, tracking: 0, role: "inkMuted", lineHeight: 22.4 }
             searchEmptyLabel: { size: 16.9, weight: 650, tracking: -0.349, role: "ink" }
-            searchFieldLabel: { size: 15.4, weight: 400, tracking: 0, role: "inkMuted" }
+            searchFieldLabel: { size: 17.66, weight: 400, tracking: 0, role: "inkMuted" }
             "PosterCard.title": { size: 11.9, weight: 610, tracking: -0.183 }
             "PosterCard.kind": { size: 8.83, weight: 400, tracking: 0 }
         }

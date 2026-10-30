@@ -34,4 +34,18 @@ final class ParityPaintTests: XCTestCase {
         XCTAssertEqual(backdrop.rgb(at: CGPoint(x: 25, y: 5), environment).r, 0.25, accuracy: 0.001)
         XCTAssertEqual(backdrop.rgb(at: CGPoint(x: 75, y: 5), environment).r, 0.75, accuracy: 0.001)
     }
+
+    func testNothingIsDrawnOutsideAMaskedFrame() {
+        let fade = ParityFade(rect: CGRect(x: 0, y: 0, width: 100, height: 10), horizontal: true, stops: [SIMD2(0, 1), SIMD2(1, 0.3)])
+        XCTAssertEqual(fade.alpha(at: CGPoint(x: 150, y: 5)), 0)
+    }
+
+    func testScaleTransformsTheRectAboutItsCentre() {
+        var paint = ParityPaint()
+        paint.scales = [ParityScale(centre: CGPoint(x: 50, y: 50), factor: 1.1)]
+        let drawn = paint.drawn(CGRect(x: 40, y: 40, width: 20, height: 20))
+        XCTAssertEqual(drawn.width, 22, accuracy: 0.001)
+        XCTAssertEqual(drawn.midX, 50, accuracy: 0.001)
+        XCTAssertEqual(paint.scale, 1.1, accuracy: 0.001)
+    }
 }

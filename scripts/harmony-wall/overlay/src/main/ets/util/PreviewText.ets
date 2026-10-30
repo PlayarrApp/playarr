@@ -20,6 +20,18 @@ export function pvTcId(): string {
   return LAST;
 }
 
+let INSTANCES: number = 0;
+
+// One number per struct instance, taken at its construction: the probe key of a node is its source key plus this, so repeated instances differ.
+export function pvNextInst(): number {
+  INSTANCES++;
+  return INSTANCES;
+}
+
+export function pvKey(inst: number, key: string): string {
+  return inst > 0 ? key + '.' + inst.toString() : key;
+}
+
 // The visibility of a keyed node (patch_hide.py): hidden while its key is in the AppStorage string the route poll sets for the occlusion probe.
 export function pvVis(hidden: string, key: string): Visibility {
   return hidden.indexOf('|' + key + '|') >= 0 ? Visibility.Hidden : Visibility.Visible;

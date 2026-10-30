@@ -41,7 +41,7 @@ sub drawerOpen(kicker as String, title as String, items as Object, returnTo as S
         if glyph = "+" then glyph = "＋"
         pgGlyph(g, glyph, 1624, y + 20.4, 19.52, 400, "brand")
         pgLabel(g, 1666, y + 20.6, 200, 26, items[i].label, 19.2, 700, "ink")
-        pgMark(g, "button", glyph + " " + items[i].label, 1606, y, 268, 68, 14)
+        pgMark(g, "button", items[i].label, 1606, y, 268, 68, 14)
         ring = CreateObject("roSGNode", "Group")
         pgRound(ring, 1603, y - 3, 274, 74, 16, "focusRing", -1, true)
         pgRound(ring, 1604, y - 2, 272, 72, 15, "focusRing", -1, true)

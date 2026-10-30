@@ -411,11 +411,11 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
               <Pill
                 glyph={watchlist.listed ? '✓' : '+'}
                 label={watchlist.listed ? t('discovery.watchlist.remove') : t('discovery.watchlist.add')}
-                web={{role: 'button', label: `${watchlist.listed ? '✓' : '+'} ${watchlist.listed ? t('discovery.watchlist.remove') : t('discovery.watchlist.add')}`}}
+                web={{role: 'button', label: watchlist.listed ? t('discovery.watchlist.remove') : t('discovery.watchlist.add')}}
                 disabled={watchlist.listed === null}
                 onPress={watchlist.toggle}
               />
-              <Pill glyph="+" label={t('components.mediaContextMenu.addToPlaylist')} web={{role: 'button', label: `+ ${t('components.mediaContextMenu.addToPlaylist')}`}} onPress={() => setPlaylistSheet(true)} />
+              <Pill glyph="+" label={t('components.mediaContextMenu.addToPlaylist')} web={{role: 'button', label: t('components.mediaContextMenu.addToPlaylist')}} onPress={() => setPlaylistSheet(true)} />
             </PillRow>
           }
         />

@@ -54,7 +54,6 @@ private struct WMPanelFrame<Content: View>: View {
                         WMText(kicker.uppercased(), 7.04, 720, color: WM.muted, lh: 11, ls: 0.4928)
                         WMText(title, 27.32, 590, lh: 40.98, ls: -1.5026, role: "heading")
                             .lineLimit(1)
-                            .minimumScaleFactor(0.72)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -109,9 +108,9 @@ private struct WMChoice: View {
             .foregroundStyle(selected ? WM.page : WM.inkSoft)
             .frame(maxWidth: .infinity).frame(height: height)
             // Web `.tv-filter-choice-grid button`: surface-soft at 64% with a 1 px border of line at 76%; the active one is solid ink.
-            .background(selected ? WM.ink : WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .parityShape("button", color: selected ? WM.ink : WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 14, style: .continuous), radius: 14)
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(WM.line.opacity(scheme == .light ? 0.106 : 0.084), lineWidth: 1))
-            .scaleEffect(selected ? 1.025 : 1)
+            .parityScale(selected ? 1.025 : 1)
         }
         .buttonStyle(.plain)
     }
@@ -155,7 +154,7 @@ private struct WMLanguageSelector: View {
                 }
                 .padding(.horizontal, 19)
                 .frame(height: 58)
-                .background(WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .parityShape("button", color: WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 16, style: .continuous), radius: 16)
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(WM.line.opacity(scheme == .light ? 0.106 : 0.084), lineWidth: 1))
             }
             .buttonStyle(.plain)

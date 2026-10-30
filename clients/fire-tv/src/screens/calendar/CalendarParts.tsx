@@ -383,7 +383,7 @@ function WatchlistPill({listed, onPress}: {listed: boolean | null; onPress: () =
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      {...lx('button', `+ ${label}`, 999)}
+      {...lx('button', label, 999)}
       disabled={listed === null}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}

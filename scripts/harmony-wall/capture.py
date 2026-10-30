@@ -296,12 +296,20 @@ def keys_hidden(raw):
 
     def walk(node):
         a = node.get("$attrs") or node
-        if str(a.get("visibility", "")).lower().endswith("hidden") and str(a.get("id", "")).startswith("pvh"):
-            found.add(a["id"])
+        key = next((k for k in (a.get("id"), a.get("accessibilityDescription")) if str(k).startswith("pvh")), None)
+        if key is not None and str(a.get("visibility", "")).lower().endswith("hidden"):
+            found.add(key)
         for kid in node.get("$children") or []:
             walk(kid)
     walk(json.loads(raw))
     return found
+
+
+def nonzero(diff):
+    """255 where any of the R, G, B channels differs at all (no luminance weighting, no threshold)."""
+    from PIL import ImageChops  # noqa: PLC0415
+    r, g, b = diff.convert("RGB").split()
+    return ImageChops.lighter(ImageChops.lighter(r, g), b).point(lambda v: 255 if v else 0)
 
 
 def stable():
@@ -332,23 +340,28 @@ def probe_occlusion(name, theme, raw, viewport, layout_export, base):
         box = (max(box[0], 0), max(box[1], 0), min(box[2], a.size[0]), min(box[3], a.size[1]))
         if box[2] <= box[0] or box[3] <= box[1]:
             return None
-        d = ImageChops.difference(a.crop(box), b.crop(box)).convert("L").point(lambda v: 255 if v else 0)
+        d = nonzero(ImageChops.difference(a.crop(box), b.crop(box)))
         d = ImageChops.subtract(d, noise.crop(box))
         return d.getbbox() is not None
+
+    noise = None
 
     def hidden_shot(keys):
         """Hide the keys, return (screenshot, the keys the app reports hidden), show everything again."""
         get("/setroute", name="hide:" + ",".join(sorted(keys)))
         time.sleep(4)
         shot, tree = stable(), fetch_tree(name, theme)
-        get("/setroute", name="show:all")
+        get("/setroute", name="show:all")  # every keyed node's visibility binding goes back to Visible (the string is empty)
         time.sleep(4)
+        back = stable()  # and the screen must be the base frame again after each probe, not only at the end
+        if back is None or ImageChops.subtract(nonzero(ImageChops.difference(base, back)), noise).getbbox() is not None:
+            raise RuntimeError("the screen did not return to its base frame after a probe")
         return shot, (keys_hidden(tree) if tree else set())
 
     try:
         if todo and ctrl is not None:
             time.sleep(1.0)
-            noise = ImageChops.difference(base, png()).convert("L").point(lambda v: 255 if v else 0)
+            noise = nonzero(ImageChops.difference(base, png()))
             shot, hid = hidden_shot({ctrl["id"]})
             if shot is not None and ctrl["id"] in hid and changed(base, shot, noise, ctrl["box"]):
                 groups = {}
@@ -375,7 +388,7 @@ def probe_occlusion(name, theme, raw, viewport, layout_export, base):
                             if seen is not None:
                                 result["results"][str(c["index"])] = seen
                 back = stable()
-                if back is None or ImageChops.subtract(ImageChops.difference(base, back).convert("L").point(lambda v: 255 if v else 0), noise).getbbox() is not None:
+                if back is None or ImageChops.subtract(nonzero(ImageChops.difference(base, back)), noise).getbbox() is not None:
                     result["results"] = {}  # the screen did not return to what it was: nothing measured can be trusted
                     result["note"] = "screen not restored after probing"
             else:
@@ -410,13 +423,10 @@ def export_layout(name, image=None, theme=None):
         os.makedirs(rawdir, exist_ok=True)
         open(os.path.join(rawdir, name + ".json"), "wb").write(raw)
         viewport = (1920, 1080, 1) if device == "tv" else (360, 780, 3)
-        if name == "player-controls":  # the video surface never settles in the Previewer: no equal-frame proof and no probe, every flagged element stays exported
-            probe = {"results": {}, "note": "player-controls: the video surface never settles, nothing probed"}
-        else:
-            base = stable()
-            if image is not None and (base is None or base.tobytes() != image.tobytes()):
-                raise FrameMismatch(f"{name}: the frame after the layout dump differs from the saved screenshot (or never settled)")
-            probe = probe_occlusion(name, theme, raw, viewport, layout_export, base)
+        base = stable()
+        if image is not None and (base is None or base.tobytes() != image.tobytes()):
+            raise FrameMismatch(f"{name}: the frame after the layout dump differs from the saved screenshot (or never settled)")
+        probe = probe_occlusion(name, theme, raw, viewport, layout_export, base)
         count = layout_export.write(raw, name, theme, viewport, os.path.join(out, "layout"),
                                     clock_pinned=True, origin=STAGE_ORIGIN, probe=probe)  # patch_clock.py pins the preview clock to the fixture instant
         print(f"layout {name}: {count} elements", flush=True)

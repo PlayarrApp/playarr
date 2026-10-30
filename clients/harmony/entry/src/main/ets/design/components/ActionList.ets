@@ -60,7 +60,7 @@ export struct ActionList {
           .padding({ left: tv(ROW_PADDING_H), right: tv(ROW_PADDING_H) })
           .borderRadius(tv(ROW_RADIUS))
           .backgroundColor(toResourceColor(activeColors().surfaceSoft))
-          .accessibilityText(action.glyph + ' ' + action.label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+          .accessibilityText(action.label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
         }
         // Phone: web's ring sits 2 vp clear of the row (the wrapper's padding), without moving the layout.
         .width(isTvMetrics() ? '100%' : 'calc(100% + 4vp)')
