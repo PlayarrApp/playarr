@@ -660,7 +660,7 @@ export async function createDriver() {
     async focused() {
       await guard();
       const value = await ev(`(() => { const e = document.activeElement; if (!e || e === document.body) return null;
-        const label = (e.getAttribute("aria-label") || e.textContent.trim().slice(0, 80) || e.className.toString()).replace(/^Resume (.*) from \\d+:\\d+(?::\\d+)?$/i, "Open $1");
+        const label = (e.getAttribute("aria-label") || e.textContent.trim() || e.className.toString()).replace(/\\s+/g, " ");
         let position = null; const nav = e.closest(".app-nav-link"); const card = e.closest(".tv-home-card");
         if (nav) position = { rail: "nav", index: [...document.querySelectorAll(".app-nav-link")].indexOf(nav) };
         else if (card) { const rail = (c) => (c.getAttribute("data-navigation-focus-key") || "").split(":")[1]; const cards = [...document.querySelectorAll(".tv-home-card")]; const rails = [...new Set(cards.map(rail))];
