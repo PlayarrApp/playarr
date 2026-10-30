@@ -1,1 +1,0 @@
-- Samsung Tizen 6.5: legacy Tizen app layout adjustment to match web line boxes (not engine rounding), behind the legacy-engine gate, so the filter drawer, actions and detail pages draw the web line boxes on Chromium 85; the AVPlay shim reports player readiness.
