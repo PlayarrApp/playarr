@@ -337,7 +337,7 @@ private struct TVProductionShell<Stage: View>: View {
 
     private var navColumn: CGFloat {
         DesignTokens.Shell.navItemSize
-            + DesignTokens.Shell.navGroupPadding * 2
+            + DesignTokens.Shell.navGroupPaddingH * 2
             + DesignTokens.Shell.navEdge * 2
     }
 
@@ -1248,8 +1248,9 @@ struct TVProfilesView: View {
                 moveFocusToChrome()
             }
         }
-        .accessibilityLabel("+ Sign in ADD ANOTHER PROFILE")
-        .parityBox("button", text: "+ Sign in ADD ANOTHER PROFILE", fill: palette.bg)
+        // Web: the "+" is aria-hidden and the name is the DOM text ("Add another profile", upper-cased only by CSS).
+        .accessibilityLabel("Sign in Add another profile")
+        .parityBox("button", text: "Sign in Add another profile", fill: palette.bg)
     }
 
     private func statusLabel(for profile: AvailableProfile, busy: Bool) -> String {

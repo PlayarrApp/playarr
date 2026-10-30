@@ -139,20 +139,25 @@ struct TVPageHeader: View {
             let size: CGFloat = backFocused ? 58 : 50
             let origin: CGFloat = backFocused ? 149.6 : 153.6
             Circle()
-                .fill(DesignTokens.Color.backgroundElevated.opacity(0.7))
+                .fill(DesignTokens.Stage.surfaceStrong.opacity(0.7))
                 .overlay(
                     Circle().stroke(
                         backFocused ? DesignTokens.Color.textPrimary : DesignTokens.Color.borderDefault.opacity(0.35),
                         lineWidth: backFocused ? 2 : 1
                     )
                 )
-                .overlay(
-                    Text("\u{2190}")
-                        .font(TVTheme.font(size: 17.3, weight: .semibold))
-                        .foregroundStyle(DesignTokens.Color.textSecondary)
-                        .parityLayout(text: "\u{2190}", size: 17.3, weight: 720, color: DesignTokens.Color.textSecondary)
-                )
-                .parityBox(backRole, text: backName, radius: 50, fill: DesignTokens.Stage.surface, alpha: 0.7)
+                .overlay {
+                    // the control is 50 wide; a focused one draws its 2 pt ring outside it
+                    Color.clear.frame(width: 50, height: 50)
+                        .overlay(
+                            Text("\u{2190}")
+                                .font(TVTheme.font(size: 17.3, weight: .semibold))
+                                .foregroundStyle(DesignTokens.Color.textSecondary)
+                                .parityLayout(text: "\u{2190}", size: 17.3, weight: 720, color: DesignTokens.Color.textSecondary)
+                        )
+                        .parityBox(backRole, text: backName, radius: 25, fill: DesignTokens.Stage.surfaceStrong, alpha: 0.7)
+                        .parityBackdrop(DesignTokens.Stage.surface)
+                }
                 .placed(x: origin, y: backFocused ? 52.2 : 56.2, w: size, h: size)
             // Web `.page-header`: the title, a hairline divider and the subtitle in one row, centred on the title. Only when
             // the row would run into the clock (x 466) does the subtitle drop under the title.
@@ -527,6 +532,9 @@ struct TVDrawer<Content: View>: View {
     let onClose: () -> Void
     /// The content takes the first focus (web: the actions drawer opens on Play), not the close button.
     var focusesContent = false
+    #if os(macOS)
+    @State private var backHandlerID = UUID()
+    #endif
     @ViewBuilder var content: () -> Content
     /// Focus moves into the drawer when it opens (web: the panel takes focus; Back closes it).
     @FocusState private var closeFocused: Bool
@@ -534,14 +542,8 @@ struct TVDrawer<Content: View>: View {
     /// The web close button is a circle (the 2026-10-15 refs of every Apple device).
     private static var closeRadius: CGFloat { 25 }
 
-    /// macOS: the web sections start 2 pt lower than the shared measure (Filters and Actions refs, 2026-10-19).
-    private var drawerContentTop: CGFloat {
-        #if os(macOS)
-        38
-        #else
-        36
-        #endif
-    }
+    /// The web sections start 36 pt under the header on both platforms (the 2026-10-30 refs; macOS had 38 against the earlier ones).
+    private var drawerContentTop: CGFloat { 36 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -621,6 +623,11 @@ struct TVDrawer<Content: View>: View {
         .macFocusLayer() // every drawer keeps keyboard focus inside it on the Mac (macOS/MacFocus.swift)
         #endif
         .onExitCommand(perform: onClose)
+        #if os(macOS)
+        // Escape closes the open drawer through the keyboard monitor itself (the responder chain dropped it on some pages).
+        .onAppear { MacKeyboard.shared.pushBackHandler(backHandlerID) { onClose(); return true } }
+        .onDisappear { MacKeyboard.shared.popBackHandler(backHandlerID) }
+        #endif
         .task {
             if !focusesContent { closeFocused = true }
             #if os(macOS)
@@ -893,7 +900,7 @@ struct TVActionRow: View {
                 Text(glyph)
                     .font(TVTheme.font(size: 19.52, css: 400))
                     .foregroundStyle(DesignTokens.Stage.brandPink)
-                    .parityLayout(text: glyph, size: 19.52, weight: Int(400), color: DesignTokens.Stage.brandPink)
+                    .parityLayout(text: glyph.replacingOccurrences(of: "\u{FE0E}", with: ""), size: 19.52, weight: Int(400), color: DesignTokens.Stage.brandPink) // the text-style selector is not a displayed character
                     .frame(width: 42, alignment: .leading)
                 Text(label)
                     .font(TVTheme.font(size: 19.2, css: 700))
@@ -904,12 +911,12 @@ struct TVActionRow: View {
             }
             .padding(.leading, 18)
             .frame(width: 268, height: 68)
-            .parityBox("button", text: "\(glyph) \(label)", radius: 14, fill: DesignTokens.Stage.surfaceSoft)
+            .parityBox("button", text: label, radius: 14, fill: DesignTokens.Stage.surfaceSoft)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(DesignTokens.Stage.surfaceSoft))
         }
         .buttonStyle(TVRingButtonStyle(cornerRadius: 14))
         .focusEffectDisabled()
-        .accessibilityLabel("\(glyph) \(label)")
+        .accessibilityLabel(label) // the glyph is decoration (web: aria-hidden)
         .focused($focused)
         #if DEBUG && (os(tvOS) || os(macOS))
         .onChange(of: focused) { _, now in TVParityState.setFocus(label, now) }
@@ -960,13 +967,17 @@ struct TVMultiSelectSection: View {
                             .foregroundStyle(DesignTokens.Color.textSecondary)
                             .parityLayout(text: open ? "\u{2303}" : "\u{2304}", size: 11.84, weight: Int(680), color: DesignTokens.Color.textSecondary)
                     }
-                    .padding(.horizontal, 19.4)
-                    .frame(width: 268, height: 58.8)
-                    .parityBox("group", radius: 12, fill: DesignTokens.Stage.surfaceSoft, alpha: 0.64)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(DesignTokens.Stage.surfaceSoft.opacity(0.64)))
+                    // Web `.multi-select`: a 268 x 58.8 field whose button sits 7.4 pt inside it (253.2 x 44, radius 10).
+                    .padding(.horizontal, 12)
+                    .frame(width: 253.2, height: 44)
                 }
-                .buttonStyle(TVRingButtonStyle(cornerRadius: 12))
+                .buttonStyle(TVRingButtonStyle(cornerRadius: 10))
                 .focusEffectDisabled()
+                .accessibilityLabel(summary)
+                .padding(7.4)
+                .frame(width: 268, height: 58.8)
+                .parityBox("group", radius: 12, fill: DesignTokens.Stage.surfaceSoft, alpha: 0.64)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(DesignTokens.Stage.surfaceSoft.opacity(0.64)))
                 if open {
                     ForEach(options) { facet in
                         let chosen = selection.contains(facet.code)
@@ -1021,9 +1032,9 @@ struct TVStatusPill: View {
     var body: some View {
         let colour = TVCalendarView.toneColour(tone)
         Text(label)
-            .font(TVTheme.font(size: 13.28, css: 750))
+            .font(TVTheme.font(size: 13.44, css: 750))
             .foregroundStyle(DesignTokens.Color.textPrimary)
-            .parityLayout(text: label, size: 13.28, weight: 750, color: DesignTokens.Color.textPrimary)
+            .parityLayout(text: label, size: 13.44, weight: 750, color: DesignTokens.Color.textPrimary)
             .padding(.horizontal, 10.4)
             .frame(height: 26.6)
             .parityBox("container", radius: 13.44, fill: colour, alpha: 0.14)

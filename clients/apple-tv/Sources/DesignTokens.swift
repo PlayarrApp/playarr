@@ -178,7 +178,14 @@ enum DesignTokens {
         /// `0.4rem` ≈ 6.4px at 16px root
         static let navPaddingInline: CGFloat = 6
         /// Gap inside `.app-nav-group` (0.6rem)
-        static let navGroupGap: CGFloat = 10
+        static let navGroupGap: CGFloat = 9.6
+        /// Gap between `.app-nav-group` panels (web: 13.6)
+        static let navGroupSeparation: CGFloat = 13.6
+        /// `.app-nav-group` padding: 7.72 above and below, 6.75 at the sides (the panel is 77.5 wide)
+        static let navGroupPaddingV: CGFloat = 7.72
+        static let navGroupPaddingH: CGFloat = 6.75
+        /// The rail's scroll content starts this far under the shell inset (the first panel's top is then 119.1)
+        static let navRailScrollInset: CGFloat = 6
         static let navGroupRadius: CGFloat = 22
         static let navGroupPadding: CGFloat = 7
         static let userAvatarSize: CGFloat = 34
@@ -335,8 +342,8 @@ enum DesignTokens {
         static let libraryHeadingTop: CGFloat = 56
         /// Count label size ~ `clamp(0.5rem, 0.58vw, 0.72rem)` → 11
         static let libraryCountSize: CGFloat = 11
-        /// Grid panel width 65% (`.tv-library-grid-panel`)
-        static let libraryGridWidthFraction: CGFloat = 0.65
+        /// Grid panel width 62% (1190.4 from x 729.6, `.tv-library-grid-panel`)
+        static let libraryGridWidthFraction: CGFloat = 0.62
         /// First card art top-left (measured @ 1920×1080 SPA frame).
         static let libraryCardOriginX: CGFloat = 783.5
         static let libraryCardOriginY: CGFloat = 162
