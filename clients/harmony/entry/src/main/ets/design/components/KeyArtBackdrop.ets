@@ -11,7 +11,6 @@ import { TvGeometry } from '../../core/Tokens';
 
 const HORIZONTAL_ANGLE: number = 90;
 const VERTICAL_ANGLE: number = 0;
-const WASH_RIGHT_ANGLE: number = 270;
 const CONTRAST_DARK: number = 0.82;
 const CONTRAST_LIGHT: number = 0.88;
 const BRIGHTNESS_DARK: number = 0.6;
@@ -44,6 +43,58 @@ function pct100(pct: number): number {
   return pct / 100;
 }
 
+/** Composite alpha of the layers that all paint the page's `surface` colour sideways over the key art and the page: the key-art mask (art only, inside
+ * the art's own box), the horizontal scrim (art only), the left stage wash and, optionally, the right one. Layers of one colour composite order-free
+ * (1 - the product of their transparencies), so one full-width gradient draws what four stacked boxes did, with a stop every 1/120 of the width
+ * plus every layer's own corner, which keeps the piecewise-linear result within a fraction of an 8-bit step of the exact curve. */
+export function backdropSideColors(withArt: boolean, withRightWash: boolean): Array<[string, number]> {
+  const surface = activeColors().surface;
+  const artEnd: number = TvGeometry.keyArtWidthPx / 1920;
+  const maskStart: number = artEnd * TvGeometry.keyArtMaskFadeStartPct / 100;
+  const seam: number = 0.0001;
+  const alphaAt = (x: number): number => {
+    let clear: number = 1 - lerpAlpha(x, [[0, pct100(TvGeometry.stageWashLeftOpacityPct)], [pct100(TvGeometry.stageWashLeftMidPct), pct100(TvGeometry.stageWashLeftMidOpacityPct)],
+      [pct100(TvGeometry.stageWashLeftFadePct), 0]]);
+    if (withRightWash) {
+      clear *= 1 - lerpAlpha(1 - x, [[0, pct100(TvGeometry.stageWashRightOpacityPct)], [pct100(TvGeometry.stageWashRightFadePct), 0]]);
+    }
+    if (withArt) {
+      clear *= 1 - lerpAlpha(x, [[0, 1], [pct100(TvGeometry.keyArtScrimHorizontalFadePct), 0]]);
+      if (x <= artEnd) {
+        clear *= 1 - lerpAlpha(x, [[maskStart, 0], [artEnd, 1]]);
+      }
+    }
+    return 1 - clear;
+  };
+  const xs: number[] = [0, 1, pct100(TvGeometry.stageWashLeftMidPct), pct100(TvGeometry.stageWashLeftFadePct), 1 - pct100(TvGeometry.stageWashRightFadePct)];
+  if (withArt) {
+    xs.push(pct100(TvGeometry.keyArtScrimHorizontalFadePct), maskStart, artEnd, artEnd + seam);
+  }
+  for (let i = 1; i < 120; i++) {
+    xs.push(i / 120);
+  }
+  xs.sort((a: number, b: number): number => a - b);
+  const out: Array<[string, number]> = [];
+  for (const x of xs) {
+    out.push([toResourceColorWithAlpha(surface, Math.round(alphaAt(x) * 10000) / 10000), x]);
+  }
+  return out;
+}
+
+/** The value at `x` of a clamped piecewise-linear curve through `points` (x ascending); 0 before its first point. */
+function lerpAlpha(x: number, points: number[][]): number {
+  if (x < points[0][0]) {
+    return 0;
+  }
+  for (let i = 1; i < points.length; i++) {
+    if (x <= points[i][0]) {
+      const span: number = points[i][0] - points[i - 1][0];
+      return span <= 0 ? points[i][1] : points[i - 1][1] + (points[i][1] - points[i - 1][1]) * (x - points[i - 1][0]) / span;
+    }
+  }
+  return points[points.length - 1][1];
+}
+
 @Component
 export struct KeyArtBackdrop {
   @Prop keyArt: image.PixelMap | undefined = undefined;
@@ -71,16 +122,19 @@ export struct KeyArtBackdrop {
             .scale({ x: TvGeometry.keyArtScale, y: TvGeometry.keyArtScale })
             .draggable(false)
             .focusable(false)
-          // Web's `mask-image` fade: clear until 72% of the art's width, then the surface colour.
+          // Web's vertical scrim over the art. Everything past the art's box is plain surface, which this colour cannot change, so the box
+          // (a clipped child, not a full-page layer) holds it; the page-wide sideways layers are the one Row below.
           Row()
-            .width(tv(TvGeometry.keyArtWidthPx))
-            .height(tv(TvGeometry.keyArtHeightPx))
+            .width('100%')
+            .height(tv(1080))
+            .position({ x: 0, y: tv(-TvGeometry.keyArtOffsetY) })
             .linearGradient({
-              angle: HORIZONTAL_ANGLE,
+              angle: VERTICAL_ANGLE,
               colors: [
-                [toResourceColorWithAlpha(activeColors().surface, 0), 0],
-                [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.keyArtMaskFadeStartPct)],
-                [toResourceColorWithAlpha(activeColors().surface, 1), 1],
+                [toResourceColor(activeColors().surface), 0],
+                [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.keyArtScrimVerticalFadeInPct)],
+                [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.keyArtScrimVerticalFadeOutStartPct)],
+                [toResourceColor(activeColors().surface), 1],
               ],
             })
         }
@@ -88,52 +142,13 @@ export struct KeyArtBackdrop {
         .height(tv(TvGeometry.keyArtHeightPx))
         .position({ x: 0, y: tv(TvGeometry.keyArtOffsetY) })
         .clip(true)
-
-        Row()
-          .width('100%')
-          .height('100%')
-          .linearGradient({
-            angle: HORIZONTAL_ANGLE,
-            colors: [
-              [toResourceColor(activeColors().surface), 0],
-              [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.keyArtScrimHorizontalFadePct)],
-            ],
-          })
-        Row()
-          .width('100%')
-          .height('100%')
-          .linearGradient({
-            angle: VERTICAL_ANGLE,
-            colors: [
-              [toResourceColor(activeColors().surface), 0],
-              [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.keyArtScrimVerticalFadeInPct)],
-              [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.keyArtScrimVerticalFadeOutStartPct)],
-              [toResourceColor(activeColors().surface), 1],
-            ],
-          })
       }
 
+      // Web's key-art mask, horizontal scrim and the two stage washes: one Row (see backdropSideColors).
       Row()
         .width('100%')
         .height('100%')
-        .linearGradient({
-          angle: HORIZONTAL_ANGLE,
-          colors: [
-            [toResourceColorWithAlpha(activeColors().surface, pct100(TvGeometry.stageWashLeftOpacityPct)), 0],
-            [toResourceColorWithAlpha(activeColors().surface, pct100(TvGeometry.stageWashLeftMidOpacityPct)), pct100(TvGeometry.stageWashLeftMidPct)],
-            [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.stageWashLeftFadePct)],
-          ],
-        })
-      Row()
-        .width('100%')
-        .height('100%')
-        .linearGradient({
-          angle: WASH_RIGHT_ANGLE,
-          colors: [
-            [toResourceColorWithAlpha(activeColors().surface, pct100(TvGeometry.stageWashRightOpacityPct)), 0],
-            [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.stageWashRightFadePct)],
-          ],
-        })
+        .linearGradient({ angle: HORIZONTAL_ANGLE, colors: backdropSideColors(this.keyArt !== undefined, true) })
       if (this.railFrostWidthPct > 0) {
         Row()
           .width(`${this.railFrostWidthPct}%`)

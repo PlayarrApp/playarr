@@ -2299,7 +2299,6 @@ struct Detail {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(toResourceColor(activeColors().surface))
   }
 
   /** Web's pink line over the title: the first genre when there is one, else the kind. */
