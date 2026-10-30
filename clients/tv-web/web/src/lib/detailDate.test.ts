@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDetailDate } from "./detailDate";
+import { formatDetailDate, formatFullDateTime } from "./detailDate";
 
 describe("detail date formatting", () => {
   it("formats en-GB as day, short month, year on every engine", () => {
@@ -12,5 +12,11 @@ describe("detail date formatting", () => {
     expect(formatDetailDate(date, "th-TH")).toBe(
       new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(date)
     );
+  });
+});
+
+describe("full date and time formatting", () => {
+  it("formats en-GB as weekday, day, month, year and time on every engine", () => {
+    expect(formatFullDateTime(new Date(2026, 9, 7, 1, 0), "en-GB")).toBe("Wednesday, 7 October 2026 at 01:00");
   });
 });

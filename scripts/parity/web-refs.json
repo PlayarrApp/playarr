@@ -20,7 +20,6 @@
         "tizen-native",
         "tizen-webos",
         "macos",
-        "vidaa",
         "xbox"
       ],
       "actionsTitle": "Amber Cathedral 18",
@@ -33,7 +32,6 @@
           "apple",
           "tizen-native",
           "macos",
-          "vidaa",
           "xbox"
         ],
         "tv-webos": [
@@ -54,6 +52,24 @@
       ],
       "dirs": [
         "harmony"
+      ],
+      "actionsTitle": "Amber Cathedral 18",
+      "userAgent": "xbox",
+      "hideVideo": true
+    },
+    "tv-vidaa": {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "dpr": 1,
+      "mobile": false,
+      "pixels": [
+        1920,
+        1080
+      ],
+      "dirs": [
+        "vidaa"
       ],
       "actionsTitle": "Amber Cathedral 18",
       "userAgent": "xbox",

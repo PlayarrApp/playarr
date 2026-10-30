@@ -21,5 +21,13 @@ test("the Harmony TV dir has its own group: xbox UA, player-controls shot with t
   assert.equal(h.userAgent, "xbox");
   assert.equal(h.hideVideo, true);
   assert.ok(!manifest.groups.tv.dirs.includes("harmony"));
-  assert.deepEqual(Object.entries(manifest.groups).filter(([, g]) => g.hideVideo).map(([k]) => k), ["tv-harmony"]);
+  assert.deepEqual(Object.entries(manifest.groups).filter(([, g]) => g.hideVideo).map(([k]) => k), ["tv-harmony", "tv-vidaa"]);
+});
+
+test("the VIDAA TV dir has its own group: xbox UA, video hidden because the TV mirror cannot show the picture", () => {
+  const v = manifest.groups["tv-vidaa"];
+  assert.deepEqual(v.dirs, ["vidaa"]);
+  assert.equal(v.userAgent, "xbox");
+  assert.equal(v.hideVideo, true);
+  assert.ok(!manifest.groups.tv.dirs.includes("vidaa"));
 });

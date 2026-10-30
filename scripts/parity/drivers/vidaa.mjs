@@ -36,7 +36,8 @@ export function suiteRoute(frameRoute) {
 export function launchPath(route, { theme, fixedNow }) {
   if (!/^\/[A-Za-z0-9_./?=&%-]*$/.test(route) || route.startsWith("//")) throw new Error(`VIDAA route is not a plain app route: ${route.slice(0, 40)}`);
   const flags = ["mirrorPng=1", "mirrorPointer=1", "mirrorWidth=1920", `mirrorTheme=${theme}`]; // 1920: the suite scores against 1920x1080 references
-  if (fixedNow) flags.push(`mirrorNow=${encodeURIComponent(fixedNow.replace(/Z$/, "").replace(/\.\d+$/, ""))}`);
+  // mirrorUtc: the page reads local time as UTC (the web references' time zone), so the instant keeps its Z.
+  if (fixedNow) flags.push(`mirrorNow=${encodeURIComponent(fixedNow.replace(/\.\d+Z$/, "Z"))}`, "mirrorUtc=1");
   return `${route}${route.includes("?") ? "&" : "?"}${flags.join("&")}`;
 }
 
@@ -119,6 +120,7 @@ export async function createDriver({
   let fixedNow = env.PLAYARR_VIDAA_FIXED_NOW ?? null; // set when the suite runs unpinned (PARITY_STABLE=0) so calendar screens still use the reference clock
   let route = "/";
   let captureTarget = null;
+  let injectedBack = false;
   let paired = null; // { screen, id, layout }: the layout that belongs to the last screenshot
   const jobTag = `${Date.now().toString(36)}`;
   let jobSeq = 0;
@@ -199,12 +201,14 @@ export async function createDriver({
     },
     async home() { await open("/"); },
     async route(r) { await open(r); },
+    /** True once since the last call when a Back was injected into the page (the remote's own Back never arrives), so a D-pad check that used it is not a real remote result. */
+    takeInjectedBack() { const used = injectedBack; injectedBack = false; return used; },
     async setCaptureTarget(id) { captureTarget = id; paired = null; },
     async key(k, { long } = {}) {
       const code = long ? LONG_KEY_CODES[k] : KEY_CODES[k];
       if (!code || (k === "back" && long)) throw new Error(`VIDAA driver cannot send ${long ? "a long " : ""}${k}`);
       const since = now();
-      if (k === "back") await post(url("cmd"), { id: `${jobTag}-b${++jobSeq}`, key: "back" });
+      if (k === "back") { injectedBack = true; await post(url("cmd"), { id: `${jobTag}-b${++jobSeq}`, key: "back" }); }
       else runCli(["key", code, "--delay", "0.3"]);
       await delay(keyMs);
       await settled(since);

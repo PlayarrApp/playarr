@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type HTMLAttributes, type ReactNode } from "react";
+import { formatFullDateTime } from "../lib/detailDate";
 import { setScrollInstant } from "../lib/smoothScroll";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type {
@@ -672,7 +673,7 @@ function ItemDetails({
   const requested = Boolean(plan.request?.requested);
   const when = time ? (
     <time dateTime={first.release_at ?? undefined}>
-      {new Intl.DateTimeFormat(locale, { dateStyle: "full", timeStyle: "short" }).format(time)}
+      {formatFullDateTime(time, locale)}
     </time>
   ) : (
     <>

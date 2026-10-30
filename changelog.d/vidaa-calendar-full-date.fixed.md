@@ -1,0 +1,1 @@
+- The calendar's full release date and time ("Wednesday, 7 October 2026 at 01:00") is built from parts in en-GB, so the VIDAA TV no longer drops the weekday and month name.

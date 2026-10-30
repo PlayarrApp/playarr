@@ -86,6 +86,30 @@ if (__PLAYARR_DEBUG_MIRROR__) {
   } catch {
     // leave the real clock
   }
+  // ?mirrorUtc=1 makes the page read local time as UTC, like the web references (screens.json determinism.timezone): a TV cannot change its
+  // time zone, so the Date local getters, the default Intl time zone and toLocale*String all answer in UTC.
+  try {
+    if (new URLSearchParams(window.location.search).get("mirrorUtc") === "1") {
+      const proto = Date.prototype as unknown as Record<string, unknown>;
+      for (const name of ["FullYear", "Month", "Date", "Day", "Hours", "Minutes", "Seconds", "Milliseconds"]) proto[`get${name}`] = proto[`getUTC${name}`];
+      proto.getTimezoneOffset = () => 0;
+      const RealFormat = Intl.DateTimeFormat;
+      const UtcFormat = function (locales?: string | string[], options?: Intl.DateTimeFormatOptions) {
+        return new RealFormat(locales, { timeZone: "UTC", ...options });
+      } as unknown as typeof Intl.DateTimeFormat;
+      Object.defineProperty(UtcFormat, "prototype", { value: RealFormat.prototype });
+      UtcFormat.supportedLocalesOf = RealFormat.supportedLocalesOf.bind(RealFormat);
+      Intl.DateTimeFormat = UtcFormat;
+      for (const name of ["toLocaleString", "toLocaleDateString", "toLocaleTimeString"] as const) {
+        const real = Date.prototype[name];
+        Date.prototype[name] = function (this: Date, locales?: string | string[], options?: Intl.DateTimeFormatOptions) {
+          return real.call(this, locales, { timeZone: "UTC", ...options });
+        };
+      }
+    }
+  } catch {
+    // leave the local time zone
+  }
   void import("./debug/mirror").then((m) => m.startDebugMirror());
 }
 
