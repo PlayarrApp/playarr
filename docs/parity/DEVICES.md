@@ -120,7 +120,7 @@ The Tizen web package's oldest supported engine is Tizen 6.5 (Chromium 85), whic
 emulator image (only Mobile, Wearable and IoT 6.5, and the TV 10 extension), and no real Tizen 6.5 TV is available, so the stand-in is a pinned
 Chromium 85 build (Chromium snapshot r782790, 85.0.4183.0) on its own Xvfb display with the Tizen 6.5 user agent, loading the built
 `apps/tv-tizen/dist`. `drivers/tizen-webos.mjs` runs it as `DEVICE=tizen65` (inspector keys and page evaluation like webOS, ImageMagick root grab,
-layout read from the real page). Software rasterising with one raster thread keeps twin runs identical.
+layout read from the real page). Software rasterising (no GPU) with one raster thread keeps twin runs identical.
 Run it with `scripts/parity/tizen-webos/run-tizen65.sh` (setup in its header); the legend row is "Samsung Tizen 6.5" (dir `tizen65`, cand `dev`).
 Documented exceptions: **player controls** (stock Chromium has no H.264, so the parity clip has no frames; the Tizen emulator shows it through
 AVPlay) is not captured, and Chromium 85 truncates fractional line heights to whole pixels, which the Tizen package counters by rounding them

@@ -8,7 +8,7 @@
 #   (cd clients/tv-web/apps/tv-tizen/dist && python3 -m http.server 18565 --bind 127.0.0.1) &
 #   Xvfb :65 -screen 0 2000x1200x24 -nolisten tcp &
 #   DISPLAY=:65 $TIZEN65_CHROME/chrome --no-sandbox --user-data-dir=<profile> --remote-debugging-port=9285 --window-position=0,0 --window-size=1920,1080 \
-#     --force-device-scale-factor=1 --disable-gpu --disable-threaded-compositing --num-raster-threads=1 --disable-partial-raster --force-color-profile=srgb \
+#     --force-device-scale-factor=1 --disable-gpu --num-raster-threads=1 --disable-partial-raster --force-color-profile=srgb \
 #     --user-agent="<Tizen 6.5 UA of clients/tv-web/web/scripts/tv-viewport.mjs>" --autoplay-policy=no-user-gesture-required --app=http://127.0.0.1:18565/
 #   WEBOS_CDP=9285 WEBOS_MATCH='^http' node scripts/parity/tizen-webos/signin-webos.mjs      # once per profile
 # Player controls cannot be captured: stock Chromium has no H.264, so the clip has no frames (the Tizen emulator plays it through AVPlay).
