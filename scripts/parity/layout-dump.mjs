@@ -95,7 +95,7 @@ export function layoutPageFn(volatile, opts) {
     return out;
   };
   /* One run per rendered line: the text on the line and the bounds of its non-blank glyphs. */
-  var lineRuns = function (nodes, cs) {
+  var lineRuns = function (nodes, cs, el) {
     var lines = [], cur = null, range = document.createRange();
     for (var a = 0; a < nodes.length; a++) {
       var data = nodes[a].data;
@@ -114,8 +114,10 @@ export function layoutPageFn(volatile, opts) {
         cur.l = cur.l ? { left: Math.min(cur.l.left, cr.left), top: Math.min(cur.l.top, cr.top), right: Math.max(cur.l.right, cr.right), bottom: Math.max(cur.l.bottom, cr.bottom) } : { left: cr.left, top: cr.top, right: cr.right, bottom: cr.bottom };
       }
     }
+    /* The last glyph of a line carries letter-spacing after it, which draws nothing: take it off the run's right edge once per line (non-zero spacing only). */
+    var spacing = (parseFloat(cs.letterSpacing) || 0) * zoomOf(el);
     return lines.filter(function (x) { return x.l && norm(x.text); }).map(function (x) {
-      return { text: shown(norm(x.text), cs), left: x.l.left, top: x.l.top, w: x.l.right - x.l.left, h: x.l.bottom - x.l.top };
+      return { text: shown(norm(x.text), cs), left: x.l.left, top: x.l.top, w: x.l.right - x.l.left - spacing, h: x.l.bottom - x.l.top };
     });
   };
   /* A single line cut by text-overflow: ellipsis draws its "…" in the engine, not in the DOM, so the cut cannot be read. The app must render truncated strings
@@ -273,7 +275,7 @@ export function layoutPageFn(volatile, opts) {
     var control = /^(a|button|input|select|textarea)$/.test(tag) || /^(button|link|tab|switch|checkbox|menuitem|option|slider)$/.test(el.getAttribute("role") || "") || el.tabIndex >= 0 && el.hasAttribute("tabindex");
     var r = el.getBoundingClientRect();
     /* the glyph runs of the element's own text: one per rendered line, the union is the row box */
-    var runs = own ? lineRuns(texts, cs) : [];
+    var runs = own ? lineRuns(texts, cs, el) : [];
     if (runs.length) {
       var ux = Math.min.apply(null, runs.map(function (q) { return q.left; })), uy = Math.min.apply(null, runs.map(function (q) { return q.top; }));
       var ur = Math.max.apply(null, runs.map(function (q) { return q.left + q.w; })), ub = Math.max.apply(null, runs.map(function (q) { return q.top + q.h; }));
