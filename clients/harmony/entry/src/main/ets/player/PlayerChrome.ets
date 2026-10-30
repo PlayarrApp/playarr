@@ -699,20 +699,20 @@ export struct PlayerChrome {
           } else {
             // web: three spans, the times white and the slash muted, 5.6 apart
             Row({ space: tv(5.6) }) {
-              Text(formatClockMs(this.positionMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE)))
+              Text(formatClockMs(this.positionMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE))).fontFeature('"tnum" 1')
                 .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
                 .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
               Text('/').fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE)))
                 .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
                 .fontColor(toResourceColor(CHROME_TEXT_MUTED))
-              Text(formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE)))
+              Text(formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE))).fontFeature('"tnum" 1')
                 .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
                 .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
             }
           }
           // web: the mute button and the volume slider sit together, 10 apart, after the time
           Row({ space: tv(10) }) {
-            this.tvIcon($r('app.media.player_volume'), this.onToggleMute, false, 'Mute')
+            this.tvIcon($r('app.media.player_volume'), this.onToggleMute, true, 'Mute')
             Slider({ value: this.volumePercent, min: 0, max: 100, style: SliderStyle.OutSet })
               .width(tv(130))
               .height(tv(44))
@@ -725,13 +725,8 @@ export struct PlayerChrome {
               })
           }
           Blank()
-          // web: the audio-track button, empty while the stream has no alternative track
-          Stack()
-            .width(tv(TV_SEEK_SIZE))
-            .height(tv(TV_SEEK_SIZE))
-            .borderRadius(tv(TV_SEEK_SIZE / 2))
-            .accessibilityText('Audio: Unavailable').accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
-            .focusable(true)
+          // web: the audio-track button; drawn at full strength with no alternative track, named "Audio: Unavailable"
+          this.tvIcon($r('app.media.player_audio'), (): void => {}, true, 'Audio: Unavailable')
           this.tvIcon($r('app.media.player_subtitles'), (): void => { if (this.hasTracks) { this.onOpenTracks(); } }, true, 'Subtitles: Off')
           this.tvIcon($r('app.media.player_queue'), (): void => {}, true, 'Playlist: 1 item')
           if (this.qualityLabel.length > 0) {
@@ -829,13 +824,13 @@ export struct PlayerChrome {
         .accessibilityText('Seek').accessibilityRole(AccessibilityRoleType.SLIDER)
         .position({ x: 12, y: 615.13 })
         Row({ space: 5.6 }) {
-          Text(formatClockMs(this.positionMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
+          Text(formatClockMs(this.positionMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE)).fontFeature('"tnum" 1')
             .fontSize(PHONE_TIME_FONT_SIZE).lineHeight(webLineHeight(PHONE_TIME_FONT_SIZE)).halfLeading(true)
             .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
           Text('/').fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
             .fontSize(PHONE_TIME_FONT_SIZE).lineHeight(webLineHeight(PHONE_TIME_FONT_SIZE)).halfLeading(true)
             .fontColor(toResourceColor(CHROME_TEXT_MUTED))
-          Text(formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
+          Text(formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE)).fontFeature('"tnum" 1')
             .fontSize(PHONE_TIME_FONT_SIZE).lineHeight(webLineHeight(PHONE_TIME_FONT_SIZE)).halfLeading(true)
             .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
         }
@@ -864,7 +859,7 @@ export struct PlayerChrome {
         .position({ x: 66, y: 674 })
       this.phoneSkip(false, this.canNext, this.onNext, 112, 674)
       this.phoneButton('Mute', $r('app.media.player_volume'), 20, this.onToggleMute, false, 158, 674)
-      this.phoneButton('', $r('app.media.player_volume'), 20, this.onToggleMute, false, 204, 674, true)
+      this.phoneButton('Audio: Unavailable', $r('app.media.player_audio'), 20, (): void => {}, false, 204, 674)
       this.phoneButton('Subtitles: Off', $r('app.media.player_subtitles'), 20, this.onOpenTracks, false, 250, 674)
       this.phoneButton('Playlist: 1 item', $r('app.media.player_queue'), 20, (): void => {}, false, 296, 674)
       Row() {

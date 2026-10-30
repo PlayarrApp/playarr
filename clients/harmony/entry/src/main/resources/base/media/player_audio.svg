@@ -1,0 +1,4 @@
+<!-- Player chrome audio-track icon after the web player (white, 24 viewBox). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M5 9.5v5h4l4.5 3.5V6L9 9.5z" fill="#FFFFFF" stroke="none" /><path d="M16.5 9a4.5 4.5 0 0 1 0 6" /><path d="M19 6.5a8 8 0 0 1 0 11" />
+</svg>

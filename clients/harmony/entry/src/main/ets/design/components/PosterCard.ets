@@ -505,8 +505,8 @@ export struct PosterCard {
         }
         .width(this.cardWidth)
         .alignItems(VerticalAlign.Bottom)
-        .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? (this.artWash > 0 ? 2.6 : 0) : 2.4) })
-        .margin({ bottom: this.artWash > 0 && isTvMetrics() ? 2.65 : 0 })
+        .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? (this.artWash > 0 ? 0.6 : 0) : 2.4) })
+        .margin({ bottom: isTvMetrics() ? (this.artWash > 0 ? 1.4 : 1.75) : 0 }) // web: the episode and chapter links are 28.8 under the art, text centre unchanged
       } else {
         Text(this.title).fontFamily(nunitoAt(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT, this.titleFontSize))
           .width(this.cardWidth)
