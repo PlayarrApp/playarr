@@ -585,8 +585,19 @@ export async function createDriver() {
       await sleep(device === "webos" ? 1000 : 350);
       await guard();
     },
+    // Known state for the player checks on the Tizen 6.5 lane (tizen65 only): the AVPlay shim (tizen-webos/avplay-shim.js, decodes nothing) is PLAYING past 0.5 s,
+    // the controls are up and focus is on play/pause. The shim D-pad proves the focus and controls logic only, not decoding or the native plane (up to 30 s, else throws).
+    async playerReady() {
+      if (!tizen65) throw new Error("stable capture unsupported: playerReady is the Tizen 6.5 AVPlay shim lane only");
+      await guard();
+      const ready = `(() => { try { const a = window.webapis.avplay, c = document.querySelector(".player-controls");
+        if (a.getState() === "PAUSED" && a.getCurrentTime() < 59000) a.play();
+        return a.getState() === "PLAYING" && a.getCurrentTime() > 500 && !!c && !c.classList.contains("is-hidden") && !!document.activeElement?.closest("[data-player-default-focus]"); } catch (e) { return false; } })()`;
+      if (!(await until(ready, 30000))) throw new Error("player not ready: AVPlay shim playing, controls up, focus on play/pause");
+      await guard();
+    },
     // Used by the shared runner before the first key of a player check (alongside the webOS wait in key()).
-    async playhead() { await guard(); const value = await ev(`(() => { const v = document.querySelector("video"); return v ? v.currentTime : null; })()`); await guard(); return value; },
+    async playhead() { await guard(); const value = await ev(`(() => { const v = document.querySelector("video"); if (v) return v.currentTime; try { return window.webapis.avplay.getCurrentTime() / 1000; } catch (e) { return null; } })()`); await guard(); return value; },
     async panelOpen() { await guard(); const value = !!(await ev(`[...document.querySelectorAll(".player-quality-menu")].some((m) => m.getBoundingClientRect().width > 0)`)); await guard(); return value; },
     async location() { await guard(); const value = (await ev("location.hash.replace(/^#/, '')")) ?? null; await guard(); return value; },
     async focused() {
