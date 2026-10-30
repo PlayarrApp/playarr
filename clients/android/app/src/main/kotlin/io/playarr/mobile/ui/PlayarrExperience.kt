@@ -3851,7 +3851,7 @@ internal fun ExperienceLandscapeCard(
                 )
             }
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) (if (LocalStageScale.current != 1f) (3f / LocalStageScale.current).dp else 3.08.dp) else 3.dp).parityBackground("img", Color.White.copy(alpha = 0.2f))) {
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) (if (LocalStageScale.current != 1f) (3f / LocalStageScale.current).dp else 3.08.dp) else 3.dp).parityBackground("image", Color.White.copy(alpha = 0.2f)).semantics { role = Role.Image }) {
                     // Web `.tv-watch-progress` (white 20%) and its `i` fill: `--brand` (#cf3157) in both themes.
                     Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", Color(0xFFCF3157)))
                 }
@@ -4006,7 +4006,7 @@ private fun PlayarrUnwatchedDot(modifier: Modifier = Modifier, size: Dp = 12.dp,
                 .shadow(4.dp, CircleShape, clip = false, ambientColor = Color(0xFF1F0E14), spotColor = Color(0xFF1F0E14))
                 .drawBehind { drawCircle(UnwatchedDotColour.copy(alpha = 0.35f), radius = size.toPx() / 2f + 1.dp.toPx() * 0.5f, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx())) }
             else Modifier)
-            .parityBackground("img", UnwatchedDotColour, CircleShape, radius = 999f)
+            .parityBackground("image", UnwatchedDotColour, CircleShape, radius = 999f)
             .border(2.dp, Color.White.copy(alpha = 0.94f), CircleShape)
             .semantics { contentDescription = label },
     )
@@ -7870,7 +7870,7 @@ private fun WebEpisodeDetailCard(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 11.5.dp, bottom = 8.8.dp),
             )
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).parityBackground("img", Color.White.copy(alpha = 0.28f))) {
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).parityBackground("image", Color.White.copy(alpha = 0.28f)).semantics { role = Role.Image }) {
                     Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", WebAccent))
                 }
             }
