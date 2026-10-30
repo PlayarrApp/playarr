@@ -11,8 +11,10 @@ test("every dir of a per-user-agent group belongs to exactly one variant, and we
   const all = Object.values(g.userAgents).flat();
   assert.deepEqual([...new Set(all)].sort(), [...g.dirs].sort());
   assert.equal(all.length, g.dirs.length);
-  assert.deepEqual(g.userAgents["tv-webos"], ["tizen-webos"]);
+  // The Samsung web player is system-volume only like webOS (IS_TIZEN || IS_WEBOS); the native Tizen app follows that layout.
+  assert.deepEqual(g.userAgents["tv-webos"], ["tizen-webos", "tizen-native"]);
   assert.ok(!g.userAgents.xbox.includes("tizen-webos"));
+  assert.ok(!g.userAgents.xbox.includes("tizen-native"));
 });
 
 test("the Harmony TV dir has its own group: xbox UA, player-controls shot with the video hidden, no other group hides video", () => {
