@@ -92,8 +92,18 @@ each key waits for two distinct settled frames, and a frame takes seconds to ren
 - Back: the remote service swallows `KEY_BACK`, `KEY_RETURN` and `KEY_EXIT` (the page sees no key and no history event; `KEY_EXIT`
   leaves the app). The driver therefore asks the debug page, through the receiver's one-shot command channel, to dispatch the key the app
   documents as VIDAA's Back button (Backspace, keyCode 8, `isVidaaBackKey`). The real remote's Back button is not exercised; owner check.
+  Measured with listeners on keydown, keyup, popstate, hashchange, visibilitychange, blur, focus and pagehide: `KEY_BACK`, `KEY_RETURN` and
+  `KEY_BACK_LONG_PRESS` produce no event at all although the page has history entries, so a history sentinel cannot help; the app already
+  accepts keyCode 8, 461, 10009, Escape, BrowserBack and GoBack. Because the injected key is not a remote key press, a D-pad check whose keys
+  include Back is scored failed with the reason "injected back" (`takeInjectedBack` in the driver, read by `suite-run.mjs`).
 - `player-controls`: the page is held on the clip's 2.000 s frame, paused, controls visible, focus dropped (a page job, as in the Tizen and
   Vega runs), and the capture is refused unless the position reads back as 2.000.
+- Time zone: a TV cannot change its zone, so the debug build reads local time as UTC (`mirrorUtc=1`: Date local getters, the default Intl zone
+  and `toLocale*String`), as the web references are taken in UTC. `mirrorNow` then keeps its `Z`.
+- Detail pages: like the web and webOS drivers, the capture returns scrolled boxes to the top first (the focus-scroll to the first episode card
+  must not show in the capture).
+- Web refs: VIDAA has its own `tv-vidaa` group in `web-refs.json` (xbox user agent, `hideVideo`): the TV mirror frame cannot carry the video
+  picture, so the player-controls ref is taken with the video hidden. Refresh it with `capture-refs.mjs --groups tv-vidaa --screens player-controls`.
 - Limits: no player checks, downloads or build identity (the readiness mode stays standard).
 
 ### Tizen native: the one-command run
