@@ -818,8 +818,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
         };
         tick();
       }));
-      // The time label follows timeupdate events and can still show the pre-seek second, and the mute button the muted state: wait for 0:02 and an unmuted player.
-      await page.waitForFunction(() => /(^|[^\d:])0:02(?![\d:])/.test(document.querySelector(".player-controls")?.textContent?.replace(/\s+/g, " ") ?? "") && document.querySelector("video")?.muted === false && !!document.querySelector(".player-controls [aria-label='Mute'],.player-controls [title='Mute']"), null, { timeout: 10000, polling: 100 });
+      // The time label follows timeupdate events and can still show the pre-seek second, and the mute button the muted state: wait for 0:02 and an unmuted player (a VIDAA UA hides the Mute button: the TV's remote owns the volume).
+      await page.waitForFunction(() => /(^|[^\d:])0:02(?![\d:])/.test(document.querySelector(".player-controls")?.textContent?.replace(/\s+/g, " ") ?? "") && document.querySelector("video")?.muted === false && (/VIDAA|Hisense/i.test(navigator.userAgent) || !!document.querySelector(".player-controls [aria-label='Mute'],.player-controls [title='Mute']")), null, { timeout: 10000, polling: 100 });
       await page.waitForTimeout(600); // the player moves focus to play/pause on a timer: let it, then drop it
       await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
       await guard();
