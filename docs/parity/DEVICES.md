@@ -91,11 +91,12 @@ each key waits for two distinct settled frames, and a frame takes seconds to ren
   app's `vidaaLongPress.ts` turns that into a hold and opens the actions panel.
 - Back: the remote service swallows `KEY_BACK`, `KEY_RETURN` and `KEY_EXIT` (the page sees no key and no history event; `KEY_EXIT`
   leaves the app). The driver therefore asks the debug page, through the receiver's one-shot command channel, to dispatch the key the app
-  documents as VIDAA's Back button (Backspace, keyCode 8, `isVidaaBackKey`). Owner check, 30 Oct 2026: with the debug key logger
-  (`mirrorKeyLog=1`, `/__mirror/keylog`) the physical remote's Back reached the page as `keydown`/`keyup` key "Backspace", code
-  "Backspace", keyCode 8, and no popstate or hashchange. The injected command dispatches exactly key/code/keyCode Backspace/Backspace/8, so it
+  documents as VIDAA's Back button (Backspace, keyCode 8, `isVidaaBackKey`). Owner check, 30 Oct 2026 (fresh batteries; an earlier press with flat batteries is not evidence): with the debug key logger
+  (`mirrorKeyLog=1`, `/__mirror/keylog`, film detail page) the physical remote's Back reached the page as `keydown` (1793374072568) and `keyup`
+  (1793374072804), key "Backspace", code "Backspace", keyCode 8, and no popstate, hashchange or pagehide; the app then showed /movies (a pushed
+  entry, history length 2 to 3). The injected command dispatches exactly key/code/keyCode Backspace/Backspace/8, so it
   is equivalent to the remote's Back and D-pad checks that use it are scored normally ("injected Backspace = remote Back, owner press
-  30 Oct"). The app handles it: injected Back took the TV from the player to the film detail and from there to /movies. On home, Back is a
+  30 Oct"). The app handles it: an injected Back also took the TV from the player to the film detail and from there to /movies. On home, Back is a
   no-op on the web and on VIDAA (`tvBackNavigationTarget` returns null for the root route; no exit prompt).
   Broker limitation, not an app bug: the MQTT `KEY_BACK`, `KEY_RETURN` and `KEY_BACK_LONG_PRESS` produce no page event at all (measured with
   listeners on keydown, keyup, popstate, hashchange, visibilitychange, blur, focus and pagehide).
