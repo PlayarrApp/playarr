@@ -230,9 +230,12 @@ export async function createDriver() {
     } else await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: 960, y: 540 });
     if (!(await until(`!!document.querySelector(".player-controls") && !document.querySelector(".player-controls").classList.contains("is-hidden")`, 10000))) throw new Error("player controls did not show");
     if (device === "tizen") {
-      // The emulator draws the AVPlay video as its own layer above the browser, so a grab of a playing clip shows the video without the controls
-      // (a real TV composites the plane under the browser). The page is not touched: the screenshot is what the emulator shows, and the layout
-      // export is the DOM as laid out. The pixel score of this screen is therefore an emulator limit (docs/parity/DEVICES.md).
+      // The emulator composites the AVPlay plane above the browser, so a grab of the player shows the video and none of the controls the user has
+      // up (a real TV composites the plane under the page: controls over the video). Toggle-and-diff on the real screen showed the plane covers
+      // the whole page there. So the grab is taken with the plane hidden through its own visibility, the same switch the app uses
+      // (setDisplayElementVisible): the controls are then what the screen shows. The paused 2.000 s frame itself stays in the player and is
+      // not in this grab (the page's own backdrop shows); the layout export of the same state finds the controls visible (measurePlaneCells has no plane left).
+      await ev(`(document.querySelector('object[type="application/avplayer"]').style.visibility = "hidden", true)`);
       await sleep(1000);
     }
     // A late play() or a timer can resume playback: hold the frame until it stays paused for two checks 0.7 s apart.

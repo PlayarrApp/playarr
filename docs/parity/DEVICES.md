@@ -89,9 +89,12 @@ directory, and `PARITY_EMULATOR_LOCK` pointing at the flock file shared with the
   which the driver does), or the repeats cancel the long-press timer and the press becomes a click.
 - Light and dark captures go to `<cand>/dark` (or `<cand>` itself) and `<cand>/light`, with the web references in
   `web` and `web/light`, as the legend expects.
-- Search is captured with the on-screen keyboard dismissed (platform UI, not app output). The Samsung emulator draws the AVPlay
-  video as a layer above the browser, so its player-controls screenshot shows the paused clip without the controls; nothing in the
-  page is hidden or changed to work around that. The layout export decides visibility from the rendered screen: the driver grabs the player with the AVPlay `<object>` shown and hidden (toggle-and-diff) and drops the controls inside the cells whose pixels differ. On the emulator hiding the plane brings all controls back, so they are covered there (31 dropped, counted in `occluded`); the pixel score and the layout of that one screen are an emulator limit (a real TV composites the plane under the page, where the same probe would find them visible).
+- Search is captured with the on-screen keyboard dismissed (platform UI, not app output). The Samsung emulator composites the AVPlay
+  video plane above the browser, so a plain grab of the player shows the colour-bar clip and none of the controls the user has up
+  (a real TV composites the plane under the page). The player-controls grab is therefore taken with the AVPlay `<object>` hidden
+  through its own visibility (the switch the app itself uses for the plane), so the screen shows the controls; the paused clip frame is not in
+  that grab. Visibility in the layout export is still read from the screen: `measurePlaneCells` grabs with the plane shown and hidden and
+  drops controls inside cells that differ (with the plane already hidden nothing differs, so the controls are exported).
 - Publish a finished webOS or Tizen web run with `PARITY_LEGEND_DIR=<legend dir> scripts/parity/tizen-webos/publish.sh <cand dir> <run dir> <pr>`: it copies every capture and layout document to the path `captures.json` names, stamps `build.json` with `provenance.build` from that manifest (the captured build, not the publisher), runs `update.mjs` and fails on a `skip` line for the candidate.
 - Playback is judged as playing when the playhead advances by `advanceSeconds` within `advanceSeconds + 6` s of wall
   clock; a fixed 3 s window of a stream that is still buffering fails even on web.
