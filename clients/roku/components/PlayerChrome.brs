@@ -75,16 +75,16 @@ sub playerChromeBuild()
 
     ' Quality pill (.player-quality-button): HD glyph and the current quality.
     ' Transparent at rest like web; the fill shows with focus (web hover and expanded).
-    m.pcQualityBg = pgRound(g, 1456.8, 962, 160.5, 56, 28, "playerButton")
+    m.pcQualityBg = pgRound(g, 1534.4, 962, 160.5, 56, 28, "playerButton")
     m.pcQualityBg.visible = false
-    m.pcQualityGlyph = pgLabel(g, 1479, 984.2, 0, 11, "HD", 7.68, 700, "playerInk")
-    m.pcQualityText = pgLabel(g, 1508, 982.1, 0, 15, "Original", 10.56, 700, "playerInk")
+    m.pcQualityGlyph = pgLabel(g, 1556.6, 984.2, 0, 11, "HD", 7.68, 700, "playerInk")
+    m.pcQualityText = pgLabel(g, 1585.6, 982.1, 0, 15, "Original", 10.56, 700, "playerInk")
 
     ' Subtitles, queue and info buttons (.player-btn.player-tool-button, 64 px circles; the web's audio slot sits before subtitles).
-    m.pcAudioIcon = pgIcon(g, 1246, 980, 20, "player-audio.png", "playerInk")
-    m.pcSubsIcon = pgIcon(g, 1323.6, 980, 20, "player-subtitles.png", "playerInk")
-    m.pcQueueIcon = pgIcon(g, 1401.2, 980, 20, "player-playlist.png", "playerInk")
-    m.pcInfoIcon = pgIcon(g, 1652.8, 980, 20, "player-health.png", "playerInk")
+    m.pcAudioIcon = pgIcon(g, 1323.6, 980, 20, "player-audio.png", "playerInk")
+    m.pcSubsIcon = pgIcon(g, 1401.2, 980, 20, "player-subtitles.png", "playerInk")
+    m.pcQueueIcon = pgIcon(g, 1478.8, 980, 20, "player-playlist.png", "playerInk")
+    m.pcInfoIcon = pgIcon(g, 1730.4, 980, 20, "player-health.png", "playerInk")
 
     ' Minimise and close (top right, .player-minimise and .player-close: 48 px high, 1 px border at 28% white). Roku cannot keep a
     ' mini player running behind the browse pages, so Minimise ends playback and returns to the title, as Back does.
@@ -113,11 +113,11 @@ sub playerChromeBuild()
     A11yStamp(m.pcPlayBg, true)
     m.pcPrevMark = pgMark(g, "button", "Previous episode", 70, 958, 64, 64, 50)
     m.pcNextMark = pgMark(g, "button", "Next episode", 225.2, 958, 64, 64, 50)
-    m.pcAudioMark = pgMark(g, "button", "", 1224, 958, 64, 64, 50)
-    m.pcSubsMark = pgMark(g, "button", "Subtitles: Off", 1301.6, 958, 64, 64, 50)
-    m.pcQueueMark = pgMark(g, "button", "Playlist: 1 item", 1379.2, 958, 64, 64, 50)
-    m.pcQualityMark = pgMark(g, "button", "Quality: Original", 1456.8, 962, 160.5, 56, 999)
-    pgMark(g, "button", "Info and playback health", 1630.8, 958, 64, 64, 50)
+    m.pcAudioMark = pgMark(g, "button", "", 1301.6, 958, 64, 64, 50)
+    m.pcSubsMark = pgMark(g, "button", "Subtitles: Off", 1379.2, 958, 64, 64, 50)
+    m.pcQueueMark = pgMark(g, "button", "Playlist: 1 item", 1456.8, 958, 64, 64, 50)
+    m.pcQualityMark = pgMark(g, "button", "Quality: Original", 1534.4, 962, 160.5, 56, 999)
+    pgMark(g, "button", "Info and playback health", 1708.4, 958, 64, 64, 50)
 
     m.pcMenu = CreateObject("roSGNode", "Group")
     m.pcMenu.visible = false
@@ -221,11 +221,11 @@ function playerChromeItems() as Object
     if n > 0 and m.playbackEpisodeIndex > 0 then items.Push({ id: "prev", x: 70, y: 958, w: 64, h: 64 })
     items.Push({ id: "play", x: 147.6, y: 958, w: 64, h: 64 })
     if n > 0 and m.playbackEpisodeIndex < n - 1 then items.Push({ id: "next", x: 225.2, y: 958, w: 64, h: 64 })
-    items.Push({ id: "audio", x: 1224, y: 958, w: 64, h: 64 })
-    items.Push({ id: "subs", x: 1301.6, y: 958, w: 64, h: 64 })
-    items.Push({ id: "queue", x: 1379.2, y: 958, w: 64, h: 64 })
-    items.Push({ id: "quality", x: 1456.8, y: 962, w: 160.5, h: 56 })
-    items.Push({ id: "info", x: 1630.8, y: 958, w: 64, h: 64 })
+    items.Push({ id: "audio", x: 1301.6, y: 958, w: 64, h: 64 })
+    items.Push({ id: "subs", x: 1379.2, y: 958, w: 64, h: 64 })
+    items.Push({ id: "queue", x: 1456.8, y: 958, w: 64, h: 64 })
+    items.Push({ id: "quality", x: 1534.4, y: 962, w: 160.5, h: 56 })
+    items.Push({ id: "info", x: 1708.4, y: 958, w: 64, h: 64 })
     return items
 end function
 
