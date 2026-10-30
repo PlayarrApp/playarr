@@ -74,7 +74,7 @@ internal object PlayarrLayoutExport {
         return roots
     }
 
-    private class Item(val window: Int, val json: JSONObject, val x: Float, val y: Float, val w: Float, val h: Float, val occludes: Boolean, val hook: Boolean = false, val boxId: Int = -1, val controlBoxes: Set<Int>? = null)
+    private class Item(val window: Int, val json: JSONObject, val x: Float, val y: Float, val w: Float, val h: Float, var occludes: Boolean, val hook: Boolean = false, val boxId: Int = -1, val controlBoxes: Set<Int>? = null)
 
     private fun export(activity: Activity, screen: String, theme: String, file: File) {
         val mainView = activity.window.decorView
@@ -104,7 +104,7 @@ internal object PlayarrLayoutExport {
                         // A layer alpha is not an element: its alpha is multiplied into everything below it.
                         if (box.kind == "alpha") continue
                         val x = b.left + ctx.dx; val y = b.top + ctx.dy
-                        val e = JSONObject().put("text", "").put("role", if (box.kind == "image") "image" else if (box.kind == "fill") "container" else box.kind)
+                        val e = JSONObject().put("text", box.label.orEmpty()).put("role", if (box.kind == "image") "image" else if (box.kind == "fill") "container" else box.kind)
                             .put("rect", rect(x, y, b.width, b.height, unit)).put("color", JSONObject.NULL).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
                         val drawn = box.drawnRadiusPx ?: tree.own.values.firstOrNull { box.id in it }?.firstNotNullOfOrNull { ctx.boxes[it]?.drawnRadiusPx }
                         // A plain-rectangle paint inside a clipping parent keeps the clip's declared radius.
@@ -113,14 +113,14 @@ internal object PlayarrLayoutExport {
                         val effective = box.opacity * ctx.layerAlpha(ctx.boxChain(box.id), except = box.id)
                         if (effective <= 0f) continue
                         if (effective < 1f) e.put("opacity", effective.toDouble())
-                        val painted = box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha > 0f
-                        if (painted) ctx.fills[box.id] = box.fill
+                        val painted = (box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha > 0f) || box.brushPainted
+                        if (painted && box.fill != androidx.compose.ui.graphics.Color.Unspecified) ctx.fills[box.id] = box.fill
                         // kind "textfill": the pill a text sits in, which web models as that text's own background: it backs the text but is not an element of its own.
                         if (box.kind == "textfill") continue
-                        // A surface that paints nothing is not a painted container.
-                        if (box.kind == "fill" && !painted) continue
+                        // A box that paints nothing (a layout wrapper, a surface without a fill) is not an element: only painted containers are exported.
+                        if ((box.kind == "fill" || box.kind == "container") && !painted) continue
                         pending += Triple(e, box.id, painted)
-                        ctx.add(e, x, y, b.width, b.height, occludes = box.kind == "container" && painted && box.fill.alpha >= 0.5f, hook = true, boxId = box.id)
+                        ctx.add(e, x, y, b.width, b.height, occludes = box.kind == "container" && painted && box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha >= 0.5f, hook = true, boxId = box.id)
                     }
                 }
                 // Like the browser's backdrop: the fills of the box's own tree ancestors (and its own), outer to inner. A box that paints nothing
@@ -136,9 +136,11 @@ internal object PlayarrLayoutExport {
         // A container or image box that is the very box of a control exported from the same node (same rectangle) is that control, not a second element: the control carries its paint, radius and alpha.
         val controls = items.filter { it.controlBoxes != null }
         val unique: List<Item> = items.filter { h ->
-            !(h.hook && h.boxId >= 0 && (h.json.getString("role") == "container" || h.json.getString("role") == "image") && controls.any { c ->
-                c.window == h.window && c.json.getString("role") != "dialog" && Math.abs(c.x - h.x) < 1.5f && Math.abs(c.y - h.y) < 1.5f && Math.abs(c.w - h.w) < 1.5f && Math.abs(c.h - h.h) < 1.5f && h.boxId in c.controlBoxes!!
-            })
+            // A hook folded into its control hands its occlusion to that control: the covering paint is not lost with the duplicate record.
+            val absorbed = h.hook && h.boxId >= 0 && (h.json.getString("role") == "container" || h.json.getString("role") == "image") && controls.any { c ->
+                c.window == h.window && Math.abs(c.x - h.x) < 1.5f && Math.abs(c.y - h.y) < 1.5f && Math.abs(c.w - h.w) < 1.5f && Math.abs(c.h - h.h) < 1.5f && (h.boxId in c.controlBoxes!!).also { same -> if (same && h.occludes) c.occludes = true }
+            }
+            !absorbed
         }
         val kept = unique.filter { item ->
             unique.none { top -> top.window > item.window && top.occludes && item.x >= top.x && item.y >= top.y && item.x + item.w <= top.x + top.w && item.y + item.h <= top.y + top.h }
@@ -286,15 +288,18 @@ internal object PlayarrLayoutExport {
             }
             // An image the app tagged for the export and also exposes through semantics on the same node is one element: the tagged record carries the alpha.
             // The label the control itself declares wins over the descriptions and text merged up from its children (those are exported as their own elements).
-            val name = ctx.tree.ownLabel[node.id]?.joinToString(" ")?.takeIf { it.isNotBlank() }
+            val name = if (kind == "dialog") ctx.tree.ownLabel[node.id]?.joinToString(" ").orEmpty() else ctx.tree.ownLabel[node.id]?.joinToString(" ")?.takeIf { it.isNotBlank() }
                 ?: config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString(" ")?.takeIf { it.isNotBlank() }
                 ?: (if (editable) config.getOrNull(SemanticsProperties.EditableText)?.text else null)
                 ?: config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }.orEmpty()
             // The border box as laid out (a scroll container clips what it shows, not the control's box): the node's own coordinates through every layer.
-            val b = node.layoutInfo.coordinates.takeIf { it.isAttached && it.size.width > 0 }?.let { c ->
-                val p = c.localToRoot(androidx.compose.ui.geometry.Offset.Zero); val q = c.localToRoot(androidx.compose.ui.geometry.Offset(c.size.width.toFloat(), c.size.height.toFloat()))
-                androidx.compose.ui.geometry.Rect(minOf(p.x, q.x), minOf(p.y, q.y), maxOf(p.x, q.x), maxOf(p.y, q.y))
-            } ?: node.boundsInRoot
+            // The border box at the node's own semantics modifier (padding placed after a clickable is inside it; layoutInfo.coordinates is the inner content box and drops it):
+            // the node's unclipped root position and size, the size taken through the scale the layers put on the node.
+            val sc = node.layoutInfo.coordinates.takeIf { it.isAttached && it.size.width > 0 }?.let { c ->
+                val o = c.localToRoot(androidx.compose.ui.geometry.Offset.Zero); val r = c.localToRoot(androidx.compose.ui.geometry.Offset(c.size.width.toFloat(), 0f))
+                Math.hypot((r.x - o.x).toDouble(), (r.y - o.y).toDouble()).toFloat() / c.size.width
+            } ?: 1f
+            val b = node.takeIf { it.size.width > 0 }?.let { n -> androidx.compose.ui.geometry.Rect(n.positionInRoot.x, n.positionInRoot.y, n.positionInRoot.x + n.size.width * sc, n.positionInRoot.y + n.size.height * sc) } ?: node.boundsInRoot
             val x = b.left + ctx.dx; val y = b.top + ctx.dy
             val e = JSONObject().put("text", name).put("role", kind).put("rect", rect(x, y, b.width, b.height, ctx.unit))
                 .put("color", JSONObject.NULL).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)

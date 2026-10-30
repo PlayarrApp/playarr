@@ -91,6 +91,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -436,6 +437,7 @@ private fun PlayarrTvDrawer(
                         )
                     }
                     .parityBackground("container", WebSurfaceStrong.copy(alpha = 0.94f))
+                    .semantics { paneTitle = kicker ?: closeLabel }
                     .clickable(interactionSource = null, indication = null, enabled = false) {},
             ) {
                 Column(
