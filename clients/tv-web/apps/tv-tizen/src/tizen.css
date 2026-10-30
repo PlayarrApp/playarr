@@ -192,7 +192,7 @@ b {
   font-weight: bolder;
 }
 
-/* Chromium 85 (Tizen 6.5) keeps only whole pixels of a line height: the body's unitless 1.5 on the drawer's 9.6 px label (14.4 px) and 38.4 px title (57.6 px)
+/* Legacy Tizen app layout adjustment to match web line boxes. This is application CSS, not the engine's own rounding: Chromium 85 (Tizen 6.5) keeps only whole pixels of a line height: the body's unitless 1.5 on the drawer's 9.6 px label (14.4 px) and 38.4 px title (57.6 px)
    lays out 14 and 57, so a drawer opens 1 to 2 px higher than on the web and every block below it drifts. The drawer labels and titles are plain text,
    so a length is safe here (nothing inside them inherits it); half a pixel more rounds to the nearest pixel instead of truncating. */
 @supports not (aspect-ratio: 1) {
@@ -203,7 +203,7 @@ b {
   }
 }
 
-/* The rounding above still loses 0.4 px per section label (14.4 px lays out 14, round is 14), 2 px by the fifth section. At the 1920 px TV width the label is
+/* Legacy Tizen app layout adjustment to match web line boxes (same gate as above). The rounding above still loses 0.4 px per section label (14.4 px lays out 14, round is 14), 2 px by the fifth section. At the 1920 px TV width the label is
    9.6 px, so its 14.4 px line box is the whole pixels the engine keeps plus the fraction it drops, put back as a margin. */
 @media (min-width: 1920px) and (max-width: 1920px) {
   @supports not (aspect-ratio: 1) {
@@ -214,7 +214,7 @@ b {
   }
 }
 
-/* The detail meta row (type, runtime, year, genres) is plain text in a 10.56 px font: its inherited 1.5 is 15.84 px, which Chromium 85 truncates to 15 (0.84 px
+/* Legacy Tizen app layout adjustment to match web line boxes. The detail meta row (type, runtime, year, genres) is plain text in a 10.56 px font: its inherited 1.5 is 15.84 px, which Chromium 85 truncates to 15 (0.84 px
    short, the largest single loss on a detail page, which is centred, so every block moves). Half a pixel more rounds it to 16 (0.16 px). */
 @supports not (aspect-ratio: 1) {
   .tv-detail-meta > * {
@@ -222,7 +222,7 @@ b {
   }
 }
 
-/* The detail kicker is one line of 12.288 px text whose 1.5 line height (18.432 px) Chromium 85 truncates to 18, so the title and everything below sit 0.43 px high.
+/* Legacy Tizen app layout adjustment to match web line boxes. The detail kicker is one line of 12.288 px text whose 1.5 line height (18.432 px) Chromium 85 truncates to 18, so the title and everything below sit 0.43 px high.
    At the 1920 px TV width the dropped fraction goes back as padding (the block keeps the web height). */
 @media (min-width: 1920px) and (max-width: 1920px) {
   @supports not (aspect-ratio: 1) {
@@ -232,7 +232,7 @@ b {
   }
 }
 
-/* The media rail's count line ("1 scene markers") is plain text whose inherited 1.5 is 14.976 px, truncated to 14 (0.98 px short, which moves every block below the rail
+/* Legacy Tizen app layout adjustment to match web line boxes. The media rail's count line ("1 scene markers") is plain text whose inherited 1.5 is 14.976 px, truncated to 14 (0.98 px short, which moves every block below the rail
    header). Half a pixel more rounds it to 15. */
 @supports not (aspect-ratio: 1) {
   .tv-media-track-heading span {

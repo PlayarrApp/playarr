@@ -128,10 +128,15 @@ Player controls: stock Chromium has no H.264 and no AVPlay, so the driver inject
 machine over the clip's 60 s, no decoding) and the screen is scored with the video hidden on both sides: the web refs of the dir come from the
 group `tv-tizen65` of `web-refs.json` (`hideVideo`, the `tv-webos` platform bundle, `capture-refs.mjs --groups tv-tizen65 --screens player-controls --bak <name>`).
 The capture waits for the Downloads item of the nav rail, which the app adds once its capability probe resolves.
-Documented exception: Chromium 85 truncates fractional line heights to whole pixels (21.84 px lays out 21), so wrapped text and every block below it sit 1 to 2 px
-higher than on the web. The package no longer rewrites line heights to hide this (an earlier build rounded them to the nearest pixel and padded dropped fractions, which
-is app CSS the engine does not do on its own; the audit rejected it as not engine-faithful). The score is what stock Chromium 85 lays out: the drift is the engine's, and it
-is left in the numbers. Measured with the earlier adjustments, filters, actions and both detail pages reached 98 to 100, so the gap is entirely this truncation.
+Documented exception: Chromium 85 truncates fractional line heights to whole pixels (21.84 px lays out 21), so text and every block below it sit 1 to 2 px higher
+than on the web. The Tizen package ships a legacy Tizen app layout adjustment to match web line boxes (`apps/tv-tizen/src/tizen.css`, behind `@supports not (aspect-ratio: 1)`
+so only Chromium 85 matches): half a pixel added to the drawer label, drawer title, detail meta row and media rail count line heights, and, at the 1920 px TV width, the
+fraction the engine drops put back as a margin or padding on the drawer section label and the detail kicker. This is application CSS, not the engine's own rounding, and
+it is not a reconstruction of exporter values: the exporter still reads the laid-out page. The earlier build-time rewrite of clamped synopsis line heights
+(`legacy-tv-css.mjs`) is removed. Engines with `aspect-ratio` (webOS, Tizen 7) do not match the gate and keep the original CSS. The detail title (`line-height: 0.9`
+on a 69 px font) still lays out 0.2 px a line short; the engine keeps whole pixels.
+Player D-pad: the Tizen 6.5 stand-in has no decoder, so the player checks run against the AVPlay shim (`build.json` records `player: "avplay-shim", decoding: false`);
+they prove the app's focus and control logic only, not Samsung playback.
 Chromium 94 (snapshot 94.0.4606.0) keeps the fraction (21.83 px for 21.84), so webOS and Tizen 7 need no rounding.
 
 ### Tizen web package: debug build on the emulator
