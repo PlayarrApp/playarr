@@ -1058,7 +1058,11 @@ export function createDriver({ out, args = [] } = {}) {
             throw new Error(traceFailure(`Calendar Back-to-range path left the expected cell route at step ${step + 1}: ${JSON.stringify({ from, to: next })}`));
           }
         }
-        const selector = viaToday ? currentCalendarFocus() : await observeCalendarKey("up");
+        let selector = viaToday ? currentCalendarFocus() : await observeCalendarKey("up");
+        // With real day cells and chip stops the fifth Right can sit under Today; Left twice is the range selector from there.
+        if (selector.action === "calToday") {
+          for (let i = 0; i < 2; i += 1) selector = await observeCalendarKey("left");
+        }
         if (selector.action !== "calView") {
           throw new Error(traceFailure(`Calendar measured Back + Right x5 + Up path did not focus the range selector: ${JSON.stringify(selector)}`));
         }
