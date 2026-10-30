@@ -380,6 +380,7 @@ struct HomeView: View {
                     .font(phone ? .custom("Avenir Next", fixedSize: 16).weight(.semibold) : WM.font(13.5, 500))
                     .tracking(phone ? -0.4 : -0.2)
                     .foregroundStyle(PlayarrStyle.ink)
+                    .parityRenderedText(rail.title, role: "text", size: phone ? 16 : 13.5, weight: phone ? 600 : 500, color: PlayarrStyle.ink)
                 if phone { Text("\(rail.works.count) titles")
                     .font(.custom("Avenir Next", fixedSize: phone ? 10.5 : 8.5).weight(.semibold))
                     .foregroundStyle(PlayarrStyle.muted) }

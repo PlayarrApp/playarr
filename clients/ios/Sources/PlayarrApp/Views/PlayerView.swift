@@ -542,7 +542,7 @@ struct PlayerView: View {
             .background {
                 if expanded { Circle().fill(.white.opacity(0.15)) }
             }
-            .scaleEffect(expanded ? 1.08 : 1)
+            .parityScale(expanded ? 1.08 : 1)
         }
         .parityButtonStyle(.plain)
         .disabled(disabled)

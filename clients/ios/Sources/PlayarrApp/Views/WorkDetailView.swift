@@ -1257,7 +1257,7 @@ struct WorkDetailView: View {
                             }
                             .frame(width: 174, alignment: .leading)
                             .foregroundStyle(PlayarrStyle.ink)
-                            .scaleEffect(selectedAlbumID == album.album.id ? 1.06 : 0.88)
+                            .parityScale(selectedAlbumID == album.album.id ? 1.06 : 0.88)
                             .rotation3DEffect(
                                 .degrees(selectedAlbumID == album.album.id ? 0 : (album.album.id == albums.first?.album.id ? 10 : -10)),
                                 axis: (x: 0, y: 1, z: 0)
@@ -1354,6 +1354,7 @@ struct WorkDetailView: View {
                         .font(DesignFont.font(12.567 * tabletScale, 610))
                         .tracking(-0.377 * tabletScale)
                         .foregroundStyle(PlayarrStyle.ink)
+                        .parityRenderedText(season.season.title ?? "Season \(season.season.seasonNumber)", role: "text", size: 12.567 * tabletScale, weight: 610, color: PlayarrStyle.ink)
                     Text("\(railEpisodes.count) episodes")
                         .wm(7.36 * tabletScale, 400, color: PlayarrStyle.muted, text: "\(railEpisodes.count) episodes")
                         .foregroundStyle(PlayarrStyle.muted)
@@ -1561,7 +1562,7 @@ struct WorkDetailView: View {
                         lineWidth: tabletScale == nil ? (selected ? 3 : 1) : (selected ? 3 * scale : 0)
                     )
             }
-            .scaleEffect(selected && tabletScale != nil ? 1.025 : 1)
+            .parityScale(selected && tabletScale != nil ? 1.025 : 1)
             .shadow(color: .clear, radius: 0)
             if let tabletScale {
                 HStack(alignment: .firstTextBaseline, spacing: 8.8 * tabletScale) {
@@ -1909,8 +1910,8 @@ final class ParityMeasuredLabel: UILabel {
             guard let font = attributes[.font] as? UIFont else { return }
             let raise = (attributes[.baselineOffset] as? CGFloat) ?? 0
             let used = manager.boundingRect(forGlyphRange: shown, in: container)
-            let baseline = origin.y + fragment.minY + manager.location(forGlyphAt: glyphs.location).y - raise
-            let local = CGRect(x: origin.x + used.minX, y: baseline - font.ascender, width: used.width, height: font.ascender - font.descender)
+            // The line's box as TextKit returns it for the glyphs drawn (its own vertical extent, not font metrics).
+            let local = CGRect(x: origin.x + used.minX, y: origin.y + used.minY - raise, width: used.width, height: used.height)
             let rect = self.convert(local, to: nil)
             guard !line.isEmpty, let opacity = self.paint.effective(rect) else { return }
             let colour = ((attributes[.foregroundColor] as? UIColor) ?? .label).resolvedColor(with: self.traitCollection)

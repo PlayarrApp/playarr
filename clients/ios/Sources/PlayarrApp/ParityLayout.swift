@@ -208,7 +208,8 @@ final class ParityLayoutRegistry {
         let walked = accessibilityElements()
         let plain = walked.filter { entry in
             if entry.role == "text" || entry.role == "heading" { return false }
-            return !styled.contains(where: { $0.text == entry.text && $0.role == entry.role && abs($0.rect.minX - entry.rect.minX) < 3 && abs($0.rect.minY - entry.rect.minY) < 12 })
+            // The same control: the styled record lies inside the accessibility frame (a focus ring widens only the latter).
+            return !styled.contains(where: { $0.text == entry.text && $0.role == entry.role && entry.rect.insetBy(dx: -2, dy: -2).contains($0.rect) && entry.rect.width - $0.rect.width < 16 && entry.rect.height - $0.rect.height < 16 })
         }
         // A native control takes the fill and radius of the painted box of its own role registered on its own frame (the
         // control's own paint); with no such box its background is not known and stays null. Containment is never used.
@@ -228,6 +229,8 @@ final class ParityLayoutRegistry {
             } else if let target = toggleFrames.filter({ distance($0.value, entry.rect) < 6 }).min(by: { distance($0.value, entry.rect) < distance($1.value, entry.rect) }) {
                 // A control without a styled box: the view that draws it carries a `parityToggle`, found by its frame.
                 entry.toggle = target.key
+                // The control's own container carries the ancestors' opacity: an artwork image reports it from there.
+                if entry.opacity >= 0.995, let paint = paintRegions[target.key] { entry.opacity = paint.effective(entry.rect) ?? paint.opacity }
             }
             return entry
         }
@@ -467,11 +470,17 @@ private struct ParityPaintTag: ViewModifier {
     func body(content: Content) -> some View {
         if enabled {
             content
+                .opacity(ParityHide.shared.ids.contains(id) ? 0 : 1)
+                .background(GeometryReader { proxy in
+                    Color.clear
+                        .onAppear { ParityLayoutRegistry.shared.setToggle(id, proxy.frame(in: .global)) }
+                        .onChange(of: proxy.frame(in: .global)) { _, value in ParityLayoutRegistry.shared.setToggle(id, value) }
+                })
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(ParityLayoutRegistry.paintIdentifierPrefix + id.uuidString)
                 .onAppear { ParityLayoutRegistry.shared.setPaint(id, paint) }
                 .onChange(of: paint) { _, value in ParityLayoutRegistry.shared.setPaint(id, value) }
-                .onDisappear { ParityLayoutRegistry.shared.setPaint(id, nil) }
+                .onDisappear { ParityLayoutRegistry.shared.setPaint(id, nil); ParityLayoutRegistry.shared.setToggle(id, nil) }
         } else {
             content
         }
@@ -663,7 +672,8 @@ func parityDisplayedLines(_ text: String, _ lines: [ParityRenderedLine]) -> [Str
         guard let low = line.indices.min(), let high = line.indices.max(), low >= 0, high < characters.count else { return "" }
         // Characters the line draws must be contiguous (whitespace aside); a line that is not is not read back at all.
         let drawn = Set(line.indices).sorted()
-        guard zip(drawn, drawn.dropFirst()).allSatisfy({ $1 - $0 == 1 || characters[($0 + 1)..<$1].allSatisfy(\.isWhitespace) }) else { return "" }
+        // A ligature ("fi") is one glyph carrying one index, so a single skipped letter is part of the glyph just drawn.
+        guard zip(drawn, drawn.dropFirst()).allSatisfy({ $1 - $0 == 1 || characters[($0 + 1)..<$1].allSatisfy(\.isWhitespace) || ($1 - $0 == 2 && characters[$0 + 1].isLetter) }) else { return "" }
         return String(characters[low...high]).trimmingCharacters(in: .whitespaces)
     }
     guard shown.count == lines.count, !shown.isEmpty else { return [] }
