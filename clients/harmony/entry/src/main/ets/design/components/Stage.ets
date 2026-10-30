@@ -216,17 +216,19 @@ export struct Stage {
       // Alpha-overlay reproduction of the source CSS's `mask-image`
       // (see this file's header comment): visible until 72% of the key
       // art's own width, then fading to the stage's `surface` colour.
-      Row()
-        .width(tv(TvGeometry.keyArtWidthPx))
-        .height(tv(TvGeometry.keyArtHeightPx))
-        .linearGradient({
-          angle: HORIZONTAL_ANGLE,
-          colors: [
-            [toResourceColorWithAlpha(activeColors().surface, 0), 0],
-            [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.keyArtMaskFadeStartPct)],
-            [toResourceColorWithAlpha(activeColors().surface, 1), 1],
-          ],
-        })
+      if (this.hasKeyArt()) {
+        Row()
+          .width(tv(TvGeometry.keyArtWidthPx))
+          .height(tv(TvGeometry.keyArtHeightPx))
+          .linearGradient({
+            angle: HORIZONTAL_ANGLE,
+            colors: [
+              [toResourceColorWithAlpha(activeColors().surface, 0), 0],
+              [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.keyArtMaskFadeStartPct)],
+              [toResourceColorWithAlpha(activeColors().surface, 1), 1],
+            ],
+          })
+      }
     }
     .width(tv(TvGeometry.keyArtWidthPx))
     .height(tv(TvGeometry.keyArtHeightPx))
@@ -430,9 +432,9 @@ export struct Stage {
 
   build() {
     Stack() {
-      // Web draws the key art, its two scrims and the right wash only when the page has art; without it the page shows one wash box.
+      // Web draws the two scrims, the key-art mask and the right wash only when the page has art; without it the page shows one wash box.
+      this.keyArtLayer() // web keeps its key-art img on every page, with or without art
       if (this.hasKeyArt()) {
-        this.keyArtLayer()
         this.horizontalScrimLayer()
         this.verticalScrimLayer()
       }
