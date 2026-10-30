@@ -130,7 +130,7 @@ internal object PlayarrLayoutExport {
                         if (effective < 1f) e.put("opacity", effective.toDouble())
                         val painted = (box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha > 0f) || box.brushPainted
                         if (painted && box.fill != androidx.compose.ui.graphics.Color.Unspecified) ctx.fills[box.id] = box.fill
-                        // kind "textfill": the pill a text sits in, which web models as that text's own background: it backs the text but is not an element of its own.
+                        // kind "textfill": the pill the text node paints for itself; the text element carries it (web: one span), so it is not a second element.
                         if (box.kind == "textfill") continue
                         // A box that paints nothing (a layout wrapper, a surface without a fill) is not an element: only painted containers are exported.
                         if ((box.kind == "fill" || box.kind == "container") && !painted) continue
@@ -162,9 +162,6 @@ internal object PlayarrLayoutExport {
         val nominated = unique.filter { item ->
             unique.any { top -> top.window > item.window && top.occludes && item.x >= top.x && item.y >= top.y && item.x + item.w <= top.x + top.w && item.y + item.h <= top.y + top.h }
         }.toSet()
-        // With `rendered` requested, the fill of a container or dialog that lives in a higher window (a drawer panel) is flagged `sampled`: the capture script
-        // reads its colour from the screenshot's own pixels, where this export would only have composited the paint calls.
-        if (candidates) unique.filter { it.window > 0 && (it.json.getString("role") == "container" || it.json.getString("role") == "dialog") }.forEach { it.json.put("sampled", true) }
         // Same-window candidates: painted boxes (images, video, opaque containers) drawn after the element (later in paint order, outside its subtree) whose rectangles
         // together reach 90% of its area. Geometry only nominates; the rendered diff decides, with the covers' paint skipped (docs/parity/LAYOUT.md).
         val painters = unique.filter { it.hook && it.boxId >= 0 && it.order >= 0 && (it.json.getString("role") == "image" || it.json.getString("role") == "video" || (it.json.getString("role") == "container" && it.occludes)) }
@@ -238,6 +235,26 @@ internal object PlayarrLayoutExport {
         }
     }
 
+    /** The paint the platform text layout draws character [index] of line [line] with: the layout's paint plus the metric-affecting spans over that character. Null when the layout does not expose it. */
+    private fun shapedRunPaint(result: TextLayoutResult, line: Int, index: Int): android.text.TextPaint? = runCatching {
+        // The compose text classes that hold the platform layout are internal, so they are read by reflection (the debug export only).
+        val multi = result.multiParagraph
+        val infos = multi.javaClass.methods.first { it.name.startsWith("getParagraphInfoList") }.invoke(multi) as List<*>
+        val info = infos.first { i ->
+            val start = i!!.javaClass.methods.first { it.name == "getStartLineIndex" }.invoke(i) as Int
+            val end = i.javaClass.methods.first { it.name == "getEndLineIndex" }.invoke(i) as Int
+            line >= start && line < end
+        }!!
+        val paragraph = info.javaClass.methods.first { it.name == "getParagraph" }.invoke(info)!!
+        val getter = paragraph.javaClass.methods.first { it.parameterCount == 0 && it.returnType.name == "androidx.compose.ui.text.android.TextLayout" }
+        val textLayout = getter.invoke(paragraph)!!
+        val platform = textLayout.javaClass.methods.first { it.name == "getLayout" }.invoke(textLayout) as android.text.Layout
+        val paint = android.text.TextPaint(platform.paint)
+        val local = index - (info.javaClass.methods.first { it.name == "getStartIndex" }.invoke(info) as Int)
+        (platform.text as? android.text.Spanned)?.getSpans(local, local + 1, android.text.style.MetricAffectingSpan::class.java)?.forEach { it.updateMeasureState(paint) }
+        paint
+    }.getOrNull()
+
     private fun r2(v: Float) = Math.round(v * 100) / 100.0
     private fun rect(x: Float, y: Float, w: Float, h: Float, unit: Float) = JSONObject().put("x", r2(x * unit)).put("y", r2(y * unit)).put("w", r2(w * unit)).put("h", r2(h * unit))
     /** A declared corner radius (px) clamped to half the short side, as the drawn shape resolves it. */
@@ -275,20 +292,16 @@ internal object PlayarrLayoutExport {
                         val colour = runStyle.color.takeIf { it.alpha > 0f && it != androidx.compose.ui.graphics.Color.Unspecified } ?: continue
                         val size = runStyle.fontSize.value * input.density.fontScale * input.density.density
                         val runText = raw.substring(rs, re) + if (layout.isLineEllipsized(i) && k == cuts.size - 2) "\u2026" else ""
-                        // The run's content area: the drawn line's own baseline minus and plus the ascent and descent of the typeface that drew the run
-                        // (the resolved Typeface at the run's size). No second text layout is made; the line box is not used, as it holds the line height.
-                        val face = runCatching {
-                            input.fontFamilyResolver.resolve(runStyle.fontFamily, runStyle.fontWeight ?: androidx.compose.ui.text.font.FontWeight.Normal, runStyle.fontStyle ?: androidx.compose.ui.text.font.FontStyle.Normal, runStyle.fontSynthesis ?: androidx.compose.ui.text.font.FontSynthesis.All).value as? android.graphics.Typeface
-                        }.getOrNull()
-                        // A typeface that did not resolve would silently measure the default font: the export fails instead.
-                        checkNotNull(face) { "typeface of '${raw.substring(rs, re).take(20)}' unresolved" }
-                        val fm = android.graphics.Paint().also { pt -> pt.typeface = face; pt.textSize = size }.fontMetrics
+                        // The run's content area: the drawn line's own baseline minus and plus the ascent and descent of the font the shaped layout drew the run with.
+                        // The paint is the one android.text.Layout draws with: the layout's own paint with the metric-affecting spans (typeface, size, letter spacing) the shaping applied to this run.
+                        val drawPaint = checkNotNull(shapedRunPaint(layout, i, rs)) { "shaped paint of '${raw.substring(rs, re).take(20)}' unavailable" }
+                        val fm = drawPaint.fontMetrics
                         val ascent = -fm.ascent; val descent = fm.descent
                         val baseline = layout.getLineBaseline(i)
                                                 val lo = (rs until re).minOf { layout.getBoundingBox(it).left }; val hi = (rs until re).maxOf { layout.getBoundingBox(it).right }
                         // An ellipsized line draws the engine's ellipsis after its last visible character: it is part of the text and of the width.
                         val ellipsis = layout.isLineEllipsized(i) && k == cuts.size - 2
-                        val hiEnd = if (ellipsis) hi + android.graphics.Paint().also { pt -> pt.typeface = face; pt.textSize = size }.measureText("\u2026") else hi
+                        val hiEnd = if (ellipsis) hi + drawPaint.measureText("\u2026") else hi
                         // The run's four corners through the node's transform (a rotation or unequal scale still gives its bounding box).
                         val corners = listOf(lo to baseline - ascent, hiEnd to baseline - ascent, lo to baseline + descent, hiEnd to baseline + descent).map { (cx, cy) -> coords.localToRoot(androidx.compose.ui.geometry.Offset(cx, cy)) }
                         val x = corners.minOf { it.x } + ctx.dx; val y = corners.minOf { it.y } + ctx.dy; val w = corners.maxOf { it.x } - corners.minOf { it.x }; val h = corners.maxOf { it.y } - corners.minOf { it.y }
@@ -297,8 +310,8 @@ internal object PlayarrLayoutExport {
                         val e = JSONObject().put("text", runText).put("role", role).put("rect", rect(x, y, w, h, ctx.unit))
                             .put("color", hex(colour.toArgb()))
                             .put("fontSize", r2(size * ctx.unit)).put("fontWeight", runStyle.fontWeight?.weight ?: 400)
-                        // A text inside a pill the app paints for it (kind textfill) owns that fill, as the web models it: its corners are the pill's drawn outline on the pill's box.
-                        ctx.chainOf(node).asReversed().firstNotNullOfOrNull { ctx.boxes[it]?.takeIf { b -> b.kind == "textfill" } }?.let { pill ->
+                        // A text that paints its own pill (kind textfill on the text node itself, as the web span does) carries that outline: the drawn corners of its own paint, never a copy from another node.
+                        ctx.ownBoxes(node).lastOrNull { b -> b.kind == "textfill" }?.let { pill ->
                             val pb = pill.bounds(); val d = pill.drawnRadiusPx
                             if (pb != null && d != null && d > 0f) e.put("radius", radius(d * pill.scale(), pb.width, pb.height, ctx.unit))
                         }
@@ -345,6 +358,8 @@ internal object PlayarrLayoutExport {
             // the node's unclipped root position and size, the size taken through the scale the layers put on the node.
             val sc = node.layoutInfo.coordinates.takeIf { it.isAttached && it.size.width > 0 }?.let { c ->
                 val o = c.localToRoot(androidx.compose.ui.geometry.Offset.Zero); val r = c.localToRoot(androidx.compose.ui.geometry.Offset(c.size.width.toFloat(), 0f))
+                // A control's box is read as an axis-aligned scale of its layout size; a rotated control would get a wrong box, so the export fails instead of guessing.
+                if (Math.abs(r.y - o.y) > 0.5f) throw IllegalStateException("control is rotated; its box cannot be read from the layout size")
                 Math.hypot((r.x - o.x).toDouble(), (r.y - o.y).toDouble()).toFloat() / c.size.width
             } ?: 1f
             // The vertical scale is measured on the vertical axis (unequal X and Y scales are two numbers).

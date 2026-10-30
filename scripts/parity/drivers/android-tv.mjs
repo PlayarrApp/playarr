@@ -171,42 +171,26 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   // docs/parity/LAYOUT.md: the debug app writes its own layout (semantics tree: text style, glyph-run bounds, controls) in the same state as the screenshot.
   // Asks the app for its layout and returns the document text, or null when none arrived.
   const requestLayout = async (theme, screen) => {
+    const id = randomUUID().replace(/-/g, "");
     await shell("run-as", pkg, "rm", "-f", "files/parity-layout.json").catch(() => {});
-    await shell("am", "broadcast", "-a", "io.playarr.mobile.PARITY_LAYOUT", "-p", pkg, "--es", "screen", screen, "--es", "theme", theme, "--ez", "rendered", "true");
+    await shell("am", "broadcast", "-a", "io.playarr.mobile.PARITY_LAYOUT", "-p", pkg, "--es", "screen", screen, "--es", "theme", theme, "--es", "id", id, "--ez", "rendered", "true");
     for (let i = 0; i < 20; i++) {
       await sleep(500);
       const json = await adb("exec-out", "run-as", pkg, "cat", "files/parity-layout.json").catch(() => "");
-      if (json.startsWith("{")) return json;
+      if (!json.startsWith("{")) continue;
+      // The export must be the one asked for: its id, screen and theme echo the request (a stale or foreign file is refused).
+      const doc = JSON.parse(json);
+      if (doc.captureId !== id || doc.screen !== screen || doc.theme !== theme) throw new Error(`layout export for ${theme}/${screen} is not the one requested (id ${doc.captureId}, ${doc.theme}/${doc.screen})`);
+      return json;
     }
     return null;
   };
   // Real-screen occlusion (docs/parity/LAYOUT.md): the app flags the elements that lie wholly inside a higher window's opaque container. Toggle and diff:
   // hide every window below the top one, screenshot again, and keep a flagged element only if the pixels in its own rectangle changed (the lower window showed there).
-  // A flagged fill (a drawer panel) is read from the screenshot: the most common colour among the pixels of its rectangle that no other exported element's rectangle covers.
-  const sampleFills = (layout, shown) => {
-    const img = PNG.sync.read(shown);
-    for (const e of layout.elements) {
-      if (!e.sampled) continue;
-      delete e.sampled;
-      const x0 = Math.max(0, Math.floor(e.rect.x)), y0 = Math.max(0, Math.floor(e.rect.y));
-      const x1 = Math.min(img.width, Math.ceil(e.rect.x + e.rect.w)), y1 = Math.min(img.height, Math.ceil(e.rect.y + e.rect.h));
-      const inner = layout.elements.filter((o) => o !== e && o.rect.x < x1 && o.rect.x + o.rect.w > x0 && o.rect.y < y1 && o.rect.y + o.rect.h > y0 && o.rect.w * o.rect.h < e.rect.w * e.rect.h);
-      const counts = new Map();
-      for (let y = y0; y < y1; y += 2) for (let x = x0; x < x1; x += 2) {
-        if (inner.some((o) => x >= Math.floor(o.rect.x) - 1 && x <= Math.ceil(o.rect.x + o.rect.w) && y >= Math.floor(o.rect.y) - 1 && y <= Math.ceil(o.rect.y + o.rect.h))) continue;
-        const i = (img.width * y + x) * 4, key = (img.data[i] << 16) | (img.data[i + 1] << 8) | img.data[i + 2];
-        counts.set(key, (counts.get(key) ?? 0) + 1);
-      }
-      let best = null;
-      for (const [k, n] of counts) if (!best || n > best[1]) best = [k, n];
-      if (best) e.background = `#${best[0].toString(16).padStart(6, "0")}`;
-    }
-  };
   const resolveCovered = async (layout, shown) => {
     const flagged = layout.elements.filter((e) => e.covered);
     const sameWindow = flagged.filter((e) => e.coverIds);
     const windowLevel = flagged.filter((e) => !e.coverIds);
-    sampleFills(layout, shown);
     const img = PNG.sync.read(shown);
     // Pixels of the element's own rectangle that differ between the screen as shown and the screen with something hidden.
     const changedFraction = (e, other) => {
