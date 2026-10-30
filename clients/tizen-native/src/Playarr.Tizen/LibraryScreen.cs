@@ -65,7 +65,7 @@ internal sealed class LibraryScreen : IPage
         _panel = new DetailsPanel(env, library: true);
         _root.Add(_keyArt.Root);
         _root.Add(_panel.Root);
-        _root.Add(Ui.PanelWash(_t, 1248));
+        _root.Add(Sem.Tag(Ui.PanelWash(_t, 1190.39f), "container"));
         var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
         _grid.PositionX = -ClipX;
         clip.Add(_grid);
@@ -107,7 +107,7 @@ internal sealed class LibraryScreen : IPage
             var dot = Ui.Box(10, 10, 24, 24, _t.Ink, 12); dot.Show(false);
             hit.Add(dot); _letterDots[letter] = dot;
             var l = letter;
-            var lbl = Ui.Text(letter.ToString(), 1869, ly - 2, 9.216f, 400, _t.InkMuted, 21, 13, HorizontalAlignment.Center);
+            var lbl = Ui.Text(letter.ToString(), 1869, ly - 1, 9.216f, 400, _t.InkMuted, 21, 13, HorizontalAlignment.Center);
             _root.Add(lbl); _letterLabels[letter] = lbl;
             var ringL = Ring.Make(24, 24, 12, new Rgba(1, 1, 1)); ringL.PositionX = -5; ringL.PositionY = -5; ringL.Show(false); dot.Add(ringL);
             _side.Add(new Focusable

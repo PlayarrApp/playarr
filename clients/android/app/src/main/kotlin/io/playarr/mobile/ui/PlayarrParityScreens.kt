@@ -129,6 +129,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.focused
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -2521,7 +2522,7 @@ private fun ProfileChoice(
             .onFocusChanged { if (it.isFocused) onFocus() },
     ) {
         // Web: the profile button is the avatar plus its name and status lines (the actions below are separate controls): one merged control with the avatar label.
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = avatarDescription; role = androidx.compose.ui.semantics.Role.Button; if (enabled) onClick { onClick(); true } }) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = avatarDescription; role = androidx.compose.ui.semantics.Role.Button; if (isTelevision) focused = avatarFocused; if (enabled) onClick { onClick(); true } }) {
         if (isTelevision) {
             WebShadowedBox(
                 shadows = avatarShadows,
@@ -2706,7 +2707,7 @@ private fun AddProfileChoice(
             .width(cardWidth)
             .then(if (isTelevision) Modifier.offset(y = 1.2.dp) else Modifier)
             .then(lift)
-            .semantics(mergeDescendants = true) { role = androidx.compose.ui.semantics.Role.Button; if (enabled) onClick { onClick(); true } }
+            .semantics(mergeDescendants = true) { role = androidx.compose.ui.semantics.Role.Button; if (isTelevision) focused = addFocused; if (enabled) onClick { onClick(); true } }
             .onFocusChanged { addFocused = it.hasFocus; if (it.hasFocus) onFocus() },
     ) {
         if (isTelevision) {
@@ -4361,8 +4362,10 @@ private fun TvSettingsBody(
             ),
         ) {
         androidx.compose.material3.ProvideTextStyle(outerTextStyle) {
+        // Web TV: the settings panel is its own box from x 672 to the screen edge; the section column sits 102 px inside it.
+        Box(if (tablet) Modifier else Modifier.offset(x = 672.dp).width(1248.dp).fillMaxHeight()) {
         Column(
-            Modifier.offset(x = if (tablet) 817.dp else 774.dp, y = if (tablet) 248.dp else 210.dp).width(if (tablet) 995.dp else 1042.3.dp),
+            if (tablet) Modifier.offset(x = 817.dp, y = 248.dp).width(995.dp) else Modifier.padding(start = 102.dp, top = 210.dp).width(1042.3.dp),
         ) {
             when (val current = state) {
                 ParityLoad.Loading -> CircularProgressIndicator(color = WebAccent)
@@ -4383,6 +4386,7 @@ private fun TvSettingsBody(
                     )
                 }
             }
+        }
         }
         }
         }
@@ -4606,8 +4610,9 @@ private fun TvAppearanceBody(display: PlayarrDisplayPreferences) {
         selected = display.theme,
     ) { display.setTheme(it) }
     Spacer(Modifier.height(29.5.dp))
+    // Web: each following section is a box that starts with its 1 px rule.
+    Column(Modifier.fillMaxWidth()) {
     Box(Modifier.fillMaxWidth().height(1.dp).background(TvSettingsPalette.divider))
-    Column(Modifier) {
     Spacer(Modifier.height(30.3.dp))
     Text(playarrString(PlayarrString.SettingsHomeViewTitle), color = WebInk, fontSize = 26.4.sp, fontWeight = FontWeight(560), lineHeight = 39.6.sp, letterSpacing = (-0.924).sp, modifier = Modifier.semantics { heading() })
     Spacer(Modifier.height(5.6.dp))
@@ -4623,8 +4628,8 @@ private fun TvAppearanceBody(display: PlayarrDisplayPreferences) {
     ) { display.setHomeView(it) }
     }
     Spacer(Modifier.height(28.5.dp))
+    Column(Modifier.fillMaxWidth()) {
     Box(Modifier.fillMaxWidth().height(1.dp).background(TvSettingsPalette.divider))
-    Column(Modifier) {
     Spacer(Modifier.height(30.3.dp))
     Text(playarrString(PlayarrString.LibraryArtworkSize), color = WebInk, fontSize = 26.4.sp, fontWeight = FontWeight(560), lineHeight = 39.6.sp, letterSpacing = (-0.924).sp, modifier = Modifier.semantics { heading() })
     Spacer(Modifier.height(5.6.dp))
@@ -4766,7 +4771,7 @@ internal fun phoneSettingsRowHeightPx(index: Int, density: Float): Float =
 /** Web mobile `.settings-options-list`: numbered rows 88 px tall, the first one drawn selected. */
 @Composable
 private fun PhoneSettingsIndex(isAdmin: Boolean, onOpen: (SettingsSection) -> Unit) {
-    Box(Modifier.fillMaxSize().background(WebSurface).parityBox("container")) {
+    Box(Modifier.fillMaxSize().background(WebSurface)) {
         androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 83.4.dp, bottom = 116.dp),

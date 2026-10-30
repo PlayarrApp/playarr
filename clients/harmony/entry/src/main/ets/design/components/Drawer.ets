@@ -16,7 +16,7 @@ const DRAWER_BACKDROP_BLUR: number = 38;
 const PADDING_H: number = 46;
 const HEADER_TOP: number = 54;
 // Web body starts at y=163: 34 below the 75 high header block.
-const BODY_GAP: number = 35;
+const BODY_GAP: number = 32.42;
 // TV: the body's focus rings are drawn outside their rows; the drawer's side padding gives this much to the scroll box and takes it back from the header and the content.
 const RING_ROOM: number = 4;
 const KICKER_SIZE: number = 9.6;
@@ -77,7 +77,7 @@ export struct Drawer {
             .letterSpacing((isTvMetrics() ? tv(TITLE_LETTER_SPACING) : TOUCH_TITLE_LETTER_SPACING) + (!isTvMetrics() ? -0.078 : 0))
             .lineHeight(webLineHeight(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)).lineSpacing(webLineSpacing(isTvMetrics() ? tv(57) : 0, isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)).halfLeading(true) // web: 1.5 line height, two-line titles keep a 57 px pitch
             .fontColor(toResourceColor(activeColors().ink))
-            .translate({ y: (isTvMetrics() ? -2 : -3.2) + (isTvMetrics() ? 1.58 : 0) }) // web's heading box sits higher than ArkUI lays it out
+            .translate({ y: (isTvMetrics() ? -2 : -3.2) + (isTvMetrics() ? -0.42 : 0) }) // web's heading box sits higher than ArkUI lays it out
             
         }
         .alignItems(HorizontalAlign.Start)

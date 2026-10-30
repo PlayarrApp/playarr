@@ -52,6 +52,18 @@ class LayoutExportTest(unittest.TestCase):
         t = [e for e in doc["elements"] if e["role"] == "text"][0]
         self.assertEqual((t["rect"]["w"], t["fontSize"]), (31.5, 16.8))  # drawn at 1.05
 
+    def test_a_text_input_exports_the_text_range_its_own_layout_reports(self):
+        field = {"$type": "TextInput", "$rect": "[30.00, 300.00],[900.00, 132.00]", "$attrs": {"text": "the", "fontSize": "16.00fp", "fontColor": "#FFF4F0F1", "fontWeight": "400",
+                 "fontFamily": "HarmonyOS Sans", "accessibilityText": "Search"}, "$input": {"x": 0.0, "y": 36.0, "w": 60.0, "h": 60.0}}
+        doc = export(column([field]), "x", "dark", (360, 780, 3))
+        t = [e for e in doc["elements"] if e["role"] == "text"][0]
+        self.assertEqual((t["text"], t["fontSize"], t["fontWeight"]), ("the", 16.0, 400))
+        self.assertEqual(t["rect"], {"x": 10.0, "y": 112.0, "w": 20.0, "h": 20.0})
+        self.assertEqual([e["role"] for e in doc["elements"] if e["role"] == "textbox"], ["textbox"])
+        del field["$input"]
+        with self.assertRaises(ExportError):
+            export(column([field]), "x", "dark", (360, 780, 3))
+
     def test_a_text_without_glyph_runs_fails_the_export(self):
         tree = column([text("[0.00, 0.00],[200.00, 48.00]", "unmeasured", None)], rect="[0.00, 0.00],[1920.00, 1080.00]")
         with self.assertRaises(ExportError):

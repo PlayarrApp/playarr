@@ -43,7 +43,7 @@ internal sealed class ActionsDrawer
             var y = 221 + i * 82f; var a = actions[i];
             var b = Ui.Box(1606, y, 268, 68, t.SurfaceSoft, 14);
             Sem.Tag(b, "button", a.Text); // web names the button by its text; the glyph is decoration
-            b.Add(Ui.Text(a.Glyph, 18, 22.4f, 19.52f, 400, t.Brand, 24, 26));
+            b.Add(Ui.Text(a.Glyph, 18, 20.9f, 19.52f, 400, t.Brand, 24, 26));
             b.Add(Ui.Text(a.Text, 60, 19, 19.2f, 700, t.Ink, 200, 30));
             var ring = Ring.Make(268, 68, 12, new Rgba(1, 1, 1)); ring.Show(false); b.Add(ring);
             Root.Add(b);

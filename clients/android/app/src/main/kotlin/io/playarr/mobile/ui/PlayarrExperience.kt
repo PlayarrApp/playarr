@@ -3812,7 +3812,9 @@ internal fun ExperienceLandscapeCard(
             innerModifier = Modifier.parityBackground("container", if (webSearch) WebSurfaceStrong else WebSurfaceSoft, radius = if (webPhone) 8f else if (webTvStyle) 12.48f else 10f)
                 .then(if (!webPhone && !webTvStyle && (focused || selected)) Modifier.border(1.dp, WebInk.copy(alpha = 0.62f), RoundedCornerShape(10.dp)) else Modifier),
         ) {
-            AuthenticatedArtwork(
+            // A loaded thumbnail (opaque) covers the artwork under it, so the artwork is composed only until then.
+            var thumbnailLoaded by remember(mediaFileId, homeView) { mutableStateOf(false) }
+            if (!thumbnailLoaded) AuthenticatedArtwork(
                 work = work,
                 placeholderSize = if (webPhone) (if (webHome) 9.28.sp else if (webSearch) 8.96.sp else 10.88.sp) else 12.sp,
                 kinds = if (homeView == PlayarrHomeViewPreference.Cover) {
@@ -3832,6 +3834,7 @@ internal fun ExperienceLandscapeCard(
                     accessToken = accessToken,
                     contentDescription = displayTitle,
                     modifier = Modifier.fillMaxSize(),
+                    onLoaded = { thumbnailLoaded = true },
                 )
             }
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
@@ -4825,18 +4828,24 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                             val shownLetter = if (activeLetter == "#") (filteredWorks.getOrNull(gridState.firstVisibleItemIndex) ?: selected).sortTitle.firstOrNull()?.uppercaseChar()?.takeIf { it in 'A'..'Z' }?.toString() ?: "#" else activeLetter
                             val active = shownLetter == letter
                             var letterFocused by remember { mutableStateOf(false) }
-                            Box(Modifier.size(44.dp * alphaCss), contentAlignment = Alignment.Center) {
+                            // Web: the button is the whole 44 px target (radius 22) and the 24 px disc inside it only marks the active letter, so the
+                            // target is the clickable and the focus holder; the disc and the ring are paint.
+                            Box(
+                                Modifier.size(44.dp * alphaCss)
+                                    .then(if (active) Modifier.focusRequester(letterFocus) else Modifier)
+                                    .onFocusChanged { letterFocused = it.isFocused }
+                                    .parityShape(999f)
+                                    .clip(CircleShape)
+                                    .clickable { activeLetter = letter },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                            val disc = WebInk.copy(alpha = 0.78f)
                             Box(
                                 modifier = Modifier
                                     .size(24.dp * alphaCss)
-                                    .parityShape(999f)
-                                    .then(if (active) Modifier.focusRequester(letterFocus) else Modifier)
                                     .webFocusRing(letterFocused, offset = 1.dp)
-                                    .onFocusChanged { letterFocused = it.isFocused }
                                     .clip(CircleShape)
-                                    .parityShape(999f)
-                                    .then(if (active) Modifier.parityBackground("container", WebInk.copy(alpha = 0.78f), CircleShape) else Modifier)
-                                    .clickable { activeLetter = letter },
+                                    .then(if (active) Modifier.drawBehind { drawRect(disc) } else Modifier),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
@@ -7788,6 +7797,10 @@ private fun WebEpisodeDetailCard(
     val stage = LocalStageScale.current
     val tablet = stage != 1f
     val copyFont = webVw(8.64f, 0.6f, 11.84f).value
+    val cardLabel = episode.episode.episodeNumber.let { n ->
+        "${n.toString().padStart(2, '0')} S${seasonNumber.toString().padStart(2, '0')} \u00B7 E${n.toString().padStart(2, '0')} " +
+            (episode.episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to n))
+    }
     androidx.compose.runtime.CompositionLocalProvider(
         androidx.compose.foundation.LocalIndication provides (if (tablet) CalendarNoFocusFill else androidx.compose.foundation.LocalIndication.current),
     ) {
@@ -7795,7 +7808,9 @@ private fun WebEpisodeDetailCard(
         modifier
             .width(if (tablet) 270.dp else 268.dp)
             .onFocusChanged { state -> focused = state.isFocused; if (state.isFocused) onSelect() }
-            .clickable(enabled = available, onClick = onPlay),
+            .clickable(enabled = available, onClick = onPlay)
+            // The card reads as its visible copy (number, code, title), not as the artwork under it.
+            .semantics { contentDescription = cardLabel },
     ) {
     val episodeCode = "S${seasonNumber.toString().padStart(2, '0')} \u00B7 E${episode.episode.episodeNumber.toString().padStart(2, '0')}"
     val episodeTitle = episode.episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to episode.episode.episodeNumber)
@@ -8194,7 +8209,8 @@ private fun WebEpisodeCard(
             .width(cardWidth)
             .onFocusChanged { focused = it.isFocused }
             .clickable(onClick = onClick)
-            .then(if (exportLabel != null) Modifier.semantics { contentDescription = exportLabel } else Modifier),
+            // The card reads as its visible copy: number, lead and title.
+            .semantics { contentDescription = listOfNotNull(badge, lead, title).joinToString(" ") },
     ) {
     Column(Modifier.fillMaxWidth().mediaCardLift(focused)) {
         WebShadowedBox(
@@ -10151,7 +10167,7 @@ private fun ExperiencePlayerScreen(
                     )
                 } else {
                     androidx.compose.ui.viewinterop.AndroidView(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().parityBox("video", label = playarrString(PlayarrString.PlayerVideoSurface)),
                         factory = { context ->
                             androidx.media3.ui.PlayerView(context).apply {
                                 player = viewModel.player.rawPlayer
@@ -10556,8 +10572,10 @@ internal fun AuthenticatedArtwork(
     var exposureGain by remember(resolved) { mutableStateOf(1f) }
     if (serverAccess == null || resolved == null) {
         if (serverAccess != null && resolved == null && captureToken != null) androidx.compose.runtime.SideEffect { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) }
-        Box(modifier.parityCaptureArtwork(captureToken, captureKey).background(WebSurfaceSoft), contentAlignment = Alignment.Center) {
-            Text(work.title, color = WebInkMuted, fontSize = placeholderSize, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(12.dp))
+        androidx.compose.runtime.CompositionLocalProvider(io.playarr.shared.designsystem.page.LocalParityImagePlaceholder provides true) {
+            Box(modifier.parityCaptureArtwork(captureToken, captureKey).background(WebSurfaceSoft), contentAlignment = Alignment.Center) {
+                Text(work.title, color = WebInkMuted, fontSize = placeholderSize, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(12.dp))
+            }
         }
         return
     }
@@ -10623,6 +10641,8 @@ internal fun AuthenticatedMediaThumbnail(
     artworkUrl: ((String) -> String)? = null,
     /** Shown centred behind the image while it loads and when it fails, so a tile is never an empty box. */
     fallbackLabel: String? = null,
+    /** Called once the picture has loaded and covers whatever is drawn under it. */
+    onLoaded: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val captureToken = parityCaptureGenerationToken()
@@ -10658,18 +10678,20 @@ internal fun AuthenticatedMediaThumbnail(
             model = request,
             contentDescription = contentDescription,
             contentScale = ContentScale.Crop,
-            onSuccess = { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
+            onSuccess = { onLoaded(); PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
             onError = { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey, failed = true) },
             modifier = modifier.parityCaptureArtwork(captureToken, captureKey),
         )
     } else {
+        // The label stands in while the picture loads or fails; a loaded (opaque) thumbnail covers it, so it is no longer composed.
+        var loaded by remember(request) { mutableStateOf(false) }
         Box(modifier.background(WebSurfaceSoft), contentAlignment = Alignment.Center) {
-            ThumbnailFallbackLabel(fallbackLabel)
+            if (!loaded) ThumbnailFallbackLabel(fallbackLabel)
             AsyncImage(
                 model = request,
                 contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
-                onSuccess = { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
+                onSuccess = { loaded = true; PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
                 onError = { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
                 modifier = Modifier.fillMaxSize().parityCaptureArtwork(captureToken, captureKey),
             )

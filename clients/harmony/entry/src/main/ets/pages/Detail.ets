@@ -261,7 +261,7 @@ const SERIES_COLUMN_TOP: number = 543; // static-server refs: the first season h
 const SERIES_COLUMN_BLEED: number = 12;
 const SERIES_COLUMN_HEIGHT: number = 537;
 const CHAPTER_CARD_WIDTH: number = 268;
-const CHAPTER_CARD_HEIGHT: number = 150;
+const CHAPTER_CARD_HEIGHT: number = 150.75; // 16:9 of the 268 card
 /** Room under a landscape Similar card for its caption and the focus shadow. */
 const SIMILAR_LIST_EXTRA: number = 70;
 const CAST_CIRCLE: number = 104;
@@ -378,6 +378,8 @@ struct DetailRowArtworkCard {
   @Prop activeRailFactor: number = 1;
   @Prop episodeCaption: string = '';
   @Prop episodeNumberOverlay: string = '';
+  /** A name the card is announced by when its text is not the name (web's movie chapters: "Play <title> from <chapter>"). */
+  @Prop nameOverride: string = '';
   @Prop artWash: number = 0;
   @Prop focusId: string = '';
   @Prop ringOn: boolean = false;
@@ -393,8 +395,8 @@ struct DetailRowArtworkCard {
   private posterCard(): void {
     PosterCard({
       variant: this.variant,
-      linkRadius: 12,
-      accessibleName: this.episodeCaption.length === 0 && this.episodeNumberOverlay.length === 0 ? 'Open ' + this.title : '',
+      linkRadius: 0, // web: the detail cards' links carry no radius (the library cards' carry 12)
+      accessibleName: this.nameOverride.length > 0 ? this.nameOverride : (this.episodeCaption.length === 0 && this.episodeNumberOverlay.length === 0 ? 'Open ' + this.title : ''),
       title: this.title,
       subtitle: this.subtitle,
       artwork: this.artworkStore.getArtwork(this.rowId),
@@ -2221,6 +2223,7 @@ struct Detail {
       subtitle: (item as DetailRow).subtitle,
       episodeCaption: (item as DetailRow).episodeCaption ?? '',
       episodeNumberOverlay: ((item as DetailRow).episodeNumberOverlay ?? ''), // parenthesised: the capture patch anchors on the series card's line
+      nameOverride: this.detail !== null && this.detail.work.kind === 'movie' ? 'Play ' + this.detail.work.title + ' from ' + (item as DetailRow).title : '',
       artWash: 0.32,
       titleFontSize: isTvMetrics() ? 11.904 : 12.4,
       subtitleFontSize: isTvMetrics() ? 8.832 : 9.5,
@@ -2235,7 +2238,7 @@ struct Detail {
   @Builder
   private tvContent(): void {
     Stack() {
-      KeyArtBackdrop({ keyArt: this.heroArtwork, railFrostWidthPct: 65 })
+      KeyArtBackdrop({ keyArt: this.heroArtwork, railFrostWidthPct: 62 })
 
       Column({ space: tv(COPY_GAP - (this.isSeriesPage() ? 23.8 : 0)) }) {
         FeatureCopy({
@@ -2244,6 +2247,7 @@ struct Detail {
           subtitle: this.tvCopySubtitle(),
           metaChips: this.detail !== null ? metaChips(this.detail, this.hasResumeTarget() ? this.resumePlan : null) : [],
           synopsis: this.tvCopySynopsis(),
+          synopsisMaxWidth: 310,
           strongSynopsis: false,
         })
         this.tvActions()
@@ -2709,25 +2713,23 @@ struct Detail {
           if (this.detail !== null && this.detail.work.kind === 'series') {
             this.tvRightColumn()
           } else {
+            // The glass is the panel's own background (a child sized by '100%' resolved against the Stack before its content, 325 of 535 vp).
             Stack({ alignContent: Alignment.TopStart }) {
-              Column()
-                .width('100%')
-                .height('100%')
-                .linearGradient({
-                  direction: GradientDirection.Right,
-                  colors: resolvedThemeMode() === 'dark' ?
-                    [['rgba(255, 244, 255, 0)', 0.0], ['rgba(255, 244, 255, 0.058)', 0.35], ['rgba(255, 244, 255, 0.058)', 1.0]] :
-                    [['rgba(255, 255, 255, 0.71)', 0.0], ['rgba(255, 255, 255, 0.71)', 1.0]],
-                })
               Column() {
                 this.tvRightColumn()
               }
               .width('100%')
               .alignItems(HorizontalAlign.Start)
-              .padding({ top: 36, left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight) })
+              .padding({ top: 25.74, left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight) })
             }
+            .linearGradient({
+              direction: GradientDirection.Right,
+              colors: resolvedThemeMode() === 'dark' ?
+                [['rgba(255, 244, 255, 0)', 0.0], ['rgba(255, 244, 255, 0.058)', 0.35], ['rgba(255, 244, 255, 0.058)', 1.0]] :
+                [['rgba(255, 255, 255, 0.71)', 0.0], ['rgba(255, 255, 255, 0.71)', 1.0]],
+            })
             .width(`calc(100% + ${atLeast(16, this.safeLeft) + atLeast(16, this.safeRight)}vp)`)
-            .margin({ left: -atLeast(16, this.safeLeft) })
+            .margin({ left: -atLeast(16, this.safeLeft), top: 10.26 }) // web: the panel starts 10.3 lower than the list spacing alone puts it
           }
         }
         .padding({

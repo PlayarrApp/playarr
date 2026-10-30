@@ -40,8 +40,11 @@ ICONS = {
     "player-playlist": '<path d="M4 6.5h10M4 11.5h10M4 16.5h7"/><path d="m16 14 4 2.5-4 2.5z" fill="white" stroke="none"/>',
     "player-health": '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r="0.9" fill="white" stroke="none"/>',
     "player-audio": '<path d="M5 9.5v5h4l4.5 3.5V6L9 9.5z" fill="white" stroke="none"/><path d="M16.5 9a4.5 4.5 0 0 1 0 6"/><path d="M19 6.5a8 8 0 0 1 0 11"/>',
+    "player-volume": '<path d="M5 9.5v5h4l4.5 3.5V6L9 9.5z" fill="white" stroke="none"/><path d="M16.5 9a4.5 4.5 0 0 1 0 6"/><path d="M19 6.5a8 8 0 0 1 0 11"/>',
+    "player-muted": '<path d="M5 9.5v5h4l4.5 3.5V6L9 9.5z" fill="white" stroke="none"/><path d="m17 9.5 5 5M22 9.5l-5 5"/>',
     "player-minimise": '<path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>',
     "player-close": '<path d="M6 6l12 12M18 6 6 18"/>',
+    "player-close-top": '<path d="M6 6l12 12M18 6 6 18"/>',
     "tile-filters": '<path d="M4 6h16M7 12h10m-7 6h4"/><circle cx="8" cy="6" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="12" cy="18" r="1.5"/>',
     "tile-bell": '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
     "arrow-left": '<path d="M19 12H5M11 6l-6 6 6 6"/>',
@@ -54,15 +57,16 @@ ICONS = {
 }
 
 
-def icon(name: str, size: int, stroke: float = 1.8) -> None:
+def icon(name: str, size: int, stroke: float = 1.8, height: int = 0) -> None:
+    height = height or size
     svg = (
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="{size}" height="{size}" fill="none" '
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="{size}" height="{height}" fill="none" '
         f'stroke="white" stroke-width="{stroke}" stroke-linecap="round" stroke-linejoin="round">{ICONS[name]}</svg>'
     )
     with tempfile.TemporaryDirectory() as tmp:
         src = Path(tmp) / "i.svg"
         src.write_text(svg)
-        subprocess.run(["rsvg-convert", "-w", str(size), "-h", str(size), "-o", str(IMAGES / f"{name}.png"), str(src)], check=True)
+        subprocess.run(["rsvg-convert", "-w", str(size), "-h", str(height), "-o", str(IMAGES / f"{name}.png"), str(src)], check=True)
 
 
 def rounded(w: int, h: int, r: float, alpha: int = 255, outline: float = 0) -> Image.Image:
@@ -453,12 +457,15 @@ def clients_grid_assets() -> None:
 
 
 def main() -> None:
+    Image.new("RGBA", (4, 4), (0, 0, 0, 0)).save(IMAGES / "clear.png")  # the search field draws its own pill
     avatars()
     profile_visual_assets()
     profile_signout_buttons()
     clients_grid_assets()
     for name in ICONS:
         icon(name, 40 if name == "icon-empty" else 20)
+    # The top-right close button's glyph is the web's 14 x 22 box (the X centred in it).
+    icon("player-close-top", 14, height=22)
     for r in (6, 12, 25):
         nine_patch(f"round-r{r}", r)
         nine_patch(f"round-outline-r{r}", r, 1.2)

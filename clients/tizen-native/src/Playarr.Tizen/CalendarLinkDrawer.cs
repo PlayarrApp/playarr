@@ -60,7 +60,7 @@ internal sealed class CalendarLinkDrawer
             Root.Add(Ui.Box(1609.6f, y + 8, 5, 5, t.Ink, 2.5f));
             Ui.Paragraph(Root, steps[i], 1623.6f, y, 13.824f, 400, t.Ink, 250, 19.85f);
         }
-        var reset = Ui.Box(1606, 810.34f, 110, 58, new Rgba(0, 0, 0, 0), 29);
+        var reset = Ui.Box(1606, 810.34f, 109.94f, 58, new Rgba(0, 0, 0, 0), 29);
         Sem.Tag(reset, "button", "Reset link");
         reset.Add(Ui.Text("Reset link", 21, 18.96f, 14.72f, 720, t.Ink, 80, 20));
         var rr = Ring.Make(110, 58, 29, new Rgba(1, 1, 1)); rr.Show(false); reset.Add(rr);
