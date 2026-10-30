@@ -308,6 +308,19 @@ function addChromium85Fallbacks(root) {
       if (rule?.type === "rule" && !sized && !inKeyframes) declaration.cloneAfter({ prop: "--lc-ar", value: declaration.value });
     } else if (declaration.prop === "overflow" && /^clip$/i.test(declaration.value.trim())) {
       declaration.cloneBefore({ value: "hidden" });
+    } else if (declaration.prop === "line-height" && /^\d*\.\d+$/.test(declaration.value.trim())) {
+      // Chromium 85 truncates a fractional line height to whole pixels (21.84 px lays out as 21), so every wrapped line sits higher than on web and the blocks
+      // below drift. Adding half a pixel before the truncation rounds to the nearest pixel instead (22: 0.16 px a line, not 0.84). Only engines without
+      // `aspect-ratio` (Chromium 88) get it, so newer engines keep the exact fractional value, and the rule follows the original so the cascade order is unchanged.
+      // Only clamped text blocks (-webkit-line-clamp): they hold plain text, so the pixel value an em length computes to is not inherited by a child with another font size.
+      const rule = declaration.parent;
+      const inKeyframes = rule?.parent?.type === "atrule" && /keyframes$/i.test(rule.parent.name);
+      const clamped = rule?.nodes?.some((node) => node.type === "decl" && node.prop === "-webkit-line-clamp");
+      if (rule?.type === "rule" && !inKeyframes && clamped) {
+        const rounded = rule.clone({ nodes: [] });
+        rounded.append(postcss.decl({ prop: "line-height", value: `calc(${declaration.value.trim()}em + 0.5px)` }));
+        rule.after(postcss.atRule({ name: "supports", params: "not (aspect-ratio: 1)", nodes: [rounded] }));
+      }
     }
   });
 }

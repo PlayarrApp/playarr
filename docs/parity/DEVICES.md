@@ -114,6 +114,25 @@ WEBOS_OUT=<legend dir>/webos scripts/parity/tizen-webos/run-webos.sh
 `WEBOS_DISPLAY` (default `:26`) and `WEBOS_CDP` (default `9226`) name the simulator's display and inspector port.
 Extra arguments go to `suite-run.mjs` (`--screens home,movies`, `--themes dark`).
 
+### Tizen 6.5 engine (Chromium 85)
+
+The Tizen web package's oldest supported engine is Tizen 6.5 (Chromium 85), which the Tizen 10 emulator above cannot exercise: it runs
+`:has()`, `aspect-ratio`, `:is()` and `inset` natively, so the legacy rewrites (`clients/tv-web/tooling/legacy-tv-css.mjs`,
+`legacy-aspect-ratio.mjs`, the `mirror.ts` translate fallback and the Vite target) never run there. The Tizen Studio repository has no TV 6.5
+emulator image (only Mobile, Wearable and IoT 6.5, and the TV 10 extension), and no real Tizen 6.5 TV is available, so the stand-in is a pinned
+Chromium 85 build (Chromium snapshot r782790, 85.0.4183.0) on its own Xvfb display with the Tizen 6.5 user agent, loading the built
+`apps/tv-tizen/dist`. `drivers/tizen-webos.mjs` runs it as `DEVICE=tizen65` (inspector keys and page evaluation like webOS, ImageMagick root grab,
+layout read from the real page). Software rasterising (no GPU) with one raster thread keeps twin runs identical.
+Run it with `scripts/parity/tizen-webos/run-tizen65.sh` (setup in its header); the legend row is "Samsung Tizen 6.5" (dir `tizen65`, cand `dev`).
+Player controls: stock Chromium has no H.264 and no AVPlay, so the driver injects `scripts/parity/tizen-webos/avplay-shim.js` (the AVPlay state
+machine over the clip's 60 s, no decoding) and the screen is scored with the video hidden on both sides: the web refs of the dir come from the
+group `tv-tizen65` of `web-refs.json` (`hideVideo`, the `tv-webos` platform bundle, `capture-refs.mjs --groups tv-tizen65 --screens player-controls --bak <name>`).
+The capture waits for the Downloads item of the nav rail, which the app adds once its capability probe resolves.
+Documented exception: Chromium 85 truncates fractional line heights to whole pixels, which the Tizen package counters by rounding them on clamped
+text blocks (`legacy-tv-css.mjs`). The detail title (`line-height: 0.9` on a 69 px font) still lays out 0.2 px a line short, which is why film-detail
+(72.92), series-detail (76.19) and filters (78.85) stay below the other screens: the engine keeps whole pixels, no CSS value gives 62.2 px.
+Chromium 94 (snapshot 94.0.4606.0) keeps the fraction (21.83 px for 21.84), so webOS and Tizen 7 need no rounding.
+
 ### Tizen web package: debug build on the emulator
 
 The Tizen web run has its own emulator instance (a qcow2 overlay on the clean TV image, own VM name, own Xvfb display, own
