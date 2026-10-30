@@ -145,7 +145,8 @@ const assertNotInterrupted = () => { if (signalReceived) throw new Error(`suite 
 // focused() answers a label string or { label, position: { rail, index } }. Position is the stable check: Home rails reorder
 // when other devices play on the shared account, so a `compare: "position"` check ignores the label (kept as info).
 const samePosition = (a, b) => !!a && !!b && String(a.rail) === String(b.rail) && Number(a.index) === Number(b.index);
-const sameItem = (a, b) => { const t = (s) => s.replace(/^open /, ""); return !!a && !!b && (a === b || t(a).includes(t(b)) || t(b).includes(t(a))); };
+// Resume progress is per account ("Resume X from 2:14" and "Open X" are one card): the comparison folds it, so drivers report the real focused name.
+const sameItem = (a, b) => { const t = (s) => s.replace(/^Resume (.*) from \d+:\d+(?::\d+)?$/i, "Open $1").replace(/^open /i, "").toLowerCase(); return !!a && !!b && (a === b || t(a).includes(t(b)) || t(b).includes(t(a))); };
 
 async function press(keys) {
   for (const { key, long } of expandKeys(keys)) { assertNotInterrupted(); await driver.key(key, { long }); assertNotInterrupted(); }
@@ -226,11 +227,13 @@ if (only.includes("screens")) {
         await waitReady(s.id, "capture");
         const path = join(out, theme, `${s.id}.png`);
         await driver.screenshot(path);
+        let layoutPath = null;
         // Layout score document of the same screen state (docs/parity/LAYOUT.md), for drivers that export one.
         if (typeof driver.layoutDump === "function" && !reference) {
           const layout = await driver.layoutDump({ screen: s.id, theme });
           mkdirSync(join(out, "layout", theme), { recursive: true });
-          writeFileSync(join(out, "layout", theme, `${s.id}.json`), `${JSON.stringify(layout, null, 1)}\n`);
+          layoutPath = join(out, "layout", theme, `${s.id}.json`);
+          writeFileSync(layoutPath, `${JSON.stringify(layout, null, 1)}\n`);
         }
         assertNotInterrupted();
         if (preflightHomeFixture && s.id === "home") {
@@ -240,7 +243,7 @@ if (only.includes("screens")) {
           }
           console.log("Home fixture preflight passed after capture: one canonical part_watched row");
         }
-        captureRows.push({ id: s.id, theme, path: `${theme}/${s.id}.png`, bytes: readFileSync(path), capturedAt: new Date().toISOString() });
+        captureRows.push({ id: s.id, theme, path: `${theme}/${s.id}.png`, bytes: readFileSync(path), ...(layoutPath ? { layoutPath: `layout/${theme}/${s.id}.json`, layoutBytes: readFileSync(layoutPath) } : {}), capturedAt: new Date().toISOString() });
         summary.screens += 1;
         const flaps = driver.takeNetworkFlaps?.() ?? 0;
         if (flaps && attempt < 3) { // a flap mid-capture can leave images missing: retake

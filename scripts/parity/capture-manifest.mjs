@@ -20,7 +20,7 @@ export function createCaptureManifest({ suite, buildIdentity, clock, state, read
   if (!Number.isFinite(Date.parse(checkedAt))) throw new Error("capture manifest checked_at must be an ISO timestamp");
   if (!Array.isArray(captures) || captures.length === 0) throw new Error("capture manifest requires at least one screenshot");
   const seen = new Set();
-  const rows = captures.map(({ id, theme, path, bytes, capturedAt }) => {
+  const rows = captures.map(({ id, theme, path, bytes, capturedAt, layoutPath, layoutBytes }) => {
     if (typeof id !== "string" || !id || typeof theme !== "string" || !theme) throw new Error("capture manifest rows require screen IDs and themes");
     const key = JSON.stringify([id, theme]);
     if (seen.has(key)) throw new Error(`capture manifest contains duplicate coverage for ${id}/${theme}`);
@@ -28,7 +28,14 @@ export function createCaptureManifest({ suite, buildIdentity, clock, state, read
     if (typeof path !== "string" || !path || path.startsWith("/") || path.includes("\\") || path.split("/").includes("..")) throw new Error("capture manifest paths must be safe POSIX-relative paths");
     if (!Buffer.isBuffer(bytes) || !bytes.length) throw new Error(`capture manifest has no PNG bytes for ${path}`);
     if (!Number.isFinite(Date.parse(capturedAt))) throw new Error(`capture manifest has invalid checked_at for ${path}`);
-    return { id, theme, path, sha256: createHash("sha256").update(bytes).digest("hex"), build, checked_at: capturedAt };
+    const row = { id, theme, path, sha256: createHash("sha256").update(bytes).digest("hex"), build, checked_at: capturedAt };
+    // The layout document of the same screen state is bound to the screenshot by its hash (the two are taken one after the other).
+    if (layoutBytes !== undefined || layoutPath !== undefined) {
+      if (typeof layoutPath !== "string" || !layoutPath || layoutPath.startsWith("/") || layoutPath.includes("\\") || layoutPath.split("/").includes("..")) throw new Error("capture manifest layout paths must be safe POSIX-relative paths");
+      if (!Buffer.isBuffer(layoutBytes) || !layoutBytes.length) throw new Error(`capture manifest has no layout bytes for ${layoutPath}`);
+      row.layout = { path: layoutPath, sha256: createHash("sha256").update(layoutBytes).digest("hex") };
+    }
+    return row;
   });
   return {
     suite,
