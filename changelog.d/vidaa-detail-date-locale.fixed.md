@@ -1,0 +1,1 @@
+- Detail pages format dates in the UI language's locale (en-GB built from parts), so VIDAA's en-US default no longer shows "Sep 17, 2026" where Web shows "17 Sept 2026".

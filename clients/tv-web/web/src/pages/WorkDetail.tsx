@@ -35,6 +35,8 @@ import type { PlaybackLaunchSettings } from "../lib/usePlaybackEngine";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { useToast } from "../lib/toast";
 import { useLanguage } from "../lib/i18n/LanguageProvider";
+import { localeTagFor } from "../lib/i18n/languages";
+import { formatDetailDate } from "../lib/detailDate";
 import type { TranslationKey } from "../lib/i18n/translations";
 import {
   readPlayerDefaults,
@@ -365,15 +367,9 @@ function formatRuntime(durationMs: number, t: TFunc): string {
     : t("pages.workDetail.runtimeHours", { hours });
 }
 
-function formatDetailDate(value: string): string | null {
+function formatDetailDateString(value: string, locale: string): string | null {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(date);
+  return Number.isNaN(date.getTime()) ? null : formatDetailDate(date, locale);
 }
 
 function relatedWorkScore(target: Work, candidate: Work): number {
@@ -974,7 +970,7 @@ function DetailPending({ work, fallbackKind, label }: { work: Work | undefined; 
 
 /** Immersive movie/series/site detail surface modelled on the supplied TV motion reference. */
 export function WorkDetailPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { showToast } = useToast();
   const { workId } = useParams<{ workId: string }>();
   const location = useLocation();
@@ -1728,7 +1724,7 @@ export function WorkDetailPage() {
     episodic
       ? selectedEpisode?.episode.air_date ?? work.release_date
       : work.release_date ?? work.added_at;
-  const detailDate = detailDateValue ? formatDetailDate(detailDateValue) : null;
+  const detailDate = detailDateValue ? formatDetailDateString(detailDateValue, localeTagFor(language)) : null;
   const detailYear = yearRangeLabel(work);
   const detailDateLabel =
     episodic && selectedEpisode?.episode.air_date
