@@ -292,7 +292,7 @@ export async function createDriver() {
           await sleep(500);
           try {
             const answer = JSON.parse(run("read", "layout.json"));
-            if (answer.layoutNonce === nonce) { delete answer.layoutNonce; return answer; }
+            if (answer.layoutNonce === nonce) { if (answer.error) throw new Error(`layout export failed in the app: ${answer.error}`); delete answer.layoutNonce; return answer; }
           } catch { /* not written yet */ }
         }
         throw new Error("the app did not answer the layout request");

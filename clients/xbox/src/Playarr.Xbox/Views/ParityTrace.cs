@@ -196,7 +196,17 @@ namespace Playarr.Xbox.Views
                     System.IO.File.Delete(file);
                     if (parts.Length == 3)
                     {
-                        var json = await LayoutExport.BuildAsync(parts[1], parts[0]);
+                        string json;
+                        try
+                        {
+                            json = await LayoutExport.BuildAsync(parts[1], parts[0]);
+                        }
+                        catch (Exception failure)
+                        {
+                            // Say why the export failed instead of leaving the driver to time out.
+                            json = Newtonsoft.Json.JsonConvert.SerializeObject(new { error = failure.Message });
+                        }
+
                         System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "layout.json"), json.Substring(0, json.Length - 1) + ",\"layoutNonce\":\"" + parts[2] + "\"}");
                     }
                     else if (parts.Length == 4 && parts[3] == "frame")

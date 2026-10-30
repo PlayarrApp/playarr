@@ -251,18 +251,22 @@ namespace Playarr.Xbox.Views
         {
             // The whole pass must start and end on the same rendered frame: a changed final frame means something animated
             // or loaded mid-pass, so the pass runs again (and fails if the screen never settles).
-            for (var attempt = 0; attempt < 4; attempt++)
+            var last = string.Empty;
+            for (var attempt = 0; attempt < 3; attempt++)
             {
-                var (hidden, stable) = await ToggleAllAsync(root);
+                var (hidden, stable, diff) = await ToggleAllAsync(root);
                 if (stable)
                 {
                     Candidates.Clear();
                     return (elements.Where(e => !hidden.Contains(e)).ToList(), hidden.Count);
                 }
+
+                last = diff;
+                await Task.Delay(400);
             }
 
             Candidates.Clear();
-            throw new InvalidOperationException("The rendered frame did not settle during the visibility pass.");
+            throw new InvalidOperationException("The rendered frame did not settle during the visibility pass: " + last);
         }
 
         /// <summary>A control the user can focus is exported even when it paints nothing, unless something else is drawn over it.</summary>
@@ -290,7 +294,7 @@ namespace Playarr.Xbox.Views
             return false;
         }
 
-        private static async Task<(HashSet<object> Hidden, bool Stable)> ToggleAllAsync(FrameworkElement root)
+        private static async Task<(HashSet<object> Hidden, bool Stable, string Diff)> ToggleAllAsync(FrameworkElement root)
         {
             var (before, width, height) = await GrabAsync(root);
             var hidden = new HashSet<object>();
@@ -334,7 +338,23 @@ namespace Playarr.Xbox.Views
             }
 
             var final = (await GrabAsync(root)).Pixels;
-            return (hidden, final.SequenceEqual(before));
+            if (final.SequenceEqual(before))
+            {
+                return (hidden, true, string.Empty);
+            }
+
+            int minX = width, minY = height, maxX = -1, maxY = -1, count = 0;
+            for (var i = 0; i < before.Length; i += 4)
+            {
+                if (before[i] != final[i] || before[i + 1] != final[i + 1] || before[i + 2] != final[i + 2])
+                {
+                    var px = (i / 4) % width;
+                    var py = (i / 4) / width;
+                    minX = Math.Min(minX, px); maxX = Math.Max(maxX, px); minY = Math.Min(minY, py); maxY = Math.Max(maxY, py); count++;
+                }
+            }
+
+            return (hidden, false, $"{count} pixels differ in x {minX}-{maxX}, y {minY}-{maxY}");
         }
 
         /// <summary>A hash of the app's own render of the screen: the same value before and after a screenshot shows the layout export belongs to the frame that was captured.</summary>
