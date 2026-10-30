@@ -13,7 +13,7 @@ sub init()
     m.focusRingInset = 0
     m.cardContentInsetX = 0
     m.cardContentInsetY = 0
-    m.cardLink = m.top.findNode("cardLink")
+    m.cardBody = m.top.findNode("cardBody")
     m.focusRing = m.top.findNode("focusRing")
     m.focusGlow = m.top.findNode("focusGlow")
     m.poster = m.top.findNode("poster")
@@ -251,14 +251,6 @@ sub onFocusChanged()
     m.focusRing.visible = ringOn
     m.focusGlow.opacity = 0
     if ringOn then m.focusGlow.opacity = shadowOpacity
-    ' Web grid card: the card (link box) scales 1.015 on focus, the art a further 1.025.
-    linkScale = 1.0
-    if not m.homeCardFocusStyle and m.cardScaleValue > 1 then linkScale = 1 + 0.015 * effective
-    m.cardLink.scale = [linkScale, linkScale]
-    ' The card's link box lifts with its art and caption (the same 5 px).
-    linkLift = 0
-    if not m.homeCardFocusStyle and m.cardScaleValue > 1 then linkLift = -5 * effective
-    m.cardLink.translation = [0, linkLift]
     liftY = -cardFocusLift() * effective
     artScale = 1 + (effective * cardFocusScale())
     m.liftInterp.key = [0, 1]
@@ -495,18 +487,9 @@ sub nameCard(content as Object, circle as Boolean, hasNumber as Boolean)
     else
         linkName = "Open " + content.title
     end if
-    m.cardLink.width = m.cardArtW
-    ' The link spans the art and the title row (the meta line below it sits outside). The title row is a line box of 1.6 times the
-    ' title size, centred on the title's measured glyph run, as the caption style sets it.
-    last = m.title
-    runTop = m.title.translation[1]
-    runBottom = PlayarrTextBottom(last)
-    m.cardLink.height = (runTop + runBottom) / 2 + 0.8 * m.title.size
-    if m.cardLink.height < m.posterBg.height then m.cardLink.height = m.posterBg.height
-    m.cardLink.scaleRotateCenter = [m.cardArtW / 2, m.cardLink.height / 2]
     linkRadius = 0
     if content.gridCard = true then linkRadius = 12
-    m.cardLink.id = "a11y|link|" + linkRadius.ToStr() + "|" + linkName
+    m.cardBody.id = "a11y|link|" + linkRadius.ToStr() + "|" + linkName
     m.posterBg.id = "a11y|container|" + m.top.findNode("cornerTL").width.ToStr() + "|"
     m.unwatchedBadge.id = "a11y|img|6.5|"
     A11yStamp(m.unwatchedBadge, true)

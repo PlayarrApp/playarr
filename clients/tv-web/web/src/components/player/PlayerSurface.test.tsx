@@ -64,9 +64,10 @@ describe("PlayerCloseButton", () => {
 });
 
 describe("usesSystemVolumeOnly", () => {
-  it("is on for the system-volume TVs (Tizen, webOS) and the Android TV app", () => {
+  it("is on for the system-volume TVs (Tizen, webOS) the Android TV app and the Roku app", () => {
     expect(usesSystemVolumeOnly(true, "Mozilla/5.0")).toBe(true);
     expect(usesSystemVolumeOnly(false, "Mozilla/5.0 PlayarrAndroidTV/1.0")).toBe(true);
+    expect(usesSystemVolumeOnly(false, "Mozilla/5.0 PlayarrRoku/1.0")).toBe(true);
   });
 
   it("is off for browser web", () => {

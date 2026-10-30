@@ -59,7 +59,11 @@
       ],
       "actionsTitle": "Amber Cathedral 18",
       "noDownloads": true,
-      "userAgent": "xbox"
+      "userAgents": {
+        "roku": [
+          "roku"
+        ]
+      }
     },
     "ipad": {
       "viewport": [

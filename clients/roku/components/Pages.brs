@@ -150,7 +150,8 @@ function pgRound(parent as Object, x as Float, y as Float, w as Float, h as Floa
 end function
 
 ' Control semantics: the drawn bitmap of the control (its fill, laid just before this call at the same box) takes the id
-' `a11y|role|radius|name` (ECP query/app-ui prints ids). A control with no drawn box gets a transparent Rectangle at its layout box.
+' `a11y|role|radius|name` (ECP query/app-ui prints ids). A control with no drawn box gets a hit rectangle (pgHit) at its layout
+' box, but only a control the viewer can focus or act on: a role that is no control (image, container) with nothing drawn gets nothing.
 function pgMark(parent as Object, role as String, name as String, x as Float, y as Float, w as Float, h as Float, radius = 0 as Float) as Object
     id = "a11y|" + role + "|" + radius.ToStr() + "|" + name
     n = parent.getChildCount()
@@ -166,19 +167,30 @@ function pgMark(parent as Object, role as String, name as String, x as Float, y 
             end if
         end if
     end for
-    return pgBare(parent, role, name, x, y, w, h, radius)
+    if role = "image" or role = "container" then return CreateObject("roSGNode", "Group")
+    return pgHit(parent, role, name, x, y, w, h, radius)
 end function
 
-' A transparent box at a control's layout box, named for assistive tech (never attached to a drawn bitmap).
-function pgBare(parent as Object, role as String, name as String, x as Float, y as Float, w as Float, h as Float, radius = 0 as Float) as Object
+' The hit rectangle of a control that is not drawn as one bitmap: the box the app focuses or acts on (the same box the focus target
+' or the key handling uses), named for assistive tech. It paints nothing; the export lists it only because it is a control. A box
+' that drives no focus or action must not be made with this call.
+function pgHit(parent as Object, role as String, name as String, x as Float, y as Float, w as Float, h as Float, radius = 0 as Float) as Object
     mark = CreateObject("roSGNode", "Rectangle")
     mark.translation = [x, y]
     mark.width = w
     mark.height = h
     mark.color = "0x00000000"
-    mark.id = "a11y|" + role + "|" + radius.ToStr() + "|" + name
+    mark.id = "hit|" + role + "|" + radius.ToStr() + "|" + name
     parent.AppendChild(mark)
     return mark
+end function
+
+' A group node that holds one block of a page (its rule, text and controls): the block's box is the union its children measure.
+function pgContainer(parent as Object) as Object
+    g = CreateObject("roSGNode", "Group")
+    g.id = "a11y|container|0|"
+    parent.AppendChild(g)
+    return g
 end function
 
 ' A text glyph from the symbol fonts (arrows, play, check, chevron): a WebLabel at the web's text box. symbol = false draws Nunito Sans.
@@ -1950,7 +1962,7 @@ function calendarCard(parent as Object, x as Float, y as Float, w as Float, entr
     full = entry.title
     if hasSub then full = full + " " + calendarEntrySubtitle(entry)
     full = full + " " + calendarTimeText(entry) + " " + calendarReleaseLabel(entry) + " " + calendarKindLabel(entry) + " " + status
-    pgBare(parent, "button", full, x, y, w, ch, 12)
+    pgHit(parent, "button", full, x, y, w, ch, 12)
     pgLabel(parent, x + 70.4, y + titleY, w - 90, 26, entry.title, 19.2, 640, "ink", { maxLines: 1 })
     if hasSub then pgLabel(parent, x + 70.4, y + 41.2, w - 90, 26, calendarEntrySubtitle(entry), 19.2, 400, "inkSoft", { maxLines: 1 })
     endX = calendarMetaRow(parent, x + 70.4, y + metaY, entry)
@@ -2286,8 +2298,7 @@ sub renderCalendarMonth(entries as Object)
         if Mid(day, 6, 2) <> monthOf
             pgRect(m.pageBody, x, y, cw, ch, "ink", 12).id = "a11y|container|0|"
         else
-            ' A day of the month is a cell of the grid even when it draws no fill of its own (it shows the page behind it).
-            pgBare(m.pageBody, "container", "", x, y, cw, ch, 0)
+            ' A day of the month draws no fill of its own (it shows the page behind it): its cell is the focus target registered below.
         end if
     end for
     for rr = 0 to rows

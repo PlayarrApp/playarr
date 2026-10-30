@@ -139,12 +139,16 @@ end sub
 sub panelAppearance()
     pgHeading(211, "Colour theme")
     pgSegmentedWide(773.8, 265.8, 56, ["System", "Light", "Dark"], PairingThemeIndex(m.themePreference), "theme")
+    ' A group of the panel is one node: its top rule, heading, hint and control. It reports the union of what it holds as its bounds.
+    page = m.pageBody
+    m.pageBody = pgContainer(page)
     pgRect(m.pageBody, 773.8, 352, 1042, 1, "line")
     pgHeading(384.3, "Home screen artwork")
     pgHint(429.5, "Show portrait covers instead of wide media thumbnails on the home screen.")
     coverIdx = 0
     if m.homeCover = true then coverIdx = 1
     pgSegmentedWide(773.8, 465, 56, ["Thumbnails", "Covers"], coverIdx, "artwork")
+    m.pageBody = pgContainer(page)
     pgRect(m.pageBody, 773.8, 551, 1042, 1, "line")
     pgHeading(583.5, "Artwork size")
     pgHint(628.7, "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.")
@@ -154,6 +158,7 @@ sub panelAppearance()
         if sizes[i] = m.artworkSizePref then active = i
     end for
     pgSegmentedWide(773.8, 664.2, 56, ["Small", "Medium", "Large"], active, "artSize")
+    m.pageBody = page
 end sub
 
 ' Web segmented control (.segmented-control): equal cells across the panel width, the chosen one filled with the ink colour.
