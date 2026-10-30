@@ -155,7 +155,7 @@ struct TVPageHeader: View {
                             Text("\u{2190}")
                                 .font(TVTheme.font(size: 17.3, weight: .semibold))
                                 .foregroundStyle(DesignTokens.Color.textSecondary)
-                                .parityLayout(text: "\u{2190}", size: 17.3, weight: 720, color: DesignTokens.Color.textSecondary)
+                                .parityLayout(text: "\u{2190}", size: 17.3, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textSecondary)
                         )
                         .parityBox(backRole, text: backName, radius: 25, fill: DesignTokens.Stage.surfaceStrong, alpha: 0.7)
                         .parityBackdrop(DesignTokens.Stage.surface)
