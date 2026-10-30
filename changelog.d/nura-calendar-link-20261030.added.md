@@ -1,0 +1,1 @@
+- Nura (Linux phone) gains the calendar link panel behind the header bell, writes its layout export atomically, and records the real PR in its parity build.json.

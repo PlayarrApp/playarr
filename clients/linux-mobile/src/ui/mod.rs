@@ -1,6 +1,7 @@
 //! GTK/libadwaita user interface. Pages: link (sign-in), profiles, then the signed-in shell.
 mod actions;
 pub mod calendar;
+pub mod calendar_link;
 pub mod cards;
 pub mod detail;
 pub mod downloads;
@@ -342,7 +343,14 @@ impl App {
                 .build(),
         ));
         // The web's dialog carries no label of its own.
-        crate::layout::name(&close, if filters { "Close filters" } else { "Close" });
+        crate::layout::name(
+            &close,
+            if filters || title == "Calendar link" {
+                "Close filters"
+            } else {
+                "Close"
+            },
+        );
 
         let me = self.clone();
         close.connect_clicked(move |_| me.close_panel());
@@ -418,6 +426,10 @@ impl App {
             "calendar-agenda" | "calendar-week" | "calendar-month" => {
                 select("calendar");
                 self.hook("calendar-view", name.trim_start_matches("calendar-"));
+            }
+            "calendar-link" => {
+                select("calendar");
+                calendar_link::show(self, &client);
             }
             "filters" => {
                 select("movies");

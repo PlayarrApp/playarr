@@ -29,7 +29,7 @@ for t in $THEMES; do
   rm -f -- "$O/$t"/*.png
   "$H/pmrun.sh" </dev/null; sleep 15; "$H/pmfocus.sh"
   # One route per call, each retried: a display repaint glitch can outlast one stability window.
-  for r in home movies series music calendar-month calendar-week calendar-agenda search "film:$FILM" "series-detail:$SERIES" settings filters profiles actions; do
+  for r in home movies series music calendar-month calendar-week calendar-agenda calendar-link search "film:$FILM" "series-detail:$SERIES" settings filters profiles actions; do
     for try in 1 2 3; do WAIT=${WAIT:-45} "$H/pmcap3.sh" "$O/$t" "theme:$t" "$r" </dev/null && break; [ "$try" = 3 ] && exit 1; done
     case $r in film:*) n=film-detail;; series-detail:*) n=series-detail;; *) n=$r;; esac
     layout "$t" "$n"
@@ -65,5 +65,8 @@ for t in themes.split():
         n = os.path.basename(f)[:-4]
         Image.open(f).convert("RGB").crop((0, 64, 720, 1410)).save(f"{out}/{ren.get(n, n)}.png")
 PY
-  printf '{"branch":"%s","sha":"%s","pr":"%s","captured_at":"%s","server":"static server"}\n' "${BRANCH:-}" "${SHA:-}" "${PR:-}" "$(date -u +%FT%TZ)" | tee "$D/build.json" > "$D/light/build.json"
+  # Provenance comes from the checkout the capture was built from; the PR is looked up by branch unless PR is set.
+  BRANCH=${BRANCH:-$(git rev-parse --abbrev-ref HEAD)}; SHA=${SHA:-$(git rev-parse --short=9 HEAD)}
+  if [ -z "${PR:-}" ] || [ "$PR" = 0 ]; then PR=$(gh pr list --head "$BRANCH" --state all --json number --jq '.[0].number // empty' 2>/dev/null || true); fi
+  printf '{"branch":"%s","sha":"%s","pr":"%s","captured_at":"%s","server":"static server"}\n' "${BRANCH:-}" "${SHA:-}" "${PR:-0}" "$(date -u +%FT%TZ)" | tee "$D/build.json" > "$D/light/build.json"
 fi
