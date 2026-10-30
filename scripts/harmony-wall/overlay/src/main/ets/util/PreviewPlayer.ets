@@ -6,6 +6,8 @@
 import { media } from '@kit.MediaKit';
 
 const PARITY_POSITION_MS: number = 2000;
+/** The Previewer never creates the XComponent surface, so the controller must not wait for one. */
+export const PREVIEW_NO_SURFACE: boolean = true;
 
 class ParityAvPlayer {
   private onState: ((state: string, reason: number) => void) | undefined = undefined;

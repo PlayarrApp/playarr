@@ -10,7 +10,14 @@ if "createParityPlayer" in s:
 call = "player = await media.createAVPlayer();"
 assert s.count(call) == 2, p + ": expected two createAVPlayer calls"
 s = s.replace(call, "player = await createParityPlayer();")
+# the Previewer draws "Preview not available" for the XComponent, so no surface id ever arrives and the attach would wait for it for ever
+wait = "    if (this.surfaceId !== null) {\n      return Promise.resolve();"
+assert s.count(wait) == 1, p + ": waitForSurface anchor missing"
+s = s.replace(wait, "    if (this.surfaceId !== null || PREVIEW_NO_SURFACE) {\n      return Promise.resolve();")
+surface = "    const surfaceId = this.surfaceId;\n"
+assert s.count(surface) == 1, p + ": surfaceId anchor missing"
+s = s.replace(surface, "    const surfaceId = this.surfaceId ?? 'preview-surface';\n")
 anchor = "import { logError, logInfo, logWarn } from '../util/Log';\n"
 assert anchor in s, p + ": import anchor missing"
-s = s.replace(anchor, anchor + "import { createParityPlayer } from '../util/PreviewPlayer';\n", 1)
+s = s.replace(anchor, anchor + "import { createParityPlayer, PREVIEW_NO_SURFACE } from '../util/PreviewPlayer';\n", 1)
 open(p, "w").write(s)

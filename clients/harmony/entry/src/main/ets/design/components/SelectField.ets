@@ -94,8 +94,8 @@ export struct SelectField {
           .fontWeight(this.labelWeight >= 700 ? FontWeight.Bold : FontWeight.Medium)
           .fontColor(this.textColor(this.highlighted === '#trigger'))
           .layoutWeight(1)
-          .margin({ left: isTvMetrics() ? 1.7 : 0 })
-          .translate({ y: isTvMetrics() ? -1.6 : 0 }) // web's label box sits 1.6 higher and 1.7 further in
+          .margin({ left: isTvMetrics() ? -0.5 : 0 })
+          .translate({ y: isTvMetrics() ? -1.6 : 0 }) // web's label box sits 1.6 higher and, against the r14 run, 0.5 further out
         if (this.lead.length === 0) {
           Text('⌄').fontFamily(nunitoAt(400, tv(FONT)))
             .fontSize(tv(FONT)).lineHeight(webLineHeight(tv(FONT))).halfLeading(true)
