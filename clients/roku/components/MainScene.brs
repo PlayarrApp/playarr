@@ -425,6 +425,8 @@ sub init()
     m.avatarValue = ""
     m.avatarCustomUri = ""
     m.userAvatar = m.top.findNode("userAvatar")
+    m.userAvatarBg = m.top.findNode("userAvatarBg")
+    m.userAvatarBg.id = "a11y|container|10|"
     m.userAvatarCustomMask = m.top.findNode("userAvatarCustomMask")
     m.userAvatarCustom = m.top.findNode("userAvatarCustom")
     applyShellAvatar()

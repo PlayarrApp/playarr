@@ -53,7 +53,7 @@ sub onContentChanged()
     ' Accessible name as the web reads it, and the circle's container semantics (ECP prints ids).
     name = content.title + ", ready"
     if content.presetId = "add"
-        name = "+ Sign in ADD ANOTHER PROFILE"
+        name = "Sign in Add another profile"
     else if content.statusText = "WATCHING NOW"
         name = content.title + ", current profile"
     else if content.statusText = "PIN REQUIRED"

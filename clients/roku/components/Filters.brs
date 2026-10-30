@@ -143,7 +143,7 @@ sub filtersViewTile(g as Object, x as Float, name as String, chosen as Boolean, 
     end if
     role = "inkMuted"
     if chosen then role = "bg"
-    pgMark(g, "button", name, bx, by, bw, bh, 12)
+    pgMark(g, "button", kind, bx, by, bw, bh, 12)
     for i = 0 to 2
         if kind = "list"
             ux = x + 32

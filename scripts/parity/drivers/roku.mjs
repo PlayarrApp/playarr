@@ -698,7 +698,6 @@ export function createDriver({ out, args = [] } = {}) {
       parityState.artMarkers = { home: 0, movies: 0, series: 0, music: 0, calendar: 0 };
     }
     const beforeScreenSeq = screenSeq;
-    const beforeFocusSeq = focusSeq;
     resetObservedState();
     await sendEcp(`launch/dev${artEnabled ? `?parityArtReady=1${pinArg}` : ""}`);
     await connectDebug();
@@ -715,9 +714,21 @@ export function createDriver({ out, args = [] } = {}) {
       await sendEcp(`keypress/${KEY_NAMES[key]}`);
       await sleep(650);
     }
-    await waitFor(() => focusSeq > beforeFocusSeq && focusSeq > focusFloorAtScreen && focusScreenSeq === screenSeq, "fresh profile focus", 5000);
-    if (!hasFreshScreenFocus({ screen, screenSeq, focus, focusSeq, focusScreenSeq }, "profiles", process.env.ROKU_PROFILE_NAME ?? "Device Test", beforeScreenSeq, beforeFocusSeq)) {
-      throw new Error(`Roku did not report fresh ${process.env.ROKU_PROFILE_NAME ?? "Device Test"} profile focus; refusing to select another profile`);
+    // The focused profile is read from the screen itself (the focused ProfileAvatar item and the name of its button), not from a focus
+    // event: the keys above may leave focus where it already was, which sends no event.
+    const wanted = process.env.ROKU_PROFILE_NAME ?? "Device Test";
+    const focusedProfile = (xml) => {
+      const at = xml.search(/<ProfileAvatar\b[^>]*\bfocused="true"/);
+      if (at < 0) return "";
+      return /name="hit\|button\|0\|([^"]*)"/.exec(xml.slice(at))?.[1] ?? "";
+    };
+    let seen = "none";
+    const profileDeadline = Date.now() + 10000;
+    for (;;) {
+      seen = focusedProfile(await fetchAppUi());
+      if (seen.startsWith(`${wanted},`)) break;
+      if (Date.now() > profileDeadline) throw new Error(`Roku did not focus the ${wanted} profile (focused: ${seen || "none"}); refusing to select another profile`);
+      await sleep(400);
     }
   };
 
@@ -865,21 +876,21 @@ export function createDriver({ out, args = [] } = {}) {
     let hits = 0;
     let lastSeen = "none";
     let sent = false;
-    let sentAt = 0;
-    let lastMs = -1;
     const seekDeadline = Date.now() + 30000;
+    const seekTrail = [];
     while (hits < 2) {
-      if (Date.now() > seekDeadline) throw new Error(`Roku player did not settle at 2.000 s (last ${lastSeen})`);
-      // A seek input that arrives before the channel takes it is sent again (the channel acknowledges with seekat 2000).
-      if (!sent || (seekAt !== 2000 && Date.now() - sentAt > 6000)) { seekAt = -1; sentAt = Date.now(); await sendEcp(`input?paritySeek=2000`); sent = true; }
+      if (Date.now() > seekDeadline) throw new Error(`Roku player did not settle at 2.000 s (last ${lastSeen}; trail ${seekTrail.join(" ")})`);
+      // The seek input is sent once, after the player has been playing past 1.9 s; the channel acknowledges it with seekat 2000.
+      if (!sent) { seekAt = -1; await sendEcp(`input?paritySeek=2000`); sent = true; }
       await sleep(900);
       const xml = await (await sendEcp("query/media-player", "GET")).text();
       const ms = Number(/<position>(\d+) ms/.exec(xml)?.[1] ?? "0");
       const paused = /<player\b[^>]*\bstate="pause"/i.test(xml);
       lastSeen = `${paused ? "pause" : "other"} ${ms} ms`;
-      // ECP's own position is the pipeline's (about 2.1 s here); the exact position is the channel's Video node, reported once held.
-      hits = paused && seekAt === 2000 && ms === lastMs ? hits + 1 : 0;
-      lastMs = ms;
+      seekTrail.push(`${paused ? "P" : "o"}${ms}@${seekAt}`);
+      // ECP's own state and position are the pipeline's and lag behind the channel (it kept reporting the pre-seek 8.0 s in a state other than pause
+      // after the channel held 2000 ms), so they are only logged. The exact position is the channel's Video node, reported once held.
+      hits = seekAt === 2000 ? hits + 1 : 0;
     }
     // The controls may already be up after the seek; a key on up controls moves focus to Play and draws its ring (web's frame has none).
     // So Down is sent only when the seek slider is not in the tree (it then just raises the controls).

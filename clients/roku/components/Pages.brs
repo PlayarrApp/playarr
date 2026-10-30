@@ -2083,7 +2083,7 @@ sub renderCalendarBody()
     end if
 end sub
 
-' Calendar header controls at the web's boxes: a 50 px circle (the arrow is a text glyph there) and a 52.8 px pill whose text box is 20 px tall.
+' Calendar header controls at the web's boxes: a 50 px circle (the arrow is a text glyph there) and a 50 px pill whose text box is 20 px tall.
 sub pgCalendarCircle(x as Float, name as String, icon as String, glyphX as Float, action as String)
     pgRound(m.pageHead, x, 56.2, 50, 50, 25, "surface")
     pgRound(m.pageHead, x, 56.2, 50, 50, 25, "line", -1, true)
@@ -2096,10 +2096,10 @@ end sub
 
 sub pgCalendarPill(x as Float, text as String, action as String)
     w = PlayarrTextWidth(text, 14.72, 720, 0) + 41.2
-    pgTag(pgRound(m.pageHead, x, 54.8, w, 52.8, 26.4, "surface"), "button", 0, text)
-    pgRound(m.pageHead, x, 54.8, w, 52.8, 26.4, "line", -1, true)
+    pgTag(pgRound(m.pageHead, x, 56.2, w, 50, 25, "surface"), "button", 0, text)
+    pgRound(m.pageHead, x, 56.2, w, 50, 25, "line", -1, true)
     pgLabel(m.pageHead, x + 20.6, 71.1, w - 41.2, 20, text, 14.72, 720, "inkSoft", { horizAlign: "center" })
-    pgFocusable(x, 54.8, w, 52.8, 26.4, action)
+    pgFocusable(x, 56.2, w, 50, 25, action)
 end sub
 
 sub renderCalendarAgenda(entries as Object)
@@ -2197,12 +2197,10 @@ sub renderCalendarAgenda(entries as Object)
             m.pageHead.AppendChild(hg)
             ' The pinned heading is the web's bg-coloured box; the panel's lighter wash is laid over it as a bitmap.
             pgRect(hg, 775, ay, 1060, 58, "agendaHead")
-            ' The heading itself is web's 1033 x 44 box at the list's left edge, painted in the same colour as the pinned cover.
-            pgRect(hg, 783.4, ay, 1033.4, 44, "agendaHead").id = "a11y|heading|0|"
             pgTint(hg, 775, ay, 1060, 58, "panel")
             headRole = "ink"
             if day = today then headRole = "accent"
-            headLabel = pgLabel(hg, 783.4, ay + 9.2, 0, 25, calendarDayHeading(edt, false), 18.4, 640, headRole)
+            headLabel = pgLabel(hg, 783.4, ay + 9.2, 0, 25, calendarDayHeading(edt, false), 18.4, 640, headRole, { aria: "heading" })
             if day = today
                 hx = 783.4 + headLabel.textWidth + 18.5
                 pgRound(hg, hx - 9.35, ay + 10.1, 61, 22, 11, "lineStrong", -1, true)
@@ -2223,7 +2221,11 @@ function calendarButton(x as Float, y as Float, text as String, style as String,
     size = 14.72
     textRole = "inkSoft"
     parts = [text]
-    if style = "secondary" and Left(text, 2) = "+ " then parts = ["+", Mid(text, 3)]
+    buttonName = text
+    if style = "secondary" and Left(text, 2) = "+ "
+        parts = ["+", Mid(text, 3)]
+        buttonName = Mid(text, 3)
+    end if
     w = 42.0
     gap = 9.6
     for i = 0 to parts.Count() - 1
@@ -2233,10 +2235,10 @@ function calendarButton(x as Float, y as Float, text as String, style as String,
         if i > 0 then w = w + gap
     end for
     if style = "primary"
-        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "accent"), "button", 0, text)
+        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "accent"), "button", 0, buttonName)
         textRole = "onAccent"
     else
-        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "surface"), "button", 0, text)
+        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "surface"), "button", 0, buttonName)
         pgRound(m.pageHead, x, y, w, 58, 29, "line", -1, true)
     end if
     tx = x + 21
@@ -2298,11 +2300,7 @@ sub renderCalendarMonth(entries as Object)
         day = calAddDays(r.start, i)
         x = gx + (i mod 7) * cw
         y = gy + Int(i / 7) * ch
-        if Mid(day, 6, 2) <> monthOf
-            pgRect(m.pageBody, x, y, cw, ch, "ink", 12).id = "a11y|container|0|"
-        else
-            pgRect(m.pageBody, x, y, cw, ch, "surface").id = "a11y|container|0|"
-        end if
+        if Mid(day, 6, 2) <> monthOf then pgRect(m.pageBody, x, y, cw, ch, "ink", 12).id = "a11y|container|0|"
     end for
     for rr = 0 to rows
         pgRect(m.pageBody, gx, gy + rr * ch, cw * 7, 1, "line")
