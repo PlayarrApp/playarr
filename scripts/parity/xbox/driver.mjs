@@ -287,7 +287,7 @@ export async function createDriver() {
         const nonce = randomUUID().replaceAll("-", "");
         await requireTestAccount();
         run("write", "parity.layout", `${theme},${screen},${nonce}${mode ? `,${mode}` : ""}`); // a comma: a pipe would reach cmd.exe
-        const deadline = Date.now() + 90000; // the full export renders the screen once per exported element
+        const deadline = Date.now() + 300000; // the full export renders the screen once per exported element
         while (Date.now() < deadline) {
           await sleep(500);
           let answer = null;

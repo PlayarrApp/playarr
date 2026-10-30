@@ -252,7 +252,7 @@ namespace Playarr.Xbox.Views
             // The whole pass must start and end on the same rendered frame: a changed final frame means something animated
             // or loaded mid-pass, so the pass runs again (and fails if the screen never settles).
             var last = string.Empty;
-            for (var attempt = 0; attempt < 3; attempt++)
+            for (var attempt = 0; attempt < 2; attempt++)
             {
                 var (hidden, stable, diff) = await ToggleAllAsync(root);
                 if (stable)
