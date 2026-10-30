@@ -450,15 +450,15 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       }
       rmSync(probe, { force: true });
       if (!settled) console.log(`  frame never settled in 30 s (${basename(file)}), capturing anyway`);
-      await grab(file);
+      const shot = await grab(file);
       if (!existsSync(file) || statSync(file).size < 20000) throw new Error("empty frame");
       if ((state().route ?? "").startsWith("/login")) throw new Error("signed out");
       // The request goes out only now, with the screenshot taken: the app hides each item in turn to measure what is visible, which
       // must never be on screen while the frame is grabbed. The layout is stamped with this id, so it follows this frame.
-      writeFileSync(join(base, "parity-layout-request"), captureID);
       // Layout export (docs/parity/LAYOUT.md): the app's own style values and frames for this capture, written beside the screenshot.
       const themeDir = dirname(file), id = basename(file, ".png");
-      if (!/^(dark|light)$/.test(basename(themeDir))) return; // not a screen capture (a crop or a player case)
+      if (!/^(dark|light)$/.test(basename(themeDir))) return; // not a screen capture (a crop or a player case): no request is written
+      writeFileSync(join(base, "parity-layout-request"), captureID);
       let layout = null;
       for (let i = 0; i < 240 && !layout; i += 1) { // the app renders the screen once per batch of hidden items
         await sleep(500);
@@ -468,6 +468,11 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
         } catch { /* not written yet */ }
       }
       if (!layout) throw new Error(`layout export missing or not for this capture (${id})`);
+      // The layout and the PNG must describe one render: the screen as it is once the layout is measured must equal the frame saved.
+      const after = await grab(probe);
+      rmSync(probe, { force: true });
+      if (!after.equals(shot)) throw new Error(`the screen changed while the layout was measured (${id}): PNG and layout are not one render`);
+      rmSync(join(base, "parity-layout-request"), { force: true });
       const dir = join(dirname(themeDir), "layout", basename(themeDir));
       mkdirSync(dir, { recursive: true });
       const rawDir = join(dirname(themeDir), "layout-raw", basename(themeDir)); // the unmapped tree, for local replay

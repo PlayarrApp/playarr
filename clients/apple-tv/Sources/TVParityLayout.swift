@@ -67,6 +67,8 @@ final class TVParityLayoutRegistry {
     /// so a layout always belongs to the frame the id was written for.
     private func startWatching() {
         guard watcher == nil else { return }
+        // A request file left by an earlier launch was answered (or abandoned) there: only a request written after this launch counts.
+        answeredRequest = requestURL.flatMap { try? String(contentsOf: $0, encoding: .utf8) }?.trimmingCharacters(in: .whitespacesAndNewlines)
         watcher = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 250_000_000)
@@ -99,8 +101,6 @@ final class TVParityLayoutRegistry {
         var rects: [UUID: [Bool]] = [:]
         /// The bounds of the pixels that changed, per rect, for the record.
         var seen: [UUID: [CGRect]] = [:]
-        /// For text: the colour most common behind it, read from the render with the text hidden (the backdrop it is drawn on).
-        var behind: [UUID: [String?]] = [:]
         /// False when the screen could not be rendered (a blank render proves nothing): the export must then be refused.
         var rendered = true
     }
@@ -149,9 +149,6 @@ final class TVParityLayoutRegistry {
                 let changes = unit.rects.map { hidden.changed(in: $0, from: base, stableWith: again) }
                 result.rects[unit.id] = changes.map { $0 != nil }
                 result.seen[unit.id] = changes.map { $0 ?? .zero }
-                if items[unit.id]?.size != nil, items[unit.id]?.text != nil {
-                    result.behind[unit.id] = unit.rects.map { hidden.dominantColour(in: $0) }
-                }
             }
         }
         hide.hidden = []
@@ -244,21 +241,33 @@ final class TVParityLayoutRegistry {
                 "rect": ["x": Double(item.rect.minX), "y": Double(item.rect.minY), "w": Double(item.rect.width), "h": Double(item.rect.height)],
                 "color": item.color as Any? ?? NSNull(),
                 "background": item.background as Any? ?? NSNull(),
-                "fontSize": item.size.map { Double($0) } as Any? ?? NSNull(),
+                // as drawn: the size the view is laid out at, times the scale an ancestor draws it at
+                "fontSize": item.size.map { Double($0 * item.scale) } as Any? ?? NSNull(),
                 "fontWeight": item.weight as Any? ?? NSNull(),
-                "radius": Double(min(item.radius, min(item.rect.width, item.rect.height) / 2)), // as drawn: a pill radius is half the box
+                // as drawn: scaled with the view; a box's pill radius is half the box. A text run's radius belongs to the capsule it sits
+                // on, which is not the glyph line's box, so it is not clamped against the line.
+                "radius": Double(item.text != nil && item.size != nil ? item.radius * item.scale : min(item.radius * item.scale, min(item.rect.width, item.rect.height) / 2)),
                 "opacity": item.opacity,
             ]
             if let l = item.local { out["local"] = ["x": Double(l.minX), "y": Double(l.minY), "w": Double(l.width), "h": Double(l.height)] }
             return out
         }
         // a text view is one item per laid-out line, each at the view's current origin plus the line's own bounds
-        let ordered = order.flatMap { id -> [(Item, Bool?, CGRect?, String?)] in
+        let ordered = order.flatMap { id -> [(Item, Bool?, CGRect?)] in
             guard let item = items[id] else { return [] }
             let seen = visibility?.rects[id]
             let seenBounds = visibility?.seen[id]
-            let behind = visibility?.behind[id]
-            guard let rects = lineRects[id], !rects.isEmpty else { return [(item, seen?.first, seenBounds?.first, behind?.first ?? nil)] }
+            guard let rects = lineRects[id], !rects.isEmpty else { return [(item, seen?.first, seenBounds?.first)] }
+            // SwiftUI's text layout gives each line's box but not its string, so a wrapped paragraph whose view does not draw its
+            // lines itself is one item over the union of its lines (its whole string, its real bounds): never the whole string
+            // repeated on every line.
+            if rects.count > 1, item.lines?.count != rects.count {
+                var union = lineRect(item, rects[0])
+                for r in rects.dropFirst() { union = union.union(lineRect(item, r)) }
+                var whole = item
+                whole.rect = union
+                return [(whole, seen.map { $0.contains(true) }, seenBounds.flatMap { $0.filter { !$0.isEmpty }.reduce(nil as CGRect?) { $0?.union($1) ?? $1 } })]
+            }
             return rects.enumerated().map { index, rect in
                 var line = item
                 line.local = rect
@@ -267,17 +276,18 @@ final class TVParityLayoutRegistry {
                 line.rect = lineRect(item, rect)
                 // the text of each line is known only where the view draws its lines itself; otherwise the view's whole string is kept
                 if let names = item.lines, names.count == rects.count { line.text = names[index] }
-                return (line, seen.flatMap { index < $0.count ? $0[index] : nil }, seenBounds.flatMap { index < $0.count ? $0[index] : nil },
-                        behind.flatMap { index < $0.count ? $0[index] : nil })
+                return (line, seen.flatMap { index < $0.count ? $0[index] : nil }, seenBounds.flatMap { index < $0.count ? $0[index] : nil })
             }
         }
         let top = ordered.map { $0.0.layer }.max() ?? 0
         // Visible means: hiding the item changed the rendered screen (measureVisibility). Without the measurement nothing is dropped.
+        let occluded = visibility == nil ? 0 : ordered.filter { entry in
+            entry.0.rect.width > 0 && entry.0.rect.height > 0 && entry.0.rect.intersects(screen) && entry.1 != true
+        }.count
         var raws = ordered.filter { entry in
             entry.0.rect.width > 0 && entry.0.rect.height > 0 && entry.0.rect.intersects(screen) && (visibility == nil || entry.1 == true)
         }.map { entry -> [String: Any] in
             var out = raw(entry.0)
-            if let behind = entry.3 { out["background"] = behind }
             if let bounds = entry.2 { out["visibleBounds"] = ["x": Double(bounds.minX), "y": Double(bounds.minY), "w": Double(bounds.width), "h": Double(bounds.height)] }
             return out
         }
@@ -296,6 +306,7 @@ final class TVParityLayoutRegistry {
             "viewport": ["w": 1920.0, "h": 1080.0, "dpr": 1.0],
             "clockPinned": TVParityLaunch.pinnedClock,
             "raw": raws,
+            "occluded": occluded,
         ]
         if let captureID { document["captureID"] = captureID }
         if let visibility { document["visibility"] = visibility.rendered ? "rendered" : "unavailable" }
@@ -385,25 +396,6 @@ struct TVParityStageRender {
             }
         }
         return maxX < 0 ? nil : CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
-    }
-
-    /// The mean colour inside `rect` (sampled every 2 pixels), as #rrggbb: what a view is drawn on, when read from a render of the
-    /// screen without that view. A mean, because a gradient is dithered differently from one render to the next.
-    func dominantColour(in rect: CGRect) -> String? {
-        let x0 = max(0, Int(rect.minX.rounded(.down))), x1 = min(Self.width, Int(rect.maxX.rounded(.up)))
-        let y0 = max(0, Int(rect.minY.rounded(.down))), y1 = min(Self.height, Int(rect.maxY.rounded(.up)))
-        guard x0 < x1, y0 < y1 else { return nil }
-        var sum = (0, 0, 0), count = 0
-        pixels.withUnsafeBufferPointer { px in
-            for y in stride(from: y0, to: y1, by: 2) {
-                for x in stride(from: x0, to: x1, by: 2) {
-                    let o = (y * Self.width + x) * 4
-                    sum.0 += Int(px[o]); sum.1 += Int(px[o + 1]); sum.2 += Int(px[o + 2]); count += 1
-                }
-            }
-        }
-        guard count > 0 else { return nil }
-        return String(format: "#%02x%02x%02x", Int((Double(sum.0) / Double(count)).rounded()), Int((Double(sum.1) / Double(count)).rounded()), Int((Double(sum.2) / Double(count)).rounded()))
     }
 
     private static func pixels(of image: CGImage) -> [UInt8]? {
@@ -521,6 +513,7 @@ private struct TVParityLayoutModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         rendered(content)
+            .accessibilityAddTraits(role == "heading" ? .isHeader : []) // the role declared to the export is the one the app reports
             .opacity(hide.hidden.contains(id) ? 0 : 1)
             .background(
                 GeometryReader { proxy in

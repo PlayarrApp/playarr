@@ -1032,7 +1032,7 @@ struct TVWebHomeCard: View {
                                     .parityBox("container", fill: DesignTokens.Color.brandPrimary)
                             }
                             .frame(height: 3)
-                            .parityBox("img", fill: DesignTokens.Stage.surfaceSoft)
+                            .parityBox("container", fill: Color.white, alpha: 0.2) // the track really paints white at 0.2 over the art
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 12.48, style: .continuous))

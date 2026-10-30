@@ -39,6 +39,10 @@ scratch=${SCRATCH_DIR:-$root/../.apple-run-scratch}
 mkdir -p "$scratch"
 tmp=$(mktemp -d -p "$scratch")
 trap 'rm -rf "$tmp"' EXIT
+# a suite failure must not publish: the screens run (and the D-pad run) must have concluded success (P08)
+for r in "$id" ${dpad_id:+"$dpad_id"}; do
+  [[ $(gh run view "$r" -R "$repo" --json conclusion -q .conclusion) == success ]] || { echo "run $r did not conclude success: not publishing" >&2; exit 1; }
+done
 gh run download "$id" -R "$repo" -D "$tmp/screens"
 [[ -z $dpad_id ]] || gh run download "$dpad_id" -R "$repo" -D "$tmp/dpad" || true
 # the app built is the workflow's checkout of the ref: the run's own SHA, which must be the SHA asked for (P05)
@@ -57,11 +61,14 @@ for theme in dark light; do
   for k in layout layout-raw; do [[ ! -d $d/$k/$theme ]] || cp "$d/$k/$theme"/. -r "$stage/$k/$theme/" 2>/dev/null || cp -r "$d/$k/$theme"/. "$stage/$k/$theme/"; done
   [[ -n $(ls "$stage/layout/$theme" 2>/dev/null) ]] || { echo "no $theme layout files in $d" >&2; exit 1; }
 done
+# a complete set: the same PNG and layout screens in both themes (P08), and no PNG left in the destination from an earlier publish
+dark_n=$(ls "$stage"/*.png | wc -l); light_n=$(ls "$stage"/light/*.png | wc -l)
+(( dark_n > 0 && dark_n == light_n && $(ls "$stage/layout/dark" | wc -l) == dark_n && $(ls "$stage/layout/light" | wc -l) == dark_n )) || { echo "incomplete screen set (dark $dark_n png, light $light_n png)" >&2; exit 1; }
 for d in "$tmp"/dpad/apple-wall-"$device"-dark-*; do [[ ! -f $d/dpad.json ]] || cp "$d"/dpad.json "$stage/dpad.json"; done
 printf '{"branch":"%s","sha":"%s","pr":%s,"captured_at":"%s","server":"static server","run":"%s"}\n' \
   "$ref" "$built" "$([[ -n $pr ]] && printf '"%s"' "$pr" || echo null)" "$(date -u +%FT%TZ)" "$id" > "$stage/build.json"
 cp "$stage/build.json" "$stage/light/build.json"
 mkdir -p "$dest/light"
-rm -rf "$dest/layout" "$dest/layout-raw"
+rm -rf "$dest/layout" "$dest/layout-raw" "$dest/layout-replay.json"; rm -f "$dest"/*.png "$dest"/light/*.png
 cp -r "$stage"/. "$dest/"
 echo "captures in $dest"

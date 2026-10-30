@@ -564,6 +564,7 @@ struct TVWorkDetailView: View {
                         }
                         .buttonStyle(TVFocusableCardButtonStyle())
                         .accessibilityLabel("Open \(other.title)")
+                        .accessibilityAddTraits(.isLink) // it opens the title: the role the export declares is the one the app reports
                         .disabled(frozen) // not .focusable: on a Button it adds a second, inert focus target
                     }
                 }
@@ -803,6 +804,7 @@ struct TVWorkDetailView: View {
                 card.parityBox("link", text: "\(String(format: "%02d", ep.episodeNumber)) \(code.replacingOccurrences(of: "S ", with: "S").replacingOccurrences(of: "E ", with: "E")) \(title)")
             }
             .buttonStyle(TVFocusableCardButtonStyle())
+            .accessibilityAddTraits(.isLink) // it opens the player
             .focused($focusedEpisodeID, equals: ep.id)
         } else {
             card

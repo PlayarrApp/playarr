@@ -38,7 +38,7 @@ export function mapRaw(doc, screen, theme) {
     if (e.opacity != null && e.opacity !== 1) out.opacity = e.opacity;
     return out;
   });
-  return { screen, theme, viewport: doc.viewport, clockPinned: doc.clockPinned, elements: canonicalOrder(elements) };
+  return { screen, theme, viewport: doc.viewport, clockPinned: doc.clockPinned, occluded: doc.occluded ?? 0, elements: canonicalOrder(elements) };
 }
 
 if (process.argv[1]?.endsWith("layout-map.mjs") && process.argv[2]) {
