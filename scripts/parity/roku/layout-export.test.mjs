@@ -62,3 +62,12 @@ test("a small video plane hides nothing, a full-screen one hides what came befor
   assert.equal(full.elements.some((e) => e.role === "container"), false);
   assert.equal(full.occluded, 1);
 });
+
+test("a childless Rectangle that paints the colour already behind it is not a fill, a different colour or a parent is", () => {
+  const els = doc(`
+    <Rectangle bounds="{0, 0, 100, 100}" color="#101010ff" />
+    <Rectangle bounds="{0, 0, 100, 100}" color="#101010ff" />
+    <Rectangle bounds="{10, 10, 20, 20}" color="#202020ff" />
+    <Rectangle bounds="{40, 40, 20, 20}" color="#202020ff"><Rectangle bounds="{40, 40, 5, 5}" color="#303030ff" /></Rectangle>`);
+  assert.deepEqual(els.filter((e) => e.role === "container").map((e) => [e.rect.x, e.background]), [[0, "#101010"], [10, "#202020"], [40, "#202020"], [40, "#303030"]]);
+});
