@@ -1749,6 +1749,7 @@ struct Detail {
         Text('\u25B6').fontFamily(nunitoAt(400, PLAY_BUTTON_ICON_SIZE) + ',PlayarrGlyphs')
           .fontSize(PLAY_BUTTON_ICON_SIZE).lineHeight(webLineHeight(PLAY_BUTTON_ICON_SIZE)).halfLeading(true)
           .fontColor(this.playInk())
+          .translate({ y: this.isSeriesPage() ? -2.8 : -1.5 }) // web's glyph sits higher in the pill (measured: series 2.8, movie 1.5)
       } else {
         this.playTriangle()
       }
@@ -1758,6 +1759,7 @@ struct Detail {
         .fontSize(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11).letterSpacing((!isTvMetrics() ? 0.127 : 0)).lineHeight(webLineHeight(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11)).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.playInk())
+        .translate(isTvMetrics() ? { x: this.isSeriesPage() ? -2.5 : -3.4, y: this.isSeriesPage() ? -3.1 : -1.8 } : { x: 0, y: 0 }) // web's label sits left of and above the centred one (measured on the TV refs)
     }
     .accessibilityText(this.pillName(this.primaryLabel(), '', true)).accessibilityRole(this.pillRole(true)).accessibilityGroup(true)
     .layoutWeight(1)
@@ -2156,6 +2158,7 @@ struct Detail {
           })
         }
         .alignItems(HorizontalAlign.Start)
+        .margin({ top: isTvMetrics() && this.isSeriesPage() ? 1.8 : 0 }) // web (series): the heading, count and cards sit 1.4 to 2.5 px lower
       }
     }
     .alignItems(HorizontalAlign.Start)

@@ -216,6 +216,16 @@ function cellKey(cell: CalendarCell): string {
 }
 
 /** Web `.status-pill` / `.calendar-dot` tones. */
+/** CSS `color-mix(in srgb, top <alpha*100>%, base)` for an opaque base: the opaque colour web's pill fill resolves to. */
+function mixOver(top: RgbaColor, base: RgbaColor, alpha: number): RgbaColor {
+  return {
+    r: Math.round(top.r * alpha + base.r * (1 - alpha)),
+    g: Math.round(top.g * alpha + base.g * (1 - alpha)),
+    b: Math.round(top.b * alpha + base.b * (1 - alpha)),
+    a: 1,
+  };
+}
+
 function toneColor(tone: EntryPillTone): RgbaColor {
   if (tone === 'available') {
     return activeColors().success;
@@ -431,7 +441,7 @@ export struct ReleaseCalendar {
       .height(isTvMetrics() ? tv(PILL_HEIGHT) : PHONE_PILL_HEIGHT)
       .padding({ left: tv(PILL_PADDING_H), right: tv(PILL_PADDING_H) })
       .borderRadius(isTvMetrics() ? tv(PILL_HEIGHT / 2) : PHONE_PILL_HEIGHT / 2)
-      .backgroundColor(toResourceColorWithAlpha(toneColor(tone), 0.112))
+      .backgroundColor(isTvMetrics() ? toResourceColor(mixOver(toneColor(tone), activeColors().surface, 0.14)) : toResourceColorWithAlpha(toneColor(tone), 0.112)) // TV: web .status-pill color-mix(tone 14%, surface), opaque; the phone's measured translucent fill stays
       .border({ width: 1, color: toResourceColorWithAlpha(toneColor(tone), 0.6) })
       .margin({ top: offset })
   }
@@ -835,12 +845,12 @@ export struct ReleaseCalendar {
     Text(label).fontFamily(nunitoAt(700, tv(PANEL_BUTTON_FONT)))
       .fontSize(tv(PANEL_BUTTON_FONT)).letterSpacing((isTvMetrics() ? -0.123 : 0)).lineHeight(webLineHeight(tv(PANEL_BUTTON_FONT))).halfLeading(true)
       .fontWeight(FontWeight.Bold)
-      .fontColor(toResourceColor(primary ? activeColors().bg : activeColors().ink))
+      .fontColor(toResourceColor(primary ? activeColors().onAccent : activeColors().ink))
       .accessibilityText(label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true) // web: the button owns its text
       .height(tv(PANEL_BUTTON_HEIGHT))
       .padding({ left: tv(PANEL_BUTTON_PADDING), right: tv(PANEL_BUTTON_PADDING) })
       .borderRadius(tv(PANEL_BUTTON_HEIGHT / 2))
-      .backgroundColor(primary ? toResourceColor(activeColors().ink) : Color.Transparent)
+      .backgroundColor(primary ? toResourceColor(activeColors().accent) : Color.Transparent) // web .btn-primary: accent on onAccent
       .border({ width: primary ? 0 : 1, color: toResourceColor(activeColors().lineStrong) })
       .focusable(true)
       .onClick(() => {
