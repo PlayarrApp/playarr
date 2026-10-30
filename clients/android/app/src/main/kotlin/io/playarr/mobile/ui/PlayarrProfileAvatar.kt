@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityBrushPainted
 import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.annotation.DrawableRes
@@ -116,6 +117,8 @@ internal fun PlayarrProfileAvatar(
     artworkModifier: Modifier = Modifier,
     /** The web plate's own border: the artwork's 86% is of the padding box inside it. */
     artworkInset: androidx.compose.ui.unit.Dp = 0.dp,
+    /** Share of the plate the preset artwork covers: the web plate's svg is 86%, the rail tile's svg fills it. */
+    artworkFraction: Float = 0.86f,
 ) {
     val resolved = resolvedPlayarrProfileAvatarPreference(userId, preference)
     val preset = profileAvatarPresetVisuals[resolved.value]
@@ -123,6 +126,7 @@ internal fun PlayarrProfileAvatar(
     Box(
         modifier = modifier
             .clip(CircleShape)
+            .parityBrushPainted("container", CircleShape, radius = 999f)
             .drawBehind {
                 // Web `.profile-avatar`: a 145deg gradient with the 34% / 26% sheen over it (clients/shared/profile-avatars).
                 drawRect(
@@ -155,25 +159,25 @@ internal fun PlayarrProfileAvatar(
                     bitmap = bitmap,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = artworkModifier.fillMaxSize(),
                 )
             } else {
-                PresetArtwork(preset.artwork, artworkModifier, artworkInset)
+                PresetArtwork(preset.artwork, artworkModifier, artworkInset, artworkFraction)
             }
         } else {
-            PresetArtwork(preset.artwork, artworkModifier, artworkInset)
+            PresetArtwork(preset.artwork, artworkModifier, artworkInset, artworkFraction)
         }
     }
 }
 
 @Composable
-private fun PresetArtwork(@DrawableRes artwork: Int, modifier: Modifier = Modifier, inset: androidx.compose.ui.unit.Dp = 0.dp) {
+private fun PresetArtwork(@DrawableRes artwork: Int, modifier: Modifier = Modifier, inset: androidx.compose.ui.unit.Dp = 0.dp, fraction: Float = 0.86f) {
     // Web `.profile-avatar > svg` is 86% of the plate.
     Box(Modifier.fillMaxSize().padding(inset), contentAlignment = Alignment.Center) {
         Image(
             painter = painterResource(artwork),
             contentDescription = null,
-            modifier = modifier.fillMaxSize(0.86f),
+            modifier = modifier.fillMaxSize(fraction),
             contentScale = ContentScale.Fit,
         )
     }

@@ -135,6 +135,26 @@ fun Modifier.background(brush: androidx.compose.ui.graphics.Brush, shape: androi
         }.hideWhenAsked(box)
     }).foundationBackground(brush, shape, alpha)
 
+/**
+ * Records, without painting, that this node paints a brush (a gradient plate the composable draws itself): the box is a painted container with no single
+ * colour, and its resolved outline is the shape's, so the export keeps the gradient as a gradient and never as one flat colour.
+ */
+fun Modifier.parityBrushPainted(kind: String, shape: androidx.compose.ui.graphics.Shape, radius: Float = 0f, opacity: Float = 1f): Modifier =
+    if (!parityLayoutEnabled) this else composed {
+        val view = androidx.compose.ui.platform.LocalView.current
+        val box = remember { ParityBox(view, kind, radius, opacity, 1f) }
+        box.density = androidx.compose.ui.platform.LocalDensity.current.density; box.kind = kind; box.radius = radius; box.opacity = opacity
+        DisposableEffect(box) { parityBoxes.add(box); onDispose { box.coordinates = null; parityBoxes.remove(box) } }
+        this.onGloballyPositioned { box.coordinates = it }.semantics { this[box.semanticsKey] = box.id }.drawBehind {
+            box.brushPainted = true
+            box.drawnRadiusPx = when (val o = shape.createOutline(size, layoutDirection, this)) {
+                is androidx.compose.ui.graphics.Outline.Rounded -> o.roundRect.topLeftCornerRadius.x
+                is androidx.compose.ui.graphics.Outline.Rectangle -> 0f
+                else -> null
+            }
+        }.hideWhenAsked(box)
+    }
+
 /** Foundation's background, recorded: drop-in for `androidx.compose.foundation.background(color, shape)` so every solid fill the app paints is read at paint time. */
 fun Modifier.background(color: androidx.compose.ui.graphics.Color, shape: androidx.compose.ui.graphics.Shape = androidx.compose.ui.graphics.RectangleShape): Modifier =
     parityPaint("fill", color, shape).foundationBackground(color, shape)

@@ -650,10 +650,12 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
             val phoneEntry = agenda && m === PhoneCalendarMetrics
             val lineGap = if (phoneEntry) 1.9.dp else 2.4.dp
             Column(Modifier.weight(1f).padding(start = 14.4.dp).then(if (phoneEntry) Modifier.offset(y = (-1).dp) else if (m === TvCalendarMetrics && agenda) Modifier else Modifier)) {
-                Text(item.title, color = WebInk, fontSize = titleSp.sp, lineHeight = titleLine.sp, fontWeight = FontWeight(640), style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
+                Text(item.title, color = WebInk, fontSize = titleSp.sp, lineHeight = titleLine.sp, fontWeight = FontWeight(640), style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis,
+                    // Web TV week: the 26 px title and subtitle boxes sit 1 dp under where Compose centres the line.
+                    modifier = if (tvWeek && !agenda && LocalStageScale.current == 1f) Modifier.offset(y = 1.dp) else Modifier)
                 Spacer(Modifier.height(lineGap))
                 if (rowSubtitle.isNotEmpty()) {
-                    Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis, modifier = Modifier)
+                    Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis, modifier = if (tvWeek && LocalStageScale.current == 1f) Modifier.offset(y = 1.dp) else Modifier)
                     Spacer(Modifier.height(lineGap))
                 }
                 Row(Modifier.then(if (m === TvCalendarMetrics) Modifier.offset(y = (-3).dp) else Modifier), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1189,7 +1191,7 @@ private fun CalendarWeekBody(
                         verticalArrangement = Arrangement.spacedBy(if (isTelevision) 6.dp else 0.dp),
                     ) {
                         if (true) {
-                            Row(Modifier.then(if (isTelevision) Modifier.offset(y = 3.dp) else Modifier).height(if (isTelevision) 28.dp else if (webColumn == null) PHONE_WEEK_HEADING_ROW_DP.dp else 38.dp).then(if (isTelevision) Modifier else Modifier.padding(bottom = 1.dp)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(Modifier.then(if (isTelevision) Modifier.offset(y = if (LocalStageScale.current == 1f) 2.dp else 3.dp) else Modifier).height(if (isTelevision) 28.dp else if (webColumn == null) PHONE_WEEK_HEADING_ROW_DP.dp else 38.dp).then(if (isTelevision) Modifier else Modifier.padding(bottom = 1.dp)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
                                     phoneCalendarDayHeading(group.date, locale), color = if ((isTelevision && LocalStageScale.current == 1f) || (!isTelevision && group.date == today)) io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent else WebInk, fontSize = if (isTelevision) 18.4.sp else 14.4.sp, lineHeight = if (isTelevision) 28.sp else 21.6.sp, fontWeight = FontWeight(if (isTelevision && LocalStageScale.current != 1f) 560 else 640),
                                     style = WebTextStyle, modifier = if (isTelevision) (if (LocalStageScale.current == 1f) Modifier else Modifier.semantics { heading() }) else Modifier,
@@ -1201,7 +1203,7 @@ private fun CalendarWeekBody(
                         }
                         if (group.entries.isEmpty()) {
                             if (isTelevision) {
-                                Text(playarrString(PlayarrString.CalendarEmptyDay), color = WebInkMuted, fontSize = if (LocalStageScale.current == 1f) 19.2.sp else 12.sp, lineHeight = if (LocalStageScale.current == 1f) 28.8.sp else androidx.compose.ui.unit.TextUnit.Unspecified)
+                                Text(playarrString(PlayarrString.CalendarEmptyDay), color = WebInkMuted, fontSize = if (LocalStageScale.current == 1f) 19.2.sp else 12.sp, lineHeight = if (LocalStageScale.current == 1f) 28.8.sp else androidx.compose.ui.unit.TextUnit.Unspecified, modifier = if (LocalStageScale.current == 1f) Modifier.offset(y = 1.dp) else Modifier)
                             } else {
                                 // Web `.calendar-day-empty`: 16 px / 24 px muted.
                                 Text(playarrString(PlayarrString.CalendarEmptyDay), color = WebInkMuted, fontSize = 16.sp, lineHeight = 24.sp, style = WebTextStyle)
@@ -2102,10 +2104,13 @@ private fun CalendarTonePill(tone: CalendarPillTone, phone: Boolean = false) {
 @Composable
 private fun CalendarTodayBadge(tv: Boolean = false) {
     val ink = if (tv) io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent else WebInk.copy(alpha = 0.9f)
-    Box(Modifier.border(1.dp, ink.copy(alpha = 0.6f), CircleShape).padding(horizontal = 8.dp, vertical = 1.6.dp)) {
-        Text(playarrString(PlayarrString.CalendarToday).uppercase(), color = ink, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight(640), letterSpacing = 0.896.sp, style = WebTextStyle,
-            modifier = (if (tv) Modifier.offset(y = (-1.4).dp) else Modifier))
-    }
+    // Web `.calendar-today-badge` is one span that owns its outline and padding: the text node draws its own border (nothing is moved off a parent), and the
+    // TV glyph sits 1.4 dp above centre through the padding split.
+    val lift = if (tv) 1.4.dp else 0.dp
+    Text(playarrString(PlayarrString.CalendarToday).uppercase(), color = ink, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight(640), letterSpacing = 0.896.sp, style = WebTextStyle,
+        modifier = Modifier.parityBackground("textfill", androidx.compose.ui.graphics.Color.Transparent, CircleShape, radius = 999f, drawsBorder = true)
+            .border(1.dp, ink.copy(alpha = 0.6f), CircleShape)
+            .padding(start = 8.dp, end = 8.dp, top = 1.6.dp - lift, bottom = 1.6.dp + lift))
 }
 
 /**
@@ -2239,13 +2244,14 @@ private fun CalendarLine(item: CalendarItem, tone: CalendarPillTone, onClick: ()
     Row(
         modifier.fillMaxWidth().heightIn(max = 44.dp).fillMaxHeight().calendarFocusRing(source, shape).calendarClick(source, onClick)
             .parityShape(4f)
-            .semantics(mergeDescendants = true) { contentDescription = label }.padding(horizontal = 5.6.dp),
+            .semantics(mergeDescendants = true) { contentDescription = "$label, $statusName, $dayName" }.padding(horizontal = 5.6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(8.8.dp).parityBackground("container", dot, CircleShape, radius = 999f))
         Text(
             label, color = WebInk, fontSize = 12.48.sp, lineHeight = 14.976.sp, fontWeight = if (item is CalendarItem.Series) FontWeight(680) else FontWeight.Normal,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 7.dp),
+            // Web sets the 17 px glyph box 12.5 px under the chip's top; Compose's centred line sits 1.9 dp lower.
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 7.dp).offset(y = (-2).dp),
         )
     }
 }
