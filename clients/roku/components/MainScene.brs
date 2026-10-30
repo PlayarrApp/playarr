@@ -165,6 +165,11 @@ sub init()
     m.searchTitle = m.top.findNode("searchTitle")
     searchChromeInit()
     m.searchFieldLabel = m.top.findNode("searchFieldLabel")
+    m.searchInput = m.top.findNode("searchInput")
+    m.searchInput.font = PlayarrMakeFont(400, 17.66)
+    m.searchInput.textColor = ThemeColor("ink")
+    m.searchInput.hintTextColor = ThemeColor("inkMuted")
+    m.searchInput.maxTextLength = 120
     ThemeSetRole(m.top.findNode("searchFieldBg"), "surfaceStrong", 217)
     m.top.findNode("searchFieldBg").blendColor = ThemeColor("surfaceStrong", 217)
     ThemeSetRole(m.top.findNode("searchFieldRing"), "focusRing")
@@ -3242,6 +3247,7 @@ sub searchA11y()
     searchBg.id = "a11y|search|999|"
     A11yStamp(searchBg, true)
     m.top.findNode("searchEmptyIcon").id = "a11y|container|66|"
+    m.searchInput.id = "a11y|textbox|0|Search your libraries and playlists"
 end sub
 
 sub searchChromeInit()
@@ -3283,15 +3289,9 @@ sub setSearchHeader(count as String)
 end sub
 
 sub setSearchFieldText(query as String)
-    if m.searchFieldLabel <> invalid
-        if query = ""
-            m.searchFieldLabel.text = "Search your libraries and playlists"
-            m.searchFieldLabel.color = ThemeColor("inkMuted")
-        else
-            m.searchFieldLabel.text = query
-            m.searchFieldLabel.color = ThemeColor("ink")
-        end if
-    end if
+    ' The placeholder is the field's own app-drawn hint (web ::placeholder); typed text is the TextEditBox's.
+    if m.searchInput <> invalid then m.searchInput.text = query
+    if m.searchFieldLabel <> invalid then m.searchFieldLabel.visible = query = ""
     if m.searchClearLabel <> invalid then m.searchClearLabel.visible = query <> ""
 end sub
 
@@ -6674,6 +6674,7 @@ sub hidePlayerControls()
     ' Web (shouldAutoHidePlayerControls): the controls hide on their own only while playing; a paused player keeps them.
     if m.video.state = "paused" then return
     m.playerControls.visible = false
+    m.pcKeyed = false
 end sub
 
 ' Dims Previous/Next when there is no adjacent episode to jump to: either
