@@ -296,3 +296,13 @@ test("a control with direct text and a styled child is named by its whole conten
   const d = await dump(`<button class="abs" style="top:0">Go <span style="font-weight:700">back</span></button>`);
   assert.equal(d.elements.find((e) => e.role === "button").text, "Go back");
 });
+
+test("a text run's right edge excludes the trailing letter-spacing of its last glyph, once per line", { skip }, async () => {
+  const spaced = await dump(`<span class="abs" style="top:0;font:20px monospace;letter-spacing:10px">abcd</span><span class="abs" style="top:40px;font:20px monospace">abcd</span>`);
+  const [a, b] = spaced.elements;
+  assert.equal(a.text, "abcd");
+  assert.ok(Math.abs(a.rect.w - (b.rect.w + 4 * 10 - 10)) < 0.1, `spaced ${a.rect.w} plain ${b.rect.w}`);
+  const wrapped = await dump(`<span class="abs" style="top:0;width:90px;font:20px monospace;letter-spacing:10px">ab cd</span>`);
+  assert.equal(wrapped.elements.length, 2);
+  assert.ok(wrapped.elements.every((e) => Math.abs(e.rect.w - (2 * 12 + 2 * 10 - 10)) < 0.1), JSON.stringify(wrapped.elements.map((e) => e.rect.w)));
+});
