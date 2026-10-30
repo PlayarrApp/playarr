@@ -334,7 +334,7 @@ export function startDebugMirror(): void {
       const newJob = job !== null && job.id !== lastJobId ? job : null;
       if (newJob) lastJobId = newJob.id;
       // A lazily loaded unicode-range font (the VIDAA arrow glyphs) may not be fetched yet when a capture starts: load that face first, so the layout and the frame both use it.
-      if (newJob) await withTimeout(Promise.all(Array.from(document.fonts).filter((f) => f.family.includes("DejaVu")).map((f) => f.load().catch(() => undefined))), 8000, "font load").catch(() => undefined);
+      if (newJob) await withTimeout(Promise.all(Array.from(document.fonts).filter((f) => f.family.includes("Arrows")).map((f) => f.load().catch(() => undefined))), 8000, "font load").catch(() => undefined);
       const layoutBefore = newJob ? JSON.stringify(await runLayoutJob(newJob)) : null;
       const stateBefore = newJob ? pageState() : null;
       let image: string | null = null;

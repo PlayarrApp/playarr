@@ -349,7 +349,7 @@ body {
    same text on the web), so its text runs shorter than the design. geometricPrecision gives it the fractional advances every other engine uses. */
 html[data-platform="tv-vidaa"] body {
   text-rendering: geometricPrecision;
-  font-family: "DejaVu Arrows", var(--font);
+  font-family: "Playarr Arrows", var(--font);
 }
 
 h1,

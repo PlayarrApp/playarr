@@ -68,15 +68,16 @@
 }
 
 /*
- * Arrow glyphs U+2190 and U+2192 are not in the Nunito Sans subsets, so every engine falls back to a system font. The web references use the
- * DejaVu Sans arrows (Bitstream Vera licence, LICENSE-DejaVu.txt); the VIDAA browser has one narrower fallback. Only VIDAA names this family
- * (global.css, html[data-platform="tv-vidaa"]), so no other client changes.
+ * Arrow glyphs U+2190 and U+2192 are not in the Nunito Sans subsets, so every engine falls back to a system font. The web falls back to Arial or
+ * Helvetica from the font stack (Liberation Sans, metric-compatible, 1 em advance); the VIDAA browser has neither and uses a narrower fallback. This
+ * two-glyph Liberation Sans subset (SIL OFL 1.1, LICENSE-Liberation.txt) is named only by VIDAA (global.css, html[data-platform="tv-vidaa"]), so no
+ * other client changes.
  */
 @font-face {
-  font-family: "DejaVu Arrows";
+  font-family: "Playarr Arrows";
   font-style: normal;
   font-display: swap;
   font-weight: 100 900;
-  src: url("../assets/fonts/dejavu-sans-arrows.woff2") format("woff2");
+  src: url("../assets/fonts/liberation-sans-arrows.woff2") format("woff2");
   unicode-range: U+2190,U+2192;
 }
