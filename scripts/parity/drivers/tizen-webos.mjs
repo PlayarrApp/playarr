@@ -1,5 +1,5 @@
 // Suite driver (docs/parity/SUITE.md) for the Samsung Tizen emulator and the LG webOS simulator.
-//   DEVICE=tizen|webos  [TIZEN_DISPLAY=:25] [WEBOS_DISPLAY=:26] [WEBOS_CDP=9226] [PARITY_NETLOG=<dir>]
+//   DEVICE=tizen|webos|tizen65  [TIZEN_DISPLAY=:25] [WEBOS_DISPLAY=:26] [WEBOS_CDP=9226] [PARITY_NETLOG=<dir>]
 //   PARITY_PIN_CLOCK=2026-10-07T12:00:00Z  [webos only] pins Date, zone and locale from the inspector without stable mode
 // webOS: Chrome DevTools Protocol (keys and eval). Tizen: X key events to the emulator window plus the debug build's
 // netlog.js eval channel (a debug build with scripts/parity/tizen-webos/netlog.js; the host side is logserver.py <dir>/log.txt). Both then drive the same page functions.
@@ -90,10 +90,14 @@ function tapAvplayListener() {
 
 export async function createDriver() {
   // TIZEN_REAL=1 runs the Samsung TV through the webOS CDP path, so DEVICE=webos is forced for it.
-  const device = TIZEN_REAL ? "webos" : process.env.DEVICE;
-  if (!["tizen", "webos"].includes(device)) throw new Error("DEVICE=tizen|webos required");
-  const display = device === "tizen" ? process.env.TIZEN_DISPLAY ?? ":25" : process.env.WEBOS_DISPLAY ?? ":26";
-  const cdpPort = process.env.WEBOS_CDP ?? "9226";
+  // DEVICE=tizen65 is the Tizen 6.5 engine stand-in: the built Tizen web package in a pinned Chromium 85 (the Tizen 6.5 engine) with the Tizen 6.5
+  // user agent, on its own Xvfb display (TIZEN65_DISPLAY, default :65) and inspector port (TIZEN65_CDP, default 9285). It is driven exactly like the
+  // webOS simulator (inspector keys and page evaluation, root grab), with no webOS system keyboard and no Luna hooks.
+  const tizen65 = !TIZEN_REAL && process.env.DEVICE === "tizen65";
+  const device = TIZEN_REAL || tizen65 ? "webos" : process.env.DEVICE;
+  if (!["tizen", "webos"].includes(device)) throw new Error("DEVICE=tizen|webos|tizen65 required");
+  const display = tizen65 ? process.env.TIZEN65_DISPLAY ?? ":65" : device === "tizen" ? process.env.TIZEN_DISPLAY ?? ":25" : process.env.WEBOS_DISPLAY ?? ":26";
+  const cdpPort = tizen65 ? process.env.TIZEN65_CDP ?? "9285" : process.env.WEBOS_CDP ?? "9226";
   let playerStarted = false;
   let tizenPinScript = null; // base64 of the page script that pins Date, zone and locale: stored for netlog.js to run before the app renders
   // PARITY_PIN_CLOCK=<ISO instant> pins the clock without the isolated-account stable mode (the real TV stays on the shared Device Test account), so Calendar renders the web refs' date.
@@ -120,7 +124,7 @@ export async function createDriver() {
   }
   async function cdpConnect() {
     const list = await (await fetch(`http://${CDP_HOST}:${cdpPort}/json/list`)).json();
-    const t = list.find((x) => new RegExp(process.env.WEBOS_MATCH ?? "webos-stage").test(x.url));
+    const t = list.find((x) => new RegExp(process.env.WEBOS_MATCH ?? (tizen65 ? "^https?://" : "webos-stage")).test(x.url));
     if (!t) throw new Error("webOS app page not found (launcher showing?)");
     const socket = new WebSocket(t.webSocketDebuggerUrl);
     const requests = new Map();
@@ -146,7 +150,7 @@ export async function createDriver() {
     }
   }
   async function keyboardVisible() {
-    if (TIZEN_REAL) return false; // the Samsung TV shows no system keyboard target on the inspector
+    if (TIZEN_REAL || tizen65) return false; // the Samsung TV shows no system keyboard target on the inspector
     const list = await (await fetch(`http://${CDP_HOST}:${cdpPort}/json/list`)).json();
     const target = list.find((item) => /#\/keyboard\//.test(item.url));
     if (!target) throw new Error("webOS system keyboard visibility is unavailable");
@@ -477,7 +481,7 @@ export async function createDriver() {
     },
     strictReadiness: true,
     // The simulator runs the web client in Chromium 94: Media Session is readable like on web; Tizen has no CDP hook for the handlers.
-    supports: device === "webos" ? { nowPlaying: true, downloads: true, notifications: true, "grouped-downloads": true } : {},
+    supports: device === "webos" && !tizen65 ? { nowPlaying: true, downloads: true, notifications: true, "grouped-downloads": true } : {},
     async start() {
       if (device === "webos") {
         await cdpConnect();
@@ -664,6 +668,12 @@ export async function createDriver() {
       if (await ev(`/^#\\/(movies|series)\\/[^/]+\\/?$/.test(location.hash)`)) await ev(`(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; return true; })()`);
       await settleVisibleImages();
       await guard();
+      if (tizen65) {
+        // This Xvfb is larger than the page (a window the size of the screen loses a pixel row and column), and the XWD grab fails on it: ImageMagick grabs the root, the page is its top-left 1920x1080.
+        execFileSync("magick", ["import", "-display", display, "-window", "root", "-crop", "1920x1080+0+0", "+repage", `png:${file}`]);
+        await guard();
+        return;
+      }
       const xwd = `${file}.xwd`;
       writeFileSync(xwd, execFileSync("xwd", ["-display", display, "-root", "-silent"], { maxBuffer: 64 << 20 }));
       await guard();
