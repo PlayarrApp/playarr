@@ -1,0 +1,1 @@
+- Nura: layout export uses Pango run bounds for fallback glyphs, the actions glyph and settings description column match the web, and the search empty-state icon follows the theme.
