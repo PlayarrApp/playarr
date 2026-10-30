@@ -549,7 +549,7 @@ export async function createDriver() {
       // The simulator opens the player slower than web: a key sent while the title is still loading toggles or opens the wrong thing.
       if (device === "webos") {
         const onPlayer = await ev(`/^#\\/player\\//.test(location.hash)`).catch(() => false);
-        if (onPlayer && !playerStarted) { await until(`(() => { const v = document.querySelector("video"); return !!v && !v.paused && v.currentTime > 1; })()`, 30000); playerStarted = true; }
+        if (onPlayer && !playerStarted) { await until(tizen65 ? `(() => { try { const a = window.webapis.avplay; return a.getState() === "PLAYING" && a.getCurrentTime() > 1000; } catch (e) { return false; } })()` : `(() => { const v = document.querySelector("video"); return !!v && !v.paused && v.currentTime > 1; })()`, 30000); playerStarted = true; }
         if (!onPlayer) playerStarted = false;
         await guard();
       }
