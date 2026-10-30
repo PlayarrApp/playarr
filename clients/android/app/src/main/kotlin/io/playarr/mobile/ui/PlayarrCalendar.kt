@@ -655,7 +655,7 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
                     modifier = if (tvWeek && !agenda && LocalStageScale.current == 1f) Modifier.offset(y = 1.dp) else Modifier)
                 Spacer(Modifier.height(lineGap))
                 if (rowSubtitle.isNotEmpty()) {
-                    Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis, modifier = if (tvWeek && LocalStageScale.current == 1f) Modifier.offset(y = 1.dp) else Modifier)
+                    Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis, modifier = if (tvWeek && !agenda && LocalStageScale.current == 1f) Modifier.offset(y = 1.dp) else Modifier)
                     Spacer(Modifier.height(lineGap))
                 }
                 Row(Modifier.then(if (m === TvCalendarMetrics) Modifier.offset(y = (-3).dp) else Modifier), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
