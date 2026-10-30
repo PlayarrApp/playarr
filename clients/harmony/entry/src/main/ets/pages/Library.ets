@@ -1351,7 +1351,7 @@ export struct Library {
       synopsis: this.hero !== undefined ? (this.hero.overview !== null && this.hero.overview.length > 0 ? this.hero.overview : t('pages.library.noSynopsis', 'No synopsis is available.')) : '',
       scrollRails: false,
       railFrost: true,
-      railFrostWidthPct: 65,
+      railFrostWidthPct: 62,
       libraryCopy: true,
       railsSlot: (): void => {
         this.tvGrid();

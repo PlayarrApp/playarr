@@ -107,7 +107,7 @@ export struct ChoiceSegments {
   }
 
   build() {
-    Column({ space: tv(this.large ? LARGE_HEADING_GAP : HEADING_GAP + (isTvMetrics() ? 1.8 : 0)) }) {
+    Column({ space: tv(this.large ? LARGE_HEADING_GAP : HEADING_GAP + (isTvMetrics() ? 0.2 : 0)) }) {
       if (this.large) {
         Text(this.heading).fontFamily(nunitoAt(500, tv(LARGE_HEADING_SIZE)))
           .fontSize(tv(LARGE_HEADING_SIZE)).lineHeight(webLineHeight(tv(LARGE_HEADING_SIZE))).halfLeading(true)
@@ -143,7 +143,7 @@ export struct ChoiceSegments {
               .fontWeight(FontWeight.Bolder)
               .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
           }
-          .accessibilityText(choice.label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+          .accessibilityText(choice.value).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true) // the View buttons are named by their value
           .width(tv(this.choiceWidth()))
           .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
           .justifyContent(FlexAlign.Center)
@@ -166,7 +166,7 @@ export struct ChoiceSegments {
               .letterSpacing(((this.large && isTvMetrics() ? 0.43 : 0) + (isTvMetrics() ? -0.247 : 0)) + (!isTvMetrics() ? -0.075 : 0)) // web's run is about 3 wider than ArkUI lays it out
               .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
           }
-          .accessibilityText(choice.label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+          .accessibilityText(capitalWords(choice.label)).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .width(tv(this.choiceWidth()))
           .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
           .justifyContent(FlexAlign.Center)
@@ -174,7 +174,7 @@ export struct ChoiceSegments {
             toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
           .borderRadius(tv(CHOICE_RADIUS))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
-          .scale((this.large || !isTvMetrics()) && choice.value === this.selected ? { x: 1.025, y: 1.025 } : { x: 1, y: 1 })
+          .scale(choice.value === this.selected ? { x: 1.025, y: 1.025 } : { x: 1, y: 1 })
           .focusable(true)
           .onClick(() => {
             this.onChoose(choice.value);
@@ -184,6 +184,6 @@ export struct ChoiceSegments {
       }
     }
     .alignItems(HorizontalAlign.Start)
-    .margin({ bottom: this.large ? tv(SECTION_GAP) : (isTvMetrics() ? tv(SECTION_GAP + 3) : TOUCH_SECTION_GAP) })
+    .margin({ bottom: this.large ? tv(SECTION_GAP) : (isTvMetrics() ? tv(SECTION_GAP + 0.23) : TOUCH_SECTION_GAP) })
   }
 }

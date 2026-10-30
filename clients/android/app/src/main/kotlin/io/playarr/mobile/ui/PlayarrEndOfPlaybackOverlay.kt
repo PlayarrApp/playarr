@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.layerAlpha
 import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
@@ -256,7 +257,7 @@ internal fun PlayarrEndOfPlaybackOverlay(
                 serverUrl = serverUrl,
                 accessToken = accessToken,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().alpha(0.22f),
+                modifier = Modifier.fillMaxSize().layerAlpha(0.22f),
             )
         }
         Box(

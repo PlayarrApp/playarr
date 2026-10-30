@@ -4361,8 +4361,10 @@ private fun TvSettingsBody(
             ),
         ) {
         androidx.compose.material3.ProvideTextStyle(outerTextStyle) {
+        // Web TV: the settings panel is its own box from x 672 to the screen edge; the section column sits 102 px inside it.
+        Box(if (tablet) Modifier else Modifier.offset(x = 672.dp).width(1248.dp).fillMaxHeight().parityBox("container")) {
         Column(
-            Modifier.offset(x = if (tablet) 817.dp else 774.dp, y = if (tablet) 248.dp else 210.dp).width(if (tablet) 995.dp else 1042.3.dp),
+            if (tablet) Modifier.offset(x = 817.dp, y = 248.dp).width(995.dp) else Modifier.padding(start = 102.dp, top = 210.dp).width(1042.3.dp),
         ) {
             when (val current = state) {
                 ParityLoad.Loading -> CircularProgressIndicator(color = WebAccent)
@@ -4383,6 +4385,7 @@ private fun TvSettingsBody(
                     )
                 }
             }
+        }
         }
         }
         }
@@ -4606,8 +4609,9 @@ private fun TvAppearanceBody(display: PlayarrDisplayPreferences) {
         selected = display.theme,
     ) { display.setTheme(it) }
     Spacer(Modifier.height(29.5.dp))
+    // Web: each following section is a box that starts with its 1 px rule.
+    Column(Modifier.fillMaxWidth().parityBox("container")) {
     Box(Modifier.fillMaxWidth().height(1.dp).background(TvSettingsPalette.divider))
-    Column(Modifier) {
     Spacer(Modifier.height(30.3.dp))
     Text(playarrString(PlayarrString.SettingsHomeViewTitle), color = WebInk, fontSize = 26.4.sp, fontWeight = FontWeight(560), lineHeight = 39.6.sp, letterSpacing = (-0.924).sp, modifier = Modifier.semantics { heading() })
     Spacer(Modifier.height(5.6.dp))
@@ -4623,8 +4627,8 @@ private fun TvAppearanceBody(display: PlayarrDisplayPreferences) {
     ) { display.setHomeView(it) }
     }
     Spacer(Modifier.height(28.5.dp))
+    Column(Modifier.fillMaxWidth().parityBox("container")) {
     Box(Modifier.fillMaxWidth().height(1.dp).background(TvSettingsPalette.divider))
-    Column(Modifier) {
     Spacer(Modifier.height(30.3.dp))
     Text(playarrString(PlayarrString.LibraryArtworkSize), color = WebInk, fontSize = 26.4.sp, fontWeight = FontWeight(560), lineHeight = 39.6.sp, letterSpacing = (-0.924).sp, modifier = Modifier.semantics { heading() })
     Spacer(Modifier.height(5.6.dp))

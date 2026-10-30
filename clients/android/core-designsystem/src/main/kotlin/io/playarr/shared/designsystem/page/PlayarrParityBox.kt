@@ -5,6 +5,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.foundation.background as foundationBackground
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
@@ -57,6 +58,9 @@ const val PARITY_BOX_KEY_NAME = "ParityBox"
 /** One key object per box, because peers on one node keep only the first value of a shared key; the export lists the entries named [PARITY_BOX_KEY_NAME]. */
 internal fun newParityBoxKey() = androidx.compose.ui.semantics.SemanticsPropertyKey<Int>(PARITY_BOX_KEY_NAME) { parent, _ -> parent }
 
+/** True inside an image slot that shows its placeholder instead of a picture, so the slot is exported as what it draws. */
+val LocalParityImagePlaceholder = androidx.compose.runtime.compositionLocalOf { false }
+
 val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<ParityBox>())
 
 /**
@@ -68,6 +72,8 @@ val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<
 fun Modifier.parityBox(kind: String, radius: Float = 0f, opacity: Float = 1f, fillAlpha: Float = 1f): Modifier =
     if (!parityLayoutEnabled) this else composed {
         val view = androidx.compose.ui.platform.LocalView.current
+        // An image slot whose picture is not there (artwork placeholder) paints a container, not an image.
+        val kind = if (kind == "image" && LocalParityImagePlaceholder.current) "container" else kind
         val box = remember { ParityBox(view, kind, radius, opacity, fillAlpha) }
         box.density = androidx.compose.ui.platform.LocalDensity.current.density; box.kind = kind; box.radius = radius; box.opacity = opacity; box.fillAlpha = fillAlpha
         DisposableEffect(box) { parityBoxes.add(box); onDispose { box.coordinates = null; parityBoxes.remove(box) } }
@@ -116,6 +122,15 @@ fun Modifier.parityPainted(kind: String, color: androidx.compose.ui.graphics.Col
         box.density = androidx.compose.ui.platform.LocalDensity.current.density; box.kind = kind; box.radius = radius; box.opacity = opacity; box.fillAlpha = color.alpha
         DisposableEffect(box) { parityBoxes.add(box); onDispose { box.coordinates = null; parityBoxes.remove(box) } }
         this.onGloballyPositioned { box.coordinates = it }.semantics { this[box.semanticsKey] = box.id }.drawBehind { box.fill = color }
+    }
+
+/**
+ * `Modifier.alpha(alpha)` that also records the layer alpha it applies (kind `alpha`, not an element of its own): the export multiplies the alphas of
+ * a node's ancestors into its effective opacity, as the browser does.
+ */
+fun Modifier.layerAlpha(alpha: Float): Modifier =
+    this.alpha(alpha).let { m ->
+        if (!parityLayoutEnabled || alpha >= 1f) m else m.parityBox("alpha", opacity = alpha)
     }
 
 /** The corner radius (dp) of the shape a control draws (999 for a CircleShape). Never merged into a parent: a descendant's shape is not the parent's. */

@@ -1,0 +1,1 @@
+- HarmonyOS parity: the TV filter drawer sections, the selected-choice scale and the frost width follow web; the phone profile picker, the month day numbers and the avatar circle report what they draw.
