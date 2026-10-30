@@ -47,9 +47,10 @@ Item {
         }
         Rectangle { anchors.fill: parent; color: "black"; opacity: Tokens.dark ? 0.4 : 0 }   // brightness(.6)
         Rectangle { anchors.fill: parent; color: "white"; opacity: Tokens.dark ? 0 : root.lightLift }
-        Rectangle {   // the web masks the picture out over its right 28%
-            anchors.centerIn: parent
-            width: parent.height; height: parent.width; rotation: -90
+        Rectangle {   // the web masks the picture out over its right 28%, measured on the picture (Home draws it 4 % wider than the page)
+            readonly property real maskW: root.imgH > 0 ? im.width : parent.width
+            x: (maskW - width) / 2; y: (parent.height - height) / 2
+            width: parent.height; height: maskW; rotation: -90
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "transparent" }
                 GradientStop { position: 0.72; color: "transparent" }
