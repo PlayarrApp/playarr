@@ -672,6 +672,11 @@ export async function createDriver() {
       if (await ev(`/^#\\/(movies|series)\\/[^/]+\\/?$/.test(location.hash)`)) await ev(`(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; return true; })()`);
       await settleVisibleImages();
       await guard();
+      if (tizen65 && !(await ev(`/^#\\/player\\//.test(location.hash)`))) {
+        // The nav rail adds Downloads once the downloads capability and storage probe resolve (App.tsx render filter): a grab before that shows a rail one item short.
+        if (!(await until(`!!document.querySelector('.app-nav-link[href$="/downloads"]')`, 20000))) throw new Error("the nav rail never showed Downloads");
+        await sleep(300);
+      }
       if (tizen65) {
         // This Xvfb is larger than the page (a window the size of the screen loses a pixel row and column), and the XWD grab fails on it: ImageMagick grabs the root, the page is its top-left 1920x1080.
         execFileSync("magick", ["import", "-display", display, "-window", "root", "-crop", "1920x1080+0+0", "+repage", `png:${file}`]);
