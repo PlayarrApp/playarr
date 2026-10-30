@@ -36,7 +36,6 @@ Rectangle {
             Accessible.name: qsTr("Signed in as %1. Open profiles.").arg(Api.profileName)
             Accessible.role: Accessible.Link
             onClicked: root.profileClicked()
-            Rectangle { anchors.fill: parent; radius: 14 * Tokens.u; color: root.color }
             Avatar { plateColor: root.color; anchors.centerIn: parent; anchors.verticalCenterOffset: -4 * Tokens.u; width: 21 * Tokens.u;   // web seats the avatar higher than the icons
                      source: Api.profileAvatar }
         }
@@ -53,15 +52,15 @@ Rectangle {
                 Accessible.role: Accessible.Link
                 Accessible.name: modelData === "downloads" ? qsTr("Downloads") : modelData === "search" ? qsTr("Search") : modelData === "home" ? qsTr("Home") : modelData === "series" ? qsTr("Series") : modelData === "movies" ? qsTr("Movies") : modelData === "music" ? qsTr("Music") : qsTr("Playlists")
                 onClicked: root.selected(modelData)
-                Rectangle {   // the link's own plate: the bar's colour at rest, the ink when selected
+                Rectangle {   // the link's own plate: nothing at rest (the bar shows through, as on the web), the ink when selected
                     anchors.fill: parent
                     radius: 14 * Tokens.u
-                    color: root.section === modelData ? Tokens.primary : root.color
+                    color: root.section === modelData ? Tokens.primary : "transparent"
                 }
                 Image {
                     anchors.centerIn: parent
                     width: 21 * Tokens.u; height: width
-                    sourceSize: Qt.size(48, 48)
+                    sourceSize: Qt.size(96, 96)
                     smooth: true
                     // the idle icons of the dark bar are the ink at 72 % over the bar, drawn as one colour
                     source: NavIcons.url(modelData, root.section === modelData ? Tokens.primaryInk : (Tokens.dark ? Qt.rgba(Tokens.ink.r * 0.72 + Tokens.surfaceStrong.r * 0.28, Tokens.ink.g * 0.72 + Tokens.surfaceStrong.g * 0.28, Tokens.ink.b * 0.72 + Tokens.surfaceStrong.b * 0.28, 1) : Tokens.inkSoft))
