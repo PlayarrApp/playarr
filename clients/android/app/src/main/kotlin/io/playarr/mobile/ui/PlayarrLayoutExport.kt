@@ -49,8 +49,9 @@ internal object PlayarrLayoutExport {
             override fun onReceive(context: Context, intent: Intent) {
                 val screen = intent.getStringExtra("screen").orEmpty()
                 val theme = intent.getStringExtra("theme").orEmpty()
+                val captureId = intent.getStringExtra("id").orEmpty()
                 val file = File(activity.filesDir, "parity-layout.json").also { it.delete() }
-                runCatching { export(activity, screen, theme, file) }.onFailure { parityLog("layout_export failed ${it.javaClass.simpleName} ${it.message?.take(120)}") }
+                runCatching { export(activity, screen, theme, captureId, file) }.onFailure { parityLog("layout_export failed ${it.javaClass.simpleName} ${it.message?.take(120)}") }
             }
         }
         androidx.core.content.ContextCompat.registerReceiver(activity, receiver, IntentFilter(ACTION), androidx.core.content.ContextCompat.RECEIVER_EXPORTED)
@@ -76,7 +77,7 @@ internal object PlayarrLayoutExport {
 
     private class Item(val window: Int, val json: JSONObject, val x: Float, val y: Float, val w: Float, val h: Float, var occludes: Boolean, val hook: Boolean = false, val boxId: Int = -1, val controlBoxes: Set<Int>? = null)
 
-    private fun export(activity: Activity, screen: String, theme: String, file: File) {
+    private fun export(activity: Activity, screen: String, theme: String, captureId: String, file: File) {
         val mainView = activity.window.decorView
         val width = mainView.width.toFloat(); val height = mainView.height.toFloat()
         val unit = 1f / activity.resources.displayMetrics.density
@@ -147,7 +148,7 @@ internal object PlayarrLayoutExport {
         }
         val ordered = kept.sortedWith(compareBy({ it.y }, { it.x }, { it.json.getString("role") }, { it.json.getString("text") }, { it.w })).map { it.json }
         val doc = JSONObject()
-            .put("screen", screen).put("theme", theme).put("paletteDark", PlayarrWebTheme.palette.dark)
+            .put("screen", screen).put("theme", theme).put("captureId", captureId).put("paletteDark", PlayarrWebTheme.palette.dark)
             .put("viewport", JSONObject().put("w", r2(width * unit)).put("h", r2(height * unit)).put("dpr", 1))
             .put("clockPinned", parityClock != null).put("occluded", unique.size - kept.size)
             .put("elements", JSONArray().also { arr -> ordered.forEach { arr.put(it) } })

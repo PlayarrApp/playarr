@@ -3,6 +3,7 @@ package io.playarr.mobile.ui
 import androidx.compose.foundation.layout.size
 import io.playarr.shared.designsystem.page.parityBox
 import io.playarr.shared.designsystem.page.parityBackground
+import io.playarr.shared.designsystem.page.parityShape
 import androidx.compose.ui.layout.layout
 import io.playarr.shared.designsystem.page.PlayarrCardShadows
 import io.playarr.shared.designsystem.page.PlayarrCardShadowLayer
@@ -263,20 +264,27 @@ internal fun PhonePill(
     WebShadowedBox(
         shadows = listOf(shadow),
         shape = androidx.compose.foundation.shape.CircleShape,
-        modifier = modifier.webFocusRing(focused, radius = null, offset = 3.dp, width = 2.dp)
-            
-            .then(if (exportLabel != null) Modifier.semantics { contentDescription = exportLabel } else Modifier),
+        modifier = modifier.webFocusRing(focused, radius = null, offset = 3.dp, width = 2.dp),
         innerModifier = Modifier.parityBackground("container", container, androidx.compose.foundation.shape.CircleShape, radius = 999f),
         innerFill = false,
         innerWidthFill = fill,
     ) {
+        // The clickable owns the whole 44 px pill (its own box and radius); the 16 px side padding sits on an inner row, so the control's box is the pill, not its padded content.
         androidx.compose.foundation.layout.Row(
             Modifier.height(44.dp).then(if (fill) Modifier.fillMaxWidth() else if (width != null) Modifier.width(width) else Modifier.widthIn(min = 104.dp))
-                .clickable(interactionSource = source, indication = androidx.compose.foundation.LocalIndication.current, enabled = enabled, onClick = onClick).padding(horizontal = 16.dp),
+                .parityShape(999f)
+                .clickable(interactionSource = source, indication = androidx.compose.foundation.LocalIndication.current, enabled = enabled, onClick = onClick)
+                .then(if (exportLabel != null) Modifier.semantics { contentDescription = exportLabel } else Modifier),
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
-            content = content,
-        )
+        ) {
+            androidx.compose.foundation.layout.Row(
+                Modifier.padding(horizontal = 16.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                content = content,
+            )
+        }
     }
 }
 

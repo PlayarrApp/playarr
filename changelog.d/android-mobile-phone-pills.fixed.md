@@ -1,0 +1,1 @@
+- Android phone detail pills and actions drawer rows are named and boxed as the web controls: the whole 44 px pill with its radius is the control, drawer rows drop the decorative glyph from their name, and the actions capture taps the card by its accessible name.

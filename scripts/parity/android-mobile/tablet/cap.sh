@@ -5,6 +5,8 @@ S_STATE=/dev/null
 # The web refs freeze the clock at the fixture instant; the app clock must match (debug launch extra parity_clock).
 CLOCK=${PARITY_CLOCK:-$(sed -n 's/.*"clock": *"\([^"]*\)".*/\1/p' "$HERE/../../screens.json" | head -1)}
 export PATH=$HOME/Android/Sdk/platform-tools:$PATH ANDROID_SERIAL=${ANDROID_SERIAL:-emulator-5568}
+# A hung emulator must not stall the run: every adb call is bounded (30 s, one retry) and then fails like any other failed command.
+adb() { local rc n; for n in 1 2; do timeout 30 "$HOME/Android/Sdk/platform-tools/adb" "$@"; rc=$?; [ $rc -ne 124 ] && return $rc; done; return 124; }
 O=$1; T=$2; shift 2; adb shell settings put global sysui_demo_allowed 1 >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command enter >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 1200 >/dev/null 2>&1; pkg=io.playarr.mobile; mkdir -p "$O"
 adb shell am force-stop $pkg
 # Web refs format dates as en-GB ("THU 15 OCTOBER"); the app follows the device region, so pin it for captures.
@@ -18,7 +20,7 @@ tap_text() { python3 -I $HERE/uitap.py "$1" "${3:-tap}"; sleep "${2:-1.5}"; }
 tap() { adb shell input tap "$1" "$2"; sleep "${3:-1.5}"; }
 shot() { sleep "${2:-5}"; adb shell dumpsys input_method | grep -q "mInputShown=true" && { adb shell input keyevent 4; sleep 1.5; }; for i in 1 2 3; do adb shell dumpsys activity activities | grep -m1 topResumed | grep -q $pkg || { echo "not foreground"; sleep 4; continue; }; adb exec-out screencap -p > "$O/$1.png"; if [ "$(stat -c%s "$O/$1.png")" -gt 20000 ] && python3 -I -c "import sys;d=open(sys.argv[1],'rb').read();assert d[:8]==b'\\x89PNG\\r\\n\\x1a\\n' and d[-8:-4]==b'IEND'" "$O/$1.png" 2>/dev/null; then
     adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; if adb shell cat /sdcard/ui.xml | grep -qiE "try again|reach the playarr|couldn.t|could not be loaded|sign in to playarr|isn.t responding|keeps stopping|has stopped|close app|not responding"; then sleep 4; continue; fi
-    python3 -I "$HERE/../layout.py" "$1" "$(echo "$T" | tr A-Z a-z)" tablet "$O/layout/$1.json" >/dev/null 2>&1 || echo "layout export failed $1"; echo "ok $1"; return 0; fi; sleep 2; done; rm -f "$O/$1.png"; echo "FAIL $1"; return 1; }
+    rm -f "$O/layout/$1.json"; python3 -I "$HERE/../layout.py" "$1" "$(echo "$T" | tr A-Z a-z)" tablet "$O/layout/$1.json" >/dev/null 2>&1 || { echo "layout export failed $1"; rm -f "$O/layout/$1.json"; sleep 2; continue; }; echo "ok $1"; return 0; fi; sleep 2; done; rm -f "$O/$1.png"; echo "FAIL $1"; return 1; }
 kseq() { local k n; for k in "$@"; do n=1; case $k in *"*"*) n=${k#*\*}; k=${k%\**};; esac; for i in $(seq $n); do case $k in left) c=21;; right) c=22;; up) c=19;; down) c=20;; select) c=23;; back) c=4;; select:long) adb shell input keyevent --longpress 23; sleep 1.2; continue;; esac; adb shell input keyevent $c; sleep 0.5; done; done; sleep 1.5; }
 run() { case $1 in
   home) open home; adb shell input tap 1700 60; sleep 1.5; shot $1 ;;

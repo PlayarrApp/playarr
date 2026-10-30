@@ -2169,7 +2169,7 @@ private fun ExperienceNavigation(
                     modifier = Modifier.height(46.dp).width(if (isTelevision) 46.dp else 44.dp).semantics { contentDescription = tvProfile.description }.parityShape(14f),
                 ) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        PlayarrProfileAvatar(userId = tvProfile.userId, preference = tvProfile.avatar, modifier = Modifier.size(21.2.dp).offset(y = if (isTelevision) 0.dp else (-3.2).dp).parityBox("container", radius = 999f).parityBox("image"), glyphSize = 13.sp) // web: 39 device px
+                        PlayarrProfileAvatar(userId = tvProfile.userId, preference = tvProfile.avatar, modifier = Modifier.size(21.2.dp).offset(y = if (isTelevision) 0.dp else (-3.2).dp).parityBox("container", radius = 999f), artworkModifier = Modifier.parityBox("image"), glyphSize = 13.sp) // web: 39 device px
                     }
                 }
                 }
@@ -2451,7 +2451,7 @@ private fun ExperienceClock(modifier: Modifier = Modifier) {
             now = playarrNow()
         }
     }
-    Row(modifier.offset(1.dp, 0.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.2.dp)) {
+    Row(modifier.offset(1.dp, 0.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (LocalStageScale.current != 1f) (9.2f + 4.7f / LocalStageScale.current).dp else 9.2.dp)) {
         Text(
             now.format(DateTimeFormatter.ofPattern("HH:mm")),
             color = WebInk,
@@ -3253,10 +3253,13 @@ private fun ExperienceStage(
             Box(
                 // Television: web `.tv-home-rails` starts where the Library grid panel starts (--card-rail-vw, 62%).
                 // At 1280 x 800 it starts where the Library rail does (522 css px, 40.8% of the width).
-                Modifier.fillMaxHeight().then(if (LocalStageScale.current != 1f) Modifier.fillMaxWidth(0.5922f) else Modifier.fillMaxWidth(0.62f)).align(Alignment.CenterEnd).parityBox("container").background(
+                Modifier.fillMaxHeight().fillMaxWidth(0.62f).align(Alignment.CenterEnd).parityBox("container").background(
                     webRailSurfaceBrush(),
                 ),
-            ) { rails() }
+            ) {
+                // Tablet web: the panel starts at 486.4 css px (62%) but its rails start 35.6 css px in, at the Library rail's 522.
+                Box(Modifier.fillMaxSize().padding(start = if (LocalStageScale.current != 1f) (35.61f / LocalStageScale.current).dp else 0.dp)) { rails() }
+            }
         } else {
             Box(Modifier.fillMaxSize()) {
                 Box(Modifier.padding(top = 58.dp + webPhoneInsets().asPaddingValues().calculateTopPadding()).fillMaxSize().parityBox("container").background(phoneHomePanelBrush()))
@@ -3538,13 +3541,15 @@ internal fun ExperienceMediaRail(
             // LazyColumn content top y=389.9dp. The TV context maps dp 1:1 to pixels, so translate the
             // heading's drawing by that measured difference without changing its line box or card origin.
             val headingInkOffset = 402.dp - 389.9.dp
+            // Web clamp(0.76rem, 0.92 vw, 1.18rem): 17.664 px at 1920, 12.16 css px on a 1280 tablet (stage units).
+            val headingSize = webVw(12.16f, 0.92f, 18.88f).value
             Text(
                 railTitle,
                 color = WebInk,
-                fontSize = 17.664.sp,
+                fontSize = headingSize.sp,
                 fontWeight = FontWeight(610),
-                letterSpacing = (-0.52992).sp,
-                lineHeight = 26.5.sp,
+                letterSpacing = (-0.03f * headingSize).sp,
+                lineHeight = (if (LocalStageScale.current != 1f) headingSize * 1.316f else headingSize * 1.5f).sp,
                 modifier = Modifier.graphicsLayer { translationY = headingInkOffset.toPx() - (if (railIndex > 0) 2.2.dp.toPx() else 0f) }.semantics { heading() },
             )
         } else {
@@ -3585,7 +3590,7 @@ internal fun ExperienceMediaRail(
         val trackModifier = if (isTelevision) {
             Modifier.fillMaxWidth().extendStart(trackGutter).padding(top = tvOuterTopPadding)
                 // Tablet static refs (1280 x 800): the cards sit 6.4 css px higher than the 1080 tuning gives.
-                .then(if (LocalStageScale.current != 1f) Modifier.offset(y = -(6.4f * cssDp).dp) else Modifier)
+                .then(if (LocalStageScale.current != 1f) Modifier.offset(y = -(7.4f * cssDp).dp) else Modifier)
         } else {
             Modifier.fillMaxWidth().layout { measurable, constraints ->
                 // Web `.tv-media-track-scroll` adds 24px above and 80px below the card for focus shadows, then uses
@@ -3651,6 +3656,9 @@ internal fun ExperienceMediaRail(
                     mediaFileId = episode?.mediaFileId ?: onDeck?.progress?.mediaFileId?.takeIf { work.kind == WorkKind.Artist },
                     stackCount = onDeck?.resumePlan?.takeIf { it.isStacked }?.options?.size ?: 0,
                     webTvStyle = isTelevision,
+                    contentLabel = (episode?.title?.takeIf(String::isNotBlank) ?: work.title) + " " + (episode?.let {
+                        playarrString(PlayarrString.HomeEpisodeProvider, "title" to work.title, "season" to it.seasonNumber.toString().padStart(2, '0'), "episode" to it.episodeNumber.toString().padStart(2, '0'))
+                    } ?: work.playarrKindYearLabel()),
                     displayTitle = episode?.title?.takeIf(String::isNotBlank)
                         ?: episode?.let {
                             playarrString(PlayarrString.HomeEpisodeLabel, "number" to it.episodeNumber)
@@ -3734,7 +3742,7 @@ internal fun ExperienceLandscapeCard(
         modifier = modifier
             .width(width)
             // The home card's box ends 29.36 px under its art while the caption hangs out; the rail's row pitch still needs the whole caption.
-            .padding(bottom = if (webTvStyle && !webTvLibrary) 15.9.dp else 0.dp)
+            .padding(bottom = if (webTvStyle && !webTvLibrary) (if (LocalStageScale.current != 1f) 15.9.dp - (4.57f / LocalStageScale.current).dp else 15.9.dp) else 0.dp)
             .then(
                 if (webPhone) {
                     Modifier.graphicsLayer { scaleX = scale; scaleY = scale; translationY = 0f }
@@ -3758,7 +3766,7 @@ internal fun ExperienceLandscapeCard(
                     )
                 },
             )
-            .then(if (contentLabel != null) Modifier.semantics { contentDescription = contentLabel } else Modifier),
+            .then(if (contentLabel != null) Modifier.clearAndSetSemantics { contentDescription = contentLabel } else Modifier),
     ) {
     // The lift is applied here, inside the focus target, so focus search keeps the unlifted bounds.
     val webPhoneMotion = when {
@@ -3830,8 +3838,9 @@ internal fun ExperienceLandscapeCard(
                 )
             }
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) 3.08.dp else 3.dp).parityBackground("img", Color.White.copy(alpha = 0.28f))) {
-                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", WebAccent))
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) (if (LocalStageScale.current != 1f) (3f / LocalStageScale.current).dp else 3.08.dp) else 3.dp).parityBackground("img", Color.White.copy(alpha = 0.2f))) {
+                    // Web `.tv-watch-progress` (white 20%) and its `i` fill: `--brand` (#cf3157) in both themes.
+                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", Color(0xFFCF3157)))
                 }
             }
             if (showUnwatched && stackCount <= 1 && shouldShowPlayarrUnwatchedDot(progress, progressLoaded = true)) {
@@ -3861,9 +3870,14 @@ internal fun ExperienceLandscapeCard(
             // Web `.tv-home-card` copy: strong 11.328 px / 630, small 8.64 px, 9.9 px under the art.
             // Static web refs: strong 11.904 px / 610 with -0.18 px tracking, small 8.832 px / 400 (both white under the focused card).
             // Web's card box ends 29.36 px under the art: the small line hangs out of it, so the link's box is that tall, not the copy's.
-            Column(Modifier.height(29.36.dp).wrapContentHeight(Alignment.Top, unbounded = true)) {
-            Text(displayTitle, color = if (focused) Color.White else WebInk, fontSize = 11.904.sp, fontWeight = FontWeight(610), letterSpacing = (-0.17856).sp, lineHeight = 17.856.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 9.9.dp, start = 1.9.dp))
-            Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = 8.832.sp, lineHeight = 13.248.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.6.dp, start = 1.9.dp))
+            // A tablet takes the viewport's own clamps (title 0.55 rem min 8.8 css px, meta 6.88 css px, 0.72 rem and 0.16 rem gaps), in stage units.
+            val tabletHome = LocalStageScale.current != 1f
+            val homeScale = LocalStageScale.current
+            val homeTitle = if (tabletHome) webVw(8.8f, 0.62f, 12.48f).value else 11.904f
+            val homeMeta = if (tabletHome) webVw(6.88f, 0.46f, 8.96f).value else 8.832f
+            Column(Modifier.height(if (tabletHome) ((11.52f + homeTitle * homeScale * 1.504f) / homeScale).dp else 29.36.dp).wrapContentHeight(Alignment.Top, unbounded = true)) {
+            Text(displayTitle, color = if (focused) Color.White else WebInk, fontSize = homeTitle.sp, fontWeight = FontWeight(610), letterSpacing = (if (tabletHome) -0.015f * homeTitle else -0.17856f).sp, lineHeight = (if (tabletHome) homeTitle * 1.504f else 17.856f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (11.52f / homeScale).dp else 9.9.dp, start = 1.9.dp))
+            Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = homeMeta.sp, lineHeight = (if (tabletHome) homeMeta * 1.3f else 13.248f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (2.56f / homeScale).dp else 2.6.dp, start = 1.9.dp))
             }
         } else if (webPhone && webHome) {
             // Web `.tv-home-card > strong` (8.8 px / 610) and `> small` (6.88 px, 2.56 px below; it hangs under the card, so the rail gap below is shorter).
@@ -3945,6 +3959,8 @@ internal fun WebDetailPill(
             ))
             .scale(scale)
             .parityShape(999f)
+            // The glyph is decoration: the control is named by its label (or the web aria-label the caller passes).
+            .semantics { contentDescription = exportLabel ?: label }
             .webFocusRing(focused, offset = 2.dp)
             .onFocusChanged { focused = it.isFocused }
             // The accessible name is the words alone: the decorative glyph beside them is not read.
@@ -4788,7 +4804,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                                     // Web's letter ring is crimson, 2 css px, 1.5 px off the disc, and is drawn in touch mode too (programmatic focus).
                                     val grow = 1.5.dp.toPx() + 1.dp.toPx()
                                     drawCircle(UnwatchedDotColour, radius = size.minDimension / 2f + grow, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
-                                } else Modifier).clip(CircleShape).background(WebInk.copy(alpha = 0.78f)))
+                                } else Modifier).clip(CircleShape).parityBackground("container", WebInk.copy(alpha = 0.78f), CircleShape))
                                 Text(letter, color = if (active) WebBackground else PlayarrWebTheme.palette.phoneInkMuted, fontSize = 8.96.sp, lineHeight = 9.sp, style = WebTextStyle.copy(fontWeight = FontWeight(700)))
                             }
                         }
@@ -5124,6 +5140,7 @@ private fun PhoneSearchContent(
                 // Web `.tv-search-form:has(input:focus-visible)`: the page focus ring (3px, offset 2px; 2px, offset 3px on phones) on the pill,
                 // with no rose border, scale or deeper shadow.
                 var fieldFocused by remember { mutableStateOf(false) }
+                val searchLabel = playarrString(PlayarrString.SearchPlaceholder)
                 val searchFill = WebSurfaceStrong.copy(alpha = 0.88f).compositeOver(WebSurface)
                 WebShadowedBox(
                     shadows = listOf(WebShadow(18.dp, 52.dp, Color(0xFF1F0E14).copy(alpha = 0.12f))),
@@ -5147,7 +5164,7 @@ private fun PhoneSearchContent(
                     androidx.compose.foundation.text.BasicTextField(
                         value = query,
                         onValueChange = onQueryChange,
-                        modifier = Modifier.weight(1f).height(44.dp).onFocusChanged { fieldFocused = it.isFocused },
+                        modifier = Modifier.weight(1f).height(44.dp).semantics { contentDescription = searchLabel }.onFocusChanged { fieldFocused = it.isFocused },
                         singleLine = true,
                         textStyle = androidx.compose.ui.text.TextStyle(fontFamily = webFontFamily, color = WebInk, fontSize = 16.sp, lineHeight = 24.sp),
                         cursorBrush = androidx.compose.ui.graphics.SolidColor(WebInk),
@@ -5369,7 +5386,6 @@ private fun TelevisionSearchBody(
                     // Web `.tv-search input`: 506 x 60, 13 px after the icon, the field's own box.
                     .semantics { contentDescription = searchPlaceholder }
                     .padding(start = 13.dp).width(506.dp).height(60.dp)
-                    
                     .focusRequester(searchFieldFocus)
                     .onFocusChanged { focused = it.isFocused }
                     .onPreviewKeyEvent { event ->
@@ -5805,7 +5821,7 @@ private fun TvDrawerActionRow(glyph: String, label: String, onClick: () -> Unit,
         shape = RoundedCornerShape(14.dp),
         color = WebSurfaceSoft,
         contentColor = WebInk,
-        modifier = modifier.fillMaxWidth().height(68.dp).parityShape(14f).webFocusRing(focused, radius = 14.dp, offset = 0.dp).onFocusChanged { focused = it.isFocused },
+        modifier = modifier.fillMaxWidth().height(68.dp).parityShape(14f).webFocusRing(focused, radius = 14.dp, offset = 0.dp).semantics { contentDescription = label }.onFocusChanged { focused = it.isFocused },
     ) {
         Row(Modifier.padding(start = 18.dp, end = 18.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(webSymbol(glyph), color = WebKicker, fontSize = 19.52.sp, lineHeight = 29.28.sp, modifier = Modifier.width(42.dp).then(if (glyph == "\uFF0B") Modifier.offset(y = (-1.5).dp) else Modifier)) // web: 1.22 rem in a 42 px column
@@ -6617,6 +6633,7 @@ private fun ExperienceVideoDetailContent(
                 )
             } else if (mediaFileId != null) {
                 MovieDetailBrowser(
+                    workTitle = detail.work.title,
                     mediaFileId = mediaFileId,
                     chapters = playarrDisplayedMovieChapters(movieChapters, movieMetadata?.durationMs ?: 0L),
                     credits = credits,
@@ -7937,6 +7954,7 @@ private fun PhoneEpisodeCard(
 
 @Composable
 internal fun MovieDetailBrowser(
+    workTitle: String,
     mediaFileId: String,
     chapters: List<MediaChapter>,
     credits: WorkCreditsResponse,
@@ -7988,6 +8006,7 @@ internal fun MovieDetailBrowser(
                             onClick = { onPlay(mediaFileId, chapter.startMs, launchSettings) },
                             lead = formatPlayarrPlayerTime(chapter.startMs),
                             title = label,
+                            exportLabel = playarrString(PlayarrString.DetailPlayTitleFrom, "title" to workTitle, "position" to playarrString(PlayarrString.DetailChapterNumber, "number" to chapter.index + 1)),
                             badge = (chapter.index + 1).toString().padStart(2, '0'),
                         ) {
                             AuthenticatedMediaThumbnail(
@@ -8154,6 +8173,7 @@ private fun WebSimilarTrack(
                 onClick = { onOpenWork(work.id) },
                 lead = null,
                 title = work.title,
+                exportLabel = playarrString(PlayarrString.LibraryOpenWork, "title" to work.title),
                 badge = null,
             ) {
                 AuthenticatedArtwork(
