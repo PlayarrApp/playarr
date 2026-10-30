@@ -51,7 +51,14 @@ final class TVHomeViewModel {
 
     /// shortcut: series that need a Resume choice (stacked resume plans) are not added; add them with the plans API.
     private func loadOnDeck() async -> OnDeckSnapshot? {
-        guard let rows = try? await apiClient.listWatchProgress() else { return nil }
+        // A request that fails once (a cold server, a dropped connection) is retried: On deck would otherwise lose its progress bar on
+        // one launch and show it on the next with identical data.
+        var fetched: [WatchProgress]?
+        for attempt in 0..<4 {
+            if let rows = try? await apiClient.listWatchProgress() { fetched = rows; break }
+            if attempt < 3 { try? await Task.sleep(nanoseconds: 750_000_000) }
+        }
+        guard let rows = fetched else { return nil }
         var seen = Set<UUID>()
         let recent = rows.filter { $0.state == .partWatched }
             .sorted { ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }
@@ -62,7 +69,13 @@ final class TVHomeViewModel {
         let api = apiClient
         let works = await withTaskGroup(of: (Int, Work?).self) { group in
             for (index, row) in recent.enumerated() {
-                group.addTask { (index, try? await api.fetchWork(id: row.workID).work) }
+                group.addTask {
+                    for attempt in 0..<4 {
+                        if let work = try? await api.fetchWork(id: row.workID).work { return (index, work) }
+                        if attempt < 3 { try? await Task.sleep(nanoseconds: 750_000_000) }
+                    }
+                    return (index, nil)
+                }
             }
             var found: [(Int, Work)] = []
             for await (index, work) in group { if let work { found.append((index, work)) } }

@@ -259,10 +259,11 @@ jobs:
                       and os.environ.get("STREAM_ENABLED") != "true"
                       and os.environ.get("CHAIN_ENABLED") != "true"
                       and selected_only == {"dpad"}
-                      and "--skip-player" in seen
-                      and "--player" not in seen
-                      and has_non_player_check
-                      and (not selected_checks or selected_checks <= non_player_dpad)
+                      and (
+                          ("--skip-player" in seen and "--player" not in seen and has_non_player_check
+                           and (not selected_checks or selected_checks <= non_player_dpad))
+                          or ("--player" in seen and "--skip-player" not in seen)
+                      )
                   )
               )
           )
@@ -461,7 +462,7 @@ jobs:
         id: suite
         if: env.DEVICE == 'tvos' || (env.DEVICE == 'macos' && inputs.suite_args != '')
         continue-on-error: true
-        timeout-minutes: 60
+        timeout-minutes: 150
         env:
           SERVER_URL: ${{ env.PARITY_SERVER_URL }}
           TEST_USERNAME: ${{ env.PARITY_USERNAME }}

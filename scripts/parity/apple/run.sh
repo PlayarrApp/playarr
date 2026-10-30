@@ -4,7 +4,7 @@
 #   scripts/parity/apple/run.sh <tvos|macos> [app-ref] [workflow-ref]
 # app-ref: branch or SHA of the apps to build (default: the current branch). workflow-ref: the branch whose workflow
 # and scripts run (default: the same, so driver changes are exercised before they reach main).
-# macOS runs two jobs: the screens (window hidden) and the D-pad checks in the visible-window mode the workflow reserves for
+# Both devices run two jobs: the screens (macOS window hidden) and the D-pad checks (player checks included; DPAD_PLAYER_FLAG=--skip-player drops them) in the visible-window mode the workflow reserves for
 # them (a hidden window drops the arrow keys that leave Home and Back). Needs: gh (authenticated), LEGEND_ROOT (the legend
 # directory root). Static server, pinned clock: set by the workflow. RUN_ID=<id> [DPAD_RUN_ID=<id>] resumes dispatched runs.
 set -euo pipefail
@@ -13,7 +13,7 @@ ref=${2:-$(git rev-parse --abbrev-ref HEAD)}
 wfref=${3:-$ref}
 root=${LEGEND_ROOT:?set LEGEND_ROOT to the legend directory root}
 case $device in
-  tvos) dest=$root/apple/tvos; screens_args=() ;;
+  tvos) dest=$root/apple/tvos; screens_args=(-f "suite_args=--only screens") ;;
   macos) dest=$root/macos/dev; screens_args=(-f "suite_args=--only screens") ;;
   *) echo "device must be tvos or macos" >&2; exit 2 ;;
 esac
@@ -27,8 +27,8 @@ dispatch() { # <extra gh args...>: dispatch and print the new run id
 }
 id=${RUN_ID:-$(dispatch ${screens_args[@]+"${screens_args[@]}"})}
 dpad_id=""
-if [[ $device == macos ]]; then
-  dpad_id=${DPAD_RUN_ID:-$( [[ -n ${RUN_ID:-} ]] && echo "" || { sleep 30; dispatch -f capture=false -f theme=dark -f "suite_args=--only dpad --skip-player"; } )}
+if true; then # both devices: the D-pad checks run in their own job (tvOS screens alone take about an hour)
+  dpad_id=${DPAD_RUN_ID:-$( [[ -n ${RUN_ID:-} ]] && echo "" || { sleep 30; dispatch -f capture=false -f theme=dark -f "suite_args=--only dpad ${DPAD_PLAYER_FLAG:---player}"; } )}
 fi
 scratch=${SCRATCH_DIR:-$root/../.apple-run-scratch}; mkdir -p "$scratch"
 echo "run $id dpad-run ${dpad_id:-none}"
@@ -43,7 +43,7 @@ gh run download "$id" -R "$repo" -D "$tmp/screens"
 [[ -z $dpad_id ]] || gh run download "$dpad_id" -R "$repo" -D "$tmp/dpad" || true
 mkdir -p "$dest/light"
 copy_layout() { for k in layout layout-raw; do [[ ! -d $1/$k ]] || { mkdir -p "$dest/$k"; cp -r "$1/$k"/. "$dest/$k/"; }; done; }
-for d in "$tmp"/screens/apple-wall-"$device"-dark-*; do cp "$d"/dark/*.png "$dest/"; copy_layout "$d"; [[ $device == macos ]] || [[ ! -f $d/dpad.json ]] || cp "$d"/dpad.json "$dest/dpad.json"; done
+for d in "$tmp"/screens/apple-wall-"$device"-dark-*; do cp "$d"/dark/*.png "$dest/"; copy_layout "$d"; true; done
 for d in "$tmp"/screens/apple-wall-"$device"-light-*; do cp "$d"/light/*.png "$dest/light/"; copy_layout "$d"; done
 for d in "$tmp"/dpad/apple-wall-"$device"-dark-*; do [[ ! -f $d/dpad.json ]] || [[ ! -f $d/dpad.json ]] || cp "$d"/dpad.json "$dest/dpad.json"; done
 # the app built is the workflow's checkout of the ref: record the SHA the run itself used and the PR of the branch
