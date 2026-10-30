@@ -84,7 +84,7 @@ function ThemeTokens(mode as String) as Object
             playerPill: &h0C0A0B94
             playerTrack: &hFFFFFF33
             playerBuffered: &hFFFFFF57
-            playerSeparator: &h776B71FF
+            playerSeparator: &hA5969EFF
             playerScrim: &h000000EB
         }
     end if
@@ -139,7 +139,7 @@ function ThemeTokens(mode as String) as Object
         playerPill: &h0C0A0B94
         playerTrack: &hFFFFFF33
         playerBuffered: &hFFFFFF57
-        playerSeparator: &h776B71FF
+        playerSeparator: &hA5969EFF
         playerScrim: &h000000EB
     }
 end function

@@ -89,9 +89,9 @@ function upperFirst(text: string): string {
 }
 function ARTWORK_SIZE_CHOICES(): Choice[] {
   return [
-    { value: 'small', label: upperFirst(t('pages.library.sizeSmall', 'small')) },
-    { value: 'medium', label: t('quality.level.medium', 'Medium') },
-    { value: 'large', label: upperFirst(t('pages.library.sizeLarge', 'large')) },
+    { value: 'small', label: upperFirst(t('pages.library.sizeSmall', 'small')), name: t('pages.library.sizeSmall', 'small') },
+    { value: 'medium', label: t('quality.level.medium', 'Medium'), name: t('quality.level.medium', 'Medium').toLowerCase() },
+    { value: 'large', label: upperFirst(t('pages.library.sizeLarge', 'large')), name: t('pages.library.sizeLarge', 'large') },
   ];
 }
 function SUBTITLE_MODE_CHOICES(): Choice[] {
@@ -332,7 +332,7 @@ export struct SettingsScreen {
   private appearancePanel(): void {
     ChoiceSegments({
       heading: t('settings.appearance.colourThemeLabel', 'Colour theme'),
-      choices: themeChoices(),
+      choices: themeChoices().map((c: Choice): Choice => ({ value: c.value, label: c.label, name: c.label.toLowerCase() })),
       selected: this.themeSetting,
       large: true,
       lowerLabels: true,
@@ -377,7 +377,7 @@ export struct SettingsScreen {
       .width(tv(this.panelWidth()))
       .strokeWidth(1)
       .color(toResourceColorWithAlpha(activeColors().ink, 0.083))
-      .margin({ bottom: tv(34 + 1.77) }) // web: 41 px from the rule to the next heading
+      .margin({ bottom: tv(34 + 1.77 + 1.27) }) // web: 41 px from the rule to the next heading, 1.27 more than r14 laid out
   }
 
   @Builder

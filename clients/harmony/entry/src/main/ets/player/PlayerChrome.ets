@@ -532,7 +532,7 @@ export struct PlayerChrome {
       return 0;
     }
     const fraction = this.positionMs / this.durationMs;
-    return Math.round(Math.max(0, Math.min(1, fraction)) * 100);
+    return Math.round(Math.max(0, Math.min(1, fraction)) * 10000) / 100; // web's fill is exact, not whole percents
   }
 
   private bufferedPercent(): number {
@@ -566,7 +566,7 @@ export struct PlayerChrome {
       Row()
         .width(`${this.progressPercent()}%`)
         .height(height)
-        .borderRadius(height / 2)
+        .borderRadius(0) // web's played fill is a square-ended bar
         .backgroundColor(toResourceColor(BRAND_PINK))
     }
     .width('100%')
