@@ -480,7 +480,20 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
         if (steady) break;
       }
       rmSync(probe, { force: true });
-      if (!after.equals(shot)) throw new Error(`the screen changed while the layout was measured (${id}): PNG and layout are not one render`);
+      if (!after.equals(shot)) {
+        let where = "";
+        try { // diagnosis: where the two frames differ (count, bounds, largest channel step)
+          const a = PNG.sync.read(shot), b = PNG.sync.read(after);
+          let n = 0, mx = 0, x0 = 1e9, y0 = 1e9, x1 = 0, y1 = 0;
+          for (let i = 0; i < a.data.length; i += 4) {
+            let d = 0;
+            for (let c = 0; c < 3; c += 1) d = Math.max(d, Math.abs(a.data[i + c] - b.data[i + c]));
+            if (d) { n += 1; mx = Math.max(mx, d); const x = (i / 4) % a.width, y = Math.floor(i / 4 / a.width); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+          }
+          where = ` [${n} px differ, max ${mx}, box ${x0},${y0}-${x1},${y1}]`;
+        } catch { where = " [frames not comparable]"; }
+        throw new Error(`the screen changed while the layout was measured (${id}): PNG and layout are not one render${where}`);
+      }
       rmSync(join(base, "parity-layout-request"), { force: true });
       const dir = join(dirname(themeDir), "layout", basename(themeDir));
       mkdirSync(dir, { recursive: true });
