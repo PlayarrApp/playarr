@@ -328,3 +328,14 @@ test("role=img and role=dialog export their accessible name; none stays empty, n
   assert.deepEqual(by("img"), ["Unwatched", "", "Unpainted"]);
   assert.deepEqual(by("dialog"), ["Drawer title", "Filters", ""]);
 });
+
+test("a colour-only layer equal to the composite already under it adds no paint; a different one does", { skip }, async () => {
+  const d = await dump(`<div class="abs" style="top:0;left:0;width:400px;height:200px;background:#1b181b"></div>
+    <div class="abs" style="top:0;left:150px;width:250px;height:200px;background:#1b181b"><span class="abs" style="top:10px;left:10px">child</span></div>
+    <div class="abs" style="top:220px;left:0;width:100px;height:30px;background:#334455"></div>
+    <div class="abs" style="top:260px;left:0;width:100px;height:30px;background:#1b181b"></div>`);
+  /* the second #1b181b layer (left 150) and nothing else is dropped; its text child stays; the layer on the white page keeps its fill */
+  const boxes = d.elements.filter((e) => e.role === "container").map((e) => `${e.rect.x}:${e.rect.y}:${e.background}`);
+  assert.deepEqual(boxes, ["0:0:#1b181b", "0:220:#334455", "0:260:#1b181b"]);
+  assert.equal(d.elements.filter((e) => e.text === "child").length, 1);
+});

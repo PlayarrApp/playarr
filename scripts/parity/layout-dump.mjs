@@ -189,8 +189,28 @@ export function layoutPageFn(volatile, opts) {
     }
     return null;
   };
+  /* The colour showing right under el at its centre: the computed background colours of everything stacked below it there (ancestors and earlier painted layers),
+     bottom first. null when something below paints an image or gradient (the colour is then unknown). */
+  var underColour = function (el) {
+    var b = el.getBoundingClientRect();
+    var x = Math.min(Math.max((b.left + b.right) / 2, 0), innerWidth - 1), y = Math.min(Math.max((b.top + b.bottom) / 2, 0), innerHeight - 1);
+    var stack = document.elementsFromPoint(x, y), at = stack.indexOf(el);
+    if (at < 0) return null;
+    var acc = [255, 255, 255, 1], below = stack.slice(at + 1).reverse();
+    for (var i = 0; i < below.length; i++) {
+      var bs = getComputedStyle(below[i]);
+      if (bs.backgroundImage !== "none") return null;
+      acc = over(parse(bs.backgroundColor), acc);
+    }
+    return acc;
+  };
+  /* A colour-only layer whose composite equals what is already under it adds no paint: a second full-screen layer of the same colour is not a fill. */
   var visibleFill = function (cs, el) {
     var shade = parse(cs.backgroundColor)[3] > 0 && (!el.parentElement || toHex(backdrop(el)) !== toHex(backdrop(el.parentElement)));
+    if (shade && cs.backgroundImage === "none" && !(parseFloat(cs.borderTopWidth) > 0 && parse(cs.borderTopColor)[3] > 0) && cs.boxShadow === "none") {
+      var under = underColour(el);
+      if (under && toHex(under) === toHex(backdrop(el))) shade = false;
+    }
     return shade || cs.backgroundImage !== "none" || parseFloat(cs.borderTopWidth) > 0 && parse(cs.borderTopColor)[3] > 0 || cs.boxShadow !== "none";
   };
   var hiddenHost = function (el) {
