@@ -222,6 +222,11 @@ struct TVPlayerView: View {
         }
         .animation(.easeInOut(duration: 0.25), value: viewModel.endOfPlayback.phase)
         .task {
+            // Play/pause holds the focus when the player opens (web: the play control), not whichever control the system finds first.
+            try? await Task.sleep(for: .milliseconds(400))
+            if focusedControl == nil { focusedControl = interaction.focus }
+        }
+        .task {
             viewModel.onExit = { dismiss() }
             // Returning from a suggestion must not restart a finished item.
             if viewModel.state == .idle, viewModel.endOfPlayback.phase == .playing {

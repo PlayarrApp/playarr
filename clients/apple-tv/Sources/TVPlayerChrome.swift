@@ -143,6 +143,7 @@ struct TVPlayerChrome: View {
                 .background(Capsule().fill(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.81)))
                 .overlay(Capsule().stroke(Color.white.opacity(0.14), lineWidth: 1))
                 .shadow(color: Color.black.opacity(0.28), radius: 12, y: 8)
+                .parityFocusTag("Minimise player")
             }
             .buttonStyle(TVFocusableCardButtonStyle())
             .focusEffectDisabled()
@@ -160,6 +161,7 @@ struct TVPlayerChrome: View {
                     .background(Circle().fill(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58)))
                     .overlay(Circle().stroke(Color.white.opacity(0.14), lineWidth: 1))
                     .shadow(color: Color.black.opacity(0.28), radius: 12, y: 8)
+                    .parityFocusTag("Close player")
             }
             .buttonStyle(TVFocusableCardButtonStyle())
             .accessibilityLabel("Close player")
@@ -179,6 +181,7 @@ struct TVPlayerChrome: View {
         let progress = 1780 * fraction
         let value = "\(Self.clock(state.position)) of \(Self.clock(state.duration))"
         let body = TVScrubberBody(progress: progress, showsFocus: !frozen)
+            .parityFocusTag("Seek")
             .contentShape(Rectangle())
             .focusable(controlsVisible)
             .modifier(TVFocusTag(binding: focus, control: .scrubber))
@@ -225,6 +228,7 @@ struct TVPlayerChrome: View {
             .frame(width: 64, height: 64)
             .parityBox("button", text: name, radius: 50, opacity: enabled ? 1 : 0.28)
             .opacity(enabled ? 1 : 0.28)
+            .parityFocusTag(name)
     }
 
     private func icon(_ symbol: String, x: CGFloat, opacity: Double = 0.92, name: String, enabled: Bool = true, action: @escaping () -> Void) -> some View {
@@ -268,6 +272,7 @@ struct TVPlayerChrome: View {
                     .parityBox("image")
                     .frame(width: 64, height: 64)
                     .background(Circle().fill(Color.white.opacity(0.14)))
+                    .parityFocusTag(state.isPlaying ? "Pause" : "Play")
             }
             .parityBox("button", text: state.isPlaying ? "Pause" : "Play", radius: 50, fill: Color.white, alpha: 0.14)
             .buttonStyle(TVFocusableCardButtonStyle())
@@ -340,6 +345,7 @@ struct TVPlayerChrome: View {
                 .parityBox("button", text: "Quality: \(state.qualityLabel)", radius: 999, fill: state.menuOpen ? Color.white : nil, alpha: 0.15)
                 .background(Capsule().fill(Color.white.opacity(state.menuOpen ? 0.15 : 0)))
                 .frame(width: 160.45, height: 56)
+                .parityFocusTag("Quality: \(state.qualityLabel)")
             }
             .buttonStyle(TVFocusableCardButtonStyle())
             .focusEffectDisabled()
