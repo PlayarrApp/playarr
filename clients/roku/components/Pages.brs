@@ -595,9 +595,12 @@ sub pageFocusRender()
         m.pageRing.height = item.h + 10
     else
         m.pageRing.uri = "pkg:/images/round-ring-r" + radius.ToStr() + ".9.png"
-        m.pageRing.translation = [item.x + ox - 3, item.y + oy - 3]
-        m.pageRing.width = item.w + 6
-        m.pageRing.height = item.h + 6
+        ' Web focus outline: 3 px ring with a 2 px gap around the control box. The calendar header controls sit on the web boxes.
+        gap = 3
+        if m.pageKind = "calendar" and (item.action = "calToday" or item.action = "calView" or item.action = "calPrev" or item.action = "calNext") then gap = 5
+        m.pageRing.translation = [item.x + ox - gap, item.y + oy - gap]
+        m.pageRing.width = item.w + gap * 2
+        m.pageRing.height = item.h + gap * 2
     end if
     if m.pageKind = "calendar"
         focusX = item.x + ox
