@@ -49,7 +49,7 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
     row.append(&col);
     let arrow = gtk4::Label::builder()
         .label("→")
-        .css_classes(["pa-pref-arrow", "pa-fallback-box"])
+        .css_classes(["pa-pref-arrow"])
         .valign(gtk4::Align::Center)
         .build();
     // The web nudges the first (hovered) row's arrow 5 px right.

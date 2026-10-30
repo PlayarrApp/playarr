@@ -532,16 +532,7 @@ impl Walk<'_> {
                     }
                     // The label's real transform to the root (an ancestor's CSS scale is part of it), applied to the run's
                     // logical rectangle exactly as Pango laid it out (a fallback face keeps its own extents).
-                    // A run that fills its only line of a label marked pa-fallback-box (a fallback-face glyph) takes the label's own box: the box is
-                    // the line box (an explicit min-height stands for a CSS line-height, which Pango applies to the font's
-                    // height rather than to its size and adds to the line, not to a fallback face's run).
-                    let (_, line_lg) = it.line_extents();
-                    let sole = lg.x() == line_lg.x() && lg.width() == line_lg.width();
-                    let (top, height) = if sole && layout.line_count() == 1 && l.has_css_class("pa-fallback-box") {
-                        (-oy * pango::SCALE, l.height() * pango::SCALE)
-                    } else {
-                        (lg.y(), lg.height())
-                    };
+                    let (top, height) = (lg.y(), lg.height());
                     let local = graphene::Rect::new(
                         ox as f32 + x0 as f32 / s,
                         oy as f32 + top as f32 / s,
