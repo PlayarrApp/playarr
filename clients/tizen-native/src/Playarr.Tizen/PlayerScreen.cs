@@ -457,7 +457,7 @@ internal sealed class PlayerScreen : IPage
     /// </summary>
     public void ShowStandInFrame(string path)
     {
-        var frame = new ImageView(path) { Size = _root.Size };
+        var frame = Sem.Tag(new ImageView(path) { Size = _root.Size }, "video", "Video playback surface"); // web: the <video> element is the playback surface
         _root.Add(frame); frame.LowerToBottom();
         // staged: fixed 475 px light segment on the seek track under the played part (the web capture's buffered range); see the summary above
         _seek.Add(Ui.Box(0, 19, 475, 6, new Rgba(1, 1, 1, 0.35f), 3)); _progress.RaiseToTop();
