@@ -78,6 +78,13 @@ namespace Playarr.Xbox.Views
             // A page that paints an opaque solid background (the player's black stage) hides the window ground behind it.
             _rootCovered = FindPage(root) is { Background: SolidColorBrush { Color.A: 255 } };
             Candidates.Clear();
+            // Images arrive and fade in on their own clock: read the layout only once the rendered frame has been identical
+            // for three looks in a row, so the walk, the visibility pass and the screenshot all describe the same screen.
+            for (var look = 0; look < 80 && !await SettledAsync(); look++)
+            {
+                await Task.Delay(400);
+            }
+
             Walk(root, root, scale, elements);
             var frame = await FrameHashAsync();
             var (kept, occluded) = await KeepVisibleAsync(root, elements);
@@ -94,6 +101,21 @@ namespace Playarr.Xbox.Views
                 frame,
                 elements,
             });
+        }
+
+        private static async Task<bool> SettledAsync()
+        {
+            var first = await FrameHashAsync();
+            for (var i = 0; i < 2; i++)
+            {
+                await Task.Delay(500);
+                if (await FrameHashAsync() != first)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>Measured widths that show whether the font weight and tracking requests take effect (not part of the schema; for diagnosis).</summary>
