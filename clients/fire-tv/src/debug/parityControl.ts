@@ -12,11 +12,21 @@
  *   cmd=theme&name=dark|light      set the in-app theme preference
  *   cmd=clock&now=<ISO instant>    freeze the app clock (shown in UTC, en-GB, like the web refs); `now` empty releases it
  */
-import {Linking} from 'react-native';
+import {Animated, Linking} from 'react-native';
 import {FocusManager} from '@amazon-devices/react-native-kepler';
 import {appNow, isClockFrozen, setParityClock} from '../shell/clock';
 
 export const PARITY_CONTROL = process.env.PLAYARR_PARITY_CONTROL === '1';
+
+// A parity capture must be the same frame on every run. Every timed animation (focus lift, stage entrance, scroll reveals)
+// is a moving source whose last few frames differ by a few levels between runs, so in a parity build each one jumps
+// straight to its end state: the app lands on the same frame it settles to, only without the motion.
+if (PARITY_CONTROL) {
+  const timing = Animated.timing;
+  const instant = ((value: Animated.Value | Animated.ValueXY, config: Animated.TimingAnimationConfig) =>
+    timing(value, {...config, duration: 0, delay: 0})) as typeof Animated.timing;
+  Object.defineProperty(Animated, 'timing', {value: instant, configurable: true, writable: true});
+}
 
 export interface FocusReport {
   label: string;
