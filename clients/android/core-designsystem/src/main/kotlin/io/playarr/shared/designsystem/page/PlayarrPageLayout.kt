@@ -153,6 +153,14 @@ internal fun PlayarrPageActions(actions: List<PlayarrPageAction>, modifier: Modi
     }
 }
 
+/**
+ * Optional override of the navigation group's text size and label padding. Null (television) keeps the 1920 px tokens; a tablet
+ * draws the same canvas scaled down and provides the web's css px values divided by the stage scale.
+ */
+data class PlayarrNavLabelStyle(val fontSize: androidx.compose.ui.unit.TextUnit, val labelPadding: Dp)
+
+val LocalPlayarrNavLabelStyle = staticCompositionLocalOf<PlayarrNavLabelStyle?> { null }
+
 /** The round period arrow (glyph) or the label pill (Today) of a navigation group. They stay round (owner decision Q10). */
 @Composable
 private fun PlayarrNavButton(item: PlayarrNavItem, exitRight: Boolean = false) {
@@ -161,6 +169,7 @@ private fun PlayarrNavButton(item: PlayarrNavItem, exitRight: Boolean = false) {
     val tv = LocalPlayarrFormFactor.current == PlayarrFormFactor.Tv
     val height = PlayarrPageTokens.current().control
     val glyph = item.icon?.glyph
+    val labelStyle = LocalPlayarrNavLabelStyle.current
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
@@ -186,8 +195,8 @@ private fun PlayarrNavButton(item: PlayarrNavItem, exitRight: Boolean = false) {
                 .semantics { contentDescription = item.label },
         ) {
             Box(contentAlignment = Alignment.Center) {
-                if (glyph != null) Text(glyph, fontSize = if (tv) 14.72.sp else 13.sp, fontWeight = FontWeight(720))
-                else Text(item.label, fontSize = if (tv) 14.72.sp else 14.4.sp, fontWeight = FontWeight(720), maxLines = 1, modifier = (if (tv) Modifier.padding(horizontal = 20.dp) else Modifier))
+                if (glyph != null) Text(glyph, fontSize = labelStyle?.fontSize ?: if (tv) 14.72.sp else 13.sp, fontWeight = FontWeight(720))
+                else Text(item.label, fontSize = labelStyle?.fontSize ?: if (tv) 14.72.sp else 14.4.sp, fontWeight = FontWeight(720), maxLines = 1, modifier = (if (tv) Modifier.padding(horizontal = labelStyle?.labelPadding ?: 20.dp) else Modifier))
             }
         }
     }
