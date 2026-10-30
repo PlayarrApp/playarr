@@ -1,0 +1,2 @@
+- HarmonyOS parity: the TV agenda day headings are real boxes the app declares as text (ArkUI has no heading role); the TV Settings detail panel is its own box and each later setting is a box with its own top rule instead of a loose divider.
+- HarmonyOS layout export: a TextInput that declares a role (the Search field) now also exports the text it draws; a box with only a top border exports as a container.

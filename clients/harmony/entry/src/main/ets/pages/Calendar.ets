@@ -538,6 +538,8 @@ export struct ReleaseCalendar {
     .width(isTvMetrics() ? tv(LIST_WIDTH) : '100%')
     .height(tv(DAY_HEADING_HEIGHT))
     .alignItems(VerticalAlign.Center)
+    // web: the day is an h3 box. ArkUI's AccessibilityRoleType has no heading, so the band declares the nearest honest role, text; its words are the Texts inside
+    .accessibilityRole(isTvMetrics() ? AccessibilityRoleType.TEXT : AccessibilityRoleType.ROLE_NONE)
     // Web's heading carries the panel's own frost over the page colour, so no band shows; the day headings scroll with their list here, so
     // nothing needs hiding and the heading draws no fill of its own on either device.
     .backgroundColor(Color.Transparent)

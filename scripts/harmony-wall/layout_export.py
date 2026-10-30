@@ -125,6 +125,14 @@ def linear_alpha(attrs, box):
     return at
 
 
+def edge_width(attrs):
+    """The widest border edge the app draws on a box: one width for all edges, or the per-edge widths of border({ width: { top: 1 } })."""
+    w = attrs.get("borderWidth")
+    if isinstance(w, dict):
+        return max([num(v, 0.0) or 0.0 for v in w.values()] or [0.0])
+    return num(w, 0.0) or 0.0
+
+
 def declared_role(attrs):
     hint = str(attrs.get("accessibilityTextHint", ""))
     if not hint.startswith("pvrole:"):
@@ -323,14 +331,17 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
                     emit("container", "", box, over((stroke[0], stroke[1], stroke[2], stroke[3] * opacity), under), clip, 0.0)
             elif role not in (None, "text"):
                 emit("image" if kind == "Image" and role == "img" else role, name, box, here, clip, radius, opacity=opacity)
+            elif role == "text" and kind not in ("Image", "Button", "Toggle", "TextInput", "LoadingProgress", "XComponent"):
+                # a container the app declares as text (ArkUI has no heading role): its own box, nameless because its Text children carry the words
+                emit("text", "", box, here, clip, radius, opacity=opacity)
             elif kind in ("Image", "Button", "Toggle", "TextInput", "LoadingProgress", "XComponent"):
                 # intrinsic painted components: a spinner is drawn by the framework, a surface XComponent is the video's place
                 emit({"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox", "LoadingProgress": "image", "XComponent": "video"}[kind],
                      name, box, here, clip, radius, opacity=opacity)
-                if kind == "TextInput":
-                    input_text(node, a, raw, here, opacity, mychain, clip)
-            elif fills or has_gradient(a) or (num(a.get("borderWidth"), 0.0) or 0.0) >= 1.0 and argb(a.get("borderColor"))[3] > 0.01:
+            elif fills or has_gradient(a) or edge_width(a) >= 1.0 and argb(a.get("borderColor"))[3] > 0.01:
                 emit("container", "", box, here, clip, radius, opacity=opacity)
+        if inview and kind == "TextInput":  # whichever record the control got (a declared role or the intrinsic one), the text it draws is its own record
+            input_text(node, a, raw, here, opacity, mychain, clip)
         own = list(range(mark, len(out)))
         kids = node.get("$children") or []
         pages = [c for c in kids if c.get("$type") == "NavDestination"]
@@ -414,7 +425,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
                 continue
             if seen is None:
                 unmeasured += 1  # no measurement, no decision: it stays
-        elif candidates is not None and node_id is not None and el["role"] == "text":
+        elif candidates is not None and node_id is not None and el["role"] == "text" and el["text"]:
             area = el["rect"]["w"] * el["rect"]["h"]
             if control is None or area > control[0]:
                 control = (area, {"index": i, "id": node_id, "box": [round(v * dpr) for v in (el["rect"]["x"], el["rect"]["y"], el["rect"]["x"] + el["rect"]["w"], el["rect"]["y"] + el["rect"]["h"])]})
