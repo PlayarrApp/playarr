@@ -1454,6 +1454,7 @@ struct Player {
         })
           .width('100%')
           .height('100%')
+          .accessibilityText('Video playback surface').accessibilityRole(AccessibilityRoleType.VIDEO) // web: the video element carries this name
 
         if (this.phase !== 'ready') {
           this.loadingOrErrorOverlay()

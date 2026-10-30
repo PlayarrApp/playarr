@@ -35,7 +35,7 @@ build() {
   python3 "$HERE/patch_caret.py" entry/src/main/ets/pages/Search.ets # no blinking caret in the pinned frame
   [ "${RAIL_PATCH:-yes}" = no ] || python3 "$HERE/patch_rail.py" entry/src/main/ets/design/components/MediaRail.ets
   python3 "$HERE/patch_artwork.py" entry/src/main/ets/data/ArtworkRepository.ets "$CTL"
-  python3 "$HERE/patch_player.py" entry/src/main/ets/player/AvPlayerController.ets # the Previewer AVPlayer raises no events: a stand-in that honours the 2.000 s pin
+  python3 "$HERE/patch_player.py" entry/src/main/ets/player/AvPlayerController.ets entry/src/main/ets/pages/Player.ets # the Previewer AVPlayer raises no events: a stand-in that honours the 2.000 s pin
   python3 "$HERE/patch_http.py" entry/src/main/ets/net/HttpTransport.ets entry/src/main/ets/data/ArtworkRepository.ets entry/src/main/ets/util/PreviewState.ets
   python3 "$HERE/patch_text.py" entry/src/main/ets # last: the other patches match the Text calls as written
   python3 "$HERE/patch_role.py" entry/src/main/ets # mirror each declared accessibilityRole into the hint the inspector reports
