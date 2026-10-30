@@ -287,13 +287,15 @@ export function layoutPageFn(volatile, opts) {
     if (op <= 0) continue;
     var media = tag === "img" || tag === "svg" || tag === "canvas" || tag === "video";
     var painted = visibleFill(cs, el);
-    if (!own && !control && !media && !painted) continue;
+    /* an explicit role=img or role=dialog carries its accessible name (aria-labelledby, aria-label, alt): never an invented one, empty when the page has none */
+    var named = /^(img|image|dialog|alertdialog)$/.test(el.getAttribute("role") || "") ? norm(nameOf(el)) : "";
+    if (!own && !control && !media && !painted && !named) continue;
     if (occluded(el, r)) { dropped++; continue; }
     if (own && cs.textOverflow === "ellipsis" && cs.overflowX !== "visible" && el.scrollWidth > el.clientWidth + 1) refuseCut(el);
     if (own && cs.webkitLineClamp && cs.webkitLineClamp !== "none" && cs.overflowY !== "visible" && el.scrollHeight > el.clientHeight + 1) refuseCut(el);
     if ((tag === "textarea" || tag === "input" && !/^(checkbox|radio|button|submit|reset|hidden|range|file|image|color)$/.test(el.type)) && el.value && !vol) refuseValue(el);
     var label = nameOf(el);
-    var text = own || (control || media ? norm(label) : "") || (control ? norm(contentName(el) || (isToggle(el) ? "" : el.value)) : "");
+    var text = own || (control || media || named ? norm(label) : "") || (control ? norm(contentName(el) || (isToggle(el) ? "" : el.value)) : "");
     var zoom = zoomOf(el);
     var rawRadius = cs.borderTopLeftRadius;
     var box = el.getBoundingClientRect();

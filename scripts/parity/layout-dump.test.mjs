@@ -315,3 +315,16 @@ test("a percentage border radius resolves against the element's own box, capped 
   const radius = Object.fromEntries(d.elements.filter((e) => e.role === "button").map((e) => [e.text, e.radius]));
   assert.deepEqual(radius, { c: 22, p: 20, q: 4, r: 20 });
 });
+
+test("role=img and role=dialog export their accessible name; none stays empty, never invented", { skip }, async () => {
+  const d = await dump(`<span id="t" class="abs" style="top:200px;left:200px">Drawer title</span>
+    <span role="img" aria-label="Unwatched" class="abs" style="top:10px;left:0;width:12px;height:12px;background:#f00"></span>
+    <span role="img" class="abs" style="top:30px;left:0;width:12px;height:12px;background:#0f0"></span>
+    <div role="dialog" aria-labelledby="t" class="abs" style="top:60px;left:0;width:100px;height:60px;background:#ccc"></div>
+    <div role="dialog" aria-label="Filters" class="abs" style="top:130px;left:0;width:100px;height:60px;background:#ddd"></div>
+    <div role="dialog" class="abs" style="top:200px;left:0;width:100px;height:60px;background:#eee"></div>
+    <span role="img" aria-label="Unpainted" class="abs" style="top:270px;left:0;width:12px;height:12px"></span>`);
+  const by = (role) => d.elements.filter((e) => e.role === role).sort((a, b) => a.rect.y - b.rect.y).map((e) => e.text);
+  assert.deepEqual(by("img"), ["Unwatched", "", "Unpainted"]);
+  assert.deepEqual(by("dialog"), ["Drawer title", "Filters", ""]);
+});
