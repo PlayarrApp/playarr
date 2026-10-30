@@ -33,7 +33,7 @@ run() { case $1 in
   calendar-month) NOKEY=1 open "calendar?query=view%3Dmonth" 25; sleep 3; python3 -I $HERE/uiexpect.py 'Calendar' || { echo "wrong screen calendar-month"; return 1; }; shot $1 ;;
   calendar-week) NOKEY=1 open "calendar?query=view%3Dweek" 25; sleep 3; python3 -I $HERE/uiexpect.py 'Calendar' || { echo "wrong screen calendar-week"; return 1; }; shot $1 ;;
   calendar-agenda) NOKEY=1 open "calendar?query=view%3Dagenda" 25; sleep 3; python3 -I $HERE/uiexpect.py 'Calendar' || { echo "wrong screen calendar-agenda"; return 1; }; shot $1 ;;
-  calendar-link) NOKEY=1 open "calendar?query=panel%3Dsubscription" 25; python3 -I $HERE/uiexpect.py 'Calendar link' || { echo "wrong screen calendar-link"; return 1; }; sleep 3; shot $1 ;;
+  calendar-link) NOKEY=1 open "calendar?query=panel%3Dsubscription" 25; python3 -I $HERE/uiexpect.py 'Your personal calendar link' || { echo "wrong screen calendar-link"; return 1; }; sleep 3; shot $1 ;;
   filters) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select; sleep 3; adb shell input tap 2495 298; sleep 2; python3 -I $HERE/uiexpect.py 'Sort by|Library controls' || { echo "wrong screen filters"; return 1; }; shot $1 ;;
   actions) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select right; adb shell input keyevent --longpress 23; sleep 1.5
     # Key long-press did not open the drawer before; fall back to a 1.5 s touch hold on the card, then insist the drawer is on screen.
