@@ -25,4 +25,6 @@ fi
 timeout 600 bash -c "until [ \"\$(timeout 10 adb -s '$serial' shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')\" = 1 ]; do sleep 10; done"
 sleep 60  # let system_server settle before the first activity start
 for _ in 1 2 3; do "$(dirname "$0")/emu-setup.sh" "$serial" "${PARITY_WM_SIZE:-}" "${PARITY_WM_DENSITY:-}" && break; sleep 20; done
+# The agenda times depend on UTC: fail loudly when the zone did not stick.
+[ "$(adb -s "$serial" shell date +%z | tr -d '\r')" = "+0000" ] || { echo "emu-recycle: emulator timezone is not UTC" >&2; exit 4; }
 echo "emu-recycle: restarted and booted"
