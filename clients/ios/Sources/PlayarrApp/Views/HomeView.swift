@@ -263,7 +263,7 @@ struct HomeView: View {
                 PlayarrArtwork(work: featured, kind: .backdrop, apiClient: apiClient)
                     .frame(maxWidth: .infinity)
                     .frame(height: HomeLayout.backdropHeight(viewportHeight: height, phone: phone))
-                    .opacity(phone ? 0.42 : (scheme == .dark ? 0.22 : 0.12))
+                    .parityOpacity(phone ? 0.42 : (scheme == .dark ? 0.22 : 0.12))
             }
             LinearGradient(
                 stops: phone
@@ -308,6 +308,7 @@ struct HomeView: View {
                     .lineSpacing(-4)
                     .foregroundStyle(PlayarrStyle.ink)
                     .parityRenderedText(work.title, role: "heading", size: 46, weight: 400, color: PlayarrStyle.ink)
+                    .accessibilityAddTraits(.isHeader)
                     .lineLimit(3)
 
                 if let overview = work.overview {

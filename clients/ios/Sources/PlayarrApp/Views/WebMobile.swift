@@ -454,7 +454,7 @@ struct WMKeyArt: View {
             if work != nil || backdropWorkID != nil {
                 art
                     .saturation(0)
-                    .opacity(scheme == .dark ? darkOpacity : lightOpacity)
+                    .parityOpacity(scheme == .dark ? darkOpacity : lightOpacity)
                     .frame(width: 406 * artScale, height: (contain ? 406 * 9 / 16 : imageHeight) * artScale)
                     .mask {
                         if webMask && scheme == .light {
@@ -465,6 +465,12 @@ struct WMKeyArt: View {
                         } else {
                             Color.black
                         }
+                    }
+                    .parityFade(.horizontal) { _ -> [Gradient.Stop] in
+                        if webMask && scheme == .light {
+                            return [Gradient.Stop(color: .black, location: 0), Gradient.Stop(color: .black, location: 0.72), Gradient.Stop(color: .clear, location: 1)]
+                        }
+                        return [Gradient.Stop(color: .black, location: 0), Gradient.Stop(color: .black, location: 1)]
                     }
                     .offset(x: -8, y: imageTop)
             }
@@ -483,7 +489,7 @@ struct WMKeyArt: View {
             )
         }
         .frame(width: 390, height: 844, alignment: .topLeading)
-        .clipped()
+        .parityClipped()
         .allowsHitTesting(false)
     }
 }

@@ -209,7 +209,7 @@ struct SettingsView: View {
         let vScale = proxy.size.height / 1024
         let current = selected ?? .appearance
         return ZStack(alignment: .topLeading) {
-            PlayarrBackButton(label: "Settings", role: "button", action: goHome).offset(x: 120.84 * scale, y: 53.23 * scale)
+            PlayarrBackButton(label: "Settings", action: goHome).offset(x: 120.84 * scale, y: 53.23 * scale)
             WMText("Preferences", 23.91 * scale, 580, lh: 32, ls: -1, role: "heading").offset(x: 181.23 * scale, y: 59.23 * scale)
             WMText(current.title.uppercased(), 9.92 * scale, 680, color: WM.ink, lh: 14, ls: 1).offset(x: 181.23 * scale, y: 110.22 * scale)
             ScrollView {
