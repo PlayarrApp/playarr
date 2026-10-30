@@ -224,10 +224,10 @@ namespace Playarr.Xbox.Views
             switch (owner)
             {
                 case Border border:
-                    var (fill, stroke) = (border.Background, border.BorderBrush);
+                    var (borderFill, borderStroke) = (border.Background, border.BorderBrush);
                     border.Background = null;
                     border.BorderBrush = null;
-                    return () => { border.Background = fill; border.BorderBrush = stroke; };
+                    return () => { border.Background = borderFill; border.BorderBrush = borderStroke; };
                 case Panel { Background: { } fill } panel:
                     panel.Background = null;
                     return () => panel.Background = fill;
@@ -334,7 +334,7 @@ namespace Playarr.Xbox.Views
             }
 
             var final = (await GrabAsync(root)).Pixels;
-            return (hidden, final.AsSpan().SequenceEqual(before));
+            return (hidden, final.SequenceEqual(before));
         }
 
         /// <summary>A hash of the app's own render of the screen: the same value before and after a screenshot shows the layout export belongs to the frame that was captured.</summary>
