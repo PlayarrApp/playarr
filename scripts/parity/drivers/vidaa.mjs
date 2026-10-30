@@ -9,7 +9,7 @@
 // screen both come from the frame carrying the id; a frame that is not stable across its render, or whose id or state does not match, is refused.
 // Long press: the remote service's KEY_OK_LONG_PRESS reaches the page as a burst of repeat Enter keydowns plus a keyup, which the app turns into a hold (vidaaLongPress.ts).
 // Back: the remote service swallows KEY_BACK, KEY_RETURN and KEY_EXIT (never a key or history event in the page; KEY_EXIT leaves the app), so the debug page is asked for
-// the key the app documents as VIDAA's Back button (Backspace, keyCode 8, isVidaaBackKey) through the receiver's one-shot command channel. The owner's physical Back press (30 Oct) arrived as exactly this key, so the injected key is equivalent.
+// the key the app documents as VIDAA's Back button (Backspace, keyCode 8, isVidaaBackKey) through the receiver's one-shot command channel. Real hardware Back is not exercised.
 // Not supported: player checks, downloads, build identity (strict readiness stays off).
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -124,6 +124,7 @@ export async function createDriver({
   let fixedNow = env.PLAYARR_VIDAA_FIXED_NOW ?? null; // set when the suite runs unpinned (PARITY_STABLE=0) so calendar screens still use the reference clock
   let route = "/";
   let captureTarget = null;
+  let injectedBack = false;
   let paired = null; // { screen, id, layout }: the layout that belongs to the last screenshot
   const jobTag = `${Date.now().toString(36)}`;
   let jobSeq = 0;
@@ -204,12 +205,14 @@ export async function createDriver({
     },
     async home() { await open("/"); },
     async route(r) { await open(r); },
+    /** True once since the last call when a Back was injected into the page (the remote's own Back never arrives), so a D-pad check that used it is not a real remote result. */
+    takeInjectedBack() { const used = injectedBack; injectedBack = false; return used; },
     async setCaptureTarget(id) { captureTarget = id; paired = null; },
     async key(k, { long } = {}) {
       const code = long ? LONG_KEY_CODES[k] : KEY_CODES[k];
       if (!code || (k === "back" && long)) throw new Error(`VIDAA driver cannot send ${long ? "a long " : ""}${k}`);
       const since = now();
-      if (k === "back") { await post(url("cmd"), { id: `${jobTag}-b${++jobSeq}`, key: "back" }); }
+      if (k === "back") { injectedBack = true; await post(url("cmd"), { id: `${jobTag}-b${++jobSeq}`, key: "back" }); }
       else runCli(["key", code, "--delay", "0.3"]);
       await delay(keyMs);
       await settled(since);

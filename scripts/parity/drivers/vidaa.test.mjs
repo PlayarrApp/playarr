@@ -181,10 +181,14 @@ test("a pin that cannot hold the frame fails the capture", async () => {
   await assert.rejects(d.location(), /did not hold paused on its 2.000 s frame/);
 });
 
-test("a Back key posts the one-shot Backspace command to the page", async () => {
+test("a Back injected into the page is reported once, a remote key is not", async () => {
   const { d, posted } = await pairingHarness((id) => withLayout(id, { receivedAt: 2000 }));
+  await d.key("left");
+  assert.equal(d.takeInjectedBack(), false);
   await d.key("back");
   assert.equal(posted.some((p) => p.body?.key === "back"), true);
+  assert.equal(d.takeInjectedBack(), true);
+  assert.equal(d.takeInjectedBack(), false);
 });
 
 test("detail routes are recognised for the page-top reset, other routes are not", async () => {
