@@ -24,6 +24,9 @@ struct TVPlayerView: View {
     /// Set by the first remote move or back: the opening focus on Play is then no longer enforced.
     @State private var remoteUsed = false
     #if os(macOS)
+    @State private var macBackHandlerID = UUID()
+    #endif
+    #if os(macOS)
     /// The Mac shows covers as a window layer, not a presentation (macOS/PlatformShims.swift).
     @Environment(\.macCoverDismiss) private var dismiss
     #else
@@ -60,12 +63,29 @@ struct TVPlayerView: View {
             .parityLayerScope() // the player covers the page: only its own items are visible
             .onAppear {
                 setShellChromeHidden(true)
+                #if os(macOS)
+                // Escape runs the same Back sequence whatever has focus: once the controls hide, their disabled buttons drop
+                // the focus and the view's onExitCommand would never see the second Back.
+                if parity == nil {
+                    MacKeyboard.shared.pushBackHandler(macBackHandlerID) {
+                        switch interaction.back() {
+                        case .closedMenu: focusedControl = interaction.focus
+                        case .hidControls: break
+                        case .exit: dismiss()
+                        }
+                        return true
+                    }
+                }
+                #endif
                 #if DEBUG && (os(tvOS) || os(macOS))
                 TVParityState.setPlayer(mediaFileID)
                 #endif
             }
             .onDisappear {
                 setShellChromeHidden(false)
+                #if os(macOS)
+                MacKeyboard.shared.popBackHandler(macBackHandlerID)
+                #endif
                 #if DEBUG && (os(tvOS) || os(macOS))
                 TVParityState.setPlayer(nil)
                 #endif
