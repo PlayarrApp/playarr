@@ -83,6 +83,16 @@ export function measureTree(root) {
     for (const k of node.children) walk(k, child, op, node, below, clip);
   };
   walk(root, { sx: 1, sy: 1, tx: 0, ty: 0 }, 1, null, [], null);
+  // The device reports a group's bounds over every child, hidden ones included (the focus ring, a shadow). A link is what it
+  // shows: the union of its visible painted descendants.
+  for (const it of items) {
+    if (it.kind !== "a11y" || it.role !== "link") continue;
+    const inside = items.filter((o) => o !== it && o.chain.includes(it.node));
+    if (!inside.length) continue;
+    const x0 = Math.min(...inside.map((o) => o.rect.x)), y0 = Math.min(...inside.map((o) => o.rect.y));
+    const x1 = Math.max(...inside.map((o) => o.rect.x + o.rect.w)), y1 = Math.max(...inside.map((o) => o.rect.y + o.rect.h));
+    it.rect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
   return items;
 }
 

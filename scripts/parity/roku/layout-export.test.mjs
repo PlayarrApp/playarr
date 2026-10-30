@@ -47,7 +47,12 @@ test("the hit rectangle of a control is a row, a hit rectangle of a non-control 
 test("a painted node or a group carries its semantics at its measured bounds", () => {
   const els = doc(`<Group name="a11y|link|0|Open Y" bounds="{10, 20, 300, 200}"><Rectangle bounds="{10, 20, 300, 180}" color="#312a30ff" /></Group>`);
   const link = els.find((e) => e.role === "link");
-  assert.deepEqual(link.rect, { x: 10, y: 20, w: 300, h: 200 });
+  assert.deepEqual(link.rect, { x: 10, y: 20, w: 300, h: 180 });
+});
+
+test("a link ignores hidden children that the device counts in its bounds", () => {
+  const els = doc(`<Group name="a11y|link|0|Open Z" bounds="{7, 17, 306, 206}"><Rectangle bounds="{10, 20, 300, 180}" color="#312a30ff" /><Poster visible="false" uri="pkg:/images/ring.png" bounds="{7, 17, 306, 186}" /></Group>`);
+  assert.deepEqual(els.find((e) => e.role === "link").rect, { x: 10, y: 20, w: 300, h: 180 });
 });
 
 test("a small video plane hides nothing, a full-screen one hides what came before", () => {
