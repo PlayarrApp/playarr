@@ -1,0 +1,1 @@
+- Parity layout dump names elements with an explicit `role=img` or `role=dialog` by their accessible name (aria-labelledby, aria-label, alt), empty when the page has none; the shared web layout references need recapturing after this lands.

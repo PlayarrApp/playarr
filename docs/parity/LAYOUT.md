@@ -23,7 +23,7 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
 - `color`: text colour, `#rrggbb` or `#rrggbbaa`; `null` for elements without text. `background`: the colour behind and including
   the element, every ancestor background composited over white. `fontSize` (CSS px, after any zoom) and `fontWeight` (100 to 900):
   `null` without text. `radius` (top-left corner, px; web elements that draw no fill, border or shadow carry `painted: false` and their radius is not scored) and `opacity` (product with the ancestors) only when not 0 and not 1.
-- `text`: the text as displayed (after text-transform), whitespace collapsed. Controls without own text use their accessible label.
+- `text`: the text as displayed (after text-transform), whitespace collapsed. Controls without own text use their accessible label; so do elements with an explicit `role=img` or `role=dialog` (aria-labelledby, aria-label, alt; empty when the page has none).
 - `role`: `text`, `heading`, `button`, `link`, `textbox`, `switch`, `select`, `image`, `video`, `container`, `tab`, `list`, or the ARIA
   role the web element carries. `system` marks OS chrome (status bar, home indicator): never matched, never reported.
 - Which elements the web exports: exactly what a user can see. Leaf text elements, focusable controls (a card is a `link` named

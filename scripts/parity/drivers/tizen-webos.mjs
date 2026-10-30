@@ -265,13 +265,17 @@ export async function createDriver() {
       if (!(await ev(synced))) throw new Error("the seek bar fill does not show the paused position");
     }
     if (device !== "tizen") {
-      // The buffered bar (.player-seek-buffered) follows the download; a capture mid-download put its end at a different x each run. Wait for the whole clip.
-      const full = `(() => { const v = document.querySelector("video"); if (!v || !v.duration || !v.buffered.length) return false; return v.buffered.end(v.buffered.length - 1) >= v.duration - 0.05; })()`;
-      if (!(await until(full, 60000))) throw new Error("the player video did not finish buffering");
-      // The bar must show it: the last buffered element spans to the clip end (re-read on the engine's next tick).
-      const shown = `(() => { const b = [...document.querySelectorAll(".player-seek-buffered")].pop(), v = document.querySelector("video"); if (!b || !v) return false; return parseFloat(b.style.width) >= 100 * (1 - 0.05 / v.duration) - 0.01 || Math.abs(parseFloat(b.style.left) + parseFloat(b.style.width) - 100) < 0.2; })()`;
+      // The buffered bar (.player-seek-buffered) follows the download; a capture mid-download put its end at a different x each run. The engine may stop
+      // buffering ahead of the playhead before the clip end, so wait until the buffered end holds still for 5 s (and report it).
+      const end = `(() => { const v = document.querySelector("video"); return v && v.buffered.length ? v.buffered.end(v.buffered.length - 1) : -1; })()`;
+      let prev = -2, still = 0;
+      for (let i = 0; i < 120 && still < 5; i += 1) { const e = await ev(end); still = e > 0 && e === prev ? still + 1 : 0; prev = e; await sleep(1000); }
+      if (still < 5) throw new Error("the player video buffer did not settle");
+      console.log(`  player buffered end ${prev}`);
+      // The bar must show it: the last buffered element ends where the video's buffer ends (re-read on the engine's next tick).
+      const shown = `(() => { const b = [...document.querySelectorAll(".player-seek-buffered")].pop(), v = document.querySelector("video"); if (!b || !v || !v.duration) return false; return Math.abs(parseFloat(b.style.left) + parseFloat(b.style.width) - 100 * v.buffered.end(v.buffered.length - 1) / v.duration) < 0.2; })()`;
       for (let i = 0; i < 10 && !(await ev(shown)); i += 1) { await ev(`(document.querySelector("video").dispatchEvent(new Event("progress")), document.querySelector("video").dispatchEvent(new Event("timeupdate")), true)`); await sleep(500); }
-      if (!(await ev(shown))) throw new Error("the seek bar does not show the fully buffered clip");
+      if (!(await ev(shown))) throw new Error("the seek bar does not show the buffered range");
     }
     await sleep(600); // the player moves focus to play/pause on a timer: let it, then drop it
     await ev(`(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)`);
@@ -678,9 +682,10 @@ export async function createDriver() {
       const playing0 = `(() => { try { const a = webapis.avplay; return [a.getState(), a.getCurrentTime(), location.hash]; } catch (e) { return String(e); } })()`;
       if (process.env.PROBE_PR) console.log("playerReady start", JSON.stringify(await ev(playing0)));
       const playing = `(() => { const c = document.querySelector(".player-controls"); const shown = !!c && !c.classList.contains("is-hidden"); const v = document.querySelector("video");
-        let t = null, state = null; if (v) { state = v.paused ? "PAUSED" : "PLAYING"; t = v.currentTime; } else { try { const a = webapis.avplay; state = a.getState(); t = a.getCurrentTime() / 1000; } catch (e) {} }
+        let t = null, state = null; let a = null; try { a = webapis.avplay; a.getState(); } catch (e) { a = null; }
+        if (a) { state = a.getState(); t = a.getCurrentTime() / 1000; } else if (v) { state = v.paused ? "PAUSED" : "PLAYING"; t = v.currentTime; }
         return { shown, state, t, focus: !!document.activeElement && !!document.activeElement.closest("[data-player-default-focus]") }; })()`;
-      const resume = `(() => { const v = document.querySelector("video"); try { if (v) { if (v.paused) v.play(); } else if (webapis.avplay.getState() === "PAUSED") webapis.avplay.play(); } catch (e) {} return true; })()`;
+      const resume = `(() => { const v = document.querySelector("video"); try { if (window.webapis && webapis.avplay) { if (webapis.avplay.getState() === "PAUSED") webapis.avplay.play(); } else if (v) { if (v.paused) v.play(); } } catch (e) {} return true; })()`;
       const t0 = Date.now();
       let steady = 0;
       while (Date.now() - t0 < 90000) {
