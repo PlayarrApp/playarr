@@ -441,7 +441,7 @@ export struct ReleaseCalendar {
       .height(isTvMetrics() ? tv(PILL_HEIGHT) : PHONE_PILL_HEIGHT)
       .padding({ left: tv(PILL_PADDING_H), right: tv(PILL_PADDING_H) })
       .borderRadius(isTvMetrics() ? tv(PILL_HEIGHT / 2) : PHONE_PILL_HEIGHT / 2)
-      .backgroundColor(toResourceColor(mixOver(toneColor(tone), activeColors().surface, 0.14))) // web .status-pill: color-mix(tone 14%, surface), opaque
+      .backgroundColor(isTvMetrics() ? toResourceColor(mixOver(toneColor(tone), activeColors().surface, 0.14)) : toResourceColorWithAlpha(toneColor(tone), 0.112)) // TV: web .status-pill color-mix(tone 14%, surface), opaque; the phone's measured translucent fill stays
       .border({ width: 1, color: toResourceColorWithAlpha(toneColor(tone), 0.6) })
       .margin({ top: offset })
   }
