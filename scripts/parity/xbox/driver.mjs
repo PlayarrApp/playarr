@@ -290,10 +290,13 @@ export async function createDriver() {
         const deadline = Date.now() + 90000; // the full export renders the screen once per exported element
         while (Date.now() < deadline) {
           await sleep(500);
-          try {
-            const answer = JSON.parse(run("read", "layout.json"));
-            if (answer.layoutNonce === nonce) { if (answer.error) throw new Error(`layout export failed in the app: ${answer.error}`); delete answer.layoutNonce; return answer; }
-          } catch { /* not written yet */ }
+          let answer = null;
+          try { answer = JSON.parse(run("read", "layout.json")); } catch { /* not written yet */ }
+          if (answer && answer.layoutNonce === nonce) {
+            if (answer.error) throw new Error(`layout export failed in the app: ${answer.error}`);
+            delete answer.layoutNonce;
+            return answer;
+          }
         }
         throw new Error("the app did not answer the layout request");
       };
