@@ -338,24 +338,36 @@ export struct SearchScreen {
         .width(tv(ICON_SIZE))
         .height(tv(ICON_SIZE))
         .colorFilter(tintFilter(activeColors().inkSoft))
-      TextInput({ text: this.query, placeholder: t('pages.search.searchPlaceholder', 'Search your libraries and playlists') })
-        .fontSize(tv(INPUT_SIZE))
-        .fontColor(toResourceColor(activeColors().ink))
-        .placeholderColor(toResourceColor(activeColors().inkMuted))
-        .backgroundColor(Color.Transparent)
-        // The pill is the field (web): no inner box or focus border on the input itself.
-        .border({ width: 0 })
-        .borderRadius(0)
-        .padding(0)
-        .caretColor(toResourceColor(activeColors().ink))
-        .focusBox({ strokeWidth: LengthMetrics.vp(0) }) // the pill is the field: no system focus box inside it (web draws none)
-        .layoutWeight(1)
-        .height(tv(60)) // web: the textbox fills the 76 px pill less its 8 px insets
-        .accessibilityText(t('pages.search.searchPlaceholder', 'Search your libraries and playlists')).accessibilityRole(AccessibilityRoleType.TEXT_INPUT)
-        .defaultFocus(true)
-        .onChange((value: string) => {
-          this.onQueryChange(value);
-        })
+      Stack({ alignContent: Alignment.Start }) {
+      TextInput({ text: this.query })
+          .fontSize(tv(INPUT_SIZE))
+          .fontColor(toResourceColor(activeColors().ink))
+          .placeholderColor(toResourceColor(activeColors().inkMuted))
+          .backgroundColor(Color.Transparent)
+          // The pill is the field (web): no inner box or focus border on the input itself.
+          .border({ width: 0 })
+          .borderRadius(0)
+          .padding(0)
+          .caretColor(toResourceColor(activeColors().ink))
+          .focusBox({ strokeWidth: LengthMetrics.vp(0) }) // the pill is the field: no system focus box inside it (web draws none)
+          .width('100%')
+          .height(tv(60)) // web: the textbox fills the 76 px pill less its 8 px insets
+          .accessibilityText(t('pages.search.searchPlaceholder', 'Search your libraries and playlists')).accessibilityRole(AccessibilityRoleType.TEXT_INPUT)
+          .defaultFocus(true)
+          .onChange((value: string) => {
+            this.onQueryChange(value);
+          })
+        if (this.query.length === 0) {
+          // web: the placeholder is a real text row over the field (a native TextInput placeholder is not a laid-out Text)
+          Text(t('pages.search.searchPlaceholder', 'Search your libraries and playlists')).fontFamily(nunitoAt(400, tv(17.66)))
+            .fontSize(tv(17.66)).lineHeight(webLineHeight(tv(17.66))).halfLeading(true)
+            .fontColor(toResourceColor(activeColors().inkMuted))
+            .maxLines(1)
+            .hitTestBehavior(HitTestMode.None)
+        }
+      }
+      .layoutWeight(1)
+      .height(tv(60))
       if (this.query.length > 0) {
         Text(t('pages.search.clear', 'Clear')).fontFamily(nunitoAt(700, tv(CLEAR_SIZE)))
           .fontSize(tv(CLEAR_SIZE)).lineHeight(webLineHeight(tv(CLEAR_SIZE))).halfLeading(true)
@@ -450,25 +462,36 @@ export struct SearchScreen {
           .width(18)
           .height(18)
           .colorFilter(tintFilter(activeColors().inkSoft))
-        TextInput({ text: this.query, placeholder: t('pages.search.searchPlaceholder', 'Search your libraries and playlists') })
-          .fontSize(16)
-          .fontColor(toResourceColor(activeColors().ink))
-          .placeholderColor(toResourceColor(activeColors().inkMuted))
-          .backgroundColor(Color.Transparent)
-          .border({ width: 0 })
-          .borderRadius(0)
-          .padding(0)
-          .caretColor(toResourceColor(activeColors().ink))
-        .focusBox({ strokeWidth: LengthMetrics.vp(0) }) // the pill is the field: no system focus box inside it (web draws none)
-          .layoutWeight(1)
-          .height(44)
-          .accessibilityText(t('pages.search.searchPlaceholder', 'Search your libraries and playlists')).accessibilityRole(AccessibilityRoleType.TEXT_INPUT)
-          .defaultFocus(true)
-          .onFocus(() => { this.fieldFocused = true; })
-          .onBlur(() => { this.fieldFocused = false; })
-          .onChange((value: string) => {
-            this.onQueryChange(value);
-          })
+        Stack({ alignContent: Alignment.Start }) {
+          TextInput({ text: this.query })
+            .fontSize(16)
+            .fontColor(toResourceColor(activeColors().ink))
+            .placeholderColor(toResourceColor(activeColors().inkMuted))
+            .backgroundColor(Color.Transparent)
+            .border({ width: 0 })
+            .borderRadius(0)
+            .padding(0)
+            .caretColor(toResourceColor(activeColors().ink))
+          .focusBox({ strokeWidth: LengthMetrics.vp(0) }) // the pill is the field: no system focus box inside it (web draws none)
+            .width('100%')
+            .height(44)
+            .accessibilityText(t('pages.search.searchPlaceholder', 'Search your libraries and playlists')).accessibilityRole(AccessibilityRoleType.TEXT_INPUT)
+            .defaultFocus(true)
+            .onFocus(() => { this.fieldFocused = true; })
+            .onBlur(() => { this.fieldFocused = false; })
+            .onChange((value: string) => {
+              this.onQueryChange(value);
+            })
+          if (this.query.length === 0) {
+            Text(t('pages.search.searchPlaceholder', 'Search your libraries and playlists')).fontFamily(nunitoAt(400, 12.48))
+              .fontSize(12.48).lineHeight(webLineHeight(12.48)).halfLeading(true)
+              .fontColor(toResourceColor(activeColors().inkMuted))
+              .maxLines(1)
+              .hitTestBehavior(HitTestMode.None)
+          }
+        }
+        .layoutWeight(1)
+        .height(44)
       }
       .width('100%')
       .height(60) // web phone field: 60 vp, 18 vp below the header

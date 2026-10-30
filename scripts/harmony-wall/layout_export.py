@@ -240,7 +240,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
             return
         seq[0] += 1
         first = seq[0]
-        nid[0] = a.get("id") if str(a.get("id", "")).startswith("pvh") else None  # patch_hide.py's key: the probe hides by it
+        nid[0] = next((k for k in (a.get("id"), a.get("accessibilityDescription")) if str(k).startswith("pvh")), None)  # patch_hide.py's key: the probe hides by it
         src[0] = str(node.get("$debugLine", "")).split('"')[3].split("main/ets/")[-1] if with_src and '"' in str(node.get("$debugLine", "")) else ""
         raw = rect_of(node)
         kx, ky = scale_of(a)
