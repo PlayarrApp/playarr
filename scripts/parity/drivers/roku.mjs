@@ -409,10 +409,13 @@ export function calendarReadinessSnapshot(state, expectedView, baseline = {}) {
 export function calendarCellLeftEdgeAction(focus) {
   if (!focus || focus.action !== "cell" || !Number.isFinite(focus.rect?.x)) return "unknown";
   if (focus.rect.x < CALENDAR_CONTENT_LEFT_EDGE) return "unknown";
-  if (focus.rect.x <= CALENDAR_CONTENT_LEFT_EDGE + 1) return "edge";
+  // A first-column whole-cell stop starts at the grid edge; its chip stop sits 5.8 px in.
+  if (focus.rect.x <= CALENDAR_CONTENT_LEFT_EDGE + 7) return "edge";
   return "left";
 }
 
+// Same grid row: a whole-cell stop (centre 75 px down) and a chip stop (centre 22 px down) of one row are at most 53 px apart; the next row is 150 px away.
+const CALENDAR_SAME_ROW_DY = 60;
 export function calendarFocusTransitionError(from, key, to) {
   if (!from || !to || !CALENDAR_ACTIONS.has(from.action) || !CALENDAR_ACTIONS.has(to.action)) return null;
   const fromX = from.rect.x + from.rect.w / 2;
@@ -420,11 +423,11 @@ export function calendarFocusTransitionError(from, key, to) {
   const toX = to.rect.x + to.rect.w / 2;
   const toY = to.rect.y + to.rect.h / 2;
   if (from.action === "cell" && key === "right" &&
-      (to.action !== "cell" || Math.abs(toY - fromY) > 2 || toX <= fromX + 1)) {
+      (to.action !== "cell" || Math.abs(toY - fromY) > CALENDAR_SAME_ROW_DY || toX <= fromX + 1)) {
     return "calendar-right-did-not-move-to-a-later-cell-in-the-same-row";
   }
   if (from.action === "cell" && key === "left" &&
-      (to.action !== "cell" || Math.abs(toY - fromY) > 2 || toX >= fromX - 1)) {
+      (to.action !== "cell" || Math.abs(toY - fromY) > CALENDAR_SAME_ROW_DY || toX >= fromX - 1)) {
     return "calendar-left-did-not-move-to-an-earlier-cell-in-the-same-row";
   }
   if (from.action === "cell" && key === "up") {
@@ -878,8 +881,12 @@ export function createDriver({ out, args = [] } = {}) {
       hits = paused && seekAt === 2000 && ms === lastMs ? hits + 1 : 0;
       lastMs = ms;
     }
-    await sendEcp("keypress/Down");
-    await sleep(1500);
+    // The controls may already be up after the seek; a key on up controls moves focus to Play and draws its ring (web's frame has none).
+    // So Down is sent only when the seek slider is not in the tree (it then just raises the controls).
+    if (!/name="a11y\|slider\|0\|Seek"/.test(await fetchAppUi())) {
+      await sendEcp("keypress/Down");
+      await sleep(1500);
+    }
     playerShot = true;
   };
 
@@ -1051,7 +1058,11 @@ export function createDriver({ out, args = [] } = {}) {
             throw new Error(traceFailure(`Calendar Back-to-range path left the expected cell route at step ${step + 1}: ${JSON.stringify({ from, to: next })}`));
           }
         }
-        const selector = viaToday ? currentCalendarFocus() : await observeCalendarKey("up");
+        let selector = viaToday ? currentCalendarFocus() : await observeCalendarKey("up");
+        // With real day cells and chip stops the fifth Right can sit under Today; Left twice is the range selector from there.
+        if (selector.action === "calToday") {
+          for (let i = 0; i < 2; i += 1) selector = await observeCalendarKey("left");
+        }
         if (selector.action !== "calView") {
           throw new Error(traceFailure(`Calendar measured Back + Right x5 + Up path did not focus the range selector: ${JSON.stringify(selector)}`));
         }
@@ -1163,18 +1174,25 @@ export function createDriver({ out, args = [] } = {}) {
       // The player frame is taken only with the controls up and the progress fill at 2 s of 60 (59.33 px): the controls hide on their own
       // and a seek that did not land leaves another fill, so the measured tree is checked first and the state restored until it holds.
       const playerHeld = (xml) => /name="a11y\|slider\|0\|Seek"/.test(xml) && /name="playerProgressFill"[^>]*bounds="\{70, 933, 59\.\d+, 6\}"|bounds="\{70, 933, 59\.\d+, 6\}"[^>]*name="playerProgressFill"/.test(xml);
+      // A key press moves focus from the seek stop to Play and draws its ring (web's frame has no ring), so Down is sent only while the
+      // controls are down (no seek slider in the tree); a wrong fill is fixed with the seek input alone.
+      const sliderUp = (xml) => /name="a11y\|slider\|0\|Seek"/.test(xml);
+      const focusRingUp = (xml) => /<Poster\b(?![^>]*visible="false")[^>]*uri="pkg:\/images\/round-outline-r25\.9\.png"[^>]*bounds="\{[\d.]+, 9\d\d/.test(xml) || /<Poster\b(?![^>]*visible="false")[^>]*bounds="\{[\d.]+, 9\d\d[^>]*uri="pkg:\/images\/round-outline-r25\.9\.png"/.test(xml);
       if (playerShot) {
         let held = false;
         for (let i = 0; i < 8 && !held; i += 1) {
-          held = playerHeld(await fetchAppUi());
-          if (held) break;
-          await sendEcp("keypress/Down");
-          await sleep(1500);
-          if (playerHeld(await fetchAppUi())) { held = true; break; }
+          const xml = await fetchAppUi();
+          if (playerHeld(xml)) { held = true; break; }
+          if (!sliderUp(xml)) {
+            await sendEcp("keypress/Down");
+            await sleep(1500);
+            if (playerHeld(await fetchAppUi())) { held = true; break; }
+          }
           seekAt = -1;
           await sendEcp("input?paritySeek=2000");
           await sleep(3000);
         }
+        if (held && focusRingUp(await fetchAppUi())) throw new Error("Roku player shows a focus ring; the web frame has none");
         if (!held) throw new Error("Roku player controls were not up at 2.000 s");
       }
       // Settle: take the frame only when two consecutive frames are identical (animations, focus glide and art loads finished).
