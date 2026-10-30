@@ -28,6 +28,8 @@ final class TVParityLayoutRegistry {
         var local: CGRect?
         var layer = 0
         var opacity: Double = 1
+        /// The scale the view is drawn at (its transformed frame over its own size), 1 when no ancestor scales it.
+        var scale: CGFloat = 1
     }
 
     private var items: [UUID: Item] = [:]
@@ -170,8 +172,14 @@ final class TVParityLayoutRegistry {
                 var line = item
                 line.local = rect
                 // the first line sits at the view's top: the layout reports it a fraction of the font size lower (leading above the ascent),
-                // which is not where the view or its glyphs are; later lines keep the layout's own pitch
-                line.rect = rect.offsetBy(dx: item.rect.minX, dy: item.rect.minY - rects[0].minY)
+                // which is not where the view or its glyphs are; later lines keep the layout's own pitch. The layout is in the view's
+                // own space, so an ancestor's scale applies to the line's offsets and size (the frame origin is already transformed).
+                let k = item.scale
+                // a single line that fills its view starts at the view's edge: the layout's own x offset on tracked runs (a constant
+                // 3 pt) is not where the glyphs are drawn
+                let hugging = rects.count == 1 && abs(item.rect.width - rect.width * k) < 6
+                line.rect = CGRect(x: item.rect.minX + (hugging ? 0 : rect.minX * k), y: item.rect.minY + (rect.minY - rects[0].minY) * k,
+                                   width: rect.width * k, height: rect.height * k)
                 if let names = item.lines, names.count == rects.count { line.text = names[index] }
                 // SwiftUI exposes no string per line: split the string where the app's own wrapper breaks it at the laid-out width,
                 // and use it only when it agrees with the number of lines SwiftUI actually drew
@@ -249,6 +257,13 @@ private struct TVParityLayoutModifier: ViewModifier {
     /// The text of each laid-out line when the view draws the lines itself (a wrapped heading built from one Text per line).
     var lines: [String]? = nil
     var onPage = false
+    /// A text run that sits on its own painted pill (web: the text node's parent carries the fill and radius): the pill's fill at
+    /// `fillAlpha` composited over the backdrop is the colour behind the text, and `radius` is the pill's.
+    var fill: Color? = nil
+    var fillAlpha: Double = 1
+    var radius: CGFloat = 0
+    /// The colour the pill's fill is composited over when it is not the backdrop (a pill that paints over the page surface, not its card).
+    var over: Color? = nil
     @Environment(\.self) private var environment
     @Environment(\.parityLayer) private var layer
     @Environment(\.parityBackdrop) private var backdrop
@@ -262,9 +277,18 @@ private struct TVParityLayoutModifier: ViewModifier {
         return r.opacity < 0.999 ? base + String(format: "%02x", byte(r.opacity)) : base
     }
 
-    private func item(_ rect: CGRect) -> TVParityLayoutRegistry.Item {
+    private var behind: Color {
+        let base = over ?? backdrop ?? (onPage ? DesignTokens.Stage.bg : DesignTokens.Stage.surface)
+        guard let fill else { return base }
+        let top = fill.resolve(in: environment)
+        let under = base.resolve(in: environment)
+        let a = Float(fillAlpha)
+        return Color(.sRGB, red: Double(top.red * a + under.red * (1 - a)), green: Double(top.green * a + under.green * (1 - a)), blue: Double(top.blue * a + under.blue * (1 - a)))
+    }
+
+    private func item(_ rect: CGRect, scale: CGFloat) -> TVParityLayoutRegistry.Item {
         .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: rect, tracking: tracking,
-              background: hex(backdrop ?? (onPage ? DesignTokens.Stage.bg : DesignTokens.Stage.surface)), lines: lines, layer: layer)
+              background: hex(behind), radius: radius, lines: lines, layer: layer, scale: scale)
     }
 
     @ViewBuilder
@@ -284,18 +308,27 @@ private struct TVParityLayoutModifier: ViewModifier {
             .background(
                 GeometryReader { proxy in
                     let frame = proxy.frame(in: tvScreenSpace)
+                    let scale = Self.scale(of: frame, size: proxy.size)
                     Color.clear
-                        .onAppear { report(frame) }
-                        .onChange(of: frame) { _, new in report(new) }
-                        .onChange(of: scheme) { _, _ in report(frame) }
-                        .onChange(of: text) { _, _ in report(frame) }
+                        .onAppear { report(frame, scale) }
+                        .onChange(of: frame) { _, new in report(new, scale) }
+                        .onChange(of: scale) { _, new in report(frame, new) }
+                        .onChange(of: scheme) { _, _ in report(frame, scale) }
+                        .onChange(of: text) { _, _ in report(frame, scale) }
                 }
             )
             .onDisappear { TVParityLayoutRegistry.shared.remove(id) }
     }
 
-    private func report(_ rect: CGRect) {
-        TVParityLayoutRegistry.shared.set(id, item(rect))
+    /// The scale an ancestor draws this view at: its transformed frame over the size it was laid out at.
+    private static func scale(of frame: CGRect, size: CGSize) -> CGFloat {
+        guard size.width > 1 else { return 1 }
+        let k = frame.width / size.width
+        return abs(k - 1) < 0.002 ? 1 : k
+    }
+
+    private func report(_ rect: CGRect, _ scale: CGFloat) {
+        TVParityLayoutRegistry.shared.set(id, item(rect, scale: scale))
     }
 }
 
@@ -401,9 +434,9 @@ extension View {
 
     /// Reports this view's text, style and frame to the parity layout export (debug builds only).
     @ViewBuilder
-    func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0, lines: [String]? = nil, onPage: Bool = false) -> some View {
+    func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0, lines: [String]? = nil, onPage: Bool = false, fill: Color? = nil, fillAlpha: Double = 1, radius: CGFloat = 0, over: Color? = nil) -> some View {
         #if DEBUG && (os(tvOS) || os(macOS))
-        modifier(TVParityLayoutModifier(text: text, role: role, size: size, weight: weight, color: color, tracking: tracking, lines: lines, onPage: onPage))
+        modifier(TVParityLayoutModifier(text: text, role: role, size: size, weight: weight, color: color, tracking: tracking, lines: lines, onPage: onPage, fill: fill, fillAlpha: fillAlpha, radius: radius, over: over))
         #else
         self
         #endif

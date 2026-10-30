@@ -40,13 +40,15 @@ extension View {
 /// dark keeps the calibrated soft-surface ramp.
 struct TVRailPanelGradient: View {
     var width: CGFloat
+    /// The exported container spans the whole screen (the page panel) unless the panel's own box is the one the web reports.
+    var bleed = true
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing)
             .frame(width: width)
             .frame(maxWidth: .infinity, alignment: .trailing)
-            .overlay(alignment: .trailing) { Color.clear.frame(width: width).parityBox("container", fill: DesignTokens.Stage.surface, bleed: true) }
+            .overlay(alignment: .trailing) { Color.clear.frame(width: width).parityBox("container", fill: DesignTokens.Stage.surface, bleed: bleed) }
     }
 
     private var stops: [Gradient.Stop] {
@@ -1034,10 +1036,10 @@ struct TVStatusPill: View {
         Text(label)
             .font(TVTheme.font(size: 13.44, css: 750))
             .foregroundStyle(DesignTokens.Color.textPrimary)
-            .parityLayout(text: label, size: 13.44, weight: 750, color: DesignTokens.Color.textPrimary)
+            // Web: the pill is the text node's parent, so the text carries the pill's fill (over the page surface) and radius.
+            .parityLayout(text: label, size: 13.44, weight: 750, color: DesignTokens.Color.textPrimary, fill: colour, fillAlpha: 0.14, radius: 13.44, over: DesignTokens.Stage.surface)
             .padding(.horizontal, 10.4)
             .frame(height: 26.6)
-            .parityBox("container", radius: 13.44, fill: colour, alpha: 0.14)
             .background(Capsule().fill(colour.opacity(0.14)).background(Capsule().fill(DesignTokens.Stage.surface)))
             .overlay(Capsule().stroke(colour.opacity(0.6), lineWidth: 1))
             .fixedSize()

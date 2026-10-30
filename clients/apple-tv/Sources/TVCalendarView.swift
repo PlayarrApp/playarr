@@ -51,6 +51,8 @@ struct TVCalendarView: View {
         if model.mode == .agenda, let item = selectedAgendaItem(model), let entry = item.entries.first {
             TVKeyArt(url: entry.posterURL.flatMap { environment.apiClient.artworkURL(forPath: $0) })
             TVStageWash()
+            // Web `ListPanel`: the frosted right-hand surface the agenda list sits on (x 729.6, 1190.4 wide, full height).
+            TVRailPanelGradient(width: 1190.4, bleed: false)
             agendaDetail(entry, item: item, today: model.today)
         }
 
@@ -205,7 +207,8 @@ struct TVCalendarView: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(groups, id: \.day) { group in
                     dayHeading(group.day, today: model.today)
-                        .frame(height: 44, alignment: .leading)
+                        .frame(width: 1033.4, height: 44, alignment: .leading)
+                        .parityBox("heading")
                         .padding(.bottom, 32)
                     ForEach(group.items, id: \.id) { item in
                         entryButton(item, width: 1033.4, today: model.today)
@@ -218,6 +221,7 @@ struct TVCalendarView: View {
             .padding(.bottom, 200)
         }
         // The list starts under the header row so the header controls stay reachable with UP (focus search).
+        .parityBackdrop(DesignTokens.Stage.bg) // web: the list's text sits on the page background colour
         .mask(Self.topFade)
         .placed(x: 783.4, y: 130, w: 1033.4 + 30, h: 950, alignment: .topLeading)
     }
@@ -233,10 +237,9 @@ struct TVCalendarView: View {
                     .font(TVTheme.font(size: 11.2, css: 640))
                     .tracking(0.896)
                     .foregroundStyle(DesignTokens.Stage.accent)
-                    .parityLayout(text: "TODAY", size: 11.2, weight: Int(640), color: DesignTokens.Stage.accent, tracking: 0.896)
+                    .parityLayout(text: "TODAY", size: 11.2, weight: Int(640), color: DesignTokens.Stage.accent, tracking: 0.896, radius: 11)
                     .padding(.horizontal, 9)
                     .frame(height: 22)
-                    .parityBox("container", radius: 11)
                     .overlay(Capsule().stroke(DesignTokens.Stage.accent.opacity(0.6), lineWidth: 1))
             }
         }
@@ -305,18 +308,20 @@ struct TVCalendarView: View {
                         .parityLayout(text: subtitle, size: 19.2, weight: Int(400), color: DesignTokens.Color.textSecondary)
                         .frame(height: 28.8)
                 }
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
                     Text(entry?.releaseAt.map { Self.format($0, "HH:mm") } ?? "All day")
                         .parityLayout(text: entry?.releaseAt.map { Self.format($0, "HH:mm") } ?? "All day", size: 12.8, weight: 400, color: DesignTokens.Color.textDisabled)
                     Text(entry.map { Self.releaseLabel($0) } ?? "")
                         .parityLayout(text: entry.map { Self.releaseLabel($0) } ?? "", size: 12.8, weight: 400, color: DesignTokens.Color.textDisabled)
                     Text(entry.map { Self.kindLabel($0) } ?? "")
                         .parityLayout(text: entry.map { Self.kindLabel($0) } ?? "", size: 12.8, weight: 400, color: DesignTokens.Color.textDisabled)
+                    // Web: the pill sits 2.8 below the text line it shares (baseline alignment with the larger pill type)
                     TVStatusPill(tone: Self.tone(of: item, today: today))
+                        .padding(.top, 2.8)
                 }
                 .font(TVTheme.font(size: 12.8, css: 400))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
-                .frame(height: 26.6)
+                .frame(height: 26.6, alignment: .top)
             }
             Spacer(minLength: 0)
         }
@@ -696,9 +701,9 @@ struct TVCalendarView: View {
         return HStack(spacing: 9.6) {
             if let glyph {
                 Text(glyph)
-                    .font(TVTheme.font(size: 14.72, css: primary ? 720 : 900))
+                    .font(TVTheme.font(size: 14.72, css: 720))
                     .foregroundStyle(ink)
-                    .parityLayout(text: glyph, size: 14.72, weight: weight, color: ink)
+                    .parityLayout(text: glyph, size: 14.72, weight: 720, color: ink)
             }
             Text(name)
                 .font(TVTheme.font(size: 14.72, css: primary ? 720 : 900))

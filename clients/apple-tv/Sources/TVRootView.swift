@@ -919,7 +919,6 @@ struct TVProfilesView: View {
                         .font(TVTheme.font(size: 10.37 * s, css: 820))
                         .tracking(1.35 * s)
                         .foregroundStyle(palette.brandInk)
-                        .offset(x: -2.5 * s) // the web centres the letter-spaced word with its trailing space
                         .parityLayout(text: "PROFILES", size: 10.37 * s, weight: 820, color: palette.brandInk, tracking: 1.35 * s)
                         .frame(height: 15.6 * s)
 
@@ -1047,7 +1046,7 @@ struct TVProfilesView: View {
                     Task { await select(profile, pin: nil) }
                 }
             } label: {
-                VStack(spacing: 9 * s) {
+                VStack(spacing: 0) {
                     ZStack {
                         Circle()
                             .fill(
@@ -1118,7 +1117,7 @@ struct TVProfilesView: View {
                         .foregroundStyle(active ? palette.ink : palette.inkSoft)
                         .lineLimit(1)
                         .parityLayout(text: profile.displayName.isEmpty ? profile.username : profile.displayName, size: 17.28 * s, weight: 680, color: active ? palette.ink : palette.inkSoft)
-                        .offset(y: active ? 1.2 : 0)
+                        .padding(.top, 9.8 * s)
 
                     Text(statusLabel(for: profile, busy: busy))
                         .font(TVTheme.font(size: 9.41 * s, css: 690))
@@ -1126,8 +1125,9 @@ struct TVProfilesView: View {
                         .textCase(.uppercase)
                         .foregroundStyle(palette.inkMuted)
                         .parityLayout(text: statusLabel(for: profile, busy: busy).uppercased(), size: 9.41 * s, weight: 690, color: palette.inkMuted, tracking: 0.42 * s)
-                        .frame(minHeight: 12 * s)
-                        .offset(y: active ? 2.34 : 0)
+                        .frame(height: 13 * s)
+                        .padding(.top, 10.1 * s)
+                        .padding(.bottom, 1.16 * s)
                 }
                 .frame(width: size)
                 .parityBox("button", text: (profile.displayName.isEmpty ? profile.username : profile.displayName) + (profile.isCurrent ? ", current profile" : ""), fill: palette.bg)
@@ -1160,7 +1160,11 @@ struct TVProfilesView: View {
 
             if selected {
                 profileActions(for: profile, scale: s)
-                    .padding(.top, 23.6 * s)
+                    #if os(macOS)
+                    .padding(.top, 20.2 * s)
+                    #else
+                    .padding(.top, 19.66 * s)
+                    #endif
             }
         }
         .frame(width: size)
@@ -1168,7 +1172,7 @@ struct TVProfilesView: View {
 
     /// Web `.profile-actions` under the selected avatar only (never under add).
     private func profileActions(for profile: AvailableProfile, scale s: CGFloat) -> some View {
-        HStack(spacing: 9 * s) {
+        HStack(spacing: 8.8 * s) {
             // Web `.profile-settings-button` — 44×44 glass circle, pink gear.
             Button {
                 onSettings?()
