@@ -632,6 +632,10 @@ export async function createDriver() {
     // The capture left the clip paused at 2 s: resume it with the player's own transport (play()), then reveal the controls with a key if they hid.
     async playerReady() {
       await guard();
+      // The screen grab hid the AVPlay plane (pinPlayerFrame); a user has it up, and the player plays into it.
+      await ev(`(() => { const o = document.querySelector('object[type="application/avplayer"]'); if (o) o.style.visibility = "visible"; return true; })()`);
+      if (process.env.PROBE_PR) console.log("playerReady start", JSON.stringify(await ev(playing0)));
+      const playing0 = `(() => { try { const a = webapis.avplay; return [a.getState(), a.getCurrentTime(), location.hash]; } catch (e) { return String(e); } })()`;
       const playing = `(() => { const c = document.querySelector(".player-controls"); const shown = !!c && !c.classList.contains("is-hidden"); const v = document.querySelector("video");
         let t = null, state = null; if (v) { state = v.paused ? "PAUSED" : "PLAYING"; t = v.currentTime; } else { try { const a = webapis.avplay; state = a.getState(); t = a.getCurrentTime() / 1000; } catch (e) {} }
         return { shown, state, t, focus: !!document.activeElement && !!document.activeElement.closest("[data-player-default-focus]") }; })()`;
@@ -641,6 +645,7 @@ export async function createDriver() {
       while (Date.now() - t0 < 90000) {
         const st = await ev(playing);
         // two reads 1 s apart and the playhead past 1.5 s: the app's own focus hand-off has settled
+        if (process.env.PROBE_PR) console.log("pr", JSON.stringify(st));
         steady = st.state === "PLAYING" && st.t > 1.5 && st.shown && st.focus ? steady + 1 : 0;
         if (steady >= 1) { await guard(); return; }
         if (st.state === "PAUSED") await ev(resume);
