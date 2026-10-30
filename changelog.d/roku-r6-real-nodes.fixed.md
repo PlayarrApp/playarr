@@ -1,0 +1,1 @@
+- Roku: the card link, player seek slider and calendar day cells are exported from the real nodes that hold them (card group, 6 px track, focus targets) instead of sized stand-ins, and the layout export lists an unpainted node only when it is a control hit box.

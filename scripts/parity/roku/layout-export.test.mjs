@@ -33,3 +33,27 @@ test("a tail Label continues its word without a space", () => {
   assert.equal(els[0].text, "hello you");
   assert.equal(els[0].rect.w, 60);
 });
+
+test("a transparent Rectangle that only carries an a11y stamp is not a row", () => {
+  const els = doc(`<Rectangle name="a11y|link|0|Open X" bounds="{0, 0, 100, 60}" color="#00000000" /><Rectangle name="a11y|container|0|" bounds="{0, 0, 50, 50}" color="#00000000" />`);
+  assert.equal(els.length, 0);
+});
+
+test("the hit rectangle of a control is a row, a hit rectangle of a non-control is not", () => {
+  const els = doc(`<Rectangle name="hit|button|12|Filters" bounds="{0, 0, 62, 72}" color="#00000000" /><Rectangle name="hit|container|0|" bounds="{0, 0, 50, 50}" color="#00000000" />`);
+  assert.deepEqual(els.map((e) => [e.role, e.text]), [["button", "Filters"]]);
+});
+
+test("a painted node or a group carries its semantics at its measured bounds", () => {
+  const els = doc(`<Group name="a11y|link|0|Open Y" bounds="{10, 20, 300, 200}"><Rectangle bounds="{10, 20, 300, 180}" color="#312a30ff" /></Group>`);
+  const link = els.find((e) => e.role === "link");
+  assert.deepEqual(link.rect, { x: 10, y: 20, w: 300, h: 200 });
+});
+
+test("a small video plane hides nothing, a full-screen one hides what came before", () => {
+  const small = doc(`<Rectangle bounds="{0, 0, 10, 10}" color="#101010ff" /><Video bounds="{0, 0, 640, 360}" />`);
+  assert.equal(small.some((e) => e.role === "container"), true);
+  const full = buildLayoutDocument(`<app-ui><MainScene><Rectangle bounds="{0, 0, 10, 10}" color="#101010ff" /><Video bounds="{0, 0, 1920, 1080}" /></MainScene></app-ui>`, { screen: "t", theme: "dark", clockPinned: true });
+  assert.equal(full.elements.some((e) => e.role === "container"), false);
+  assert.equal(full.occluded, 1);
+});

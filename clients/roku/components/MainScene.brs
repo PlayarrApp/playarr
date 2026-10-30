@@ -415,7 +415,7 @@ sub init()
     m.deviceId = m.session.deviceId
     publishArtAuthHeaders()
     m.profileLabel.text = FirstWord(m.session.profileName)
-    m.userLinkMark.id = "a11y|link|16|Signed in as " + m.session.profileName + ". Open profiles."
+    m.userLinkMark.id = "hit|link|16|Signed in as " + m.session.profileName + ". Open profiles."
     ' The build label under the tile reads like web's (major.minor.0).
     ai = CreateObject("roAppInfo")
     m.top.findNode("userVersion").text = "v" + ai.GetValue("major_version") + "." + ai.GetValue("minor_version") + ".0"
@@ -1702,12 +1702,12 @@ sub applyProfilesChrome()
     if m.profilesThemeLabel <> invalid
         m.profilesThemeLabel.color = ink
         m.profilesThemeLabel.text = PairingThemeChromeLabel(m.themePreference, lang)
-        m.profilesThemeHit.id = "a11y|button|0|Theme: " + m.profilesThemeLabel.text
+        m.profilesThemeHit.id = "hit|button|0|Theme: " + m.profilesThemeLabel.text
     end if
     if m.profilesLangLabel <> invalid
         m.profilesLangLabel.color = ink
         m.profilesLangLabel.text = PairingLanguageChromeLabel(m.languagePreference)
-        m.profilesLangHit.id = "a11y|button|0|" + m.profilesLangLabel.text
+        m.profilesLangHit.id = "hit|button|0|" + m.profilesLangLabel.text
     end if
     if m.profilesThemeIcon <> invalid
         if isLight
@@ -2457,7 +2457,7 @@ end sub
 sub enterLibrary(profileName as String)
     SaveProfileName(profileName)
     m.profileLabel.text = FirstWord(profileName)
-    m.userLinkMark.id = "a11y|link|16|Signed in as " + profileName + ". Open profiles."
+    m.userLinkMark.id = "hit|link|16|Signed in as " + profileName + ". Open profiles."
     m.items = []
     m.totalItems = invalid
     ' Stay in the library shell while the catalogue loads (no fullscreen status).
@@ -4041,7 +4041,7 @@ end function
 sub enterHome(profileName as String)
     SaveProfileName(profileName)
     m.profileLabel.text = FirstWord(profileName)
-    m.userLinkMark.id = "a11y|link|16|Signed in as " + profileName + ". Open profiles."
+    m.userLinkMark.id = "hit|link|16|Signed in as " + profileName + ". Open profiles."
     loadProfileAvatar()
     m.currentProfileName = profileName
     m.homeContinueEntries = []

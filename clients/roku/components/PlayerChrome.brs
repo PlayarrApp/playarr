@@ -108,15 +108,8 @@ sub playerChromeBuild()
     ThemeSetRole(closeIcon, "playerInk")
     g.AppendChild(closeIcon)
 
-    ' Control semantics (web order); a control without a drawn box gets a transparent Rectangle at its box.
-    ' The seek slider is its 44 px hit box over the 6 px track (the web's slider box).
-    slider = pgBare(g, "slider", "Seek", 70, 914, 1780, 44, 0)
-    g.removeChild(slider)
-    at = g.getChildCount()
-    for i = 0 to g.getChildCount() - 1
-        if g.getChild(i).isSameNode(m.playerProgressTrack) then at = i
-    end for
-    g.insertChild(slider, at)
+    ' Control semantics (web order). The seek slider is the real 6 px track (the node the fill and thumb ride on), not a larger box.
+    m.playerProgressTrack.id = "a11y|slider|0|Seek"
     m.pcPlayBg.id = "a11y|button|50|Play"
     A11yStamp(m.pcPlayBg, true)
     m.pcPrevMark = pgMark(g, "button", "Previous episode", 70, 958, 64, 64, 50)
@@ -207,7 +200,7 @@ sub playerChromeUpdate(position as Dynamic, duration as Dynamic, fraction as Flo
     end if
     A11yStamp(m.pcPlayBg, true)
     m.pcQualityText.text = playerQualityButtonLabel()
-    m.pcQualityMark.id = "a11y|button|999|Quality: " + m.pcQualityText.text
+    m.pcQualityMark.id = "hit|button|999|Quality: " + m.pcQualityText.text
     glyph = "HD"
     if m.qualityPref <> invalid and Left(m.qualityPref, 2) = "SD" then glyph = "SD"
     m.pcQualityGlyph.text = glyph

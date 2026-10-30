@@ -4,7 +4,8 @@
 // match the web. Beyond node type the tree carries what the app declares on its own nodes in the node name: the font a glyph Label is
 // drawn with (the bundled instance's weight and the integer pixel size of its Font node), and for a control its role, accessible
 // name and the tint of its bitmap (`a11y|role|radius[@tint]|name`). A radius is the corner radius of the 9-patch mask actually used. Nothing is read from the screenshot.
-// Unpainted markers exist only where they sit on a real control (a hit box the app also uses for focus or action).
+// An unpainted Rectangle is exported only when it is the hit rectangle of a control (`hit|role|radius|name`, a control role): the box the
+// app focuses or acts on. A transparent Rectangle that only carries an `a11y|` stamp paints nothing and drives nothing: it is not a row.
 // Content fully covered by a later opaque fill is not exported.
 
 import { PNG } from "pngjs";
@@ -42,6 +43,8 @@ const intersect = (r, q) => {
 const compose = (M, ax, ay, b) => ({ sx: M.sx * ax, sy: M.sy * ay, tx: M.sx * b[0] + M.tx, ty: M.sy * b[1] + M.ty });
 const mapRect = (M, [x, y, w, h]) => ({ x: M.sx * x + M.tx, y: M.sy * y + M.ty, w: M.sx * w, h: M.sy * h });
 
+const CONTROL_ROLES = new Set(["button", "link", "slider", "tab", "textbox", "search", "checkbox", "switch"]);
+
 /** Walks the tree and returns raw measured items in tree order (paint order). */
 export function measureTree(root) {
   const items = [];
@@ -64,8 +67,11 @@ export function measureTree(root) {
     let rect = bounds && bounds[2] > 0 && bounds[3] > 0 ? mapRect(M, bounds) : null;
     if (rect && clip) { rect = intersect(rect, clip); if (rect.w <= 0 || rect.h <= 0) rect = null; }
     const base = { chain, parent, scaleX: M.sx * (nums(a.scale)?.[0] ?? 1), scaleY: M.sy * (nums(a.scale)?.[1] ?? 1) };
-    const sem = /^a11y\|(\w+)\|([\d.]+)(?:@([0-9a-f]{8})(~\d+)?)?\|(.*)$/s.exec(a.name ?? "");
-    if (sem && rect) items.push({ ...base, kind: "a11y", node, rect, op, role: sem[1], radius: Number(sem[2]), declared: sem[3], baked: sem[4], text: sem[5] });
+    const sem = /^(a11y|hit)\|(\w+)\|([\d.]+)(?:@([0-9a-f]{8})(~\d+)?)?\|(.*)$/s.exec(a.name ?? "");
+    const transparent = node.tag === "Rectangle" && alphaOf(a.color) * op <= 0.01;
+    // Only a painted node, or the hit rectangle of a control, is a row.
+    const listed = sem && (sem[1] === "hit" ? transparent && CONTROL_ROLES.has(sem[2]) : !transparent);
+    if (listed && rect) items.push({ ...base, kind: "a11y", node, rect, op, role: sem[2], radius: Number(sem[3]), declared: sem[4], baked: sem[5], text: sem[6] });
     else if (node.tag === "Label" && a.text && rect) items.push({ ...base, kind: "label", node, rect, op, parent });
     else if (node.tag === "Poster" && a.uri && rect) items.push({ ...base, kind: "poster", node, rect, op });
     else if (node.tag === "VideoBackground" && rect) items.push({ ...base, kind: "rect", node, rect, op });
@@ -88,8 +94,11 @@ const fontOf = (name = "") => {
 export function buildLayoutDocument(appUiXml, { screen, theme, clockPinned }) {
   const items = measureTree(parseAppUi(appUiXml));
   // The video plane paints over everything before it in the tree (the pages under a full-screen player are not on screen).
+  // Only a video plane that fills the screen hides them; a smaller plane hides nothing.
   const lastVideo = items.map((it) => it.kind).lastIndexOf("video");
-  if (lastVideo > 0) items.splice(0, lastVideo);
+  const fullScreen = lastVideo > 0 && items[lastVideo].rect.x <= 0.5 && items[lastVideo].rect.y <= 0.5 && items[lastVideo].rect.w >= 1919 && items[lastVideo].rect.h >= 1079;
+  let hiddenByVideo = 0;
+  if (fullScreen) { hiddenByVideo = lastVideo; items.splice(0, lastVideo); }
   items.forEach((it, i) => { it.order = i; });
   // Word and glyph Labels of one TrackedText are one text element: the union of their bounds, words joined by the gaps between them.
   const groups = [];
@@ -104,7 +113,7 @@ export function buildLayoutDocument(appUiXml, { screen, theme, clockPinned }) {
       groups.push({ single: it, order: it.order });
     }
   }
-  return finish(groups, items, { screen, theme, clockPinned });
+  return finish(groups, items, { screen, theme, clockPinned, hiddenByVideo });
 }
 
 const imageDir = fileURLToPath(new URL("../../../clients/roku/images/", import.meta.url));
@@ -129,7 +138,7 @@ function opaquePicture(it) {
 const rgb = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
 const toHex = (v) => "#" + v.map((x) => Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, "0")).join("");
 
-function finish(groups, items, { screen, theme, clockPinned }) {
+function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }) {
   const elements = [];
   const r2 = (v) => Math.round(v * 100) / 100;
   // The colour behind an element: the painted Rectangles of the tree that lie under its centre, composited in paint order over white
@@ -161,7 +170,7 @@ function finish(groups, items, { screen, theme, clockPinned }) {
         const c = [0, 2, 4].map((k) => parseInt(it.declared.slice(k, k + 2), 16)), al = parseInt(it.declared.slice(6, 8), 16) / 255;
         const under = rgb(background(it.rect, it.order, false, it.chain));
         it.fill = toHex(c.map((v, k) => v * al + under[k] * (1 - al)));
-        it.opaque = !it.baked && parseInt(it.declared.slice(6, 8), 16) >= 250;
+        it.opaque = !it.baked && it.op >= 0.99 && parseInt(it.declared.slice(6, 8), 16) >= 250;
         fills.push(it);
       } // a bitmap with no declared tint (artwork) paints no background of its own: nothing is guessed from its pixels
     } else if ((it.kind === "rect" || (it.kind === "a11y" && it.node.tag === "Rectangle")) && alphaOf(it.node.attrs.color) > 0) {
@@ -261,5 +270,5 @@ function finish(groups, items, { screen, theme, clockPinned }) {
   const visible = kept.filter((e) => !covers.some((f) => f.order > e._order && !e._source.chain.includes(f.node) && !f.chain.includes(e._source.node) && f.rect.x <= e.rect.x + 0.01 && f.rect.y <= e.rect.y + 0.01 && f.rect.x + f.rect.w >= e.rect.x + e.rect.w - 0.01 && f.rect.y + f.rect.h >= e.rect.y + e.rect.h - 0.01));
   for (const e of visible) { delete e._source; delete e._fill; }
   for (const e of visible) delete e._order;
-  return { screen, theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: !!clockPinned, elements: visible };
+  return { screen, theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: !!clockPinned, occluded: kept.length - visible.length + hiddenByVideo, elements: visible };
 }

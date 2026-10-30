@@ -19,7 +19,7 @@
     -->
     <!-- The web scales the whole profile button 1.045 and lifts it 8 px when focused, the circle a further 1.035. Item box is 368 x 392. -->
     <Group id="itemGroup" scaleRotateCenter="[184,203.8]">
-      <!-- The profile button's own box (avatar, name, status): the web's link-like button named for the profile. -->
+      <!-- The profile button's hit box (avatar, name, status): the extent of the focused item, named for the profile. -->
       <Rectangle id="profileButton" translation="[62,53]" width="244" height="301.6" color="0x00000000" />
       <Group id="circleGroup" translation="[62,53]" scaleRotateCenter="[122,122]">
         <!-- The add profile's plus is text over its disc bitmap. -->
