@@ -98,7 +98,7 @@ internal sealed class SearchScreen : IPage
         _root.BackgroundColor = Ui.C(_t.Surface);
         _root.Add(Ui.Box(0, 0, TizenClient.DesignWidth, TizenClient.DesignHeight, _t.Surface)); // web: the page section and its stage are two full-viewport layers
         
-        _root.Add(Ui.PanelWash(_t, 1248));
+        _root.Add(Sem.Tag(Ui.PanelWash(_t, 1190.39f), "container"));
         _keyArt = new KeyArt(env);
         _panel = new DetailsPanel(env, library: true, flow: true);
         _root.Add(_keyArt.Root);

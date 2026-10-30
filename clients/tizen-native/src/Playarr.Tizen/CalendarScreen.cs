@@ -56,7 +56,7 @@ internal sealed class CalendarScreen : IPage
         _root.BackgroundColor = Ui.C(_t.Surface);
         if (view == CalendarView.Agenda) _root.Add(Ui.Box(0, 0, TizenClient.DesignWidth, TizenClient.DesignHeight, _t.Surface)); // web: the agenda page has a section and a stage layer
         
-        if (view == CalendarView.Agenda) { _root.Add(_keyArt.Root); _root.Add(Ui.PanelWash(_t, 1248)); } // web: the focused entry's backdrop under the agenda panel's frost
+        if (view == CalendarView.Agenda) { _root.Add(_keyArt.Root); _root.Add(Sem.Tag(Ui.PanelWash(_t, 1190.39f), "container")); } // web: the focused entry's backdrop under the agenda panel's frost
         _root.Add(Ui.Heading("Calendar", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         _root.Add(_panel);
         _root.Add(_body);

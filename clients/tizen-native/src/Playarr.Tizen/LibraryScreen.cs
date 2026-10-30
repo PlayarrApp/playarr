@@ -65,7 +65,7 @@ internal sealed class LibraryScreen : IPage
         _panel = new DetailsPanel(env, library: true);
         _root.Add(_keyArt.Root);
         _root.Add(_panel.Root);
-        _root.Add(Ui.PanelWash(_t, 1248));
+        _root.Add(Sem.Tag(Ui.PanelWash(_t, 1190.39f), "container"));
         var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
         _grid.PositionX = -ClipX;
         clip.Add(_grid);

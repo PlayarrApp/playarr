@@ -86,14 +86,15 @@ internal sealed class ProfilesScreen : IPage
     private void AddAvatar(float x, string name, string sub, string preset, string label, Action select)
     {
         var holder = new View { PositionX = x, PositionY = CircleY, Size = new Size(Circle, 301.63f) }; // web: the card is the circle and its two caption lines
-        var art = new ImageView(Ui.ResPath($"avatars/{preset}.png")) { Size = new Size(Circle, Circle), CornerRadius = Circle / 2 };
+        // web .profile-avatar: the circle carries the gradient plate and the border, the artwork sits inside it at 86 %
+        var artSize = Circle * 0.853f;
+        var art = new ImageView(Ui.ResPath($"avatars/art-{preset}.png")) { PositionX = (Circle - artSize) / 2, PositionY = (Circle - artSize) / 2, Size = new Size(artSize, artSize) };
         var cardFocused = false;
         float nameBase = 0, subBase = 0;
-        art.BorderlineWidth = 1; art.BorderlineColor = Ui.LineA(_t, 0.15f);
         var (ring, glow) = Widgets.RailRing(_t, Circle, Circle, Circle / 2);
         var nameL = Ui.Text(name, 0, Circle + 8.4f, 17.28f, 700, _t.Ink, Circle, 25.92f, HorizontalAlignment.Center);
         var subL = Ui.Text(sub, 0, Circle + 42.3f, 9.408f, 690, _t.InkMuted, Circle, 14.112f, HorizontalAlignment.Center, upper: true, spacing: 0.42f);
-        var disc = new View { Size = new Size(Circle, Circle) };
+        var disc = new View { Size = new Size(Circle, Circle), CornerRadius = Circle / 2, BorderlineWidth = 1, BorderlineColor = Ui.LineA(_t, 0.15f), BackgroundImage = Ui.ResPath($"avatars/plate-{preset}.png") };
         Sem.Tag(disc, "container");
         disc.Add(glow); disc.Add(art); disc.Add(ring);
         nameBase = nameL.PositionY; subBase = subL.PositionY;
@@ -120,11 +121,8 @@ internal sealed class ProfilesScreen : IPage
         var wash = _t.Name == "dark"
             ? Ui.Gradient(0, 0, Circle, Circle, false, (0f, Rgba.Of(84, 36, 52, 1f)), (1f, Rgba.Of(145, 40, 76, 1f)))
             : Ui.Gradient(0, 0, Circle, Circle, false, (0f, Rgba.Of(234, 188, 198, 1f)), (1f, Rgba.Of(188, 82, 113, 1f)));
-        wash.CornerRadius = Circle / 2;
-        wash.BorderlineWidth = 1; wash.BorderlineColor = Ui.LineA(_t, 0.15f);
-        var disc = new View { Size = new Size(Circle, Circle) };
+        var disc = new View { Size = new Size(Circle, Circle), CornerRadius = Circle / 2, BorderlineWidth = 1, BorderlineColor = Ui.LineA(_t, 0.15f), BackgroundImage = ((ImageView)wash).ResourceUrl }; // web: a painted circle, the wash is its background
         Sem.Tag(disc, "container");
-        disc.Add(wash);
         disc.Add(Ui.Text("+", 0, 64.4f, 76.8f, 300, _t.InkSoft, Circle, 115.2f, HorizontalAlignment.Center));
         var (ring, glow) = Widgets.RailRing(_t, Circle, Circle, Circle / 2);
         disc.Add(glow); disc.Add(ring);
