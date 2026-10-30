@@ -124,6 +124,7 @@ PlayarrPage {
                     id: qrCanvas
                     anchors { fill: parent; margins: 12 * Tokens.u }
                     renderTarget: Canvas.Image
+                    smooth: false
                     onPaint: {
                         var m = page.qr, ctx = getContext("2d")
                         ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, width, height)

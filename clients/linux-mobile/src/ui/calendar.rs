@@ -220,6 +220,8 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
     let thumb = gtk4::Picture::builder()
         .content_fit(gtk4::ContentFit::Cover)
         .can_shrink(true)
+        .overflow(gtk4::Overflow::Hidden)
+        .css_classes(["pa-thumb-img"])
         .build();
     // A blank 40 x 60 box sizes the frame; the poster is an overlay, so its own size cannot widen it.
     let sizer = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
@@ -896,12 +898,12 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     let range_label = gtk4::Label::builder().css_classes(["pa-pill-label"]).build();
     let range = gtk4::Button::builder()
         .child(&range_label)
-        .css_classes(["pa-pill"])
+        .css_classes(["pa-pill", "range"])
         .build();
     let prev = round_arrow("←");
-    // The web's previous button sits 1.8 px right of the whole-pixel flow.
-    prev.set_margin_start(2);
-    prev.set_margin_end(-2);
+    // The web's previous button sits 0.8 px right of the whole-pixel flow.
+    prev.set_margin_start(1);
+    prev.set_margin_end(-1);
     let today_btn = pill("Today");
     today_btn.add_css_class("selected");
     let next = round_arrow("→");

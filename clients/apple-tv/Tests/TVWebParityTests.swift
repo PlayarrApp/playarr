@@ -312,9 +312,10 @@ final class TVWebParityTests: XCTestCase {
         )
 
         await model.load()
-        for _ in 0..<50 where !model.homeInitialFocusReady {
+        for _ in 0..<600 where !model.homeInitialFocusReady {
             try? await Task.sleep(for: .milliseconds(10))
         }
+        // the load retries a failed request (3 x 0.75 s) before it settles on the fallback
         XCTAssertTrue(model.homeInitialFocusReady)
         XCTAssertFalse(model.onDeckResolved, "a failed request must not be reported as successful")
     }

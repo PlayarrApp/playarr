@@ -4,6 +4,9 @@ import SwiftUI
 #if canImport(UIKit)
 import UIKit
 #endif
+#if os(macOS)
+import AppKit
+#endif
 
 struct TVPlayerView: View {
     @Environment(\.setShellChromeHidden) private var setShellChromeHidden
@@ -75,15 +78,8 @@ struct TVPlayerView: View {
             ZStack(alignment: .topLeading) {
                 Color.black.parityBox("container", fill: Color.black)
                 parityFrame
-                TVPlayerChrome(
-                    state: TVPlayerChromeState(
-                        position: parity.position,
-                        duration: parity.duration,
-                        isPlaying: false,
-                        qualityLabel: viewModel.qualityLabel,
-                        selectedQualityID: viewModel.selectedQualityID,
-                        menuOpen: parity.menuOpen
-                    ),
+                chrome(
+                    state: chromeState(position: parity.position, duration: parity.duration, isPlaying: false, menuOpen: parity.menuOpen),
                     frozen: true,
                     menuBackdrop: AnyView(parityFrame)
                 )
@@ -96,6 +92,51 @@ struct TVPlayerView: View {
         }
     }
 
+    /// What the chrome shows, from the player's own state: the parity route passes its fixed position and menu state.
+    private func chromeState(position: Double, duration: Double, isPlaying: Bool, menuOpen: Bool) -> TVPlayerChromeState {
+        var state = TVPlayerChromeState(
+            position: position,
+            duration: duration,
+            isPlaying: isPlaying,
+            qualityLabel: viewModel.qualityLabel,
+            selectedQualityID: viewModel.selectedQualityID,
+            menuOpen: menuOpen
+        )
+        state.isMuted = viewModel.isMuted
+        state.audioTracks = viewModel.audioTracks
+        state.subtitleTracks = viewModel.subtitleTracks
+        state.selectedAudioID = viewModel.selectedAudioID
+        state.selectedSubtitleID = viewModel.selectedSubtitleID
+        state.hasPrevious = viewModel.hasPrevious
+        state.hasNext = viewModel.hasNext
+        state.upcoming = viewModel.upcoming
+        state.currentTitle = viewModel.currentTitle.isEmpty ? title : viewModel.currentTitle
+        state.healthLines = viewModel.healthLines
+        return state
+    }
+
+    /// The chrome's actions, shared by playback and the parity route.
+    private func chrome(state: TVPlayerChromeState, controlsVisible: Bool = true, frozen: Bool = false, focus: FocusState<TVPlayerControl?>.Binding? = nil, menuBackdrop: AnyView? = nil) -> TVPlayerChrome {
+        var chrome = TVPlayerChrome(state: state, controlsVisible: controlsVisible, focus: focus, frozen: frozen, menuBackdrop: menuBackdrop)
+        chrome.onClose = { dismiss() }
+        chrome.onMinimise = { dismiss() } // there is no mini player: minimising leaves playback, as Back does
+        chrome.onTogglePlay = { handleSelect() }
+        chrome.onToggleQualityMenu = { handleSelect() }
+        chrome.onPrevious = { viewModel.playPrevious() }
+        chrome.onNext = { viewModel.playNext() }
+        chrome.onMute = { viewModel.toggleMute() }
+        chrome.onSelectAudio = { viewModel.selectAudio($0) }
+        chrome.onSelectSubtitle = { viewModel.selectSubtitle($0) }
+        chrome.onPlayEntry = { entry in
+            Task { await viewModel.play(mediaFileID: entry.mediaFileID, title: entry.title) }
+        }
+        chrome.onSeek = { viewModel.seek(to: $0) }
+        #if os(macOS)
+        chrome.onFullscreen = { NSApp.keyWindow?.toggleFullScreen(nil) }
+        #endif
+        return chrome
+    }
+
     /// The server's frame of the clip at the paused position.
     private var parityFrame: some View {
         TVAuthedImage(load: {
@@ -103,7 +144,7 @@ struct TVPlayerView: View {
         }) { Color.black }
             .frame(width: 1920, height: 1080)
             .clipped()
-            .parityBox("video", fill: Color.black)
+            .parityBox("image") // a still of the clip: this is an image, not a playing video
     }
 
     private var playerBody: some View {
@@ -128,18 +169,8 @@ struct TVPlayerView: View {
                         interaction.reveal()
                         focusedControl = interaction.focus
                     }
-                TVPlayerChrome(
-                    state: TVPlayerChromeState(
-                        position: viewModel.position,
-                        duration: viewModel.duration,
-                        isPlaying: viewModel.isPlaying,
-                        qualityLabel: viewModel.qualityLabel,
-                        selectedQualityID: viewModel.selectedQualityID,
-                        menuOpen: interaction.menuOpen
-                    ),
-                    onClose: { dismiss() },
-                    onTogglePlay: { handleSelect() },
-                    onToggleQualityMenu: { handleSelect() },
+                chrome(
+                    state: chromeState(position: viewModel.position, duration: viewModel.duration, isPlaying: viewModel.isPlaying, menuOpen: interaction.menuOpen),
                     controlsVisible: interaction.controlsVisible,
                     focus: $focusedControl
                 )
@@ -164,7 +195,7 @@ struct TVPlayerView: View {
                     default: break
                     }
                     // A seek never moves focus: keep it on the control the user left it on.
-                    if focusedControl == nil { focusedControl = interaction.focus }
+                    if focusedControl != interaction.focus { focusedControl = interaction.focus }
                 }
                 .onChange(of: focusedControl) { _, control in
                     if let control { interaction.focus = control }
@@ -190,6 +221,11 @@ struct TVPlayerView: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: viewModel.endOfPlayback.phase)
+        .task {
+            // Play/pause holds the focus when the player opens (web: the play control), not whichever control the system finds first.
+            try? await Task.sleep(for: .milliseconds(400))
+            if focusedControl == nil { focusedControl = interaction.focus }
+        }
         .task {
             viewModel.onExit = { dismiss() }
             // Returning from a suggestion must not restart a finished item.

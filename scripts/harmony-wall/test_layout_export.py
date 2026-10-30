@@ -52,6 +52,24 @@ class LayoutExportTest(unittest.TestCase):
         t = [e for e in doc["elements"] if e["role"] == "text"][0]
         self.assertEqual((t["rect"]["w"], t["fontSize"]), (31.5, 16.8))  # drawn at 1.05
 
+    def test_a_text_input_exports_the_text_range_its_own_layout_reports(self):
+        field = {"$type": "TextInput", "$rect": "[30.00, 300.00],[900.00, 132.00]", "$attrs": {"text": "the", "fontSize": "16.00fp", "fontColor": "#FFF4F0F1", "fontWeight": "400",
+                 "fontFamily": "HarmonyOS Sans", "accessibilityText": "Search"}, "$input": {"x": 0.0, "y": 36.0, "w": 60.0, "h": 60.0}}
+        doc = export(column([field]), "x", "dark", (360, 780, 3))
+        t = [e for e in doc["elements"] if e["role"] == "text"][0]
+        self.assertEqual((t["text"], t["fontSize"], t["fontWeight"]), ("the", 16.0, 400))
+        self.assertEqual(t["rect"], {"x": 10.0, "y": 112.0, "w": 20.0, "h": 20.0})
+        self.assertEqual([e["role"] for e in doc["elements"] if e["role"] == "textbox"], ["textbox"])
+        del field["$input"]
+        with self.assertRaises(ExportError):
+            export(column([field]), "x", "dark", (360, 780, 3))
+
+    def test_a_text_input_with_a_declared_role_still_exports_its_text(self):
+        field = {"$type": "TextInput", "$rect": "[30.00, 300.00],[900.00, 132.00]", "$attrs": {"text": "the", "fontSize": "16.00fp", "fontColor": "#FFF4F0F1", "fontWeight": "400",
+                 "fontFamily": "HarmonyOS Sans", "accessibilityText": "Search", "accessibilityTextHint": "pvrole:111"}, "$input": {"x": 0.0, "y": 36.0, "w": 60.0, "h": 60.0}}
+        doc = export(column([field]), "x", "dark", (360, 780, 3))
+        self.assertEqual([(e["role"], e["text"]) for e in doc["elements"] if e["role"] != "container"], [("textbox", "Search"), ("text", "the")])
+
     def test_a_text_without_glyph_runs_fails_the_export(self):
         tree = column([text("[0.00, 0.00],[200.00, 48.00]", "unmeasured", None)], rect="[0.00, 0.00],[1920.00, 1080.00]")
         with self.assertRaises(ExportError):
@@ -76,6 +94,16 @@ class LayoutExportTest(unittest.TestCase):
         t = text("[100.00, 100.00],[130.00, 56.00]", "Title", [run(0, 5, 10.0, 10.0, 33.0, 25.0)], accessibilityTextHint="pvrole:5")
         els = export(column([t], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))["elements"]
         self.assertEqual([(e["role"], e["text"]) for e in els if e["role"] != "container"], [("button", "Title"), ("text", "Title")])
+
+    def test_a_container_declared_as_text_exports_its_own_nameless_box(self):
+        row = {"$type": "Row", "$rect": "[100.00, 100.00],[1033.00, 44.00]", "$attrs": {"accessibilityTextHint": "pvrole:108"}, "$children": [text("[100.00, 105.00],[190.00, 25.00]", "Monday", [run(0, 6, 0.0, 0.0, 90.0, 25.0)])]}
+        els = export(column([row], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))["elements"]
+        self.assertEqual([(e["role"], e["text"], e["rect"]["w"]) for e in els if e["role"] != "container"], [("text", "", 1033.0), ("text", "Monday", 90.0)])
+
+    def test_a_box_with_only_a_top_border_exports_as_a_container(self):
+        card = {"$type": "Column", "$rect": "[100.00, 100.00],[1042.00, 169.00]", "$attrs": {"borderWidth": {"left": "0.00vp", "top": "1.00vp", "right": "0.00vp", "bottom": "0.00vp"}, "borderColor": "#15F4F0F1"}, "$children": []}
+        els = export(column([card], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))["elements"]
+        self.assertEqual([(e["role"], e["rect"]["h"]) for e in els], [("container", 1080.0), ("container", 169.0)])
 
     def test_text_height_is_the_native_range_height(self):
         t = text("[0.00, 0.00],[200.00, 48.00]", "Hi", [run(0, 2, 0.0, 4.0, 20.0, 19.0)])

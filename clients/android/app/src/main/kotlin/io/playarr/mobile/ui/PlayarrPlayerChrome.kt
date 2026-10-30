@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import androidx.compose.ui.draw.clip
 import io.playarr.shared.designsystem.page.layerAlpha
 import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityShape
@@ -1135,10 +1136,13 @@ internal fun PlayarrTelevisionControlBar(
                             Modifier
                         },
                     )
-                    .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(3.dp)),
-            )
-            Box(Modifier.fillMaxWidth(bufferedProgress.coerceIn(0f, 1f)).height(6.dp).parityBackground("container", Color.White.copy(alpha = 0.34f), RoundedCornerShape(3.dp), radius = 3f))
-            Box(Modifier.fillMaxWidth(progress).height(6.dp).parityBackground("container", WebKicker, RoundedCornerShape(3.dp), radius = 3f))
+            ) {
+                // Web: the track clips its fills (overflow hidden), so the buffered and played fills are plain rectangles inside the rounded track.
+                Box(Modifier.fillMaxSize().clip(RoundedCornerShape(3.dp)).background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(3.dp))) {
+                    Box(Modifier.fillMaxWidth(bufferedProgress.coerceIn(0f, 1f)).fillMaxHeight().parityBackground("container", Color.White.copy(alpha = 0.34f)))
+                    Box(Modifier.fillMaxWidth(progress).fillMaxHeight().parityBackground("container", WebKicker))
+                }
+            }
             if (scrubFocused) {
                 // Enlarged, highlighted thumb (web: 24 px white disc with an accent ring) while the scrubber has focus.
                 Box(Modifier.fillMaxWidth(progress).height(24.dp), contentAlignment = Alignment.CenterEnd) {
@@ -1183,7 +1187,8 @@ internal fun PlayarrTelevisionControlBar(
                     enabled = durationMs > 0L,
                     interactionSource = scrubSource,
                     thumb = {},
-                    track = {},
+                    // The track slot fills the box, so the slider's own node is the whole 44 px seek target (web `.player-seek`), not a 4 px sliver.
+                    track = { Spacer(Modifier.fillMaxSize()) },
                     modifier = Modifier
                         .playerTracked("seek", seekFocusRequester)
                         .onPreviewKeyEvent { event ->
@@ -1205,8 +1210,8 @@ internal fun PlayarrTelevisionControlBar(
                         }
                         .fillMaxWidth()
                         .height(if (tabletPlayer) 15.dp else 44.dp)
-                        
-                        .semantics { contentDescription = seekDescription },
+                        // The name is "Seek"; the position is the state, as TalkBack reads a slider.
+                        .semantics { contentDescription = seekLabel; stateDescription = seekDescription },
                 )
             }
         }

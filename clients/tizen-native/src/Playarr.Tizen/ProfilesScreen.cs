@@ -64,8 +64,6 @@ internal sealed class ProfilesScreen : IPage
             }
         }
         AddAdd(left + profiles.Count * Pitch);
-        AddPill(48, 1003.6f, 123, "Check for updates", null, "check for updates", () => { });
-        AddPill(1784.5f, 1003.6f, 87.5f, "Clients  →", null, "clients", () => { });
         _focus.Set(Math.Max(0, currentIndex));
     }
 

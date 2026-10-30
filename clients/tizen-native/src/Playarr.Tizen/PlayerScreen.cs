@@ -96,7 +96,7 @@ internal sealed class PlayerScreen : IPage
 
         // tools
         AddIcon("volume", 397, 980, "mute", dim: false); // web: mute, then the volume slider
-        var volume = new View { PositionX = 449, PositionY = 968, Size = new Size(130, 44) };
+        var volume = Sem.Tag(new View { PositionX = 449, PositionY = 968, Size = new Size(130, 44) }, "textbox", "Volume"); // web: the range input is the 130x44 control holding its track
         volume.Add(Ui.Box(0, 20, 130, 4, new Rgba(1, 1, 1, 0.18f), 2)); volume.Add(Ui.Box(0, 20, 130, 4, new Rgba(1, 1, 1, 0.9f), 2));
         _controls.Add(volume);
         _focus.Items.Add(new Focusable { Rect = () => new Box(449, 968, 130, 44), Label = "volume", Select = () => { }, Style = f => volume.Opacity = f ? 1f : 0.8f });

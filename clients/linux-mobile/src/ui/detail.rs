@@ -98,6 +98,9 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
         .css_classes(["pa-key-art", "pa-khero"])
         .valign(gtk4::Align::Start)
         .build();
+    // The web draws the art 1.04 times as wide as the phone, from the left edge and 4 px above the top.
+    art.set_margin_top(-4);
+    art.set_margin_end(-14);
     art.set_size_request(-1, 223);
     let fade = |h: i32, class: &str| {
         let b = gtk4::Box::builder()
@@ -116,7 +119,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
 
     let page = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     page.add_css_class("pa-page-fill");
-    page.set_margin_bottom(32);
     let status = gtk4::Label::builder()
         .label("Loading…")
         .css_classes(["pa-muted"])
@@ -219,6 +221,10 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
                 .build(),
         ),
         _ => row.append(&icons::image(icon, if small { 9 } else { 12 }, tone)),
+    }
+    // The glyph is decoration: the control's name is its label.
+    if let Some(g) = row.first_child().and_then(|c| c.downcast::<gtk4::Label>().ok()) {
+        crate::layout::decorative(&g);
     }
     let class = if small { "pa-action-label-s" } else { "pa-action-label" };
     // The large pills wrap ("Resume / from 0:23") as the web's do; the small ones fit on one line.
@@ -540,7 +546,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     }
     let row2 = gtk4::Box::builder().spacing(8).margin_top(12).build();
     let watch = action_pill("add", "Add to watchlist", 108, false, true);
-    crate::layout::name(&watch, "+ Add to watchlist");
+    crate::layout::name(&watch, "Add to watchlist");
     {
         let (app, work) = (app.clone(), w.clone());
         watch.connect_clicked(move |b| {
@@ -562,7 +568,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         });
     }
     let playlist = action_pill("add", "Add to Playlist", 104, false, true);
-    crate::layout::name(&playlist, "+ Add to Playlist");
+    crate::layout::name(&playlist, "Add to Playlist");
     {
         let (app, work) = (app.clone(), w.clone());
         playlist.connect_clicked(move |_| super::actions::show(&app, &work));
@@ -659,6 +665,8 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         }
     }
     if let Some((outer, _)) = band {
+        // The band ends 2 px lower than its content on the web; the page keeps its total.
+        page.add_css_class("banded");
         page.append(&outer);
     }
     // Nothing watched: the page opens at its top (the web refs), not at the first season.

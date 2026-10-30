@@ -5,11 +5,12 @@
 //   PLAYARR_TIZEN_DISPLAY (X display of the emulator window, default :25), PLAYARR_TIZEN_WINDOW (X window id when the window is not at 0,0
 //   of its display, default root), PLAYARR_SDB.
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertDeviceTestIdentity, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl } from "../device-test-guard.mjs";
 import { captureWallTime } from "../capture-timezone.mjs";
+import { changedInside, decode as decodePng, diffMask, planBatches, restoredDrift } from "../tizen-native/occlusion.mjs";
 
 const SDB = process.env.PLAYARR_SDB ?? "sdb";
 const SERIAL = process.env.PLAYARR_TIZEN_SERIAL ?? "emulator-26101";
@@ -17,6 +18,9 @@ const PORT = Number(process.env.PLAYARR_TIZEN_FORWARD ?? 18890);
 const DISPLAY = process.env.PLAYARR_TIZEN_DISPLAY ?? ":25";
 const base = `http://127.0.0.1:${PORT}`;
 // key pacing: a busy host slows the emulator, and keys sent faster than it renders are lost (raise on a loaded machine)
+const OCCLUSION_RENDER_MS = Number(process.env.PLAYARR_TIZEN_OCCLUSION_MS ?? 600); // time for the emulator to repaint after views are hidden or restored
+// toggling views off and on can leave a few antialiased edge pixels (a rounded fill re-rasterised); a real failure to restore changes far more
+const RESTORE_DRIFT_PIXELS = 2073; // 0.1 % of a 1920x1080 grab
 const KEY_MS = Number(process.env.PLAYARR_TIZEN_KEY_MS ?? 900);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -143,16 +147,57 @@ export async function createDriver({ request = call, delay = sleep, env = proces
       // The layout document (docs/parity/LAYOUT.md) of the same screen state: the app walks its own NUI view tree.
       if (!env.PARITY_NO_LAYOUT) {
         const theme = basename(dirname(file)), screen = basename(file, ".png");
+        const query = `screen=${encodeURIComponent(screen)}&theme=${encodeURIComponent(theme)}`;
         // text geometry is read from the labels' own layout, which can lag a frame behind the first read: take the document once two reads agree
-        let doc = await request("POST", `/layout?screen=${encodeURIComponent(screen)}&theme=${encodeURIComponent(theme)}`);
-        let stable = false;
-        for (let i = 0; i < 6 && !stable; i++) {
-          await delay(300);
-          const again = await request("POST", `/layout?screen=${encodeURIComponent(screen)}&theme=${encodeURIComponent(theme)}`);
-          stable = again?.json === doc?.json;
-          doc = again;
+        const settled = async (extra = "") => {
+          let doc = await request("POST", `/layout?${query}${extra}`);
+          let stable = false;
+          for (let i = 0; i < 6 && !stable; i++) {
+            await delay(300);
+            const again = await request("POST", `/layout?${query}${extra}`);
+            stable = again?.json === doc?.json;
+            doc = again;
+          }
+          if (!stable) throw new Error(`Tizen layout of ${theme}/${screen} never settled: two consecutive reads differ`);
+          return doc;
+        };
+        let doc = await settled("&cands=1");
+        if (Array.isArray(doc?.cands)) {
+          // Visibility on the real screen: hide batches of non-touching candidates, grab, keep a candidate only if its own pixels changed.
+          const base = decodePng(readFileSync(file));
+          const noise = diffMask(decodePng(readFileSync(first)), base);
+          const keep = new Set();
+          const probe = `${file}.occlusion.png`;
+          const toggle = async (indices, whole) => {
+            for (const batch of planBatches(indices.map((i) => doc.cands[i])).map((b) => b.map((k) => indices[k]))) {
+              await request("POST", `/hide?idx=${batch.join(",")}${whole ? "&whole=1" : ""}`);
+              // the emulator can lag a frame behind a property change: take the grab once two consecutive grabs of the changed screen are identical
+              let hidden = null;
+              for (let attempt = 0; attempt < 8; attempt++) {
+                await delay(OCCLUSION_RENDER_MS);
+                capture(probe);
+                const grabbed = decodePng(readFileSync(probe));
+                const settledGrab = hidden !== null && !diffMask(hidden, grabbed).some(Boolean);
+                hidden = grabbed;
+                if (settledGrab) break;
+              }
+              await request("POST", "/unhide");
+              for (const index of batch) if (changedInside(doc.cands[index], base, hidden, noise)) keep.add(index);
+            }
+          };
+          try {
+            const all = doc.cands.map((_, i) => i);
+            await toggle(all, false);
+            // a container whose own fill is covered by what it holds (a poster over its card) is still visible through its content
+            await toggle(all.filter((i) => !keep.has(i) && doc.cands[i][4] === 1), true);
+          } finally { await request("POST", "/unhide"); rmSync(probe, { force: true }); }
+          await delay(OCCLUSION_RENDER_MS);
+          capture(probe);
+          const restored = restoredDrift(base, decodePng(readFileSync(probe)), noise);
+          rmSync(probe, { force: true });
+          if (restored > RESTORE_DRIFT_PIXELS) throw new Error(`Tizen ${theme}/${screen} did not return to its pixels after the visibility check (${restored} pixels differ)`);
+          doc = await settled(`&keep=${[...keep].sort((a, b) => a - b).join(",")}`);
         }
-        if (!stable) throw new Error(`Tizen layout of ${theme}/${screen} never settled: two consecutive reads differ`);
         if (typeof doc?.json === "string") {
           const target = join(dirname(dirname(file)), "layout", theme, `${screen}.json`);
           if (writeLayout) writeLayout(target, doc.json);

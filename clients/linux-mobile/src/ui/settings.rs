@@ -53,6 +53,7 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
         .valign(gtk4::Align::Center)
         .build();
     // The web nudges the first (hovered) row's arrow 5 px right.
+    crate::layout::decorative(&arrow);
     arrow.set_margin_end(if n == 1 { -10 } else { 0 });
     row.append(&arrow);
 

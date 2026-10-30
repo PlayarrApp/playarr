@@ -40,13 +40,14 @@ extension View {
 /// dark keeps the calibrated soft-surface ramp.
 struct TVRailPanelGradient: View {
     var width: CGFloat
+    /// The exported container spans the whole screen (the page panel) unless the panel's own box is the one the web reports.
+    var bleed = true
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing)
             .frame(width: width)
             .frame(maxWidth: .infinity, alignment: .trailing)
-            .overlay(alignment: .trailing) { Color.clear.frame(width: width).parityBox("container", fill: DesignTokens.Stage.surface, bleed: true) }
     }
 
     private var stops: [Gradient.Stop] {
@@ -147,18 +148,15 @@ struct TVPageHeader: View {
                     )
                 )
                 .overlay {
-                    // the control is 50 wide; a focused one draws its 2 pt ring outside it
-                    Color.clear.frame(width: 50, height: 50)
-                        .overlay(
-                            Text("\u{2190}")
-                                .font(TVTheme.font(size: 17.3, weight: .semibold))
-                                .foregroundStyle(DesignTokens.Color.textSecondary)
-                                .parityLayout(text: "\u{2190}", size: 17.3, weight: 720, color: DesignTokens.Color.textSecondary)
-                        )
-                        .parityBox(backRole, text: backName, radius: 25, fill: DesignTokens.Stage.surfaceStrong, alpha: 0.7)
-                        .parityBackdrop(DesignTokens.Stage.surface)
+                    // the arrow drawn in the disc; the disc is not a control here (the shell handles Back), so only what is drawn is reported
+                    Text("\u{2190}")
+                        .font(TVTheme.font(size: 17.3, weight: .semibold))
+                        .foregroundStyle(DesignTokens.Color.textSecondary)
+                        .parityLayout(text: "\u{2190}", size: 17.3, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textSecondary)
+                        .frame(width: 50, height: 50)
                 }
                 .placed(x: origin, y: backFocused ? 52.2 : 56.2, w: size, h: size)
+                .parityBox("container", radius: size / 2, fill: DesignTokens.Stage.surfaceStrong, alpha: 0.7)
             // Web `.page-header`: the title, a hairline divider and the subtitle in one row, centred on the title. Only when
             // the row would run into the clock (x 466) does the subtitle drop under the title.
             let titleText = Text(title)
@@ -440,7 +438,6 @@ struct TVKeyArt: View {
 struct TVStageWash: View {
     var body: some View {
         ZStack {
-            Color.clear.parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
             LinearGradient(
                 stops: [
                     // Web `.tv-stage-wash`: surface 94% at 0, 90% at 36%, clear at 52%.
@@ -576,7 +573,7 @@ struct TVDrawer<Content: View>: View {
                         .foregroundStyle(DesignTokens.Color.textPrimary)
                         .parityLayout(text: "\u{00D7}", size: 26.88, weight: Int(720), color: DesignTokens.Color.textPrimary)
                         .frame(width: 48, height: 50)
-                        .parityBox("button", text: title == "Filters" ? "Close filters" : "Close", radius: Self.closeRadius, fill: DesignTokens.Stage.surfaceSoft)
+                        .parityBox("button", text: "Close", radius: Self.closeRadius, fill: DesignTokens.Stage.surfaceSoft)
                         .background(RoundedRectangle(cornerRadius: Self.closeRadius, style: .continuous).fill(DesignTokens.Stage.surfaceSoft))
                         #if os(macOS)
                         // Web `.drawer-close`: a round button with the shared dark focus ring; the frozen capture draws the ring of
@@ -814,6 +811,7 @@ struct TVCardButton<Label: View>: View {
                                                                   gridPosition: parityGridPosition) }
         #endif
         .accessibilityLabel(accessibleName ?? work.title)
+        .accessibilityAddTraits(.isLink) // it opens the title
         .simultaneousGesture(LongPressGesture(minimumDuration: 0.65).onEnded { _ in
             longPressed = true
             openActions(work)
@@ -1034,10 +1032,10 @@ struct TVStatusPill: View {
         Text(label)
             .font(TVTheme.font(size: 13.44, css: 750))
             .foregroundStyle(DesignTokens.Color.textPrimary)
-            .parityLayout(text: label, size: 13.44, weight: 750, color: DesignTokens.Color.textPrimary)
+            // Web: the pill is the text node's parent, so the text carries the pill's fill (over the page surface) and radius.
+            .parityLayout(text: label, size: 13.44, weight: 750, color: DesignTokens.Color.textPrimary, fill: colour, fillAlpha: 0.14, radius: 13.44, over: DesignTokens.Stage.surface)
             .padding(.horizontal, 10.4)
             .frame(height: 26.6)
-            .parityBox("container", radius: 13.44, fill: colour, alpha: 0.14)
             .background(Capsule().fill(colour.opacity(0.14)).background(Capsule().fill(DesignTokens.Stage.surface)))
             .overlay(Capsule().stroke(colour.opacity(0.6), lineWidth: 1))
             .fixedSize()

@@ -7,6 +7,7 @@ struct Card {
   build() {
     Column() {
       Text('a')
+      TextInput({ text: this.q })
     }
     .width(10)
   }
@@ -30,7 +31,8 @@ class PatchHideTest(unittest.TestCase):
         self.assertIn("@StorageLink('pvHid') pvHid: string = '';\n  pvInst: number = pvNextInst();", out)
         self.assertIn("Text('a').id(pvKey(this.pvInst, 'pvh2')).visibility(pvVis(this.pvHid, pvKey(this.pvInst, 'pvh2')))", out)
         self.assertIn("}.id(pvKey(this.pvInst, 'pvh1')).accessibilityDescription(pvKey(this.pvInst, 'pvh1')).visibility(pvVis(this.pvHid, pvKey(this.pvInst, 'pvh1')))\n    .width(10)", out)  # after the closure, before the app's own attributes
-        self.assertIn("}.id(pvKey(0, 'pvh3')).accessibilityDescription(pvKey(0, 'pvh3')).visibility(pvVis('', pvKey(0, 'pvh3')))", out)  # a global builder has no state: never hidden
+        self.assertIn("}.id(pvKey(0, 'pvh4')).accessibilityDescription(pvKey(0, 'pvh4')).visibility(pvVis('', pvKey(0, 'pvh4')))", out)  # a global builder has no state: never hidden
+        self.assertIn("TextInput({ controller: pvTic(pvKey(this.pvInst, 'pvh3')), text: this.q })", out)
         self.assertEqual(out.count("@StorageLink"), 1)
 
 

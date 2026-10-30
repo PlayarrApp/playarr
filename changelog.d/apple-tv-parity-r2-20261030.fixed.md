@@ -1,0 +1,1 @@
+- Apple TV and Mac: the Who's watching card, the calendar agenda list panel and status pills follow the web, and the layout export reports scaled text at the size it is drawn.
