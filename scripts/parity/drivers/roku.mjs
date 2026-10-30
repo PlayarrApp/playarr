@@ -413,6 +413,8 @@ export function calendarCellLeftEdgeAction(focus) {
   return "left";
 }
 
+// Same grid row: a whole-cell stop (centre 75 px down) and a chip stop (centre 22 px down) of one row are at most 53 px apart; the next row is 150 px away.
+const CALENDAR_SAME_ROW_DY = 60;
 export function calendarFocusTransitionError(from, key, to) {
   if (!from || !to || !CALENDAR_ACTIONS.has(from.action) || !CALENDAR_ACTIONS.has(to.action)) return null;
   const fromX = from.rect.x + from.rect.w / 2;
@@ -420,11 +422,11 @@ export function calendarFocusTransitionError(from, key, to) {
   const toX = to.rect.x + to.rect.w / 2;
   const toY = to.rect.y + to.rect.h / 2;
   if (from.action === "cell" && key === "right" &&
-      (to.action !== "cell" || Math.abs(toY - fromY) > 2 || toX <= fromX + 1)) {
+      (to.action !== "cell" || Math.abs(toY - fromY) > CALENDAR_SAME_ROW_DY || toX <= fromX + 1)) {
     return "calendar-right-did-not-move-to-a-later-cell-in-the-same-row";
   }
   if (from.action === "cell" && key === "left" &&
-      (to.action !== "cell" || Math.abs(toY - fromY) > 2 || toX >= fromX - 1)) {
+      (to.action !== "cell" || Math.abs(toY - fromY) > CALENDAR_SAME_ROW_DY || toX >= fromX - 1)) {
     return "calendar-left-did-not-move-to-an-earlier-cell-in-the-same-row";
   }
   if (from.action === "cell" && key === "up") {
