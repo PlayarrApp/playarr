@@ -21,6 +21,8 @@ struct TVPlayerView: View {
     let parity: (position: Double, duration: Double, menuOpen: Bool)?
     @State private var interaction = TVPlayerInteraction()
     @FocusState private var focusedControl: TVPlayerControl?
+    /// Set by the first remote move or back: the opening focus on Play is then no longer enforced.
+    @State private var remoteUsed = false
     #if os(macOS)
     /// The Mac shows covers as a window layer, not a presentation (macOS/PlatformShims.swift).
     @Environment(\.macCoverDismiss) private var dismiss
@@ -177,6 +179,7 @@ struct TVPlayerView: View {
                 }
                 .onPlayPauseCommand { viewModel.togglePlay(); interaction.reveal() }
                 .onExitCommand {
+                    remoteUsed = true
                     switch interaction.back() {
                     case .closedMenu: focusedControl = interaction.focus
                     case .hidControls: break
@@ -184,6 +187,7 @@ struct TVPlayerView: View {
                     }
                 }
                 .onMoveCommand { direction in
+                    remoteUsed = true
                     interaction.reveal()
                     switch direction {
                     case .left:
@@ -223,8 +227,12 @@ struct TVPlayerView: View {
         .animation(.easeInOut(duration: 0.25), value: viewModel.endOfPlayback.phase)
         .task {
             // Play/pause holds the focus when the player opens (web: the play control), not whichever control the system finds first.
-            try? await Task.sleep(for: .milliseconds(400))
-            if focusedControl == nil { focusedControl = interaction.focus }
+            // The system focuses the first focusable view it finds (the scrubber) and writes that into focusedControl, so a nil check
+            // never fires: set the opening control outright, three times, as the chrome may appear after the stream is negotiated.
+            for delay in [400, 800, 1500] {
+                try? await Task.sleep(for: .milliseconds(delay))
+                if interaction.controlsVisible, !remoteUsed, focusedControl != .play { focusedControl = .play; interaction.focus = .play }
+            }
         }
         .task {
             viewModel.onExit = { dismiss() }

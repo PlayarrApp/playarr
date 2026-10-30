@@ -148,6 +148,7 @@ struct TVPlayerChrome: View {
             .buttonStyle(TVFocusableCardButtonStyle())
             .focusEffectDisabled()
             .accessibilityLabel("Minimise player")
+            .macPlayerTag("Minimise player")
             .placed(x: 1678, y: 37.8, w: 124, h: 48)
 
             Button(action: onClose) {
@@ -168,6 +169,7 @@ struct TVPlayerChrome: View {
             .focusEffectDisabled()
             .disabled(!controlsVisible) // not .focusable: on a Button it adds a second, inert focus target
             .modifier(TVFocusTag(binding: focus, control: .close))
+            .macPlayerTag("Close player")
             .placed(x: 1814, y: 37.8, w: 48, h: 48)
         }
     }
@@ -238,6 +240,7 @@ struct TVPlayerChrome: View {
         .focusEffectDisabled()
         .disabled(!enabled)
         .accessibilityLabel(name)
+        .macPlayerTag(name)
         .placed(x: x - 22, y: 958, w: 64, h: 64, alignment: .center)
     }
 
@@ -251,6 +254,7 @@ struct TVPlayerChrome: View {
         .buttonStyle(TVFocusableCardButtonStyle())
         .focusEffectDisabled()
         .accessibilityLabel(name)
+        .macPlayerMenuTarget(name)
         .placed(x: x - 22, y: 958, w: 64, h: 64, alignment: .center)
     }
 
@@ -279,6 +283,7 @@ struct TVPlayerChrome: View {
             .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
             .disabled(!controlsVisible) // not .focusable: on a Button it adds a second, inert focus target
             .modifier(TVFocusTag(binding: focus, control: .play))
+            .macPlayerTag(state.isPlaying ? "Pause" : "Play", preferred: true)
             .placed(x: 147.6, y: 958, w: 64, h: 64)
             icon("forward.end", x: 247.2, name: "Next episode", enabled: state.hasNext, action: onNext)
             HStack(spacing: 0) {
@@ -350,6 +355,7 @@ struct TVPlayerChrome: View {
             .focusEffectDisabled()
             .disabled(!controlsVisible) // not .focusable: on a Button it adds a second, inert focus target
             .modifier(TVFocusTag(binding: focus, control: .quality))
+            .macPlayerTag("Quality: \(state.qualityLabel)")
             .accessibilityLabel("Quality: \(state.qualityLabel)")
             .placed(x: 1456.6, y: 959.8, w: 173.4, h: 60.5)
             iconMenu("info.circle", x: 1652.8, name: "Info and playback health") {
@@ -612,5 +618,27 @@ enum TVPlayerStage: Equatable {
         case .ready: return .chrome(videoAttached: true, spinner: false)
         case .failed(let message): return .failed(message)
         }
+    }
+}
+
+extension View {
+    /// The Mac's focus is its own engine, not a SwiftUI focus the labels can read: name the control in parity-state.json
+    /// (applied outside the Button, where the focus target reads it). tvOS reads `parityFocusTag` inside the label.
+    @ViewBuilder fileprivate func macPlayerTag(_ title: String, preferred: Bool = false) -> some View {
+        #if os(macOS)
+        environment(\.macParityTag, MacParityTag(title: title, id: "player-" + title, rail: nil, index: nil, gridPosition: nil))
+            .environment(\.macPreferredFocus, preferred)
+        #else
+        self
+        #endif
+    }
+
+    /// A menu button is not one of the module's shadowed Buttons: on the Mac it needs to be made a focus target as well.
+    @ViewBuilder fileprivate func macPlayerMenuTarget(_ title: String) -> some View {
+        #if os(macOS)
+        macFocusTarget().macPlayerTag(title)
+        #else
+        self
+        #endif
     }
 }

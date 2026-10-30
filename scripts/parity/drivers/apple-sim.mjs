@@ -429,11 +429,28 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       const base = mac ? dirname(macState) : join(run("xcrun", ["simctl", "get_app_container", udid, bundle, "data"]).trim(), "Documents");
       const captureID = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       rmSync(join(base, "parity-layout.json"), { force: true });
-      if (mac) {
-        rmSync(file, { force: true });
-        run(notify, [`snapshot:${file}`]);
-        for (let i = 0; i < 480 && !(existsSync(file) && statSync(file).size > 0); i++) await sleep(250); // a busy grid renders slowly
-      } else run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", file]);
+      const grab = async (to) => {
+        if (mac) {
+          rmSync(to, { force: true });
+          run(notify, [`snapshot:${to}`]);
+          for (let i = 0; i < 480 && !(existsSync(to) && statSync(to).size > 0); i++) await sleep(250); // a busy grid renders slowly
+        } else run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", to]);
+        return existsSync(to) && statSync(to).size > 0 ? readFileSync(to) : Buffer.alloc(0);
+      };
+      // Settled frame: the screen is captured only once two frames taken a second apart are byte-identical (artwork decoding, a
+      // focus animation or a scroll still moving made twin runs differ). Bounded at 30 tries; a screen that never settles is kept
+      // and reported, never faked.
+      const probe = file.replace(/\.png$/, ".settle.png");
+      let prev = await grab(probe), settled = false;
+      for (let i = 0; i < 30 && !settled; i += 1) {
+        await sleep(1000);
+        const next = await grab(probe);
+        settled = next.length > 0 && next.equals(prev);
+        prev = next;
+      }
+      rmSync(probe, { force: true });
+      if (!settled) console.log(`  frame never settled in 30 s (${basename(file)}), capturing anyway`);
+      await grab(file);
       if (!existsSync(file) || statSync(file).size < 20000) throw new Error("empty frame");
       if ((state().route ?? "").startsWith("/login")) throw new Error("signed out");
       // The request goes out only now, with the screenshot taken: the app hides each item in turn to measure what is visible, which
