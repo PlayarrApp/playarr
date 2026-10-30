@@ -697,6 +697,13 @@ export async function createDriver() {
     },
     async screenshot(file) {
       await guard();
+      // A loaded host lets a late layout pass (icon or font settling) move nav labels by 1 px after the readiness checks: take the grab only once every
+      // element rect has held still across three samples 400 ms apart (measured on the page, nothing assumed).
+      if (!REAL_TV) {
+        const sig = `(() => { let h = 0; for (const e of document.querySelectorAll("*")) { const r = e.getBoundingClientRect(); h = (h * 31 + Math.round(r.left * 100) + 7 * Math.round(r.top * 100) + 13 * Math.round(r.width * 100) + 17 * Math.round(r.height * 100)) % 2147483647; } return h; })()`;
+        let prev = null, still = 0;
+        for (let i = 0; i < 40 && still < 3; i += 1) { const now = await ev(sig); still = now !== undefined && now === prev ? still + 1 : 0; prev = now; await sleep(400); }
+      }
       if (REAL_TV) {
         // Real TV: no X display. The inspector's Page.captureScreenshot shows the app only (no system menus, keyboard or video plane).
         if (await ev(BAD)) throw new Error("signed out or error page");
