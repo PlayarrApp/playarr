@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Android layout exporter driver (docs/parity/LAYOUT.md): layout.py <screen> <theme dark|light> <phone|tablet> <out.json>
 Asks the debug build (PlayarrLayoutExport, shared with the TV client) to write its layout, and checks the answer belongs to this capture.
+PARITY_PNG_OUT=<file> saves the verified stable screenshot, so the PNG and the layout JSON describe the same frame.
 Nothing is sampled from the screenshot here: backgrounds, colours, fonts and radii are the app's own paint-time values."""
 import json, os, re, subprocess, sys, time, uuid
 
@@ -43,4 +44,9 @@ if abs(vw - dev_w) > 1 or abs(vh - dev_h) > 1: sys.exit(f"exported viewport {vw}
 doc["viewport"] = {"w": vw, "h": vh, "dpr": r2(density)}
 os.makedirs(os.path.dirname(out), exist_ok=True)
 json.dump(doc, open(out, "w"))
+# The screenshot the export was verified against (taken before and after the broadcast, byte-identical) is the one to publish with it.
+png = os.environ.get("PARITY_PNG_OUT")
+if png:
+    with open(png + ".tmp", "wb") as f: f.write(after)
+    os.replace(png + ".tmp", png)
 print("layout", screen, theme, len(doc["elements"]), "elements")

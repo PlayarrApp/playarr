@@ -230,6 +230,11 @@ private fun ExperienceCalendarScreen(
             PlayarrNavItem("next", playarrString(PlayarrString.CalendarNext), PlayarrActionIcon.Next, onClick = holder::next),
         ),
     )
+    // Tablet: web's toolbar text is 11.52 css px with 21 px label padding at the tablet viewport (the TV canvas tokens are 14.72 and 20 on 1920 px).
+    val navStage = LocalStageScale.current
+    androidx.compose.runtime.CompositionLocalProvider(
+        io.playarr.shared.designsystem.page.LocalPlayarrNavLabelStyle provides (if (isTelevision && navStage != 1f) io.playarr.shared.designsystem.page.PlayarrNavLabelStyle((11.52f / navStage).sp, (21f / navStage).dp) else null),
+    ) {
     PlayarrPageLayout(
         pageId = PlayarrPageId.Calendar,
         header = playarrPageHeader(title = playarrString(PlayarrString.CalendarTitle), backLabel = playarrString(PlayarrString.CommonBackToHomeLower), largeTitle = true, onBack = onBack, filters = PlayarrFilterAction(
@@ -303,6 +308,7 @@ private fun ExperienceCalendarScreen(
                 }
             }
         }
+    }
     }
     if (jumpOpen) {
         CalendarJumpDialog(
@@ -639,7 +645,7 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (measureOnly) Spacer(Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp))
-            else CalendarPoster(entry.posterUrl, Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp).parityBox("image", radius = 6f).clip(RoundedCornerShape(6.dp)))
+            else CalendarPoster(entry.posterUrl, Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp), measuredRadius = 6f, clip = RoundedCornerShape(6.dp))
             // Phone agenda only (static refs; the week keeps its pitch): the lines sit 1.9 dp apart, not 2.4, and the block 1 dp higher than the row centre gives.
             val phoneEntry = agenda && m === PhoneCalendarMetrics
             val lineGap = if (phoneEntry) 1.9.dp else 2.4.dp
@@ -1880,19 +1886,23 @@ private fun calendarEntryDetail(entry: CalendarEntry): String {
 }
 
 @Composable
-private fun CalendarPoster(url: String?, modifier: Modifier) {
+private fun CalendarPoster(url: String?, modifier: Modifier, measuredRadius: Float? = null, clip: androidx.compose.ui.graphics.Shape? = null) {
     val shape = RoundedCornerShape(8.dp)
+    // A poster that is not loaded draws only a filled box: it is exported as that container, never as an image.
+    val kind = if (url.isNullOrBlank()) "container" else "image"
+    val measured = if (measuredRadius != null) modifier.parityBox(kind, radius = measuredRadius) else modifier
+    val shaped = if (clip != null) measured.clip(clip) else measured
     if (url.isNullOrBlank()) {
         // No poster: only a painted Box is drawn, so a parity image hook on this slot is a container.
         androidx.compose.runtime.CompositionLocalProvider(io.playarr.shared.designsystem.page.LocalParityImagePlaceholder provides true) {
-            Box(modifier.background(WebSurfaceSoft, shape))
+            Box(shaped.background(WebSurfaceSoft, shape))
         }
     } else {
         AsyncImage(
             model = url,
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = modifier.background(WebSurfaceSoft, shape),
+            modifier = shaped.background(WebSurfaceSoft, shape),
         )
     }
 }

@@ -507,10 +507,12 @@ impl Lib {
                 let caret = gtk4::Label::builder()
                     .label("\u{2304}")
                     .css_classes(["pa-dd-caret"])
+                    .margin_start(1)
                     .build();
                 crate::layout::decorative(&caret);
                 inner.append(&caret);
             }
+            dd.set_margin_top(-1);
             col.append(&dd);
             drops.push(dd);
             let _ = i;
