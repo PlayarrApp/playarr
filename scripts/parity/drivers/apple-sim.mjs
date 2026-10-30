@@ -469,7 +469,16 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       }
       if (!layout) throw new Error(`layout export missing or not for this capture (${id})`);
       // The layout and the PNG must describe one render: the screen as it is once the layout is measured must equal the frame saved.
-      const after = await grab(probe);
+      // Hiding each item in turn restarts image decoding and fades; let the screen settle again (two equal grabs) before comparing.
+      let after = await grab(probe);
+      for (let i = 0; i < 20; i += 1) {
+        if (after.equals(shot)) break;
+        await sleep(1000);
+        const next = await grab(probe);
+        const steady = next.equals(after);
+        after = next;
+        if (steady) break;
+      }
       rmSync(probe, { force: true });
       if (!after.equals(shot)) throw new Error(`the screen changed while the layout was measured (${id}): PNG and layout are not one render`);
       rmSync(join(base, "parity-layout-request"), { force: true });
