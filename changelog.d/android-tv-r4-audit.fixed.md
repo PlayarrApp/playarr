@@ -1,1 +1,1 @@
-Android TV: the profiles screen reports its focused profile, the letter rail targets are the full 44 px buttons, the seek slider and video surface are exported as drawn, and the layout export drops unpainted wrappers, keeps drawer occluders and measures a control's border box.
+- Android TV: the profiles screen reports its focused profile, the letter rail targets are the full 44 px buttons, the seek slider and video surface are exported as drawn, and the layout export drops unpainted wrappers, keeps drawer occluders and measures a control's border box.
