@@ -18,14 +18,14 @@ fn glyph(icon: &str) -> &'static str {
 
 fn row(icon: &str, label: &str, _tone: Tone) -> gtk4::Button {
     let content = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
-    content.append(
-        &gtk4::Label::builder()
-            .label(glyph(icon))
-            .css_classes(["pa-row-glyph", icon])
-            .xalign(0.0)
-            .width_request(42)
-            .build(),
-    );
+    let mark = gtk4::Label::builder()
+        .label(glyph(icon))
+        .css_classes(["pa-row-glyph", icon])
+        .xalign(0.0)
+        .width_request(42)
+        .build();
+    crate::layout::decorative(&mark);
+    content.append(&mark);
     content.append(&gtk4::Label::builder().label(label).xalign(0.0).hexpand(true).build());
 
     gtk4::Button::builder().child(&content).css_classes(["pa-row"]).build()

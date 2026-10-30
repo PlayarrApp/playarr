@@ -22,7 +22,7 @@ mkdir -p "$O"
 layout() {
   local theme=$1 name=$2 f=/tmp/pa-layout.json
   "$H/pmssh.sh" "rm -f $f; printf %s 'layout:$name:$f' > $PLAYARR_CONTROL" </dev/null
-  for _ in $(seq 1 20); do "$H/pmssh.sh" "[ -s $f ]" </dev/null && break; sleep 1; done
+  for _ in $(seq 1 180); do "$H/pmssh.sh" "[ -s $f ]" </dev/null && break; sleep 1; done
   mkdir -p "$O/$theme/layout"; "$H/pmssh.sh" "cat $f" </dev/null > "$O/$theme/layout/$name.json"
 }
 for t in $THEMES; do

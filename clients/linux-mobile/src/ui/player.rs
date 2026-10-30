@@ -304,7 +304,9 @@ fn start_pipeline(
     // do nothing yet; wire each when the native player gains that feature. Audio is disabled, as the web's is without tracks.
     let idle = |icon: &str, enabled: bool| {
         let b = ctl(icon, false);
-        b.set_sensitive(enabled);
+        // The web's audio button is inert but drawn at full strength: it takes no input and no focus rather than dimming.
+        b.set_can_target(enabled);
+        b.set_focusable(enabled);
         b
     };
     let scale = gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 1.0, 0.001);
@@ -319,7 +321,6 @@ fn start_pipeline(
     times.set_margin_top(-6);
     // One label draws "pos / duration"; the separator is its own span.
     let times_inner = gtk4::Label::builder()
-        .accessible_role(gtk4::AccessibleRole::Generic)
         .use_markup(true)
         .css_classes(["pa-player-time"])
         .halign(gtk4::Align::Center)
