@@ -478,7 +478,7 @@ private fun Modifier.tabletHeroBackdrop(stage: Float): Modifier = layout { measu
     layout(width + start, constraints.maxHeight) { placeable.place(start, 0) }
 }
     .graphicsLayer { scaleX = 1.04f; scaleY = 1.04f; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f) }
-    .parityBox("image", opacity = if (webIsDark) 0.72f else 0.42f)
+    .parityBox("image", opacity = heroArtOpacity(webIsDark))
     .heroBackdropFade(true)
 
 private fun Modifier.tvHeroBackdrop(): Modifier =
@@ -492,7 +492,7 @@ private fun Modifier.tvHeroBackdrop(): Modifier =
             layout(start + placeable.width, constraints.maxHeight) { placeable.place(start, 0) }
         }
             .graphicsLayer { scaleX = 1.04f; scaleY = 1.04f; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f) }
-            .parityBox("image", opacity = if (webIsDark) 0.72f else 0.42f)
+            .parityBox("image", opacity = heroArtOpacity(webIsDark))
             .heroBackdropFade(true)
     }
 
@@ -3257,7 +3257,10 @@ private fun ExperienceStage(
                 Modifier.fillMaxHeight().fillMaxWidth(0.62f).align(Alignment.CenterEnd).parityBox("container").background(
                     webRailSurfaceBrush(),
                 ),
-            ) { rails() }
+            ) {
+                // Tablet web: the panel starts at 486.4 css px (62%) but its rails start 35.6 css px in, at the Library rail's 522.
+                Box(Modifier.fillMaxSize().padding(start = if (LocalStageScale.current != 1f) (35.61f / LocalStageScale.current).dp else 0.dp)) { rails() }
+            }
         } else {
             Box(Modifier.fillMaxSize()) {
                 Box(Modifier.padding(top = 58.dp + webPhoneInsets().asPaddingValues().calculateTopPadding()).fillMaxSize().parityBox("container").background(phoneHomePanelBrush()))
@@ -3954,6 +3957,8 @@ internal fun WebDetailPill(
             ))
             .scale(scale)
             .parityShape(999f)
+            // The glyph is decoration: the control is named by its label (or the web aria-label the caller passes).
+            .semantics { contentDescription = exportLabel ?: label }
             .webFocusRing(focused, offset = 2.dp)
             .onFocusChanged { focused = it.isFocused },
     ) {
@@ -4788,14 +4793,14 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                         (listOf("#") + ('A'..'Z').map(Char::toString)).forEach { letter ->
                             val active = shownLetter == letter
                             Box(
-                                Modifier.height(25.dp).fillMaxWidth().parityShape(999f).clickable { activeLetter = letter },
+                                Modifier.height(25.dp).fillMaxWidth().clickable { activeLetter = letter },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 if (active) Box(Modifier.size(22.dp).then(if (savedSelectedId == null) Modifier.drawBehind {
                                     // Web's letter ring is crimson, 2 css px, 1.5 px off the disc, and is drawn in touch mode too (programmatic focus).
                                     val grow = 1.5.dp.toPx() + 1.dp.toPx()
                                     drawCircle(UnwatchedDotColour, radius = size.minDimension / 2f + grow, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
-                                } else Modifier).clip(CircleShape).background(WebInk.copy(alpha = 0.78f)))
+                                } else Modifier).clip(CircleShape).parityBackground("container", WebInk.copy(alpha = 0.78f), CircleShape))
                                 Text(letter, color = if (active) WebBackground else PlayarrWebTheme.palette.phoneInkMuted, fontSize = 8.96.sp, lineHeight = 9.sp, style = WebTextStyle.copy(fontWeight = FontWeight(700)))
                             }
                         }
@@ -4819,7 +4824,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                             val shownLetter = if (activeLetter == "#") (filteredWorks.getOrNull(gridState.firstVisibleItemIndex) ?: selected).sortTitle.firstOrNull()?.uppercaseChar()?.takeIf { it in 'A'..'Z' }?.toString() ?: "#" else activeLetter
                             val active = shownLetter == letter
                             var letterFocused by remember { mutableStateOf(false) }
-                            Box(Modifier.size(44.dp * alphaCss).parityShape(999f), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(44.dp * alphaCss), contentAlignment = Alignment.Center) {
                             Box(
                                 modifier = Modifier
                                     .size(24.dp * alphaCss)
@@ -4827,7 +4832,8 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                                     .webFocusRing(letterFocused, offset = 1.dp)
                                     .onFocusChanged { letterFocused = it.isFocused }
                                     .clip(CircleShape)
-                                    .then(if (active) Modifier.background(WebInk.copy(alpha = 0.78f)) else Modifier)
+                                    .parityShape(999f)
+                                    .then(if (active) Modifier.parityBackground("container", WebInk.copy(alpha = 0.78f), CircleShape) else Modifier)
                                     .clickable { activeLetter = letter },
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -5123,6 +5129,7 @@ private fun PhoneSearchContent(
                 // Web `.tv-search-form:has(input:focus-visible)`: the page focus ring (3px, offset 2px; 2px, offset 3px on phones) on the pill,
                 // with no rose border, scale or deeper shadow.
                 var fieldFocused by remember { mutableStateOf(false) }
+                val searchLabel = playarrString(PlayarrString.SearchPlaceholder)
                 val searchFill = WebSurfaceStrong.copy(alpha = 0.88f).compositeOver(WebSurface)
                 WebShadowedBox(
                     shadows = listOf(WebShadow(18.dp, 52.dp, Color(0xFF1F0E14).copy(alpha = 0.12f))),
@@ -5146,7 +5153,7 @@ private fun PhoneSearchContent(
                     androidx.compose.foundation.text.BasicTextField(
                         value = query,
                         onValueChange = onQueryChange,
-                        modifier = Modifier.weight(1f).height(44.dp).onFocusChanged { fieldFocused = it.isFocused },
+                        modifier = Modifier.weight(1f).height(44.dp).semantics { contentDescription = searchLabel }.onFocusChanged { fieldFocused = it.isFocused },
                         singleLine = true,
                         textStyle = androidx.compose.ui.text.TextStyle(fontFamily = webFontFamily, color = WebInk, fontSize = 16.sp, lineHeight = 24.sp),
                         cursorBrush = androidx.compose.ui.graphics.SolidColor(WebInk),
@@ -5341,6 +5348,7 @@ private fun TelevisionSearchBody(
                 initialSearchFocusHandled = true
             }
         }
+        val searchLabel = playarrString(PlayarrString.SearchPlaceholder)
         // Web `.tv-search`: a 590 x 76 pill at (153.6, 172.8) with the 3 px ink ring 2 px outside it while the field has focus.
         Row(
             Modifier
@@ -5366,7 +5374,7 @@ private fun TelevisionSearchBody(
                 modifier = Modifier
                     // Web `.tv-search input`: 506 x 60, 13 px after the icon, the field's own box.
                     .padding(start = 13.dp).width(506.dp).height(60.dp)
-                    
+                    .semantics { contentDescription = searchLabel }
                     .focusRequester(searchFieldFocus)
                     .onFocusChanged { focused = it.isFocused }
                     .onPreviewKeyEvent { event ->
@@ -6614,6 +6622,7 @@ private fun ExperienceVideoDetailContent(
                 )
             } else if (mediaFileId != null) {
                 MovieDetailBrowser(
+                    workTitle = detail.work.title,
                     mediaFileId = mediaFileId,
                     chapters = playarrDisplayedMovieChapters(movieChapters, movieMetadata?.durationMs ?: 0L),
                     credits = credits,
@@ -6813,7 +6822,7 @@ private fun PhoneVideoDetailBody(
         }
         run {
             Column(
-                Modifier.padding(top = 30.33.dp).fillMaxWidth().parityBox("container").then(if (webIsDark) Modifier.background(webRailSurfaceBrush()) else Modifier),
+                Modifier.padding(top = 30.33.dp).fillMaxWidth().then(if (webIsDark) Modifier.parityBox("container").background(webRailSurfaceBrush()) else Modifier),
             ) {
                 if (series != null) {
                     seasons.forEach { season ->
@@ -7928,6 +7937,7 @@ private fun PhoneEpisodeCard(
 
 @Composable
 internal fun MovieDetailBrowser(
+    workTitle: String,
     mediaFileId: String,
     chapters: List<MediaChapter>,
     credits: WorkCreditsResponse,
@@ -7979,6 +7989,7 @@ internal fun MovieDetailBrowser(
                             onClick = { onPlay(mediaFileId, chapter.startMs, launchSettings) },
                             lead = formatPlayarrPlayerTime(chapter.startMs),
                             title = label,
+                            exportLabel = playarrString(PlayarrString.DetailPlayTitleFrom, "title" to workTitle, "position" to playarrString(PlayarrString.DetailChapterNumber, "number" to chapter.index + 1)),
                             badge = (chapter.index + 1).toString().padStart(2, '0'),
                         ) {
                             AuthenticatedMediaThumbnail(
@@ -8145,6 +8156,7 @@ private fun WebSimilarTrack(
                 onClick = { onOpenWork(work.id) },
                 lead = null,
                 title = work.title,
+                exportLabel = playarrString(PlayarrString.LibraryOpenWork, "title" to work.title),
                 badge = null,
             ) {
                 AuthenticatedArtwork(
@@ -8179,7 +8191,8 @@ private fun WebEpisodeCard(
         modifier
             .width(cardWidth)
             .onFocusChanged { focused = it.isFocused }
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .then(if (exportLabel != null) Modifier.semantics { contentDescription = exportLabel } else Modifier),
     ) {
     Column(Modifier.fillMaxWidth().mediaCardLift(focused)) {
         WebShadowedBox(
