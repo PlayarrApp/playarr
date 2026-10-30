@@ -27,15 +27,12 @@ internal sealed class PlayerScreen : IPage
     private readonly View _root = new();
     private readonly View _controls = new();
     private readonly View _progress;
-    private readonly View _volumeFill;
-    private float _volume = 1f;
     private int _beforeSeek = -1;
-    private bool _muted;
     private readonly View _seek;
     private readonly TextLabel _now, _total;
     private readonly TextLabel _qualityBadge, _qualityLabel;
     private readonly View _qualityRing;
-    private float _qualityButtonX = 1532, _qualityButtonWidth = 180;
+    private float _qualityButtonX = 1609.6f, _qualityButtonWidth = 180;
     private readonly ImageView _playIcon;
     private FocusSet _focus = new();
     private readonly global::Tizen.NUI.Timer _tick, _hide;
@@ -101,25 +98,19 @@ internal sealed class PlayerScreen : IPage
         _controls.Add(_total);
 
         // tools
-        AddIcon("volume", 397, 980, "mute", dim: false, select: ToggleMute); // web: mute, then the volume slider
-        var volume = Sem.Tag(new View { PositionX = 449, PositionY = 968, Size = new Size(130, 44) }, "slider", "Volume"); // a range control: Select steps the player's volume by a tenth (wrapping to silent after full)
-        volume.Add(Ui.Box(0, 20, 130, 4, new Rgba(1, 1, 1, 0.18f), 2));
-        _volumeFill = Ui.Box(0, 20, 130, 4, new Rgba(1, 1, 1, 0.9f), 2);
-        volume.Add(_volumeFill);
-        _controls.Add(volume);
-        _focus.Items.Add(new Focusable { Rect = () => new Box(449, 968, 130, 44), Label = "volume", Select = StepVolume, Style = f => volume.Opacity = f ? 1f : 0.8f });
-        AddIcon("volume", 1246, 980, "audio", dim: false);
-        AddIcon("captions", 1323.6f, 980, "subtitles", dim: false, select: OpenSubtitles);
-        AddIcon("queue", 1401.2f, 980, "playlist", dim: false);
+        // web (Samsung platform): systemVolumeOnly, so no mute button and no volume slider; the TV volume keys drive the system volume
+        AddIcon("volume", 1323.6f, 980, "audio", dim: false);
+        AddIcon("captions", 1401.2f, 980, "subtitles", dim: false, select: OpenSubtitles);
+        AddIcon("queue", 1478.8f, 980, "playlist", dim: false);
         _qualityBadge = Ui.Text("HD", 22.1f, 22.5f, 7.68f, 700, white, 28, 11.52f, spacing: 0.3f);
         _qualityLabel = Ui.Text("Original", 51.1f, 20.1f, 10.56f, 700, white, 138, 15.84f, spacing: 0.1f);
         _qualityHost.Add(_qualityBadge); _qualityHost.Add(_qualityLabel); // web: the quality button holds its badge and label
         _controls.Add(_qualityHost);
         _qualityRing = Ring.Make(180, 56, 28, new Rgba(1, 1, 1), themed: false); _qualityRing.Show(false); _qualityHost.Add(_qualityRing);
         _focus.Items.Add(new Focusable { Rect = () => new Box(_qualityButtonX, 962, _qualityButtonWidth, 56), Label = "quality", Select = () => { }, Style = f => _qualityRing.Show(f) });
-        AddIcon("info", 1652.8f, 980, "info", dim: false);
-        AddIcon("cast", 1730.4f, 980, "play on another device", dim: false);
-        AddIcon("fullscreen", 1808, 980, "fullscreen", dim: false);
+        AddIcon("info", 1730.4f, 980, "info", dim: false);
+        AddIcon("cast", 1808, 980, "play on another device", dim: false);
+        // web (Samsung platform): no fullscreen button either (systemVolumeOnly), so cast is the last tool
 
         _tick = new global::Tizen.NUI.Timer(500); _tick.Tick += (_, _) => { OnTick(); return !_stopped; };
         _hide = new global::Tizen.NUI.Timer(5000); _hide.Tick += (_, _) => { if (_panel is null && _player?.State == PlayerState.Playing) SetControls(false); return false; };
@@ -145,7 +136,7 @@ internal sealed class PlayerScreen : IPage
         // web: each tool is a 64 px round button holding its 20 px icon; a disabled one (no previous, no next, no audio track) draws at 28 %
         var host = Ui.Box(x - 22, y - 22, 64, 64, null, 32);
         host.Opacity = disabledLook ? 0.28f : 1f;
-        var buttonName = label switch { "previous" => "Previous episode", "next" => "Next episode", "audio" => "Audio: Unavailable", "subtitles" => "Subtitles: Off", "playlist" => "Playlist: 1 item", "info" => "Info and playback health", "mute" => "Mute", "fullscreen" => "Enter fullscreen", _ => "Play on another device" };
+        var buttonName = label switch { "previous" => "Previous episode", "next" => "Next episode", "audio" => "Audio: Unavailable", "subtitles" => "Subtitles: Off", "playlist" => "Playlist: 1 item", "info" => "Info and playback health", _ => "Play on another device" };
         Sem.Tag(host, "button", buttonName);
         host.Add(Ui.Icon(icon, 22, 22, 20, new Rgba(1, 1, 1)));
         _controls.Add(host);
@@ -413,7 +404,7 @@ internal sealed class PlayerScreen : IPage
         var measuredWidth = Ui.TextWidth(display.Label, 10.56f, 700, 0.1f) + 2;
         var labelW = Ui.TextWidth(display.Label, 10.56f, 700, 0.1f);
         // web: the button is 65.5 px wider than its label and ends at x 1694.8
-        _qualityButtonWidth = 65.5f + labelW; _qualityButtonX = 1616.8f - _qualityButtonWidth;
+        _qualityButtonWidth = 65.5f + labelW; _qualityButtonX = 1694.4f - _qualityButtonWidth;
         var shift = 0f;
         _qualityRing.Size = new Size(_qualityButtonWidth, 56);
         Sem.Tag(_qualityHost, "button", "Quality: " + display.Label); _qualityHost.PositionX = _qualityButtonX; _qualityHost.Size = new Size(_qualityButtonWidth, 56);
@@ -427,21 +418,6 @@ internal sealed class PlayerScreen : IPage
         if (_panel is null || _outer is null) return;
         _controls.Remove(_panel); _panel.Dispose(); _panel = null;
         _focus = _outer; _outer = null;
-    }
-
-    private void ToggleMute()
-    {
-        _muted = !_muted;
-        _volumeFill.Size = new Size(_muted ? 0 : 130 * _volume, 4);
-        try { if (_player is not null) _player.Volume = _muted ? 0f : _volume; } catch (Exception e) { Dbg.Log("PLAY mute failed: " + e.Message); }
-    }
-
-    private void StepVolume()
-    {
-        _muted = false;
-        _volume = _volume >= 0.995f ? 0f : MathF.Min(1f, _volume + 0.1f);
-        _volumeFill.Size = new Size(130 * _volume, 4);
-        try { if (_player is not null) _player.Volume = _volume; } catch (Exception e) { Dbg.Log("PLAY volume failed: " + e.Message); }
     }
 
     private async void SeekBy(long deltaMs)
@@ -472,12 +448,18 @@ internal sealed class PlayerScreen : IPage
     /// <summary>Capture only: hides the focus ring, as the web player-controls reference is taken with no focus.</summary>
     public void BlurFocus() => _focus.Item?.Style(false);
 
-    /// <summary>Capture only: the screenshot path may not carry the video plane, so the driver stands the clip's paused frame in behind the controls.</summary>
+    /// <summary>
+    /// Capture only, and a staged frame (disclosed in docs/parity/DEVICES.md): the screenshot path may not carry the
+    /// video plane, so the driver stands the clip's paused frame (an image the driver supplies) in behind the controls.
+    /// It is not decoded by the player. The buffered segment below is likewise a fixed, hard-coded 475 px bar, not read
+    /// from the player's buffer: it copies what the web capture shows (the clip buffered to about 16 s of the track),
+    /// so the player-controls score for the seek bar's buffered range is staged, not measured.
+    /// </summary>
     public void ShowStandInFrame(string path)
     {
         var frame = new ImageView(path) { Size = _root.Size };
         _root.Add(frame); frame.LowerToBottom();
-        // the web capture shows the clip buffered to about 16 s: a lighter segment on the seek track, under the played part
+        // staged: fixed 475 px light segment on the seek track under the played part (the web capture's buffered range); see the summary above
         _seek.Add(Ui.Box(0, 19, 475, 6, new Rgba(1, 1, 1, 0.35f), 3)); _progress.RaiseToTop();
     }
 
