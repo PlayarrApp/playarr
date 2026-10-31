@@ -252,6 +252,20 @@ Set `PLAYARR_SF_SCRATCH` to an existing canonical directory outside and disjoint
 
 The layout exporter (`clients/sailfish/qml/components/LayoutDump.js`) reads only the laid-out app: each item's four transformed corners clipped by the viewport and clip ancestors, drawn colours (a gradient counts as a visible fill; a Rectangle border counts only when its pen differs from the default pen read from a fresh Rectangle), z order, the radius of the mask a masked layer is clipped to, and the content box of every Text item. The app lays out each displayed line as a Text item of its own (`FitText` breaks the text at spaces into the web's lines and puts the real ellipsis into the last line), and every line item is a natural-height label (`lineHeight` 1; the caller's line pitch only spaces the items, so a proportional or fixed line height never stands in for glyph height), so an item's box is Qt's `contentWidth` by `contentHeight` at its alignment: there is no font-metrics reconstruction and no second word wrapper in the exporter, which stops with an error on any Text that Qt wrapped (`lineCount` above 1) or elided (`truncated`) itself. Visibility is read from the rendered screen: the geometry only flags an element that a later painter may cover, then a parity hook (`ParityScreen`, C++, reached only from the layout step) hides that element's item (opacity 0, no binding touched), renders the window again and compares the element's visible box byte for byte; no change means covered (a second pair of renders with the covering painters hidden separates a covered element from one that is the colour of its backdrop, which stays). The count of covered elements is the document's `occluded`. Names and roles are the items' real `Accessible.name` and `Accessible.role` (read through the QML `Accessible` attached object and translated to the web's role words); there are no custom hint properties. Rounded pictures are clipped by a masked layer (the holder in `Artwork`, the card in the episode row), so the picture itself exports without a radius, as on the web. There are no per-screen tables. See [the Sailfish measurement audit](SAILFISH-AUDIT.md). `scripts/parity/sailfish/build-fonts.sh` builds the embedded Nunito Sans weights. There are no D-pad checks on this touch phone. Detail pages are scrolled to the top before capture.
 
+## Nura layout exception: whole logical pixels at scale 2
+
+The web reference is 360 x 673 CSS px at a device pixel ratio of 2, laid out with fractional sizes (a 113.56 px card, a 351.56 px top).
+The layout score rounds every edge to a whole device pixel (`Math.round(css * 2)`). Nura is a GTK 4 client on a scale 2 display, and
+GTK4 allocates widgets in whole logical pixels, so every Nura edge lands on an even device pixel. Of the web's 999 dark layout
+elements across the Nura screens, only 38.6 % have all four edges on an even device pixel (screens range from 20 % on Actions to
+60.6 % on Search; Player 89 %). That is the hard ceiling of the scale 2 layout for those elements. It is a property of the toolkit at this
+display scale, not a defect in a screen.
+
+The only structural way past it is a GTK scale of 1 with every length in device pixels. That changes real app layout, text rendering,
+icon sizes and the density on real phones, and still needs the web's fractional flow reproduced edge by edge, so it is not adopted.
+Not adopted is a decision, not a proof of impossibility. Elements whose web edges are all on even device pixels remain in scope and are fixed
+in the app. Do not add a tolerance and do not move edges in the exporter.
+
 ## Downloads: which platforms support them
 
 Checked in each client's code (11 Oct 2026). Platforms marked Yes must run the `downloads` cases and report
