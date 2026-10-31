@@ -129,7 +129,7 @@ struct PlayarrHeaderPill: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .accessibilityLabel(accessibilityLabel ?? label)
     }
 }

@@ -387,7 +387,38 @@ enum WMIcon {
     }
 }
 
+/// The full-bleed page colour every web mobile screen paints over the shell. It is the layer that really shows on screen,
+/// so the parity export reports the web page container from here (the shell box behind it is covered).
+struct WMPageFill: View {
+    var body: some View {
+        WM.page.parityBox("container", background: WM.page).ignoresSafeArea()
+    }
+}
+
 struct WMIconView: View {
+    let icon: WMIcon
+    let color: Color
+    var size: CGFloat = 21
+    @Environment(\.self) private var environment
+
+    var body: some View {
+        // Parity captures blit a bitmap drawn once (the vector strokes antialias a little differently on each simulator).
+        #if DEBUG
+        if ParityLaunch.zeroInsets, let image = WMIconBitmap.image(icon: icon, color: color, size: size, environment: environment) {
+            Image(uiImage: image).resizable().frame(width: size, height: size)
+                .parityBox("image")
+        } else {
+            WMIconCanvas(icon: icon, color: color, size: size)
+                .parityBox("image")
+        }
+        #else
+        WMIconCanvas(icon: icon, color: color, size: size)
+            .parityBox("image")
+        #endif
+    }
+}
+
+struct WMIconCanvas: View {
     let icon: WMIcon
     let color: Color
     var size: CGFloat = 21
@@ -409,7 +440,22 @@ struct WMIconView: View {
             }
         }
         .frame(width: size, height: size)
-        .parityBox("image")
+    }
+}
+
+@MainActor
+enum WMIconBitmap {
+    private static var cache: [String: UIImage] = [:]
+
+    static func image(icon: WMIcon, color: Color, size: CGFloat, environment: EnvironmentValues) -> UIImage? {
+        let resolved = color.resolve(in: environment)
+        let key = "\(icon)|\(size)|\(resolved)"
+        if let cached = cache[key] { return cached }
+        let renderer = ImageRenderer(content: WMIconCanvas(icon: icon, color: Color(resolved), size: size))
+        renderer.scale = UIScreen.main.scale
+        guard let image = renderer.uiImage else { return nil }
+        cache[key] = image
+        return image
     }
 }
 
@@ -530,13 +576,48 @@ extension View {
 // MARK: - Cards
 
 struct WMUnseenDot: View {
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        // Parity captures draw the dot from a bitmap rendered once per theme: the GPU antialiasing of the ring and its
+        // shadow differs a little from one simulator to the next, a blitted bitmap does not.
+        #if DEBUG
+        if ParityLaunch.zeroInsets, let image = WMUnseenDotBitmap.image(scheme) {
+            Image(uiImage: image).resizable().frame(width: 33, height: 33).frame(width: 9, height: 9)
+                .parityBox("img", background: WM.pink, radius: 4.5)
+        } else {
+            WMUnseenDotVector()
+                .parityBox("img", background: WM.pink, radius: 4.5)
+        }
+        #else
+        WMUnseenDotVector()
+            .parityBox("img", background: WM.pink, radius: 4.5)
+        #endif
+    }
+}
+
+struct WMUnseenDotVector: View {
     var body: some View {
         Circle()
             .fill(WM.pink)
             .frame(width: 9, height: 9)
-            .parityBox("image", background: WM.pink, radius: 4.5)
             .overlay(Circle().strokeBorder(Color.white.opacity(0.94), lineWidth: 2))
             .shadow(color: Color(red: 31 / 255, green: 14 / 255, blue: 20 / 255).opacity(0.45), radius: 4.5, y: 2)
+    }
+}
+
+@MainActor
+enum WMUnseenDotBitmap {
+    private static var cache: [Bool: UIImage] = [:]
+
+    static func image(_ scheme: ColorScheme) -> UIImage? {
+        let dark = scheme == .dark
+        if let cached = cache[dark] { return cached }
+        let renderer = ImageRenderer(content: WMUnseenDotVector().padding(12).frame(width: 33, height: 33).environment(\.colorScheme, scheme))
+        renderer.scale = UIScreen.main.scale
+        guard let image = renderer.uiImage else { return nil }
+        cache[dark] = image
+        return image
     }
 }
 
@@ -771,7 +852,7 @@ struct WMHeaderCircleButton: View {
                 .overlay(Ellipse().stroke(WM.line.opacity(0.14), lineWidth: 1))
             }
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 }
 

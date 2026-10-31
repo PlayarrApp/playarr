@@ -55,8 +55,7 @@ struct CalendarView: View {
                 tabletBody(proxy: proxy)
             }
         }
-        .background(PlayarrStyle.background.ignoresSafeArea())
-        .parityFill(PlayarrStyle.background)
+        .parityFill(WM.page) // the page fill every calendar body paints (WMPageFill)
         .foregroundStyle(PlayarrStyle.ink)
         .navigationBarHidden(true)
         .parityScreenLoad(parityLoadState)
@@ -110,7 +109,7 @@ struct CalendarView: View {
                                     .background(PlayarrStyle.surfaceStrong.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
                                 }
                                 .simultaneousGesture(TapGesture().onEnded { viewModel.select(item) })
-                                .buttonStyle(.plain)
+                                .parityButtonStyle(.plain)
                             }
                         }
                         .padding(20)
@@ -170,7 +169,7 @@ struct CalendarView: View {
                         .parityShape("container", color: WM.page, in: Capsule(), radius: 22)
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 roundButton("\u{2192}", label: "Next") { Task { await viewModel.step(1) } }
             }
             .frame(width: proxy.size.width - 55 * scale, alignment: .trailing)
@@ -238,7 +237,7 @@ struct CalendarView: View {
                 .parityShape("button", name: label, color: WM.page, in: Capsule(), radius: 22)
                 .overlay(Circle().stroke(WM.line.opacity(0.14), lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .accessibilityLabel(label)
     }
 
@@ -247,7 +246,7 @@ struct CalendarView: View {
     private var phoneBody: some View {
         let top = WM.topInset + 2
         return ZStack(alignment: .topLeading) {
-            WM.page.ignoresSafeArea()
+            WMPageFill()
             VStack(alignment: .leading, spacing: 12) {
                 if !viewModel.unhealthySources.isEmpty { sourceBanner }
                 switch viewModel.loadState {
@@ -316,7 +315,7 @@ struct CalendarView: View {
                         .parityShape("container", color: WM.page, in: Capsule(), radius: 22)
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 roundButton("\u{2192}", label: "Next") { Task { await viewModel.step(1) } }
             }
             .frame(width: screenWidth - 16, alignment: .trailing)
@@ -441,7 +440,7 @@ struct CalendarView: View {
                             .frame(width: resume ? 88 : 66, height: 44)
                             .background(PlayarrStyle.accent, in: Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                 }
                 if showOpen {
                     NavigationLink {
@@ -458,7 +457,7 @@ struct CalendarView: View {
                             .background(primary ? PlayarrStyle.accent : WM.page, in: Capsule())
                             .overlay(Capsule().stroke(primary ? Color.clear : WM.line.opacity(0.2), lineWidth: 1))
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                 }
             }
             if showWatchlist {
@@ -594,8 +593,9 @@ struct CalendarView: View {
                     .stroke(WM.line.opacity(0.14), lineWidth: 1)
             )
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .wmKeyFocus(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .parityFill(PlayarrStyle.surfaceStrong) // the card paints surface-strong: the button and its texts sit on it
     }
 
     private func calendarTimeLabel24(_ entry: CalendarEntry) -> String {
@@ -866,7 +866,7 @@ struct CalendarView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 
     private func weekSubtitle(_ item: CalendarItem) -> String {
@@ -964,13 +964,14 @@ struct CalendarView: View {
                         Text(monthItemLabel(item))
                             .font(.custom("Avenir Next", fixedSize: 12.6))
                             .lineLimit(1)
+                            .parityToggle() // the button's own label line, hideable by the visibility probe
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(.trailing, 5.1) // 16 pt from the cell edge (cell padding is 10.9)
                     .foregroundStyle(PlayarrStyle.inkSoft)
                     .frame(height: 22.6)
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
             }
             Spacer(minLength: 0)
             Button {
@@ -993,7 +994,7 @@ struct CalendarView: View {
                 .frame(maxWidth: .infinity, minHeight: 49, alignment: .leading)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
         }
         .padding(.horizontal, 10.9)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -1061,7 +1062,7 @@ struct CalendarView: View {
                 in: RoundedRectangle(cornerRadius: 8)
             )
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .accessibilityLabel("\(dayHeading(day, today: viewModel.today)), \(count) releases")
     }
 
@@ -1074,7 +1075,7 @@ struct CalendarView: View {
                 .font(.custom("Avenir Next", fixedSize: 16).weight(.bold))
             if !viewModel.filters.isEmpty {
                 Button("Clear filters") { viewModel.filters = CalendarFilters() }
-                    .buttonStyle(PlayarrPrimaryButtonStyle())
+                    .parityButtonStyle(PlayarrPrimaryButtonStyle())
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1120,7 +1121,7 @@ private struct CalendarItemRow: View {
                 in: RoundedRectangle(cornerRadius: 12)
             )
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 
     private var first: CalendarEntry? { item.entries.first }
@@ -1262,7 +1263,7 @@ struct CalendarDetailPane: View {
                     } label: {
                         Text("Open").frame(minWidth: 120)
                     }
-                    .buttonStyle(PlayarrPrimaryButtonStyle())
+                    .parityButtonStyle(PlayarrPrimaryButtonStyle())
                     .padding(.top, 6)
                 } else {
                     Text("Not in your library yet")

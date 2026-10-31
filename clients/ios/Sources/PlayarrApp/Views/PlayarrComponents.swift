@@ -51,6 +51,7 @@ struct PlayarrLogo: View {
             .resizable()
             .scaledToFit()
         .frame(width: size, height: size)
+        .parityToggle()
         .accessibilityLabel("Playarr")
     }
 }
@@ -179,12 +180,25 @@ struct PlayarrProfileAvatar: View {
                     .resizable()
                     .scaledToFill()
             } else {
-                WMAvatarPresetView(presetID: presetID, size: size)
+                preset
             }
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
         .accessibilityLabel("\(userName ?? "Playarr") avatar")
+    }
+
+    /// Parity captures blit the preset drawn once as a bitmap (the vector eyes and strokes antialias a little differently per run).
+    @ViewBuilder private var preset: some View {
+        #if DEBUG
+        if ParityLaunch.zeroInsets, let image = WMAvatarBitmap.image(presetID: presetID, size: size) {
+            Image(uiImage: image).resizable().frame(width: size, height: size)
+        } else {
+            WMAvatarPresetView(presetID: presetID, size: size)
+        }
+        #else
+        WMAvatarPresetView(presetID: presetID, size: size)
+        #endif
     }
 
     private var customImage: UIImage? {
@@ -290,7 +304,7 @@ struct PlayarrMediaCard: View {
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: matchesWebScreenGrid ? 8.88 : min(13, max(8, width * 0.058)), style: .continuous))
                 .parityBox("container", background: WM.artFill, radius: matchesWebScreenGrid ? 8.88 : min(13, max(8, width * 0.058)))
-                .scaleEffect(focused ? LibraryFocusMetrics.tabletArtworkScale : 1)
+                .parityScale(focused ? LibraryFocusMetrics.tabletArtworkScale : 1)
                 .shadow(color: PlayarrStyle.ink.opacity(0.1), radius: 17, y: 6)
                 .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focused ? 0.3 : 0), radius: focused ? 24 : 0, y: focused ? 12 : 0)
                 .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focused ? 0.2 : 0), radius: focused ? 10 : 0, y: focused ? 5 : 0)
@@ -395,7 +409,7 @@ struct PlayarrFailureView: View {
                 .foregroundStyle(PlayarrStyle.inkSoft)
                 .multilineTextAlignment(.center)
             Button("Try again", action: retry)
-                .buttonStyle(PlayarrPrimaryButtonStyle())
+                .parityButtonStyle(PlayarrPrimaryButtonStyle())
         }
         .padding(30)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -457,3 +471,20 @@ enum PlayarrArtworkPrefs {
     /// Web `--card-size-step`: small +1 column, large -1.
     static func columnStep(_ size: String) -> Int { size == "small" ? 1 : size == "large" ? -1 : 0 }
 }
+
+#if DEBUG
+@MainActor
+enum WMAvatarBitmap {
+    private static var cache: [String: UIImage] = [:]
+
+    static func image(presetID: String, size: CGFloat) -> UIImage? {
+        let key = "\(presetID)|\(size)"
+        if let cached = cache[key] { return cached }
+        let renderer = ImageRenderer(content: WMAvatarPresetView(presetID: presetID, size: size).frame(width: size, height: size))
+        renderer.scale = UIScreen.main.scale
+        guard let image = renderer.uiImage else { return nil }
+        cache[key] = image
+        return image
+    }
+}
+#endif
