@@ -346,7 +346,8 @@ internal object PlayarrLayoutExport {
                         // The paint is the one android.text.Layout draws with: the layout's own paint with the metric-affecting spans (typeface, size, letter spacing) the shaping applied to this run.
                         val probe = kept.firstOrNull() ?: runStart
                         val drawPaint = checkNotNull(shapedRunPaint(layout, i, probe)) { "shaped paint of '${runText.take(20)}' unavailable" }
-                        val fm = drawPaint.fontMetrics
+                        // A symbol the app draws from the bundled fallback family sits in a Nunito line, as in a browser: the inline box keeps the primary font's content area, only the glyph is drawn from the fallback.
+                        val fm = (if (runStyle.fontFamily == webSymbolFamily) android.text.TextPaint(drawPaint).also { pr -> platformLine(layout, i)?.first?.paint?.let { base -> pr.typeface = base.typeface } } else drawPaint).fontMetrics
                         val ascent = -fm.ascent; val descent = fm.descent
                         val baseline = layout.getLineBaseline(i)
                         // The drawn ellipsis is part of the text and of the width: the platform layout's own line extent covers it, on the side of the shown characters it was drawn at.
