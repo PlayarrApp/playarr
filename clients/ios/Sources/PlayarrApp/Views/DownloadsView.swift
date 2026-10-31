@@ -44,7 +44,7 @@ struct DownloadsView: View {
                 content
             }
         }
-        .background(PlayarrStyle.surface)
+        .background(WMPageFill())
         .navigationBarHidden(viewModel.isEmpty && isPhone)
         .navigationTitle("Downloads")
         .navigationBarTitleDisplayMode(.large)
@@ -75,7 +75,6 @@ struct DownloadsView: View {
     /// Web mobile Downloads page with nothing downloaded: storage line and bar, then the empty state.
     private var phoneEmpty: some View {
         ZStack(alignment: .topLeading) {
-            WMPageFill()
             WMText("\(PlayarrByteFormat.string(viewModel.storageUsedBytes) ?? "0 KB") used on this device", 8, 400, color: WM.muted, lh: 12)
                 .frame(width: 342, alignment: .leading)
                 .offset(x: 24, y: 24)
@@ -226,7 +225,6 @@ struct DownloadsView: View {
         .padding(30)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .foregroundStyle(PlayarrStyle.ink)
-        .background(PlayarrStyle.surface)
     }
 }
 

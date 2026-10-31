@@ -412,6 +412,13 @@ private struct AuthenticatedPlayarrShell: View {
         #endif
     }
 
+    private var rootColor: Color {
+        #if DEBUG
+        if case .player = selected { return .black }
+        #endif
+        return PlayarrStyle.background
+    }
+
     var body: some View {
         ZStack {
             selectedContent
@@ -424,7 +431,10 @@ private struct AuthenticatedPlayarrShell: View {
                     .zIndex(20)
             }
         }
-        .background(PlayarrStyle.background.parityBox("container", background: PlayarrStyle.background).ignoresSafeArea())
+        // The web `body`: the shell colour behind the page, and the ancestor of everything on screen (black behind the player).
+        // It is judged like web's body, by hiding it with everything inside it; each page paints its one page fill above it.
+        .background(rootColor.ignoresSafeArea())
+        .parityBox("container", background: rootColor)
         // The shell colour, then the page colour every screen paints over it (each page draws WM.page full-bleed).
         .parityFill(PlayarrStyle.surface)
         .parityFill(PlayarrStyle.background)

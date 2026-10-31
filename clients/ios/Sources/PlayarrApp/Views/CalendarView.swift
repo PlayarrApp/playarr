@@ -55,7 +55,6 @@ struct CalendarView: View {
                 tabletBody(proxy: proxy)
             }
         }
-        .background(PlayarrStyle.background.ignoresSafeArea())
         .parityFill(PlayarrStyle.background)
         .foregroundStyle(PlayarrStyle.ink)
         .navigationBarHidden(true)

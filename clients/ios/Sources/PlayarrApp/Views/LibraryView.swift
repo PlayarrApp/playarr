@@ -280,7 +280,7 @@ struct LibraryView: View {
         GeometryReader { proxy in
             let s = proxy.size.width / 1366
             ZStack(alignment: .topLeading) {
-                PlayarrStyle.surface.ignoresSafeArea()
+                WMPageFill()
                 if viewModel.works.isEmpty || viewModel.searchText.isEmpty {
                     Circle()
                         .fill(WM.chip)
@@ -394,7 +394,7 @@ struct LibraryView: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        .background(PlayarrStyle.surface.ignoresSafeArea())
+        .background(WMPageFill())
         .parityFill(PlayarrStyle.surface)
         .ignoresSafeArea(edges: .vertical)
         .webGutter()

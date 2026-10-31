@@ -159,7 +159,7 @@ struct WorkDetailView: View {
                 }
             }
         }
-        .background(PlayarrStyle.surface.ignoresSafeArea())
+        .background(WMPageFill())
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
     }

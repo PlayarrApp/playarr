@@ -87,7 +87,7 @@ struct HomeView: View {
                 stageContent(proxy: proxy)
             }
         }
-        .background(PlayarrStyle.surface)
+        .background(WMPageFill())
         .ignoresSafeArea(edges: .horizontal)
         .navigationBarHidden(true)
     }
@@ -96,7 +96,6 @@ struct HomeView: View {
     /// 179x101 cards, no featured-title copy (numbers from the web layout dump).
     private var phoneContent: some View {
         ZStack(alignment: .topLeading) {
-            WMPageFill()
             WMKeyArt(
                 work: viewModel.featuredWork, apiClient: apiClient, lightOpacity: 0.41, webMask: true,
                 fadeStops: [(0, 0), (84, 0), (148, 1)]
