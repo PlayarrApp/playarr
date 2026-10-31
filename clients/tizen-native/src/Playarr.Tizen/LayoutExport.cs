@@ -61,7 +61,7 @@ internal static class LayoutExport
         var win = Window.Instance.WindowSize;
         var ctx = new Ctx { VW = win.Width, VH = win.Height };
         var bg = Window.Instance.BackgroundColor;
-        Walk(ctx, root, 0, 0, 1, 1, (bg.R, bg.G, bg.B), 1f, new RectF(0, 0, ctx.VW, ctx.VH));
+        Walk(ctx, root, 0, 0, 1, 1, (Math.Round(bg.R * 255.0), Math.Round(bg.G * 255.0), Math.Round(bg.B * 255.0)), 1f, new RectF(0, 0, ctx.VW, ctx.VH));
         return ctx;
     }
 
@@ -155,7 +155,7 @@ internal static class LayoutExport
     private static string Q(string s) => Newtonsoft.Json.JsonConvert.ToString(s);
 
     // vx, vy: screen top-left of the parent; sx, sy: its accumulated scale; bg: the real backgrounds composited so far (over the window colour); op: accumulated opacity; clip: the visible area left by ancestors that clip their children
-    private static void Walk(Ctx ctx, Container parent, float vx, float vy, float sx, float sy, (float R, float G, float B) bg, float op, RectF clip)
+    private static void Walk(Ctx ctx, Container parent, float vx, float vy, float sx, float sy, (double R, double G, double B) bg, float op, RectF clip)
     {
         foreach (var child in parent.Children.OfType<View>().ToArray())
         {
@@ -177,7 +177,7 @@ internal static class LayoutExport
             {
                 // a label that draws its own pill (fill, border, rounded corners) is the web span: its fill is the run's background and its corner radius the run's radius
                 var own = label.BackgroundColor; var ownFill = own.A > 0.02f;
-                var runBg = bg; if (ownFill) runBg = (bg.R * (1 - own.A) + own.R * own.A, bg.G * (1 - own.A) + own.G * own.A, bg.B * (1 - own.A) + own.B * own.A);
+                var runBg = bg; if (ownFill) runBg = Over(bg, own);
                 var runRadius = ownFill || label.BorderlineWidth > 0 ? Math.Min(label.CornerRadius.X * csx, Math.Min(w, h) / 2f) : 0;
                 var pad = label.Padding; // TextGeometry is relative to the text area, which the label's padding insets
                 var runs = TextRuns(label, m).Select(run => (run.Text, R: new RectF(cx + (run.X + pad.Start) * csx, cy + (run.Y + pad.Top) * csy, run.W * csx, run.H * csy))).Where(r => r.R.W > 0 && r.R.H > 0).ToList();
@@ -185,7 +185,7 @@ internal static class LayoutExport
                 {
                     if (!r.Overlaps(clip)) continue;
                     var c = label.TextColor; if (c.A * cop <= 0.01f) continue; // fully transparent text is not text
-                    ctx.Nodes.Add(new Node(runText, role ?? "text", r.X, r.Y, r.W, r.H, Hex(c.R, c.G, c.B, c.A), Hex(runBg.R, runBg.G, runBg.B, 1), label.PixelSize * label.Scale.X /* glyph size in CSS px; an ancestor's focus scale is a transform, which the web export leaves out of fontSize (LAYOUT.md) while the rect carries it */, m.Weight, runRadius, cop, id, false));
+                    ctx.Nodes.Add(new Node(runText, role ?? "text", r.X, r.Y, r.W, r.H, Hex(c.R, c.G, c.B, c.A), Hex255(runBg), label.PixelSize * label.Scale.X /* glyph size in CSS px; an ancestor's focus scale is a transform, which the web export leaves out of fontSize (LAYOUT.md) while the rect carries it */, m.Weight, runRadius, cop, id, false));
                 }
                 continue;
             }
@@ -194,8 +194,8 @@ internal static class LayoutExport
             var fills = child is not ImageView && bc.A > 0.02f;
             var border = child is not ImageView && child.BorderlineWidth > 0 && child.BorderlineColor.A > 0.02f;
             var shadow = child is not ImageView && child.BoxShadow is not null;
-            (float R, float G, float B) cbg = bg;
-            if (fills) { var a = bc.A; cbg = (bg.R * (1 - a) + bc.R * a, bg.G * (1 - a) + bc.G * a, bg.B * (1 - a) + bc.B * a); }
+            (double R, double G, double B) cbg = bg;
+            if (fills) cbg = Over(bg, bc);
             var visible = w > 1 && h > 1 && box.Overlaps(clip);
             var radius = Math.Min(child.CornerRadius.X * csx, Math.Min(w, h) / 2f);
             if (visible)
@@ -207,11 +207,11 @@ internal static class LayoutExport
                 var painted = (fills || border || shadow || hairline) && !shadowLayer;
                 var control = role is not null and not ("container" or "none" or "text" or "img");
                 if (child is ImageView)
-                    ctx.Nodes.Add(new Node(role == "video" ? name ?? "" : "", role is null or "none" ? "image" : role, cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, radius, cop, id, role == "container" && Sem.IsOverlay(child)));
+                    ctx.Nodes.Add(new Node(role == "video" ? name ?? "" : "", role is null or "none" ? "image" : role, cx, cy, w, h, null, Hex255(bg), null, null, radius, cop, id, role == "container" && Sem.IsOverlay(child)));
                 else if (control || (role == "img" && painted))
-                    ctx.Nodes.Add(new Node(name ?? "", role!, cx, cy, w, h, null, Hex(cbg.R, cbg.G, cbg.B, 1), null, null, radius, cop, id, false));
+                    ctx.Nodes.Add(new Node(name ?? "", role!, cx, cy, w, h, null, Hex255(cbg), null, null, radius, cop, id, false));
                 else if (painted)
-                    ctx.Nodes.Add(new Node("", "container", cx, cy, w, h, null, Hex(cbg.R, cbg.G, cbg.B, 1), null, null, radius, cop, id, true));
+                    ctx.Nodes.Add(new Node("", "container", cx, cy, w, h, null, Hex255(cbg), null, null, radius, cop, id, true));
             }
             var childClip = child.ClippingMode == ClippingModeType.ClipChildren ? clip.Intersect(box) : clip;
             Walk(ctx, child, cx, cy, csx, csy, cbg, cop, childClip);
@@ -235,6 +235,19 @@ internal static class LayoutExport
         foreach (var l in lines.OrderBy(l => l.Top))
             yield return (System.Text.RegularExpressions.Regex.Replace(text[l.First..(l.Last + 1)], @"\s+", " ").Trim(), l.L, l.Top, l.R - l.L, l.Bottom - l.Top); // exactly the glyph union TextGeometry reports
     }
+
+    /// <summary>
+    /// A fill with alpha over the backdrop, in the web exporter's arithmetic (layout-dump.mjs over): doubles on the 0..255 scale and the CSS alpha (a
+    /// float 0.7f must not become 0.699999988, which tips a half-way channel the other way). Hex255 rounds like the web's hex2.
+    /// </summary>
+    private static (double R, double G, double B) Over((double R, double G, double B) bg, Color c)
+    {
+        double a = Math.Round(c.A, 3);
+        double Ch(double back, double top) => ((Math.Floor(top * 255.0 + 0.5)) * a + back * (1 - a)) / (a + 1 * (1 - a));
+        return (Ch(bg.R, c.R), Ch(bg.G, c.G), Ch(bg.B, c.B));
+    }
+
+    private static string Hex255((double R, double G, double B) c) => $"#{(int)Math.Floor(c.R + 0.5):x2}{(int)Math.Floor(c.G + 0.5):x2}{(int)Math.Floor(c.B + 0.5):x2}"; // JS Math.round: halves up
 
     private static string Hex(float r, float g, float b, float a)
     {

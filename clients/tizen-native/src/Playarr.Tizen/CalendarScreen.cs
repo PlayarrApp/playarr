@@ -82,7 +82,7 @@ internal sealed class CalendarScreen : IPage
     {
         var box = Ui.Box(x, 56.2f, w, 50, _t.Surface, 25);
         box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.153f);
-        if (text.Length > 0) box.Add(Ui.Text(text, 0, 14, 14.72f, 700, _t.InkSoft, w, 22.08f, HorizontalAlignment.Center));
+        if (text.Length > 0) box.Add(Ui.Text(text, 0, 14, 14.72f, text is "←" or "→" ? 720 : 700, _t.InkSoft, w, 22.08f, HorizontalAlignment.Center));
         if (label == "previous") Sem.Tag(box, "button", "Previous"); else if (label == "next") Sem.Tag(box, "button", "Next"); else if (label == "today") Sem.Tag(box, "button", "Today");
         var ring = Ring.Make(w, 50, 25, new Rgba(1, 1, 1)); ring.Show(false); box.Add(ring);
         _root.Add(box);
