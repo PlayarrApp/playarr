@@ -15,7 +15,7 @@ import {FocusRing} from '../tv/FocusRing';
 import {T, u} from '../tv/kit';
 import {lx, NATIVE_DRIVER} from '../debug/layoutMarks';
 
-export type ChromeControl = 'close' | 'scrubber' | 'play' | 'subtitles' | 'quality';
+export type ChromeControl = 'close' | 'scrubber' | 'play' | 'subtitles' | 'quality' | 'prev' | 'next' | 'mute' | 'volume' | 'audio' | 'playlist' | 'info' | 'cast' | 'fullscreen';
 
 export function formatTime(totalSeconds: number): string {
   if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return '0:00';
@@ -44,6 +44,24 @@ export interface PlayerChromeProps {
   onClose: () => void;
   onOpenQuality: () => void;
   onOpenSubtitles: () => void;
+  /** 0 to 1, and whether the player is muted. */
+  volume: number;
+  muted: boolean;
+  /** Whether a previous / next title exists in the queue. */
+  hasPrev: boolean;
+  hasNext: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+  onToggleMute: () => void;
+  /** The audio track's name, or null while the file has no choice of audio. */
+  audioLabel: string | null;
+  onOpenAudio: () => void;
+  /** The queue's length (1 for a single title). */
+  queueCount: number;
+  onOpenPlaylist: () => void;
+  onOpenInfo: () => void;
+  onOpenCast: () => void;
+  onToggleFullscreen: () => void;
   qualityRef?: React.RefObject<View>;
   playRef?: React.RefObject<View>;
   subtitlesRef?: React.RefObject<View>;
@@ -84,30 +102,39 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
 
         <Scrubber {...props} played={played} buffered={buffered} targetShown={props.seekTargetSeconds !== null} shownSeconds={shown} />
 
-        <Decor icon="skipPrev" label="Previous episode" x={70} y={958} />
-        <Decor icon="skipNext" label="Next episode" x={225.19} y={958} />
+        <RoundButton icon="skipPrev" label="Previous episode" size={64} x={70} y={958} iconSize={20} control="prev" {...props} onPress={props.onPrev} bare focusable={props.hasPrev} dim={!props.hasPrev} />
+        <RoundButton icon="skipNext" label="Next episode" size={64} x={225.19} y={958} iconSize={20} control="next" {...props} onPress={props.onNext} bare focusable={props.hasNext} dim={!props.hasNext} />
         <RoundButton icon={props.playing ? 'pause' : 'play'} label={props.playing ? 'Pause' : 'Play'} web={props.playing ? 'Pause' : 'Play'} size={64} x={147.59} y={958} iconSize={20} control="play" {...props} nodeRef={props.playRef} onPress={props.onTogglePlay} filled />
-        <View style={{position: 'absolute', left: u(302.78), top: u(978.7)}} pointerEvents="none">
-          <T size={10.88} weight={400} color="#ffffff" lh={22} lines={1} generic>
-            {`${formatTime(shown)} / ${formatTime(duration)}`}
+        <View style={{position: 'absolute', left: u(302.78), top: u(978.7), flexDirection: 'row'}} pointerEvents="none">
+          <T size={10.88} weight={400} color="#ffffff" lh={22} lines={1}>
+            {formatTime(shown)}
+          </T>
+          <View style={{marginHorizontal: u(5.6)}}>
+            <T size={10.88} weight={400} color="#ffffff" lh={22} lines={1}>
+              /
+            </T>
+          </View>
+          <T size={10.88} weight={400} color="#ffffff" lh={22} lines={1}>
+            {formatTime(duration)}
           </T>
         </View>
 
-        {/* The group at the web's positions (64 px buttons 77.59 px apart). Mute, volume, audio, queue, info, cast and fullscreen
-            are drawn only: this player has no control behind them yet (the remote's own keys set the volume). */}
-        <InlineIcon icon="volume" label="Mute" x={374.77} bright />
+        {/* The group at the web's positions (64 px buttons 77.59 px apart). */}
+        <RoundButton icon={props.muted || props.volume === 0 ? 'volumeOff' : 'volume'} label={props.muted ? 'Unmute' : 'Mute'} web={props.muted ? 'Unmute' : 'Mute'} size={64} x={374.77} y={958} iconSize={20} control="mute" {...props} onPress={props.onToggleMute} bare />
+        <VolumeSlider {...props} />
+        <RoundButton icon="audio" label={`Audio: ${props.audioLabel ?? 'Unavailable'}`} size={64} x={1223.98} y={958} iconSize={20} control="audio" {...props} onPress={props.onOpenAudio} bare focusable={props.audioLabel !== null} dim={props.audioLabel === null} />
         <RoundButton icon="subtitles" label="Subtitles" web={`Subtitles: ${props.subtitlesOn ? 'On' : 'Off'}`} size={64} x={1301.58} y={958} iconSize={20} control="subtitles" focusable={props.hasSubtitles} {...props} nodeRef={props.subtitlesRef} onPress={props.onOpenSubtitles} dim={!props.subtitlesOn} />
-        <InlineIcon icon="queue" label="Playlist: 1 item" x={1379.17} />
+        <RoundButton icon="queue" label={`Playlist: ${props.queueCount} item${props.queueCount === 1 ? '' : 's'}`} size={64} x={1379.17} y={958} iconSize={20} control="playlist" {...props} onPress={props.onOpenPlaylist} bare />
         <QualityPill {...props} />
-        <InlineIcon icon="info" label="Info and playback health" x={1630.81} bright />
-        <InlineIcon icon="cast" label="Play on another device" x={1708.41} bright />
-        <InlineIcon icon="fullscreen" label="Enter fullscreen" x={1786} bright />
+        <RoundButton icon="info" label="Info and playback health" size={64} x={1630.81} y={958} iconSize={20} control="info" {...props} onPress={props.onOpenInfo} bare />
+        <RoundButton icon="cast" label="Play on another device" size={64} x={1708.41} y={958} iconSize={20} control="cast" {...props} onPress={props.onOpenCast} bare />
+        <RoundButton icon="fullscreen" label="Enter fullscreen" size={64} x={1786} y={958} iconSize={20} control="fullscreen" {...props} onPress={props.onToggleFullscreen} bare />
       </Animated.View>
     </View>
   );
 }
 
-function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>; icon: IconName; label: string; web?: string; size: number; x?: number; y?: number; iconSize?: number; control: ChromeControl; onPress: () => void; filled?: boolean; dim?: boolean; inline?: boolean; focusable?: boolean}): React.ReactElement {
+function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>; icon: IconName; label: string; web?: string; size: number; x?: number; y?: number; iconSize?: number; control: ChromeControl; onPress: () => void; filled?: boolean; dim?: boolean; inline?: boolean; focusable?: boolean; bare?: boolean}): React.ReactElement {
   const {colour} = useTheme();
   const focused = props.focused === props.control;
   return (
@@ -127,7 +154,7 @@ function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>
         borderRadius: u(props.size / 2),
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: props.filled ? 'rgba(255,255,255,0.14)' : props.inline ? 'transparent' : mix('#000000', 0.42),
+        backgroundColor: props.filled ? 'rgba(255,255,255,0.14)' : props.inline || props.bare ? 'transparent' : mix('#000000', 0.42),
       }}
     >
       <Icon name={props.icon} size={u(props.iconSize ?? 16)} color={props.dim ? colour.inkMuted : '#ffffff'} strokeWidth={2} />
@@ -207,20 +234,25 @@ function QualityPill(props: PlayerChromeProps): React.ReactElement {
   );
 }
 
-/** A drawn-only transport button (previous, next episode) at the web's 64 px box, dimmed like a disabled control. */
-function Decor({icon, x, y}: {icon: IconName; label: string; x: number; y: number}): React.ReactElement {
+/** The web's volume range (130 x 44 at 448.77, 968): left and right on the remote step it, Select mutes. */
+function VolumeSlider(props: PlayerChromeProps): React.ReactElement {
+  const focused = props.focused === 'volume';
+  const level = props.muted ? 0 : props.volume;
   return (
-    <View pointerEvents="none" style={{position: 'absolute', left: u(x), top: u(y), width: u(64), height: u(64), borderRadius: u(32), alignItems: 'center', justifyContent: 'center', opacity: 0.28}}>
-      <Icon name={icon} size={u(20)} color="#ffffff" strokeWidth={2} />
-    </View>
-  );
-}
-
-function InlineIcon({icon, x, bright}: {icon: IconName; label: string; x: number; bright?: boolean}): React.ReactElement {
-  return (
-    <View pointerEvents="none" style={{position: 'absolute', left: u(x), top: u(958), width: u(64), height: u(64), borderRadius: u(32), alignItems: 'center', justifyContent: 'center'}}>
-      <Icon name={icon} size={u(20)} color={bright ? '#ffffff' : 'rgba(255,255,255,0.34)'} strokeWidth={2} />
-    </View>
+    <Pressable
+      accessibilityRole="adjustable"
+      accessibilityLabel="Volume"
+      accessibilityValue={{min: 0, max: 100, now: Math.round(level * 100)}}
+      {...lx('textbox', 'Volume')}
+      onFocus={() => props.onFocusControl('volume')}
+      onPress={props.onToggleMute}
+      style={{position: 'absolute', left: u(448.77), top: u(968), width: u(130), height: u(44), justifyContent: 'center'}}
+    >
+      <View style={{height: u(focused ? 6 : 4), borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.22)', overflow: 'hidden'}}>
+        <View style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${level * 100}%`, backgroundColor: '#ffffff'}} />
+      </View>
+      {focused ? <FocusRing /> : null}
+    </Pressable>
   );
 }
 

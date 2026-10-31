@@ -94,7 +94,7 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
       setTheme: (name) => setPreferenceRef.current(name),
       player: () => {
         const state = engine.getState();
-        return {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, error: state.error?.message};
+        return {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, bufferedSeconds: state.bufferedSeconds, error: state.error?.message};
       },
       theme: () => schemeRef.current,
       cover: setCover,
@@ -123,7 +123,7 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
     const timer = setInterval(() => {
       if (!playerRef.current?.isVisible()) return;
       const state = engine.getState();
-      console.log('PARITY ' + JSON.stringify({cmd: 'tick', t: Date.now(), route: `/player/${lastPlayed}`, player: {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, error: state.error?.message}}));
+      console.log('PARITY ' + JSON.stringify({cmd: 'tick', t: Date.now(), route: `/player/${lastPlayed}`, player: {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, bufferedSeconds: state.bufferedSeconds, error: state.error?.message}}));
     }, 2000);
     return () => {
       clearInterval(timer);

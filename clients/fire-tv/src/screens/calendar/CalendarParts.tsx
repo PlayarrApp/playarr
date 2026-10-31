@@ -28,6 +28,7 @@ import {useWatchlistToggle} from '../../lib/watchlist';
 import {blend, mix} from '../../theme/color';
 import {useTheme} from '../../theme/ThemeProvider';
 import {Button} from '../../tv/forms';
+import {contentHeight} from '../../theme/fonts';
 import {BalancedT, Box, T, u} from '../../tv/kit';
 import {legacySnapshot, planItemActions} from '../../lib/calendarActions';
 import {lx} from '../../debug/layoutMarks';
@@ -114,23 +115,29 @@ const BRAND = '#cf3157';
 export function StatusPill({tone, label, size = 13.44}: {tone: EntryPillTone | 'requested'; label: string; size?: number}): React.ReactElement {
   const {colour} = useTheme();
   const tint = tone === 'available' ? colour.success : tone === 'upcoming' ? BRAND : tone === 'missing' ? colour.danger : tone === 'requested' ? colour.inkMuted : colour.inkSoft;
+  // The pill is the Text itself (fill, border and radius on the run), as the web's span is: the exported box is the pill.
+  const pad = (26.6 - 2 - contentHeight(size)) / 2;
   return (
-    <View
+    <T
+      size={size}
+      weight={750}
+      lh={18.8}
+      color={colour.ink}
+      lines={1}
       style={{
-        height: u(26.6),
+        alignSelf: 'flex-start',
+        marginTop: 0,
+        marginBottom: 0,
         paddingHorizontal: u(10.4),
+        paddingVertical: u(pad),
         borderRadius: u(13.3),
         borderWidth: 1,
         borderColor: mix(tint, 0.6),
         backgroundColor: blend(tint, colour.surface, 0.14),
-        justifyContent: 'center',
-        alignSelf: 'flex-start',
       }}
     >
-      <T size={size} weight={750} lh={18.8} color={colour.ink} lines={1}>
-        {label}
-      </T>
-    </View>
+      {label}
+    </T>
   );
 }
 

@@ -45,6 +45,8 @@ const TAIL_KEYS = {
   filters: ["right*12", "select"],
   actions: ["right", "select:long"],
 };
+// Where the engine is told to pause: its pause lands about 0.25 s later (a few frames), on the 2.000 s frame.
+const ARM_PAUSE_MS = Number(process.env.PLAYARR_FIRETV_ARM_PAUSE_MS ?? 1750);
 const KEYS = { up: "Up", down: "Down", left: "Left", right: "Right", select: "Return", back: "Escape" };
 
 const scratch = mkdtempSync(join(tmpdir(), "firetv-"));
@@ -178,7 +180,21 @@ export async function createDriver({ out } = {}) {
     await sleep(500);
   };
   // The profile picker opens first: Enter chooses the Device Test profile (the first, focused one).
-  const intoHome = () => pickProfile({ state, press: (k) => press(k), sleep });
+  const pickOnce = () => pickProfile({ state, press: (k) => press(k), sleep }).catch(async (error) => {
+    // Keep what the display showed when the picker would not take Select, so a flake can be told apart (overlay, wrong window, blank).
+    if (out) await execFileP("import", ["-window", "root", "-crop", "1920x1080+0+0", "+repage", join(out, `picker-stuck-${Date.now()}.png`)], { env }).catch(() => {});
+    throw error;
+  });
+  // A hung app (see firetv-profile-pick.mjs) is restarted from the launcher, which is what a person would do; each one is logged.
+  const intoHome = async () => {
+    for (let tries = 1; ; tries++) {
+      try { return await pickOnce(); } catch (error) {
+        if (!error.appHung || tries >= 4) throw error;
+        console.error(`firetv: app hung after the profile pick (restart ${tries})`);
+        await launch();
+      }
+    }
+  };
   const waitSettled = async () => {
     // a library or calendar page fills in after the route changes; wait until two frames agree
     await sleep(6000);
@@ -230,7 +246,17 @@ export async function createDriver({ out } = {}) {
       if (!key) throw new Error(`unknown key ${name}`);
       await settled();
       if (long) {
-        // Menu is the long press on Vega (opens the title actions drawer)
+        // Menu is the long press on Vega (opens the title actions drawer). It acts on the focused card, so look at the focus right
+        // before it: wait for the focus to be a real card and to hold still across two reads, and keep it in the run log.
+        let focus = null;
+        for (let i = 0; i < 6; i++) {
+          const a = JSON.stringify((await state(8000).catch(() => ({}))).focus ?? null);
+          await sleep(1000);
+          const b = JSON.stringify((await state(8000).catch(() => ({}))).focus ?? null);
+          focus = b;
+          if (a === b && b !== "null" && !b.includes('"nav"')) break;
+        }
+        console.error(`firetv: focus before Menu: ${focus}`);
         await press("F2");
         await sleep(2500);
         return;
@@ -244,35 +270,56 @@ export async function createDriver({ out } = {}) {
       // and re-pressing on "unchanged" sent a second key whenever the answer was merely late (an extra Up or Down on the nav list, which
       // then ended on the wrong item). Poll for the change instead, and re-press once only when it never came (a dropped key; at a
       // rail's edge that is harmless: the focus stays put).
-      for (let i = 0; i < 4; i++) {
-        await settled(5000);
-        const after = JSON.stringify((await state(8000).catch(() => ({}))).focus ?? null);
-        // An answer without a focus is a late answer, not a move.
-        if (after !== before && after !== "null") return;
-        await sleep(1200);
+      // A dropped key leaves the focus where it was for good (it was seen to stay for 35 s), a late one moves it within a few seconds:
+      // wait 3 polls per press and press up to 3 times, each press only after the previous one had its full window.
+      for (let press_ = 0; press_ < 3; press_++) {
+        for (let i = 0; i < 3; i++) {
+          await settled(5000);
+          const after = JSON.stringify((await state(8000).catch(() => ({}))).focus ?? null);
+          // An answer without a focus is a late answer, not a move.
+          if (after !== before && after !== "null") { dbg("key", name, before, "->", after); return; }
+          await sleep(1200);
+        }
+        console.error(`firetv: key ${name} did not move the focus (${before}); pressing again`);
+        await press(key);
+        await sleep(900);
       }
-      await press(key);
-      await sleep(900);
     },
     // player-controls: open the pinned film, press Play, pause the static clip at about 2 s (as the web ref) and raise the controls.
     async playerControls() {
       const film = JSON.parse(readFileSync(new URL("../suite.json", import.meta.url), "utf8")).screens.find((x) => x.id === "film-detail")?.open;
       if (!film) throw new Error("suite has no pinned film for player-controls");
-      await command({ cmd: "armPause", ms: "1900" }, 500);
-      // Play on the pinned film's page; if the clip has not started within 50 s (a dropped Select), open the page again and retry once.
+      // Play on the pinned film's page. The clip burns its timestamp into every frame and the engine pauses a few frames after the
+      // armed position, so a pause is kept only when it stopped on the web reference's frame (2.000 s, one frame = 66.7 ms at 15 fps);
+      // any other frame (or a dropped Select that never paused) opens the page again and plays again.
       let paused = false;
-      for (let attempt = 0; attempt < 2 && !paused; attempt++) {
+      for (let attempt = 0; attempt < 8 && !paused; attempt++) {
         await this.route(film);
+        // Armed per attempt: the app disarms itself when it pauses, so a retry after a pause outside the window would otherwise never pause.
+        await command({ cmd: "armPause", ms: String(ARM_PAUSE_MS) }, 500);
         await sleep(2000);
         await press("Return");
         const t0 = Date.now();
         while (Date.now() - t0 < 50000) {
           const player = (await state(20000).catch(() => ({}))).player ?? {};
-          if (player.state === "paused" && Math.abs(player.positionSeconds - 2) <= 0.2) { paused = true; break; }
+          if (player.state === "paused") {
+            console.error(`firetv: player paused at ${player.positionSeconds} s (attempt ${attempt + 1})`);
+            paused = Math.abs(player.positionSeconds - 2) < 0.034;
+            break;
+          }
           await sleep(1500);
         }
       }
-      if (!paused) throw new Error("the Vega player did not pause at 2 s");
+      if (!paused) throw new Error("the Vega player did not pause on the 2.000 s frame");
+      // The buffered bar keeps growing while paused: wait until it stops, so the bar is the same in every run.
+      let lastBuffered = -1;
+      for (let i = 0; i < 40; i++) {
+        const b = (await state(20000).catch(() => ({}))).player?.bufferedSeconds;
+        if (b != null && b === lastBuffered) break;
+        lastBuffered = b ?? -1;
+        await sleep(3000);
+      }
+      console.error(`firetv: buffered to ${lastBuffered} s`);
       await sleep(7000); // the controls hide after 5 s without input
       await press("Right"); // the first input with the controls hidden only raises them
       await sleep(2500);
@@ -282,6 +329,14 @@ export async function createDriver({ out } = {}) {
       if (TAIL_KEYS[screenId]) {
         await command({ cmd: "route", path: "/movies" }, 4000);
         await waitSettled();
+        // The grid draws after its data arrives; a key before a card holds focus is spent on claiming it (the drawer then opens on
+        // the first card instead of the second), so wait for a real card focus first.
+        for (let i = 0; i < 10; i++) {
+          const f = (await state(8000).catch(() => null))?.focus;
+          if (f && f.position?.rail !== "nav") break;
+          await sleep(2000);
+        }
+        await settled();
         for (const { key, long } of expandKeys(TAIL_KEYS[screenId])) await this.key(key, { long });
         return;
       }
@@ -314,6 +369,25 @@ export async function createDriver({ out } = {}) {
       }
       return null;
     },
+    // A frame is taken only when two consecutive captures are pixel-identical (a fade, a shimmer or a caret still moving shows as a
+    // difference); a screen that never settles fails the capture.
+    async stableCapture(file) {
+      const grab = async (to) => {
+        await execFileP("import", ["-window", "root", "-crop", "1920x1080+0+0", "+repage", to], { env });
+        return PNG.sync.read(readFileSync(to)).data;
+      };
+      let previous = await grab(file);
+      for (let i = 0; i < 8; i++) {
+        await sleep(700);
+        const again = `${file}.next.png`;
+        const next = await grab(again);
+        if (Buffer.compare(previous, next) === 0) { unlinkSync(again); return; }
+        writeFileSync(file, readFileSync(again));
+        unlinkSync(again);
+        previous = next;
+      }
+      throw new Error(`the screen never settled (two consecutive frames differ): ${file}`);
+    },
     async screenshot(file) {
       const s = await state();
       if (!s.route || s.route === "/profiles" && !file.includes("profiles")) throw new Error(`not a content screen: ${s.route}`);
@@ -322,7 +396,7 @@ export async function createDriver({ out } = {}) {
       // The layout document of the same screen state goes next to the capture: <out>/layout/<theme>/<screen>.json.
       const theme = basename(dirname(file));
       const layout = theme === "dark" || theme === "light" ? await layoutDocument() : null;
-      await execFileP("import", ["-window", "root", "-crop", "1920x1080+0+0", "+repage", file], { env });
+      await this.stableCapture(file);
       if (!layout) return;
       // Elements a later opaque view covers are flagged by the app; the real screen decides: hide the covering views, capture
       // again, and an element whose box pixels changed was covered by them (the pixels shown there were the cover's, not its own).
@@ -350,7 +424,7 @@ export async function createDriver({ out } = {}) {
       const kept = layout.filter((e) => !drop.has(e)).map(({ src, covered, ...element }) => (process.env.PARITY_LAYOUT_DEBUG ? { ...element, src } : element));
       const dir = join(dirname(dirname(file)), "layout", theme);
       mkdirSync(dir, { recursive: true });
-      writeFileSync(join(dir, `${basename(file, ".png")}.json`), JSON.stringify({ screen: basename(file, ".png"), theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: pinnedClock !== null, elements: kept }));
+      writeFileSync(join(dir, `${basename(file, ".png")}.json`), JSON.stringify({ screen: basename(file, ".png"), theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: pinnedClock !== null, occluded: drop.size, elements: kept }));
     },
     async play(c, expect) {
       await command({ cmd: "play", file: c.file }, 500);
