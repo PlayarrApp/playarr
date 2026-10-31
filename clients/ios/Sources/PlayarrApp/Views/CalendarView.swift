@@ -595,6 +595,7 @@ struct CalendarView: View {
         }
         .parityButtonStyle(.plain)
         .wmKeyFocus(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .parityFill(PlayarrStyle.surfaceStrong) // the card paints surface-strong: the button and its texts sit on it
     }
 
     private func calendarTimeLabel24(_ entry: CalendarEntry) -> String {

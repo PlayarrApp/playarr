@@ -33,6 +33,8 @@ final class ParityLayoutRegistry {
         var rect: CGRect = .zero
         var tracking: CGFloat = 0
         var background: String?
+        /// The composited colour behind the view before its own fill (where it paints one); `nil` when `background` already is that.
+        var outer: String?
         var radius: CGFloat = 0
         /// Product of the ancestors' opacity and mask alpha at this element (docs/parity/LAYOUT.md `opacity`).
         var opacity: Double = 1
@@ -257,6 +259,21 @@ final class ParityLayoutRegistry {
                 for (id, item) in items where box.contains(item.rect) { inside.insert(id) }
                 for (id, runs) in textRuns where runs.contains(where: { box.contains($0.rect) }) { inside.insert(id) }
                 if !inside.isEmpty {
+                    // A control that paints nothing of its own sits on what is behind its outermost drawn view: the
+                    // composited fill of the largest view inside it (its own fill when that view fills the control).
+                    if entry.background == nil {
+                        var best: (area: CGFloat, colour: String?) = (0, nil)
+                        func consider(_ rect: CGRect, _ colour: String?) {
+                            guard let colour, rect.width * rect.height > best.area else { return }
+                            best = (rect.width * rect.height, colour)
+                        }
+                        for (id, frame) in toggleFrames where inside.contains(id) && frame.width > 0 { consider(frame, toggleBackdrops[id]) }
+                        for (id, item) in items where inside.contains(id) {
+                            consider(item.rect, item.painted && sameFrame(item.rect, entry.rect) ? item.background : (item.outer ?? item.background))
+                        }
+                        for (id, runs) in textRuns where inside.contains(id) { for run in runs { consider(run.rect, run.background) } }
+                        entry.background = best.colour
+                    }
                     let key = String(format: "%@|%@|%.1f|%.1f|%.1f|%.1f", entry.role, entry.text ?? "", entry.rect.minX, entry.rect.minY, entry.rect.width, entry.rect.height)
                     let group = groupIDs[key] ?? UUID()
                     groupIDs[key] = group
@@ -713,7 +730,7 @@ private struct ParityLayoutModifier: ViewModifier {
         // Offscreen content is not on screen; whether anything on screen is drawn is decided by the visibility probe.
         guard drawn.intersects(CGRect(origin: .zero, size: UIScreen.main.bounds.size)) else { ParityLayoutRegistry.shared.remove(id); return }
         let opacity = paint.effective(drawn) ?? paint.opacity
-        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size.map { $0 * CGFloat(paint.scale) }, weight: weight, color: hex, rect: drawn, tracking: tracking, background: (box.map { environment.parityBackdrop.adding($0, environment) } ?? environment.parityBackdrop).rgb(at: CGPoint(x: drawn.midX, y: drawn.midY), environment).hex, radius: radius * CGFloat(paint.scale), opacity: opacity, painted: box != nil, inCover: environment.parityInCover))
+        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size.map { $0 * CGFloat(paint.scale) }, weight: weight, color: hex, rect: drawn, tracking: tracking, background: (box.map { environment.parityBackdrop.adding($0, environment) } ?? environment.parityBackdrop).rgb(at: CGPoint(x: drawn.midX, y: drawn.midY), environment).hex, outer: environment.parityBackdrop.rgb(at: CGPoint(x: drawn.midX, y: drawn.midY), environment).hex, radius: radius * CGFloat(paint.scale), opacity: opacity, painted: box != nil, inCover: environment.parityInCover))
     }
 }
 

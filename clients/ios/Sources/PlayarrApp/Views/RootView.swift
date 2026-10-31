@@ -686,6 +686,7 @@ private struct AuthenticatedPlayarrShell: View {
         }
         .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         .parityTopLayer()
+        .parityFill(WM.page) // the nav floats over the page fill the screen paints (web composites its 88% fill over it)
     }
 
     private func stageChrome(proxy: GeometryProxy) -> some View {
@@ -782,8 +783,8 @@ private struct AuthenticatedPlayarrShell: View {
         }
         .padding(.vertical, 7.73)
         .padding(.horizontal, 6.75)
-        // Web rail pills are solid surface-strong with a 1 px line border (the art never shows through).
-        .parityShape("container", color: PlayarrStyle.surfaceStrong, in: RoundedRectangle(cornerRadius: 22, style: .continuous), radius: 22)
+        // Web rail pills: surface-strong at 56% (global.css `.app-nav-group`) over the shell colour, with a 1 px line border.
+        .parityShape("container", color: PlayarrStyle.surfaceStrong.opacity(0.56), in: RoundedRectangle(cornerRadius: 22, style: .continuous), radius: 22)
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(PlayarrStyle.line, lineWidth: 1)
@@ -791,30 +792,35 @@ private struct AuthenticatedPlayarrShell: View {
         .shadow(color: PlayarrStyle.ink.opacity(0.1), radius: 21, y: 14)
     }
 
-    /// The web rail's profile tile: avatar over the profile name in its own pill, 78 x 75 pt at 1366 wide.
+    /// The web rail's profile tile: a link (avatar over the profile name) in its own 77.5 x 76.11 pt pill at 1366 wide.
     private var profileTile: some View {
         Button { select(.profiles) } label: {
             VStack(spacing: 4) {
-                currentAvatar(size: 20)
+                currentAvatar(size: 20).parityBox("image").parityBox("container", radius: 10)
                 Text((environment.currentUserName ?? "").split(separator: " ").first.map(String.init) ?? "Profile")
                     .wm(6.72, 700, color: PlayarrStyle.muted, text: (environment.currentUserName ?? "").split(separator: " ").first.map(String.init) ?? "Profile")
                     .foregroundStyle(PlayarrStyle.muted)
                     .lineLimit(1)
             }
-            .frame(width: 77.5, height: 76.11)
-            .background(PlayarrStyle.surfaceStrong, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay { RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(PlayarrStyle.line, lineWidth: 1) }
-            .overlay(alignment: .bottom) {
-                // The web rail prints the app version under the profile tile.
-                Text("v\(InstalledAppVersion.current)")
-                    .font(.system(size: 6.08, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(PlayarrStyle.ink)
-                    .fixedSize()
-                    .offset(y: 13)
-            }
+            .frame(width: 64, height: 60.67)
+            .parityBox("link", name: profileLinkName)
         }
         .parityButtonStyle(.plain)
-        .accessibilityLabel("Open profile and settings")
+        .accessibilityLabel(profileLinkName)
+        .accessibilityAddTraits(.isLink)
+        .padding(.vertical, 7.72)
+        .padding(.horizontal, 6.75)
+        // The same pill as every rail group (web: surface-strong at 56% over the shell colour, a 1 px line border).
+        .parityShape("container", color: PlayarrStyle.surfaceStrong.opacity(0.56), in: RoundedRectangle(cornerRadius: 22, style: .continuous), radius: 22)
+        .overlay { RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(PlayarrStyle.line, lineWidth: 1) }
+        .overlay(alignment: .bottom) {
+            // The web rail prints the app version under the profile tile, on the shell colour.
+            Text("v\(InstalledAppVersion.current)")
+                .font(.system(size: 6.08, weight: .semibold, design: .monospaced))
+                .foregroundStyle(PlayarrStyle.ink)
+                .fixedSize()
+                .offset(y: 13)
+        }
     }
 
     private var profileLinkName: String { "Signed in as \(environment.currentUserName ?? "viewer"). Open profiles." }

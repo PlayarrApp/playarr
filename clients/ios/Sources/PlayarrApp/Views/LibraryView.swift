@@ -271,6 +271,7 @@ struct LibraryView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .ignoresSafeArea(edges: .vertical)
+        .parityFill(WM.page) // the page fill this screen draws first (`WM.page` at the bottom of the stack)
         .webGutter()
     }
 
