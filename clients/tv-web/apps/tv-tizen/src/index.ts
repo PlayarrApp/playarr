@@ -3,6 +3,7 @@ import { loadPackagedConfig } from "./tizen-runtime.mjs";
 import { installFullDateComma, installSpacedRanges } from "../../../tooling/spaced-range.mjs";
 import { installLegacyHas } from "../../../tooling/legacy-has.mjs";
 import { installLegacyAspectRatio } from "../../../tooling/legacy-aspect-ratio.mjs";
+import { installLineBoxFix } from "../../tv-webos/src/webosLineBoxes.mjs";
 
 // Chromium 85 (Tizen 6.5) has no :has(); the build rewrites those rules for this runtime.
 installLegacyHas();
@@ -12,6 +13,9 @@ installSpacedRanges(window);
 installFullDateComma(window);
 // Chromium 85 (Tizen 6.5) has no aspect-ratio either; the build keeps each ratio as --lc-ar for this runtime.
 installLegacyAspectRatio();
+// Engines before Chromium 105 (Chromium 85 here) truncate a fractional line height to whole pixels; restore the web box heights
+// from the exact computed line height (N lines times the line height as min-block-size), the same rule the webOS app uses.
+installLineBoxFix(window);
 
 // The native wrapper packages the complete routed Playarr application. The
 // compile-time platform constant makes the shared web runtime select Tizen
