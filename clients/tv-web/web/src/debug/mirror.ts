@@ -43,6 +43,41 @@ function readToken(): string | null {
   }
 }
 
+// html-to-image's toPng/toJpeg load the SVG through a fresh <img> with a multi-megabyte data: URL every frame. Chromium keeps each
+// of those as a cached resource (the URL is unique per frame), which grew the renderer by about 12 MB per frame until the TV hung
+// (measured with the soak in coord-20261024/vidaa/memleak). Load the same SVG from a blob: URL that is revoked at once, into one
+// reused <img> and one reused canvas, and read the frame out from that.
+let frameImg: HTMLImageElement | null = null;
+let frameCanvas: HTMLCanvasElement | null = null;
+
+async function renderFrame(
+  toSvg: (node: HTMLElement, options: Record<string, unknown>) => Promise<string>,
+  node: HTMLElement,
+  options: Record<string, unknown> & { width: number; height: number; pixelRatio: number; quality: number; backgroundColor: string },
+): Promise<string> {
+  const svg = await toSvg(node, options);
+  const url = URL.createObjectURL(new Blob([decodeURIComponent(svg.slice(svg.indexOf(",") + 1))], { type: "image/svg+xml" }));
+  const img = (frameImg ??= new Image());
+  try {
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("frame image failed to load"));
+      img.src = url;
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+  const canvas = (frameCanvas ??= document.createElement("canvas"));
+  canvas.width = options.width * options.pixelRatio;
+  canvas.height = options.height * options.pixelRatio;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("no 2d canvas context");
+  ctx.fillStyle = options.backgroundColor;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return usePng ? canvas.toDataURL() : canvas.toDataURL("image/jpeg", options.quality);
+}
+
 function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const t = window.setTimeout(() => reject(new Error(`${what} timed out after ${ms} ms`)), ms);
@@ -288,7 +323,7 @@ export function startDebugMirror(): void {
       try {
         initialIdentity = await readMirrorIdentity(token);
         if (initialIdentity.status !== "ok") throw new Error("mirror identity verification failed");
-        const { toJpeg, toPng, getFontEmbedCSS } = await withTimeout(import("html-to-image"), 10000, "html-to-image import");
+        const { toSvg, getFontEmbedCSS } = await withTimeout(import("html-to-image"), 10000, "html-to-image import");
         // The TV stage scale (tvStageScale.ts) zooms <html> on most platforms, which html-to-image does
         // not see. VIDAA instead transforms <body>; clear only that transform on the cloned body so the
         // logical stage is rendered once at the requested output density.
@@ -346,13 +381,13 @@ export function startDebugMirror(): void {
           }
         });
         image = await withTimeout(
-          withCollapsingTrackHeights(() => (usePng ? toPng : toJpeg)(document.body, {
+          withCollapsingTrackHeights(() => renderFrame(toSvg, document.body, {
             // The clone loses ::-webkit-scrollbar rules (pseudo-elements are not copied), so overflow containers would draw
             // native scrollbars the TV does not show: hide them in the rendered copy.
             // ?mirrorGeo=1 turns hinting off (geometricPrecision). Measured on the TV: it scored 0.02 to 0.2 lower than the default on settings, month and agenda.
             fontEmbedCSS: `${fontCss}\n${mirrorFlag("mirrorGeo") ? "*{text-rendering:geometricPrecision!important}\n" : ""}*::-webkit-scrollbar{display:none}*{scrollbar-width:none}\n${scrollCss}`,
             // Cross-origin media (posters, video) would stall or taint the render: leave it out.
-            filter: (node) => {
+            filter: (node: Node) => {
               // Skip what lies past the right or bottom edge (long rails and grids): the TV needs far
               // less time to render, and nothing visible moves because earlier siblings stay put.
               if (node instanceof HTMLElement && node !== document.body) {
