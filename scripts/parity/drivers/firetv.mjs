@@ -270,15 +270,20 @@ export async function createDriver({ out } = {}) {
       // and re-pressing on "unchanged" sent a second key whenever the answer was merely late (an extra Up or Down on the nav list, which
       // then ended on the wrong item). Poll for the change instead, and re-press once only when it never came (a dropped key; at a
       // rail's edge that is harmless: the focus stays put).
-      for (let i = 0; i < 4; i++) {
-        await settled(5000);
-        const after = JSON.stringify((await state(8000).catch(() => ({}))).focus ?? null);
-        // An answer without a focus is a late answer, not a move.
-        if (after !== before && after !== "null") { dbg("key", name, before, "->", after); return; }
-        await sleep(1200);
+      // A dropped key leaves the focus where it was for good (it was seen to stay for 35 s), a late one moves it within a few seconds:
+      // wait 3 polls per press and press up to 3 times, each press only after the previous one had its full window.
+      for (let press_ = 0; press_ < 3; press_++) {
+        for (let i = 0; i < 3; i++) {
+          await settled(5000);
+          const after = JSON.stringify((await state(8000).catch(() => ({}))).focus ?? null);
+          // An answer without a focus is a late answer, not a move.
+          if (after !== before && after !== "null") { dbg("key", name, before, "->", after); return; }
+          await sleep(1200);
+        }
+        console.error(`firetv: key ${name} did not move the focus (${before}); pressing again`);
+        await press(key);
+        await sleep(900);
       }
-      await press(key);
-      await sleep(900);
     },
     // player-controls: open the pinned film, press Play, pause the static clip at about 2 s (as the web ref) and raise the controls.
     async playerControls() {
