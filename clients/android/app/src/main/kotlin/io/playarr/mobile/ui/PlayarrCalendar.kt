@@ -23,6 +23,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.composed
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.withStyle
@@ -697,7 +700,8 @@ internal fun TvCalendarAgenda(
     val stagedConfig = androidx.compose.ui.platform.LocalConfiguration.current
     UnstagedForWebCssPx {
     androidx.compose.runtime.CompositionLocalProvider(LocalCalendarMetrics provides (if (tablet) PhoneCalendarMetrics else TvCalendarMetrics), LocalCalendarToday provides today, LocalCalendarTabletAgenda provides tablet) {
-        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+        val agendaOrigin = remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().onGloballyPositioned { agendaOrigin.value = it.positionInWindow() }) {
             // Web: the date range lives in the header group; the details panel takes the library stage (eyebrow at y 259)
             // and the day list starts under the header. Both panes end at the bottom of the screen.
             val detailsTop = if (tablet) 294.3.dp else 264.dp
@@ -761,13 +765,20 @@ internal fun TvCalendarAgenda(
                         if (day != null) {
                             item(key = "day-$day") {
                                 // Web: the day heading is one block as wide as the list that holds its date and its Today badge.
-                                Row(Modifier.fillMaxWidth().padding(top = if (index > 0) (if (tablet) 25.dp else 26.dp) else 0.dp, bottom = if (tablet) 43.dp else if (index > 0) 40.dp else 39.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                // Web `.calendar-day > h3`: a 2.75rem box carrying the panel frost (fixed to the viewport) over the page base.
+                                val headingGap = if (tablet) 0f else AGENDA_HEADING_HEIGHT - dayFont.dayHeadingLine
+                                Box(
+                                    Modifier.fillMaxWidth().padding(top = if (index > 0) (if (tablet) 25.dp else 26.dp) else 0.dp, bottom = if (tablet) 43.dp else (if (index > 0) 40f else 39f).minus(headingGap).dp)
+                                        .then(if (tablet) Modifier else Modifier.height(AGENDA_HEADING_HEIGHT.dp).agendaHeadingFrost(agendaOrigin.value, maxWidth.value).semantics { heading() }),
+                                ) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     // Static web refs (television): the day heading is --accent at weight 640, a plain text run.
                                     Text(
                                         phoneCalendarDayHeading(day, locale), color = if (tablet) WebInk else io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent, fontSize = dayFont.dayHeading.sp, lineHeight = dayFont.dayHeadingLine.sp, fontWeight = FontWeight(if (tablet) 560 else 640),
                                         style = WebTextStyle, modifier = if (tablet) Modifier.semantics { heading() } else Modifier,
                                     )
                                     if (day == today) CalendarTodayBadge(tv = !tablet)
+                                }
                                 }
                             }
                         } else if (item != null) {
@@ -2267,3 +2278,34 @@ private fun calendarEntryToneLabel(item: CalendarItem, zone: ZoneId): String = p
         CalendarPillTone.Neutral -> PlayarrString.CalendarPillNotTracked
     },
 )
+
+/** Web `--agenda-heading-h` (2.75rem): the pinned day heading box. */
+private const val AGENDA_HEADING_HEIGHT = 44f
+
+/**
+ * Web `.calendar-agenda-content .calendar-day > h3` background: the library panel's left-to-right frost
+ * (`--agenda-panel-frost`, stops over `--tv-rail-frost` = surface-soft 44% (dark) / 48% (light) mixed into surface-strong),
+ * `background-attachment: fixed`, sized 65vw x 100vh at right top, over `--agenda-heading-base` (bg in dark, surface in light).
+ * [origin] is the agenda container's window position, so the gradient stays anchored to the viewport as the row moves.
+ */
+private fun Modifier.agendaHeadingFrost(origin: androidx.compose.ui.geometry.Offset, viewportWidth: Float): Modifier = composed {
+    val position = remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    val dark = webIsDark
+    val base = if (dark) WebBackground else WebSurface
+    val frost = androidx.compose.ui.graphics.lerp(WebSurfaceStrong, WebSurfaceSoft, if (dark) 0.44f else 0.48f)
+    val stops = if (dark) listOf(0f to 0f, 0.12f to 0.72f, 0.34f to 0.90f, 0.62f to 0.97f, 1f to 1f)
+    else listOf(0f to 0f, 0.12f to 0.68f, 0.34f to 0.88f, 0.62f to 0.96f, 1f to 1f)
+    this
+        .onGloballyPositioned { position.value = it.positionInWindow() - origin }
+        .drawBehind {
+            val left = viewportWidth * 0.35f * density - position.value.x
+            val right = viewportWidth * density - position.value.x
+            drawRect(base)
+            drawRect(
+                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                    colorStops = stops.map { (at, alpha) -> at to frost.copy(alpha = alpha) }.toTypedArray(),
+                    startX = left, endX = right,
+                ),
+            )
+        }
+}
