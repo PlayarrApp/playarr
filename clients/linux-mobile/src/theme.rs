@@ -119,11 +119,11 @@ pub fn css(dark: bool) -> String {
     } else {
         "button.pa-entry.have { border-left-color: #224c3a; }\n.pa-dot.have { background: #224c3a; }\n.pa-chip-status.ok { color: @pa_ink; border-color: alpha(#224c3a, 0.65); background: alpha(#224c3a, 0.16); }\n.pa-agenda-bg { background: none; }\n"
     };
-    // The web's library rail surface (`.tv-rail-surface`): a sideways ramp of the frost colour, stops per theme.
+    // The web's library rail surface (`.tv-rail-surface`): a sideways ramp of the frost colour in dark; on a phone the light theme's later rule makes it a flat 96 % surface.
     let rail = if dark {
         ".pa-rail-surface { background: linear-gradient(90deg, alpha(@pa_frost, 0) 0%, alpha(@pa_frost, 0.72) 12%, alpha(@pa_frost, 0.9) 34%, alpha(@pa_frost, 0.97) 62%, @pa_frost 100%); }\n"
     } else {
-        ".pa-rail-surface { background: linear-gradient(90deg, alpha(@pa_frost, 0) 0%, alpha(@pa_frost, 0.68) 12%, alpha(@pa_frost, 0.88) 34%, alpha(@pa_frost, 0.96) 62%, @pa_frost 100%); }\n"
+        ".pa-rail-surface { background: alpha(@pa_surface, 0.96); }\n"
     };
     defs + &hero + include_str!("../data/style.css") + have + &cover + rail
 }
