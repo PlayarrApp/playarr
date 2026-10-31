@@ -476,19 +476,33 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       // render, and the check below stays a byte comparison. Both passes always run; nothing is retried until equal.
       let shot = shotFirst;
       if (!mac) {
+        const settleFrame = async () => {
+          rmSync(join(base, "parity-layout.json"), { force: true });
+          let prevS = await grab(probe);
+          for (let i = 0; i < 20; i += 1) {
+            await sleep(1000);
+            const next = await grab(probe);
+            const steady = next.equals(prevS);
+            prevS = next;
+            if (steady) break;
+          }
+          rmSync(probe, { force: true });
+          return prevS;
+        };
         if (!(await measure(`${captureID}-a`))) throw new Error(`layout export missing (${id})`);
-        rmSync(join(base, "parity-layout.json"), { force: true });
-        let prevS = await grab(probe);
-        for (let i = 0; i < 20; i += 1) {
-          await sleep(1000);
-          const next = await grab(probe);
-          const steady = next.equals(prevS);
-          prevS = next;
-          if (steady) break;
+        shot = await settleFrame();
+        if (true) { // diagnosis only: does a further full pass change the frame again, and does it return to the first?
+          const frames = [shotFirst, shot];
+          for (const tag of ["b", "c"]) {
+            if (!(await measure(`${captureID}-${tag}`))) throw new Error(`layout export missing (${id})`);
+            frames.push(await settleFrame());
+          }
+          const same = (x, y) => { let n = 0; for (let i = 0; i < x.length; i += 1) if (x[i] !== y[i]) n += 1; return n; };
+          const dec = frames.map((f) => PNG.sync.read(f).data);
+          console.log(`  bind-diag ${id}: first-vs-1 ${same(dec[0], dec[1])}, 1-vs-2 ${same(dec[1], dec[2])}, 2-vs-3 ${same(dec[2], dec[3])}, first-vs-2 ${same(dec[0], dec[2])}, 1-vs-3 ${same(dec[1], dec[3])} (bytes)`);
+          shot = frames[frames.length - 1];
         }
-        shot = prevS;
         writeFileSync(file, shot);
-        rmSync(probe, { force: true });
       }
       const layout = await measure(captureID);
       if (!layout) throw new Error(`layout export missing or not for this capture (${id})`);
