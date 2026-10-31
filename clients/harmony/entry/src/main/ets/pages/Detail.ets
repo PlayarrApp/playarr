@@ -2816,7 +2816,6 @@ struct Detail {
             ],
           })
       }
-      }
       .width('100%')
       .hitTestBehavior(HitTestMode.Transparent)
 
