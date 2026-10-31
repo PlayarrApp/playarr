@@ -259,8 +259,8 @@ final class ParityLayoutRegistry {
                 for (id, item) in items where box.contains(item.rect) { inside.insert(id) }
                 for (id, runs) in textRuns where runs.contains(where: { box.contains($0.rect) }) { inside.insert(id) }
                 if !inside.isEmpty {
-                    // A control that paints nothing of its own sits on what is behind its outermost drawn view: the
-                    // composited fill of the largest view inside it (its own fill when that view fills the control).
+                    // A control that paints nothing of its own reports what is painted behind it (the web backdrop: ancestors
+                    // only, never a child's own fill). Taken from the largest view inside it, before that view's own fill.
                     if entry.background == nil {
                         var best: (area: CGFloat, colour: String?) = (0, nil)
                         func consider(_ rect: CGRect, _ colour: String?) {
@@ -269,7 +269,7 @@ final class ParityLayoutRegistry {
                         }
                         for (id, frame) in toggleFrames where inside.contains(id) && frame.width > 0 { consider(frame, toggleBackdrops[id]) }
                         for (id, item) in items where inside.contains(id) {
-                            consider(item.rect, item.painted && sameFrame(item.rect, entry.rect) ? item.background : (item.outer ?? item.background))
+                            consider(item.rect, item.outer ?? item.background)
                         }
                         for (id, runs) in textRuns where inside.contains(id) { for run in runs { consider(run.rect, run.background) } }
                         entry.background = best.colour
