@@ -5,7 +5,7 @@
   "clockPinned": false,
   "elements": [
     { "text": "Status", "role": "system", "rect": { "x": 0, "y": 0, "w": 1920, "h": 20 }, "color": null, "background": "#000000", "fontSize": null, "fontWeight": null },
-    { "text": "Play", "role": "button", "rect": { "x": 100.5, "y": 199.5, "w": 160, "h": 48 }, "color": "#ffffff", "background": "#e60a14", "fontSize": 20.3, "fontWeight": 600, "radius": 8 },
+    { "text": "Play", "role": "button", "rect": { "x": 100, "y": 200, "w": 160, "h": 48 }, "color": "#ffffff", "background": "#e50914", "fontSize": 20, "fontWeight": 600, "radius": 8 },
     { "text": "Home", "role": "heading", "rect": { "x": 100, "y": 100, "w": 120, "h": 40 }, "color": "#ffffff", "background": "#101010", "fontSize": 32, "fontWeight": 700 },
     { "text": "", "role": "image", "rect": { "x": 400, "y": 200, "w": 300, "h": 170 }, "color": null, "background": "#101010", "fontSize": null, "fontWeight": null },
     { "text": "09:41", "role": "text", "rect": { "x": 1800, "y": 20, "w": 80, "h": 24 }, "color": "#cccccc", "background": "#101010", "fontSize": 20, "fontWeight": 500 }

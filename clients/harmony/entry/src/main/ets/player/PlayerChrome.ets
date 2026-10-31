@@ -554,13 +554,13 @@ export struct PlayerChrome {
       Row()
         .width('100%')
         .height(height)
-        .borderRadius(height / 2)
+        .borderRadius(isTvMetrics() ? height / 2 : 0) // web phone: a square-ended track
         .backgroundColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CHROME_TRACK_ALPHA))
 
       Row()
         .width(`${this.bufferedPercent()}%`)
         .height(height)
-        .borderRadius(height / 2)
+        .borderRadius(isTvMetrics() ? height / 2 : 0)
         .backgroundColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CHROME_BUFFERED_ALPHA))
 
       Row()
@@ -859,19 +859,26 @@ export struct PlayerChrome {
         .position({ x: 66, y: 674 })
       this.phoneSkip(false, this.canNext, this.onNext, 112, 674)
       this.phoneButton('Mute', $r('app.media.player_volume'), 20, this.onToggleMute, false, 158, 674)
-      this.phoneButton('Audio: Unavailable', $r('app.media.player_audio'), 20, (): void => {}, false, 204, 674)
+      this.phoneButton('Audio: Unavailable', $r('app.media.player_audio'), 20, (): void => {}, false, 204, 674, true) // web: the audio button is disabled (opacity .28) with no alternative track
       this.phoneButton('Subtitles: Off', $r('app.media.player_subtitles'), 20, this.onOpenTracks, false, 250, 674)
       this.phoneButton('Playlist: 1 item', $r('app.media.player_queue'), 20, (): void => {}, false, 296, 674)
-      Row() {
-        Text('HD').fontFamily(nunitoAt(700, 7.68)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
-        Text(this.qualityLabel).fontFamily(nunitoAt(700, 10.56)).fontSize(10.56).lineHeight(webLineHeight(10.56)).halfLeading(true).fontWeight(FontWeight.Bold)
-          .fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).width(40.31).maxLines(3).textAlign(TextAlign.Center)
+      // web phone: the button is 44 wide with no padding; its content (a 22 wide HD glyph, 8.8 gap, the label at its widest word) is wider
+      // and overflows centred, the label wrapping to one word a line
+      Stack({ alignContent: Alignment.Center }) {
+        Row({ space: 8.8 }) {
+          Text('HD').fontFamily(nunitoAt(700, 7.68)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Bold)
+            .letterSpacing(0.307) // web: .player-quality-glyph letter-spacing 0.04em
+            .fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).width(22).textAlign(TextAlign.Center)
+          Text(this.qualityLabel).fontFamily(nunitoAt(700, 10.56)).fontSize(10.56).lineHeight(webLineHeight(10.56)).halfLeading(true).fontWeight(FontWeight.Bold)
+            .letterSpacing(0.1056) // web: .player-quality-button letter-spacing 0.01em
+            .fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).width(40.31).maxLines(3).textAlign(TextAlign.Center)
+        }
+        .width(71.11)
       }
       .width(44)
       .height(44)
       .accessibilityText('Quality: ' + this.qualityLabel).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
       .borderRadius(22)
-      .justifyContent(FlexAlign.Center)
       .position({ x: 89, y: 722 })
       .onClick(() => {
         this.onOpenQuality();

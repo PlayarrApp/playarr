@@ -439,7 +439,7 @@ These run in CI through `:app:testSideloadDebugUnitTest`.
   3. Opens the harness with exactly those values.
   4. Captures the **header band** on both: full width, y from 0 to `header.bottom + 8px`. On the TV layout the nav rail (x < `--page-start` − 8px) is masked, because its active item legitimately differs.
   5. Masks the title and detail text boxes.
-  6. Diffs with `scripts/parity/diff.mjs` semantics (pixelmatch threshold 0.1).
+  6. Diffs with `scripts/parity/diff.mjs` semantics (exact RGBA bytes, zero tolerance).
 
   Acceptance is **0 mismatched pixels**. Layouts are TV 1920x1080, desktop 1280x720 and mobile 390x844 at DPR 3, in light and dark.
 - **Pill identity.** For every `ActionPill` on every page, crop the pill and diff it against the harness pill with the same icon, label, state and count, at 0 pixels. This catches a restyle even if the page's header band moved as a whole.

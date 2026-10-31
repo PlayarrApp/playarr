@@ -81,6 +81,8 @@ directory, and `PARITY_EMULATOR_LOCK` pointing at the flock file shared with the
 
 **Tizen native: what is staged or approximate (disclosed, not hidden).**
 
+- Web refs swapped on 31 Oct 2026. The Tizen native refs are now the tv-webos user-agent packaged-bundle capture (`web-refs.json`), repeatable across three captures on one web build, Chromium and static server; they replace the earlier xbox-UA capture. The two differ only in the nav-rail shadow, by at most 6 levels per channel and about 1 level in green and blue, over roughly 28,000 pixels per light screen. The `.app-nav-group` rule is `box-shadow: 0 14px 42px #3826211a` in both bundles and the native rail uses those values, so nothing was tuned to the capture. Scored on the new refs, the previously published captures and the r10 captures are equal on every screen except player-controls, which rises.
+
 - Player stand-in frame. The player-controls capture does not carry the video plane, so the driver supplies the clip's paused frame and `PlayerScreen.ShowStandInFrame` puts it behind the controls as a plain image; the player does not decode it. The seek bar's buffered range is a staged segment at 35 % white spanning the full track width, because the web capture plays the whole clip through first and so shows it fully buffered. It is not read from the player. The player-controls frame and its layout are therefore staged for those two items (and the hold at exactly 2.000 s is the app's own `t=2000&hold=2000` mode, as above).
 - Visibility is measured, but with limits. A candidate counts as visible only when pixels inside its own box change by 16 levels or more (`VISIBLE_DELTA`) when it is hidden, so a change below 16 levels (a very faint fill or shadow) reads as invisible. Candidates hidden together keep 3 px of clear space (`PAD`); a shadow or antialiased edge wider than that can bleed into a neighbour's box. Pixels that differ between two grabs of the unchanged screen are ignored, so a real change confined to such pixels is missed. A painted container that fails the first pass gets a second pass that hides its whole subtree, so a container whose fill sits entirely under its children counts as visible through them.
 - Transform limit. The exporter folds a view's `Scale` (about its centre unless `PositionUsesPivotPoint`) into the rect; it does not model rotation or any other transform, and a focus scale is left out of `fontSize` while the rect carries it (docs/parity/LAYOUT.md).
@@ -135,10 +137,17 @@ Run it with `scripts/parity/tizen-webos/run-tizen65.sh` (setup in its header); t
 Player controls: stock Chromium has no H.264 and no AVPlay, so the driver injects `scripts/parity/tizen-webos/avplay-shim.js` (the AVPlay state
 machine over the clip's 60 s, no decoding) and the screen is scored with the video hidden on both sides: the web refs of the dir come from the
 group `tv-tizen65` of `web-refs.json` (`hideVideo`, the `tv-webos` platform bundle, `capture-refs.mjs --groups tv-tizen65 --screens player-controls --bak <name>`).
+Player D-pad: `playerReady` in the driver reads the AVPlay shim state (PLAYING past 0.5 s, controls up, focus on play/pause) before the first key, so the 12
+player checks run (`--player`) and are scored against `expected.static.json`. The shim decodes nothing and draws no native plane: this D-pad proves the
+focus and controls logic only, never decoding or playback. Status for the 2026-10-31 publish: player 11/12, player-right blocked on stale `expected.static.json` (it holds the Device Test truehd data, the static clip is aac; #637 regenerates it), so the published `dpad.json` keeps only the 12 non-player rows. The lane's `build.json` records that as `"player": "avplay-shim", "decoding": false`.
 The capture waits for the Downloads item of the nav rail, which the app adds once its capability probe resolves.
-Documented exception: Chromium 85 truncates fractional line heights to whole pixels, which the Tizen package counters by rounding them on clamped
-text blocks (`legacy-tv-css.mjs`). The detail title (`line-height: 0.9` on a 69 px font) still lays out 0.2 px a line short, which is why film-detail
-(72.92), series-detail (76.19) and filters (78.85) stay below the other screens: the engine keeps whole pixels, no CSS value gives 62.2 px.
+Legacy Tizen app layout adjustment to match web line boxes (not engine rounding): Chromium 85 truncates fractional line heights to whole pixels
+(21.84 px lays out 21), so wrapped text and every block below it sit 1 to 2 px higher than on the web. `apps/tv-tizen/src/tizen.css` therefore carries
+app CSS behind `@supports not (aspect-ratio: 1)` (Chromium below 88) for the filter drawer, the detail meta row and kicker and the media rail count
+line: a half pixel more on the line height, or the dropped fraction put back as padding or margin at 1920 px. The same gate also rounds the line height
+(`1.58em + 0.5px`) of the clamped Home synopsis and the preview overview, which lays the wrapped lines and the buttons below them 1.26 px higher on Chromium 85 than on the web. The package, not the engine, draws the web line
+boxes; the engine still truncates. Without it filters, actions and both detail pages score 72 to 88, with it 98 to 100. The old `legacy-tv-css.mjs` line-height rewrite is removed.
+Webos and Tizen 7 fail the gate, so their layouts are unchanged.
 Chromium 94 (snapshot 94.0.4606.0) keeps the fraction (21.83 px for 21.84), so webOS and Tizen 7 need no rounding.
 
 ### Tizen web package: debug build on the emulator

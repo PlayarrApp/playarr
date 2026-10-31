@@ -182,11 +182,10 @@ const PHONE_LINE_META: number = 21;
 const PHONE_AGENDA_BLEED: number = 0; // the static-server web ref keeps the cards inside the page padding
 const PHONE_AGENDA_CARD_MIN_WIDTH: number = 328; // web (static refs): the card ends 16 vp from the right edge
 const PHONE_CONTROL_FONT: number = 11.2;
-// Web phone header controls: 0.6rem apart, the right edge on the 16.7 vp gutter, Today 72.7 wide with its ring 5.3 outside.
+// Web phone header controls: 0.6rem apart, the right edge on the 16.7 vp gutter, Today 72.7 wide (the static refs draw no focus ring on it).
 const PHONE_CONTROL_GAP: number = 8.76;
 const PHONE_CONTROL_RIGHT: number = 16;
 const PHONE_TODAY_WIDTH: number = 72.7;
-const PHONE_RING_OUTSET: number = 5.3;
 const ENTRY_META_GAP: number = 12;
 // Web `.status-pill`: 13.44/750, tone at 14% over the surface with a 60% tone border.
 const PILL_SIZE: number = 13.44;
@@ -1186,15 +1185,6 @@ export struct ReleaseCalendar {
         .borderRadius(22)
         .backgroundColor(toResourceColor(activeColors().surface))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
-      if (label === t('pages.calendar.today', 'Today')) {
-        // web opens the page with Today focused (the Previewer reports no focus): the 3 vp ring sits outside the pill, 2.3 vp clear of it
-        Column()
-          .width(width + PHONE_RING_OUTSET * 2)
-          .height(44 + PHONE_RING_OUTSET * 2)
-          .borderRadius(22 + PHONE_RING_OUTSET)
-          .border({ width: 3, color: toResourceColor(activeColors().ink) })
-          .hitTestBehavior(HitTestMode.None)
-      }
     }
     .accessibilityText(label.length === 1 ? (label === '←' ? 'Previous' : 'Next') : '').accessibilityRole(label.length === 1 ? AccessibilityRoleType.BUTTON : AccessibilityRoleType.ROLE_NONE)
     .borderRadius(22)

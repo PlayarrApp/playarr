@@ -3,10 +3,12 @@
 // Posts a downscaled JPEG of the app plus layout/focus facts to the local dev receiver that serves this
 // build, every ~2 s and on every focus change. The receiver origin is the page's own origin and the
 // token comes from the launch URL (?mirrorToken=...), so nothing about the environment is baked in.
+import type { Options as HtmlToImageOptions } from "html-to-image/lib/types";
 import { focusInfo, selectorFor, visibleText } from "./mirrorSnapshot";
 import { mirrorCaptureGeometry } from "./mirrorCaptureGeometry";
 import { withCollapsingTrackHeights } from "./mirrorTrackHeights";
 import { inlineArtwork } from "./mirrorArtwork";
+import { DEFAULT_MAX_FRAMES, DEFAULT_MAX_HEAP_MB, frameBudgetSpent, heapGuardTripped, nextIntervalMs, readHeap } from "./mirrorGuard";
 import { localeTagFor } from "../lib/i18n/languages";
 import {
   mirrorFramePayload,
@@ -24,7 +26,6 @@ import {
 // The production-bundle guard and test look for this string, so it must survive minification.
 const MIRROR_SENTINEL = "PLAYARR_DEBUG_MIRROR_SENTINEL";
 const TOKEN_KEY = "playarr.debugMirrorToken";
-const INTERVAL_MS = 2000;
 // Full TV viewport width (1280): the frame is the picture the parity suite scores, so no downscale. Override with ?mirrorWidth=.
 // ?mirrorPng=1: lossless frames (about 1 MB each) instead of JPEG, for pixel-exact parity scoring.
 const usePng = new URLSearchParams(window.location.search).get("mirrorPng") === "1";
@@ -40,6 +41,24 @@ function readToken(): string | null {
     return window.sessionStorage.getItem(TOKEN_KEY);
   } catch {
     return new URLSearchParams(window.location.search).get("mirrorToken");
+  }
+}
+
+// html-to-image's toPng/toJpeg leave the canvas (8 MB at 1920x1080) and the SVG image behind for the garbage collector, which
+// barely runs because the JS heap stays tiny: the TV browser's native memory grew about 17 MB per frame until the TV hung.
+// Render to a canvas ourselves, read it out and shrink it to nothing at once.
+async function renderFrame(
+  toCanvas: (node: HTMLElement, options: HtmlToImageOptions) => Promise<HTMLCanvasElement>,
+  node: HTMLElement,
+  png: boolean,
+  options: HtmlToImageOptions,
+): Promise<string> {
+  const canvas = await toCanvas(node, options);
+  try {
+    return png ? canvas.toDataURL() : canvas.toDataURL("image/jpeg", options.quality || 1);
+  } finally {
+    canvas.width = 0;
+    canvas.height = 0;
   }
 }
 
@@ -87,11 +106,16 @@ function routeWithQuery(): string {
 // The last few key events the page saw (key, keyCode, repeat, ms since the previous one): shows how the TV delivers a long press.
 const keyLog: string[] = [];
 let lastKeyAt = 0;
+// Last key, focus change or load: a page nobody drives backs off (mirrorGuard.nextIntervalMs).
+let lastActivityAt = realNow();
+let onActivity: () => void = () => undefined;
 for (const type of ["keydown", "keyup"] as const) {
   window.addEventListener(type, (e) => {
     const now = realNow();
     keyLog.push(`${type} ${e.key}/${e.keyCode}${e.repeat ? " rep" : ""} +${lastKeyAt ? now - lastKeyAt : 0}`);
     lastKeyAt = now;
+    lastActivityAt = now;
+    onActivity();
     if (keyLog.length > 12) keyLog.shift();
   }, true);
 }
@@ -112,6 +136,7 @@ function layoutEnv(): Record<string, unknown> {
     theme: root.dataset.theme ?? null,
     platform: root.dataset.platform ?? null,
     fontPx: window.getComputedStyle(root).fontSize,
+    mem: readHeap(),
     clockDebug: {
       documentLanguage: root.lang,
       navigatorLanguage: navigator.language,
@@ -193,11 +218,15 @@ export function startDebugMirror(): void {
   let pending = false;
   let timer = 0;
   let seq = 0;
+  let stopped = false; // set by the memory guard: no further captures from this page
+  const maxFrames = Number(new URLSearchParams(window.location.search).get("mirrorMaxFrames")) || DEFAULT_MAX_FRAMES;
+  let captured = 0;
+  const maxHeapMb = Number(new URLSearchParams(window.location.search).get("mirrorMaxHeapMb")) || DEFAULT_MAX_HEAP_MB;
 
   // Identity heartbeat from a Web Worker, so rendering (which blocks this thread for seconds) cannot starve it. The page re-verifies the
   // identity every 2 s and hands the worker the result; the worker asks the server who is current every 2 s and reports that to the
   // receiver, or reports the failed status. The guard judges the signed-in account by the newest heartbeat.
-  const heartbeatWorker = new Worker(URL.createObjectURL(new Blob([`
+  const heartbeatUrl = URL.createObjectURL(new Blob([`
     let cfg = null;
     let previous = null; // the credentials before the last rotation, tried when the server has not accepted the new ones yet
     onmessage = (e) => {
@@ -236,7 +265,10 @@ export function startDebugMirror(): void {
       }
       try { await fetch(c.beatUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); } catch {}
     }, 2000);
-  `], { type: "text/javascript" })));
+  `], { type: "text/javascript" }));
+  const heartbeatWorker = new Worker(heartbeatUrl);
+  URL.revokeObjectURL(heartbeatUrl);
+  window.addEventListener("pagehide", () => heartbeatWorker.terminate());
   const beatUrl = `${window.location.origin}/__mirror/heartbeat?t=${encodeURIComponent(token)}`;
   // Hand the worker the selected credentials the moment the app writes them (a token rotation), not on a timer.
   const syncCredentials = (): void => {
@@ -270,6 +302,7 @@ export function startDebugMirror(): void {
   async function snapshot(reason: string): Promise<void> {
     // A parity driver on a slow TV pauses the capture loop while it sends keys (window.__mirrorPause), so key handling is not starved.
     if ((window as unknown as { __mirrorPause?: boolean }).__mirrorPause) return;
+    if (stopped) return;
     if (busy) {
       pending = true;
       return;
@@ -284,7 +317,18 @@ export function startDebugMirror(): void {
       try {
         initialIdentity = await readMirrorIdentity(token);
         if (initialIdentity.status !== "ok") throw new Error("mirror identity verification failed");
-        const { toJpeg, toPng, getFontEmbedCSS } = await withTimeout(import("html-to-image"), 10000, "html-to-image import");
+        // Checked after the identity read so the stop notice is posted as a frame the driver can see.
+        const heap = readHeap();
+        if (heapGuardTripped(heap, maxHeapMb)) {
+          stopped = true;
+          throw new Error(`memory guard: JS heap ${heap?.usedMb} MB (limit ${maxHeapMb} MB); capture stopped, reload the page`);
+        }
+        if (frameBudgetSpent(captured, maxFrames)) {
+          stopped = true;
+          throw new Error(`memory guard: ${captured} frames captured by this page load (limit ${maxFrames}); reload the page`);
+        }
+        captured += 1;
+        const { toCanvas, getFontEmbedCSS } = await withTimeout(import("html-to-image"), 10000, "html-to-image import");
         // The TV stage scale (tvStageScale.ts) zooms <html> on most platforms, which html-to-image does
         // not see. VIDAA instead transforms <body>; clear only that transform on the cloned body so the
         // logical stage is rendered once at the requested output density.
@@ -336,7 +380,7 @@ export function startDebugMirror(): void {
           }
         });
         image = await withTimeout(
-          withCollapsingTrackHeights(() => (usePng ? toPng : toJpeg)(document.body, {
+          withCollapsingTrackHeights(() => renderFrame(toCanvas, document.body, usePng, {
             // The clone loses ::-webkit-scrollbar rules (pseudo-elements are not copied), so overflow containers would draw
             // native scrollbars the TV does not show: hide them in the rendered copy.
             // ?mirrorGeo=1 turns hinting off (geometricPrecision). Measured on the TV: it scored 0.02 to 0.2 lower than the default on settings, month and agenda.
@@ -436,12 +480,17 @@ export function startDebugMirror(): void {
 
   const schedule = () => {
     window.clearTimeout(timer);
+    if (stopped) return;
+    const delay = nextIntervalMs(realNow(), lastActivityAt);
+    backedOff = delay > 2000;
     timer = window.setTimeout(async () => {
       await snapshot("interval");
       schedule();
-    }, INTERVAL_MS);
+    }, delay);
   };
-  document.addEventListener("focusin", () => void snapshot("focus"), true);
+  let backedOff = false;
+  onActivity = () => { if (backedOff) schedule(); }; // a key on a backed-off page brings the 2 s cadence back at once
+  document.addEventListener("focusin", () => { lastActivityAt = realNow(); void snapshot("focus"); }, true);
   void snapshot("start");
   schedule();
 }

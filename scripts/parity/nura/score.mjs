@@ -1,8 +1,8 @@
 // usage: PARITY_ROOT=<parity scratch root> node score.mjs <dir> <dark|light>
-// Per-screen % of matching pixels (pixelmatch 0.1) against the published web refs in <PARITY_ROOT>/postmarketos/web (player: compare regions only).
+// Per-screen % of matching pixels (exact RGBA bytes, zero tolerance) against the published web refs in <PARITY_ROOT>/postmarketos/web (player: compare regions only).
 // <dir> holds <route>.png captures; 720x1440 captures are cropped to the 720x1346 ref window.
 import { readFileSync, existsSync } from "node:fs";
-import pixelmatch from "pixelmatch";
+import { countDiff } from "../exact-pixels.mjs";
 import { PNG } from "pngjs";
 const [dir, theme] = process.argv.slice(2);
 if (!process.env.PARITY_ROOT || !dir || !["dark", "light"].includes(theme)) throw new Error("usage: PARITY_ROOT=<root> node score.mjs <dir> <dark|light>");
@@ -21,6 +21,6 @@ for (const [route, id] of Object.entries(map)) {
     area = keep.reduce((s, k) => s + k, 0);
     for (const p of [a, b]) for (let i = 0; i < keep.length; i++) if (!keep[i]) p.data.fill(0, i * 4, i * 4 + 4);
   }
-  const bad = pixelmatch(a.data, b.data, null, a.width, a.height, { threshold: 0.1 });
+  const bad = countDiff(a.data, b.data, a.width, a.height);
   console.log(id.padEnd(16), theme, (100 - 100 * bad / area).toFixed(2));
 }

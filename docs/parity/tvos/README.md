@@ -4,8 +4,8 @@ Reference: the committed shared web captures `docs/parity/web/tv/{light,dark}/<i
 fresh, the web's bundled Nunito Sans and JetBrains Mono). Candidate: the tvOS app in the Apple TV Simulator at 1080p,
 driven locally by `scripts/parity/apple/capture-tvos.sh` on a Mac against a fresh fixture database
 (`scripts/fixtures/up.sh --fresh`, clips of 60 s), signed in as `fx-viewer` (the household screen as `fx-child-locked`),
-clock frozen at 2026-10-07 12:00 UTC. Diff: `scripts/parity/diff.mjs --layout tv --theme both` (pixelmatch threshold
-0.1, target 1% or less per screen and theme). Three tabs the shared list does not have (Downloads, Watchlist, Requests)
+clock frozen at 2026-10-07 12:00 UTC. Diff: `scripts/parity/diff.mjs --layout tv --theme both` (exact RGBA byte
+comparison, target 1% or less per screen and theme). Three tabs the shared list does not have (Downloads, Watchlist, Requests)
 diff against a local web capture of the same run.
 
 A screen is reached with `-PlayarrServerURL`, `-PlayarrAccessToken`, `-PlayarrTheme` and `-PlayarrParityRoute <route>`
@@ -57,7 +57,7 @@ parity loop against the real server (device test account) is tracked in 17.470.
 
 - Preferences, player (light 1.2%) and your data (1.5%): the panels are text-heavy (long paragraphs and the quality
   matrix). The layout, colours and glyph extents match the web to within a pixel; what remains is the anti-aliasing and
-  per-glyph positioning of paragraph text (Chrome on Linux against CoreText), which pixelmatch counts along every
+  per-glyph positioning of paragraph text (Chrome on Linux against CoreText), which the exact comparison counts along every
   glyph edge. The other panels sit between 0.5% and 0.9%.
 
 - Player screens: the fixture clips are Matroska and the runner cannot transcode, so the native player cannot play
