@@ -25,9 +25,12 @@ export function needsLineBoxFix(userAgent) {
   return !!m && Number(m[1]) < 105;
 }
 
-/** @param {Window & typeof globalThis} win */
-export function installLineBoxFix(win) {
-  if (!needsLineBoxFix(win.navigator.userAgent)) return;
+/**
+ * @param {Window & typeof globalThis} win
+ * @param {{ force?: boolean }} [options] `force` skips the user agent test for engines whose agent carries no Chrome token (Tizen: "85.0.4183.93/6.5 TV Safari")
+ */
+export function installLineBoxFix(win, options = {}) {
+  if (!options.force && !needsLineBoxFix(win.navigator.userAgent)) return;
   const doc = win.document;
   const touched = new Set();
   let scheduled = false;

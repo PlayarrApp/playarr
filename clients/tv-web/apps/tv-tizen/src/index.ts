@@ -15,7 +15,8 @@ installFullDateComma(window);
 installLegacyAspectRatio();
 // Engines before Chromium 105 (Chromium 85 here) truncate a fractional line height to whole pixels; restore the web box heights
 // from the exact computed line height (N lines times the line height as min-block-size), the same rule the webOS app uses.
-installLineBoxFix(window);
+// The Tizen user agent has no "Chrome/" token, so the engine is detected by its missing aspect-ratio support (Chromium 88+).
+if (!CSS.supports("aspect-ratio", "1")) installLineBoxFix(window, { force: true });
 
 // The native wrapper packages the complete routed Playarr application. The
 // compile-time platform constant makes the shared web runtime select Tizen
