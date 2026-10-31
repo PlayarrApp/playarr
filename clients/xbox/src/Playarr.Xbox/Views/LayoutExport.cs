@@ -259,6 +259,12 @@ namespace Playarr.Xbox.Views
                     shape.Fill = null;
                     shape.Stroke = null;
                     return () => { shape.Fill = f; shape.Stroke = s; };
+                case TextBlock text:
+                    // Opacity 0 leaves letter-spaced text drawn in the captured frame; an invisible brush removes the glyphs.
+                    var (ink, opacityText) = (text.Foreground, text.Opacity);
+                    text.Foreground = new SolidColorBrush(Windows.UI.Colors.Transparent);
+                    text.Opacity = 0;
+                    return () => { text.Foreground = ink; text.Opacity = opacityText; };
                 default:
                     var opacity = owner.Opacity;
                     owner.Opacity = 0;
