@@ -183,6 +183,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.text.font.FontWeight
@@ -4363,8 +4364,8 @@ private fun TvLanguageMultiSelect(title: String, entries: List<LanguageFacetEntr
     Column(verticalArrangement = Arrangement.spacedBy(if (LocalTabletDrawerCssPx.current) 12.dp else 12.dp)) {
         PlayarrTvDrawerHeading(title)
         Column(
-            // The app has no group semantics for this container: it is exported as the painted container it is, not as web's role=group.
-            Modifier.fillMaxWidth().parityShape(12f).parityBackground("container", WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp), radius = 12f)
+            // The language options are one focus traversal group (real Android accessibility data); the export reads that flag.
+            Modifier.fillMaxWidth().parityShape(12f).semantics { isTraversalGroup = true }.parityBackground("container", WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp), radius = 12f)
                 .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder, RoundedCornerShape(12.dp)).padding(7.4.dp),
         ) {
             Row(
