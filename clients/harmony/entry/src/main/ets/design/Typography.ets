@@ -50,6 +50,15 @@ export function arrowFont(weight: number): string {
   return nunito(weight) + ',' + (weight >= 600 ? 'PlayarrArrows' : 'PlayarrArrowsRegular');
 }
 
+/** Web draws these glyphs with DejaVu Sans and Liberation Sans (Chromium's fallback); the bundled PlayarrGlyphs subset carries
+ * exactly them. They get that font alone: behind Nunito in a family list the Previewer picks its own emoji and symbol fonts instead. */
+const GLYPH_SUBSET: string = '\u21E9\u25B6\u25CB\u2637\u2713';
+
+/** The family for a glyph-only Text: the subset for the glyphs it carries, else `fallback` followed by the subset. */
+export function glyphFamily(glyph: string, fallback: string): string {
+  return GLYPH_SUBSET.indexOf(glyph) >= 0 && glyph.length > 0 ? 'PlayarrGlyphs' : fallback + ',PlayarrGlyphs';
+}
+
 /** The family for a call site that asks for `weight` at font size `size`: the web weight nearest to it among those web CSS uses
  * at that size (core/WebWeights.ts, generated from the web layout refs), else the nearest instance. */
 export function nunitoAt(weight: number, size: number): string {
