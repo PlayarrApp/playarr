@@ -49,7 +49,14 @@ def black_tile_band(mask, tile=64, max_rows=16):
     return False
 
 
-bad = black_tile_band(black) or solid_block(green, 16) or (
+def black_in_header_band(frame):
+    """True when pure black pixels sit in the display rows 110..136 (just under the status bar, where every screen
+    shows its header on a plain surface) while that band is mostly not black: a tile caught part-painted."""
+    band = ~np.asarray(Image.open(sys.argv[1]).convert("RGB"))[110:136].any(axis=2)
+    return bool(band.any()) and band.mean() < 0.5
+
+
+bad = black_in_header_band(None) or black_tile_band(black) or solid_block(green, 16) or (
     int(black.sum()) >= 600 and (has_run(green, 24) or has_run(green.T, 24))
 )
 sys.exit(1 if bad else 0)

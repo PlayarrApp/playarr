@@ -25,10 +25,11 @@ G = (20, 220, 20)
 frame("clean", lambda d: None)
 frame("green-block", lambda d: d.rectangle((100, 300, 140, 340), fill=G))
 frame("black-green-edge", lambda d: (d.rectangle((0, 400, 63, 463), fill=(0, 0, 0)), d.rectangle((64, 400, 66, 463), fill=G)))
-frame("black-band", lambda d: d.rectangle((0, 124, 63, 127), fill=(0, 0, 0)))
-frame("black-band-wide", lambda d: d.rectangle((0, 124, 200, 127), fill=(0, 0, 0)))
-frame("black-letterbox", lambda d: d.rectangle((0, 124, 719, 131), fill=(0, 0, 0)))
-frame("black-short-run", lambda d: d.rectangle((0, 124, 40, 127), fill=(0, 0, 0)))
+frame("black-band", lambda d: d.rectangle((0, 624, 63, 627), fill=(0, 0, 0)))
+frame("black-band-wide", lambda d: d.rectangle((0, 624, 200, 627), fill=(0, 0, 0)))
+frame("black-letterbox", lambda d: d.rectangle((0, 624, 719, 631), fill=(0, 0, 0)))
+frame("black-short-run", lambda d: d.rectangle((0, 624, 40, 627), fill=(0, 0, 0)))
+frame("black-header-bits", lambda d: d.rectangle((60, 124, 63, 127), fill=(0, 0, 0)))
 frame("black-only", lambda d: d.rectangle((0, 400, 63, 463), fill=(0, 0, 0)))
 frame("black-short-green", lambda d: (d.rectangle((0, 400, 63, 463), fill=(0, 0, 0)), d.rectangle((64, 400, 66, 410), fill=G)))
 PY
@@ -42,6 +43,7 @@ bad black-band || fail "thin black tile band accepted"
 ok black-band-wide || fail "wide black line rejected"
 ok black-letterbox || fail "full-width black line rejected"
 ok black-short-run || fail "short black run rejected"
+bad black-header-bits || fail "black bits in the header band accepted"
 ok black-only || fail "black art without a green edge rejected"
 ok black-short-green || fail "short green run beside black rejected"
 echo "nogreen mocked regression checks passed"
