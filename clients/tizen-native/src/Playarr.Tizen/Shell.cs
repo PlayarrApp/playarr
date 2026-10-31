@@ -138,7 +138,7 @@ internal sealed class Shell : View
     private View AddGroup(float y, float h)
     {
         // light: the fill is opaque (strong surface 56 % over the page surface) because the box shadow would show through a translucent fill; web clips it outside the border box
-        var fill = _theme.Name == "dark" ? new Rgba(_theme.SurfaceStrong.R, _theme.SurfaceStrong.G, _theme.SurfaceStrong.B, 0.56f)
+        var fill = _theme.Name == "dark" ? _theme.SurfaceStrong.Mixed(0.56f)
             : new Rgba(_theme.SurfaceStrong.R * 0.56f + _theme.Surface.R * 0.44f, _theme.SurfaceStrong.G * 0.56f + _theme.Surface.G * 0.44f, _theme.SurfaceStrong.B * 0.56f + _theme.Surface.B * 0.44f);
         var box = Ui.Box(RailX, y, RailW, h, fill, 22);
         box.BorderlineWidth = 1;

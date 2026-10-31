@@ -1,0 +1,1 @@
+- Tizen native layout export: SurfaceStrong fills at an alpha are a colour mix in the app (`Rgba.Mixed`), exported with the browser's 6-decimal serialisation, and a text run's box is the browser's content area (rounded ascent plus descent hung from the NUI baseline); the 11.52 px label shift follows the measured ink.

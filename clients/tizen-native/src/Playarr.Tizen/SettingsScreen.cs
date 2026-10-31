@@ -87,7 +87,7 @@ internal sealed class SettingsScreen : IPage
         _root.Add(Ui.Box(0, 0, TizenClient.DesignWidth, TizenClient.DesignHeight, _t.Surface)); // web: the page section and its stage are two full-viewport layers
         
         _root.Add(Sem.Tag(Ui.PanelWash(_t, 1248), "container")); // web .tv-directory: the right 65 % carries the library panel frost
-        var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
+        var back = Ui.Box(153.6f, 56.2f, 50, 50, _t.SurfaceStrong.Mixed(0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 720, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
         Sem.Tag(back, "button", "Settings");
@@ -207,7 +207,7 @@ internal sealed class SettingsScreen : IPage
 
     private void Toast(string text)
     {
-        var toast = Ui.Box(560, 960, 800, 56, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.96f), 28);
+        var toast = Ui.Box(560, 960, 800, 56, _t.SurfaceStrong.Mixed(0.96f), 28);
         toast.Add(Ui.Text(text, 0, 14, 14, 600, _t.Ink, 800, 28, HorizontalAlignment.Center));
         _root.Add(toast);
         var timer = new global::Tizen.NUI.Timer(2500);

@@ -168,7 +168,7 @@ internal sealed class PlaylistsScreen : IPage
     private void AddDirectoryAction(string label, string icon, string caption, float y, Action select)
     {
         const float x = 1845.5f;
-        var tile = Ui.Box(x, y, 62, 72, new Rgba(_theme.SurfaceStrong.R, _theme.SurfaceStrong.G, _theme.SurfaceStrong.B, 0.78f), 14);
+        var tile = Ui.Box(x, y, 62, 72, _theme.SurfaceStrong.Mixed(0.78f), 14);
         tile.Focusable = true;
         tile.BorderlineWidth = 1;
         tile.BorderlineColor = Ui.LineA(_theme, 0.075f);
@@ -686,7 +686,7 @@ internal sealed class PlaylistsScreen : IPage
     private void AddCreateAction(View parent, Action select)
     {
         const float x = 1845.5f, y = 151.2f, width = 62f, height = 72f;
-        var tile = Ui.Box(x, y, width, height, new Rgba(_theme.SurfaceStrong.R, _theme.SurfaceStrong.G, _theme.SurfaceStrong.B, 0.78f), 14);
+        var tile = Ui.Box(x, y, width, height, _theme.SurfaceStrong.Mixed(0.78f), 14);
         tile.Focusable = true;
         tile.BorderlineWidth = 1;
         tile.BorderlineColor = Ui.LineA(_theme, 0.075f);

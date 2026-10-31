@@ -28,6 +28,11 @@ internal static class Sem
     public static T Overlay<T>(T v) where T : View { Overlays.Add(v, v); return v; }
     internal static bool IsOverlay(View v) => Overlays.TryGetValue(v, out _);
 
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, object> Mixes = new();
+    /// <summary>A fill the web declares as <c>color-mix(in srgb, X p%, transparent)</c>: the browser serialises that as color(srgb r g b / a) with channels at 6 decimals, not as 8-bit rgba().</summary>
+    public static T ColorMix<T>(T v) where T : View { Mixes.AddOrUpdate(v, v); return v; }
+    internal static bool IsColorMix(View v) => Mixes.TryGetValue(v, out _);
+
     public static T Tag<T>(T v, string role, string? name = null) where T : View
     {
         v.AccessibilityRole = Native.TryGetValue(role, out var native) ? native : throw new ArgumentException("no native role for " + role);
@@ -195,7 +200,7 @@ internal static class LayoutExport
             var border = child is not ImageView && child.BorderlineWidth > 0 && child.BorderlineColor.A > 0.02f;
             var shadow = child is not ImageView && child.BoxShadow is not null;
             (double R, double G, double B) cbg = bg;
-            if (fills) cbg = Over(bg, bc);
+            if (fills) cbg = Over(bg, bc, Sem.IsColorMix(child));
             var visible = w > 1 && h > 1 && box.Overlaps(clip);
             var radius = Math.Min(child.CornerRadius.X * csx, Math.Min(w, h) / 2f);
             if (visible)
@@ -232,18 +237,28 @@ internal static class LayoutExport
             if (li < 0) lines.Add((y, y + h, x, x + w, i, i));
             else { var l = lines[li]; lines[li] = (Math.Min(l.Top, y), Math.Max(l.Bottom, y + h), Math.Min(l.L, x), Math.Max(l.R, x + w), l.First, i); }
         }
+        // The box of a run is the browser's content area: ascent and descent each rounded to a whole CSS px (Chrome SimpleFontData), hung from the baseline.
+        // NUI rounds the same two metrics at the drawn pixel size (TextScale times the CSS size), so its glyph box is taller by up to a quarter px each side.
+        // The baseline is the measured one: the laid-out glyph top plus the ascent FontClient reports for the drawn size. Nothing here is per text or per size.
+        var k = label.PixelSize / meta.Size; var fam = meta.Family ?? Ui.Font;
+        var drawn = Ui.FontAscentDescent(meta.Size, meta.Weight, fam, label.PixelSize);
+        var design = Ui.FontAscentDescent(meta.Size, meta.Weight, fam, 500f); // the face's ascent and descent per px at a size where FreeType's whole-px rounding no longer matters
+        var ascCss = (float)Math.Round(design.Asc / 500f * meta.Size); var descCss = (float)Math.Round(-design.Desc / 500f * meta.Size);
         foreach (var l in lines.OrderBy(l => l.Top))
-            yield return (System.Text.RegularExpressions.Regex.Replace(text[l.First..(l.Last + 1)], @"\s+", " ").Trim(), l.L, l.Top, l.R - l.L, l.Bottom - l.Top); // exactly the glyph union TextGeometry reports
+        {
+            var baseline = l.Top + drawn.Asc;
+            yield return (System.Text.RegularExpressions.Regex.Replace(text[l.First..(l.Last + 1)], @"\s+", " ").Trim(), l.L, baseline - ascCss * k, l.R - l.L, (ascCss + descCss) * k);
+        }
     }
 
     /// <summary>
     /// A fill with alpha over the backdrop, in the web exporter's arithmetic (layout-dump.mjs over): doubles on the 0..255 scale and the CSS alpha (a
     /// float 0.7f must not become 0.699999988, which tips a half-way channel the other way). Hex255 rounds like the web's hex2.
     /// </summary>
-    private static (double R, double G, double B) Over((double R, double G, double B) bg, Color c)
+    private static (double R, double G, double B) Over((double R, double G, double B) bg, Color c, bool mix = false)
     {
         double a = Math.Round(c.A, 3);
-        double Ch(double back, double top) => ((Math.Floor(top * 255.0 + 0.5)) * a + back * (1 - a)) / (a + 1 * (1 - a));
+        double Ch(double back, double top) => ((mix ? Math.Round((double)top, 6) * 255.0 : Math.Floor(top * 255.0 + 0.5)) * a + back * (1 - a)) / (a + 1 * (1 - a));
         return (Ch(bg.R, c.R), Ch(bg.G, c.G), Ch(bg.B, c.B));
     }
 

@@ -94,7 +94,7 @@ internal static class Ui
     /// <summary>Web .tv-filter-drawer: the strong surface at 94 % over the page, with a wide soft shadow falling to its left (box-shadow -32px 0 90px).</summary>
     public static View DrawerPanel(PlayarrTheme t)
     {
-        var p = Box(1560, 0, 360, 1080, new Rgba(t.SurfaceStrong.R, t.SurfaceStrong.G, t.SurfaceStrong.B, 0.94f));
+        var p = Box(1560, 0, 360, 1080, t.SurfaceStrong.Mixed(0.94f));
         p.BoxShadow = new Shadow(90, new Color(40 / 255f, 26 / 255f, 24 / 255f, 0.24f), new Vector2(-32, 0), new Vector2(0, 0));
         return p;
     }
@@ -169,7 +169,7 @@ internal static class Ui
     public static View Box(float x, float y, float w, float h, Rgba? bg = null, float radius = 0)
     {
         var v = new View { PositionX = x, PositionY = y, Size = new Size(w, h) };
-        if (bg is { } c) v.BackgroundColor = C(c);
+        if (bg is { } c) { v.BackgroundColor = C(c); if (c.IsMix) Sem.ColorMix(v); }
         if (radius > 0) v.CornerRadius = FullRadius(radius, w, h);
         return v;
     }
