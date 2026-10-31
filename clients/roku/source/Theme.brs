@@ -427,6 +427,12 @@ function WebClamp(lo as Float, v as Float, hi as Float) as Float
     return v
 end function
 
+' Blink lays boxes out in LayoutUnit, 1/64 px, rounded down (layout/layout_unit.h), so a laid-out width or gap is the CSS
+' value floored to 1/64 px. Radii are computed style values and stay unsnapped.
+function WebLayoutUnit(v as Float) as Float
+    return Int(v * 64.0) / 64.0
+end function
+
 ' --vw on the 1920 px stage (tvStageScale.ts: viewport width / zoom / 100, zoom 1 at 1080 px high).
 function WebVw() as Float
     return 1920.0 / 100.0
@@ -437,9 +443,9 @@ function WebCardRadius() as Float
     return WebClamp(8.0, 0.65 * WebVw(), 13.0)
 end function
 
-' .tv-home-rail gap: clamp(14px, calc(1.3 * var(--vw)), 26px) = 24.96.
+' .tv-home-rail gap: clamp(14px, calc(1.3 * var(--vw)), 26px) = 24.953125 (LayoutUnit).
 function WebRailGap() as Float
-    return WebClamp(14.0, 1.3 * WebVw(), 26.0)
+    return WebLayoutUnit(WebClamp(14.0, 1.3 * WebVw(), 26.0))
 end function
 
 ' --card-w (page-layout.css): (--card-rail-vw * --vw - --card-pad-left - --card-pad-right - (--card-cols - 1) * --card-grid-gap) / --card-cols
@@ -448,8 +454,13 @@ end function
 ' --card-pad-right = --library-rail-right = --directory-controls-edge (clamp(5px, 0.65 * --vw, 14px))
 '   + max(--directory-controls-width (clamp(48px, 3.6 * --vw, 62px)), --directory-alphabet-width 56px)
 '   + --directory-controls-gap (clamp(18px, 1.5 * --vw, 30px)). Result 327.17.
-function WebCardGridGap() as Float
+function WebCardGridGapCss() as Float
     return WebClamp(14.0, 1.35 * WebVw(), 28.0)
+end function
+
+' The laid-out grid gap (LayoutUnit floor of the CSS value).
+function WebCardGridGap() as Float
+    return WebLayoutUnit(WebCardGridGapCss())
 end function
 
 function WebCardWidth() as Float
@@ -459,5 +470,5 @@ function WebCardWidth() as Float
     if controlsWidth < 56.0 then controlsWidth = 56.0
     padRight = WebClamp(5.0, 0.65 * vw, 14.0) + controlsWidth + WebClamp(18.0, 1.5 * vw, 30.0)
     cols = 3.0
-    return (62.0 * vw - padLeft - padRight - (cols - 1.0) * WebCardGridGap()) / cols
+    return WebLayoutUnit((62.0 * vw - padLeft - padRight - (cols - 1.0) * WebCardGridGapCss()) / cols)
 end function
