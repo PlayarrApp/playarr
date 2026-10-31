@@ -333,6 +333,8 @@ struct ChromeButton {
   glassAlpha: number = 0;
   icon: Resource | undefined = undefined;
   iconSize: number = 20;
+  /** The icon's own box width when it is not square (0 = `iconSize`). */
+  iconWidth: number = 0;
 
   onActivate: () => void = () => {};
   /** Reports this button's own focus transitions up to the hosting
@@ -357,7 +359,7 @@ struct ChromeButton {
       if (this.showGlyph) {
         PlayPauseGlyph({ isPlaying: this.isPlaying, glyphSize: this.glyphSize })
       } else if (this.icon !== undefined) {
-        Image(this.icon).width(this.iconSize).height(this.iconSize)
+        Image(this.icon).width(this.iconWidth > 0 ? this.iconWidth : this.iconSize).height(this.iconSize).objectFit(ImageFit.Contain)
       } else {
         Text(this.label).fontFamily(nunitoAt(700, this.fontSize))
           .fontSize(this.fontSize).lineHeight(webLineHeight(this.fontSize)).halfLeading(true)
@@ -646,7 +648,8 @@ export struct PlayerChrome {
         ChromeButton({
           label: '',
           icon: $r('app.media.player_close'),
-          iconSize: tv(20),
+          iconSize: tv(22), // web `.player-close svg`: 22 high, and 14 wide once the 1 rem side padding and 1 px border leave 48 - 32 - 2 of the button
+          iconWidth: tv(14),
           circle: true,
           glassAlpha: 0.55,
           ringAlpha: 0.2,
