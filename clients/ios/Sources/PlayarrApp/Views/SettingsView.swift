@@ -102,7 +102,7 @@ struct SettingsView: View {
         GeometryReader { proxy in
             let phone = PlayarrLayout.isPhone(proxy.size)
             ZStack {
-                if !phone || selected == nil { WM.page.ignoresSafeArea() } else { settingsBackground.ignoresSafeArea() }
+                if !phone || selected == nil { WMPageFill() } else { settingsBackground.ignoresSafeArea() }
                 if phone { phoneLayout(safeTop: WM.safeTop) }
                 else { wideLayout(proxy: proxy) }
             }

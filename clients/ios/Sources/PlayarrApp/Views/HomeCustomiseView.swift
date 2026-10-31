@@ -69,7 +69,7 @@ struct HomeCustomiseView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            WM.page.ignoresSafeArea()
+            WMPageFill()
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 12) {
                     switch model.state {

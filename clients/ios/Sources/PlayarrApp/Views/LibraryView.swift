@@ -285,7 +285,7 @@ struct LibraryView: View {
                     Circle()
                         .fill(WM.chip)
                         .overlay(Circle().stroke(PlayarrStyle.line, lineWidth: 1))
-                        .overlay(Image(systemName: "minus.magnifyingglass").font(.system(size: 30, weight: .light)).foregroundStyle(WM.pink))
+                        .overlay(Image(systemName: "minus.magnifyingglass").font(.system(size: 30, weight: .light)).foregroundStyle(WM.pink).parityToggle())
                         .frame(width: 109.27 * s, height: 109.27 * s)
                         .offset(x: 783.25 * s, y: 303.55 * s)
                     WMText("Start typing to search.", 12.02, 600, lh: 16)

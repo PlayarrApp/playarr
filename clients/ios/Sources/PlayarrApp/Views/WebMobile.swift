@@ -387,6 +387,14 @@ enum WMIcon {
     }
 }
 
+/// The full-bleed page colour every web mobile screen paints over the shell. It is the layer that really shows on screen,
+/// so the parity export reports the web page container from here (the shell box behind it is covered).
+struct WMPageFill: View {
+    var body: some View {
+        WM.page.parityBox("container", background: WM.page).ignoresSafeArea()
+    }
+}
+
 struct WMIconView: View {
     let icon: WMIcon
     let color: Color

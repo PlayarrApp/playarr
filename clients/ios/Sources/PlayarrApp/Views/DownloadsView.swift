@@ -75,7 +75,7 @@ struct DownloadsView: View {
     /// Web mobile Downloads page with nothing downloaded: storage line and bar, then the empty state.
     private var phoneEmpty: some View {
         ZStack(alignment: .topLeading) {
-            WM.page.ignoresSafeArea()
+            WMPageFill()
             WMText("\(PlayarrByteFormat.string(viewModel.storageUsedBytes) ?? "0 KB") used on this device", 8, 400, color: WM.muted, lh: 12)
                 .frame(width: 342, alignment: .leading)
                 .offset(x: 24, y: 24)

@@ -14,7 +14,7 @@ private struct WMListPage<Content: View>: View {
         GeometryReader { proxy in
             let phone = PlayarrLayout.isPhone(proxy.size)
             ZStack(alignment: .topLeading) {
-                WM.page.ignoresSafeArea()
+                WMPageFill()
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 9.6) { content() }
                         .padding(.leading, phone ? 16 : max(102, proxy.size.width * 0.08))
@@ -36,7 +36,7 @@ private struct WMListPage<Content: View>: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }
-        .background(WM.page.ignoresSafeArea())
+        .background(WMPageFill())
         .parityFill(WM.page)
         .ignoresSafeArea(edges: .vertical)
         .webGutter()

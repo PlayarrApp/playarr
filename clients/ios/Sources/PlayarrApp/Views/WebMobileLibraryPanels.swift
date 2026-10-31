@@ -41,7 +41,7 @@ private struct WMPanelFrame<Content: View>: View {
         if isPad {
             WM.chip.ignoresSafeArea() // web tablet drawer: one opaque surface, so the export reads the colour it draws
         } else {
-            WM.page.ignoresSafeArea() // web phone panels are opaque: the library behind does not show through
+            WMPageFill() // web phone panels are opaque: the library behind does not show through
         }
     }
 

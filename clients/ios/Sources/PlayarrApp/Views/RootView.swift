@@ -807,18 +807,22 @@ private struct AuthenticatedPlayarrShell: View {
         .accessibilityLabel("Open profile and settings")
     }
 
+    private var profileLinkName: String { "Signed in as \(environment.currentUserName ?? "viewer"). Open profiles." }
+
     private func profileButton(size: CGFloat, avatarSize: CGFloat, ring: Bool = true) -> some View {
         Button { select(.profiles) } label: {
             ZStack {
-                currentAvatar(size: avatarSize)
+                currentAvatar(size: avatarSize).parityBox("image")
             }
             .frame(width: avatarSize, height: avatarSize)
-            .frame(width: size, height: size)
+            .frame(width: size, height: ring ? size : 46)
             .background(ring ? PlayarrStyle.surfaceStrong.opacity(0.66) : .clear, in: Circle())
             .overlay { if ring { Circle().stroke(PlayarrStyle.line.opacity(0.7), lineWidth: 1) } }
+            // The web phone nav item is a link named after the signed-in profile (the ring variant is the plain button).
+            .parityBox(ring ? "button" : "link", name: ring ? "Open profile and settings" : profileLinkName)
         }
         .parityButtonStyle(.plain)
-        .accessibilityLabel("Open profile and settings")
+        .accessibilityLabel(ring ? "Open profile and settings" : profileLinkName)
     }
 
     @ViewBuilder

@@ -285,7 +285,7 @@ struct WMDetailPage: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            WM.page.ignoresSafeArea()
+            WMPageFill()
             ScrollView(.vertical) {
                 ZStack(alignment: .topLeading) {
                     artBackdrop

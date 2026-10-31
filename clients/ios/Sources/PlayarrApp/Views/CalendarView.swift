@@ -247,7 +247,7 @@ struct CalendarView: View {
     private var phoneBody: some View {
         let top = WM.topInset + 2
         return ZStack(alignment: .topLeading) {
-            WM.page.ignoresSafeArea()
+            WMPageFill()
             VStack(alignment: .leading, spacing: 12) {
                 if !viewModel.unhealthySources.isEmpty { sourceBanner }
                 switch viewModel.loadState {
@@ -964,6 +964,7 @@ struct CalendarView: View {
                         Text(monthItemLabel(item))
                             .font(.custom("Avenir Next", fixedSize: 12.6))
                             .lineLimit(1)
+                            .parityToggle() // the button's own label line, hideable by the visibility probe
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(.trailing, 5.1) // 16 pt from the cell edge (cell padding is 10.9)
