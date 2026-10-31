@@ -618,6 +618,7 @@ export async function createDriver() {
       }
       if (device === "tizen") {
         await guard();
+        if (/^#\/player\//.test(await ev("location.hash"))) await this.keepControlsUp();
         if (long) {
           const key = XKEY[k];
           execFileSync("python3", [XCLICK, display, "down", key], { stdio: "ignore" });
@@ -650,7 +651,17 @@ export async function createDriver() {
     },
     // Used by the shared runner before the first key of a player check (alongside the webOS wait in key()).
     // Seconds played: <video> on webOS, AVPlay on Tizen.
-    async playhead() { await guard(); const value = await ev(`(() => { try { return webapis.avplay.getCurrentTime() / 1000; } catch (e) {} const v = document.querySelector("video"); return v ? v.currentTime : null; })()`); await guard(); return value; },
+    // Each page read on this host takes 5 s or more and the player hides its controls 5 s after the last activity, so a read-side nudge always comes too late.
+    // The page keeps its own timer instead: once per second, while the controls are up on the player route, a pointer move over the shell (what a user's mouse
+    // gives; focus is untouched) restarts the app's idle timer. It never reveals hidden controls and stops itself when the route leaves the player.
+    async keepControlsUp() {
+      await ev(`(() => { if (window.__parityKeepUp) return true; window.__parityKeepUp = setInterval(() => {
+        if (!/^#\\/player\\//.test(location.hash)) { clearInterval(window.__parityKeepUp); window.__parityKeepUp = 0; return; }
+        const c = document.querySelector(".player-controls"), s = document.querySelector(".player-shell");
+        if (c && s && !c.classList.contains("is-hidden")) s.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+      }, 1000); return true; })()`);
+    },
+    async playhead() { if (device === "tizen" && /^#\/player\//.test(await ev("location.hash"))) await this.keepControlsUp(); await guard(); const value = await ev(`(() => { try { return webapis.avplay.getCurrentTime() / 1000; } catch (e) {} const v = document.querySelector("video"); return v ? v.currentTime : null; })()`); await guard(); return value; },
     // Player D-pad checks start from the state web waits for: the title playing past 0.5 s, controls up, focus on play/pause (data-player-default-focus).
     // The capture left the clip paused at 2 s: resume it with the player's own transport (play()), then reveal the controls with a key if they hid.
     async playerReady() {
@@ -669,9 +680,12 @@ export async function createDriver() {
       while (Date.now() - t0 < 90000) {
         const st = await ev(playing);
         // two reads 1 s apart and the playhead past 1.5 s: the app's own focus hand-off has settled
-        if (process.env.PROBE_PR) console.log("pr", JSON.stringify(st));
+        if (process.env.PROBE_PR) console.log("pr", Date.now() % 100000, JSON.stringify(st));
         steady = st.state === "PLAYING" && st.t > 1.5 && st.shown && st.focus ? steady + 1 : 0;
-        if (steady >= 1) { await guard(); return; }
+        if (steady >= 1) {
+          await this.keepControlsUp();
+          await guard(); return;
+        }
         if (st.state === "PAUSED") await ev(resume);
         if (st.state === "PLAYING" && st.shown && !st.focus) { await sleep(1000); continue; }
         // Once playing, the app hands focus to the video surface and hides the controls on inactivity; the first arrow key then only reveals them with
@@ -685,6 +699,8 @@ export async function createDriver() {
     async location() { await guard(); const value = (await ev("location.hash.replace(/^#/, '')")) ?? null; await guard(); return value; },
     async focused() {
       await guard();
+      if (device === "tizen" && /^#\/player\//.test(await ev("location.hash"))) await this.keepControlsUp();
+      if (process.env.PROBE_PR) console.log("fc", Date.now() % 100000, await ev(`(() => { const c = document.querySelector(".player-controls"); const e = document.activeElement; return JSON.stringify({ hidden: c ? c.classList.contains("is-hidden") : null, ae: e ? e.className.toString().slice(0, 40) : null }); })()`));
       const value = await ev(`(() => { const e = document.activeElement; if (!e || e === document.body) return null;
         const label = (e.getAttribute("aria-label") || e.textContent.trim() || e.className.toString()).replace(/\\s+/g, " ");
         let position = null; const nav = e.closest(".app-nav-link"); const card = e.closest(".tv-home-card");
