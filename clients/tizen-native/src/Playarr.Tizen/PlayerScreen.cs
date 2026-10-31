@@ -451,16 +451,17 @@ internal sealed class PlayerScreen : IPage
     /// <summary>
     /// Capture only, and a staged frame (disclosed in docs/parity/DEVICES.md): the screenshot path may not carry the
     /// video plane, so the driver stands the clip's paused frame (an image the driver supplies) in behind the controls.
-    /// It is not decoded by the player. The buffered segment below is likewise a fixed, hard-coded 475 px bar, not read
-    /// from the player's buffer: it copies what the web capture shows (the clip buffered to about 16 s of the track),
-    /// so the player-controls score for the seek bar's buffered range is staged, not measured.
+    /// It is not decoded by the player. The buffered segment below is likewise staged, not read from the
+    /// player's buffer: the web capture plays the whole clip through first (scripts/parity/drivers/web.mjs), so its buffered
+    /// range spans the full track, and the segment is drawn at the full track width to match. The player-controls score
+    /// for the seek bar's buffered range is therefore staged, not measured.
     /// </summary>
     public void ShowStandInFrame(string path)
     {
         var frame = Sem.Tag(new ImageView(path) { Size = _root.Size }, "video", "Video playback surface"); // web: the <video> element is the playback surface
         _root.Add(frame); frame.LowerToBottom();
-        // staged: fixed 475 px light segment on the seek track under the played part (the web capture's buffered range); see the summary above
-        _seek.Add(Ui.Box(0, 19, 475, 6, new Rgba(1, 1, 1, 0.35f), 3)); _progress.RaiseToTop();
+        // staged: a full-width light segment on the seek track under the played part (the web capture's fully buffered clip); see the summary above
+        _seek.Add(Ui.Box(0, 19, TrackW, 6, new Rgba(1, 1, 1, 0.35f), 3)); _progress.RaiseToTop();
     }
 
     public (bool Playing, long PositionMs) Status
