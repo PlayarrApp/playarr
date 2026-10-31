@@ -2641,12 +2641,20 @@ struct Detail {
           .grayscale(1)
           .brightness(resolvedThemeMode() === 'dark' ? 0.6 : 1.1)
           .contrast(resolvedThemeMode() === 'dark' ? 0.82 : 0.88)
-          .opacity(resolvedThemeMode() === 'dark' ? 0.72 : 0.24) // web `.tv-key-art img`
+          .opacity(resolvedThemeMode() === 'dark' ? 0.72 : 0.42) // web `.tv-key-art img`: the phone block sets 0.42, the dark rule 0.72
           .draggable(false)
           .focusable(false)
       } else {
         Skeleton({ blockWidth: TouchGeometry.homeRailCardWidthLandscape * 4, blockHeight: HERO_ART_HEIGHT, radius: 0 })
       }
+      // web `.tv-key-art::after` (phone): `linear-gradient(90deg, color-mix(surface 54%, transparent), transparent)` under the vertical one
+      Column()
+        .width('100%')
+        .height(HERO_TOUCH_HEIGHT)
+        .linearGradient({
+          direction: GradientDirection.Right,
+          colors: [[toResourceColorWithAlpha(activeColors().surface, 0.54), 0.0], [toResourceColorWithAlpha(activeColors().surface, 0), 1.0]],
+        })
       Column()
         .width('100%')
         .height(HERO_TOUCH_HEIGHT)
