@@ -7,10 +7,13 @@ set -euo pipefail
 here=$(cd "$(dirname "$0")/.." && pwd)
 serial=${1:-}
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
+# no MSBuild node outlives the build: an idle node would keep inheriting the caller's emulator lock
+export MSBUILDDISABLENODEREUSE=1
 pw=$(grep '^PLAYARR_TIZEN_SAMSUNG_CERT_PASSWORD=' "${PLAYARR_TIZEN_SECRETS:?}" | head -1 | cut -d= -f2- | tr -d "'\"")
 cert=${PLAYARR_TIZEN_CERT_DIR:?}
 PLAYARR_TIZEN_CERT_PASS=$pw dotnet build "$here/src/Playarr.Tizen" -c Release \
-  -p:AuthorPath="$cert/author.p12" -p:DistributorPath="$cert/distributor.p12" -v q -nologo ${PLAYARR_BUILD_ARGS:-} >&2
+  -p:AuthorPath="$cert/author.p12" -p:DistributorPath="$cert/distributor.p12" -v q -nologo -nodeReuse:false ${PLAYARR_BUILD_ARGS:-} >&2
+dotnet build-server shutdown >/dev/null 2>&1 || true
 tpk=$(ls "$here"/src/Playarr.Tizen/bin/Release/net8.0-tizen10.0/*.tpk)
 sdb=${SDB:-sdb}; [ -n "$serial" ] && sdb="$sdb -s $serial"
 $sdb install "$tpk"
