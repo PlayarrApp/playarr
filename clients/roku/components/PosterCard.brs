@@ -88,7 +88,7 @@ sub onContentChanged()
     end if
     m.cardRoot.translation = [m.cardContentInsetX, m.padTop + m.cardContentInsetY]
     ' Numbered cards (chapters, episodes) round their art a little more than the library cards (web 13.44 px against 12).
-    m.cornerR = 12.0
+    m.cornerR = 12.48
     if content.overlayNumber <> invalid and content.overlayNumber <> "" then m.cornerR = 13.44
     layoutCard(cardScale, artW, artH, listMode)
     ' A recycled grid card keeps its laid-out title position (layoutCard returns early for an unchanged scale).
@@ -334,7 +334,7 @@ end sub
 ' card has a 330 px art but still 12 px text and a 13 px dot), so nothing is scaled as a whole.
 sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listMode = false as Boolean)
     artW = 220 * cardScale
-    artH = 124 * cardScale
+    artH = artW * 9 / 16
     if ovW > 0
         artW = ovW
         artH = ovH
