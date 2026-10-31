@@ -62,8 +62,11 @@ const META_CHIP_ROW_GAP: number = 6.4;
 
 const COPY_TEXT_FONT_SIZE: number = 12.864;
 const COPY_TEXT_FONT_WEIGHT: number = 600;
-/** Library's details panel meta: `.details-panel .tv-preview-meta` is clamp(0.62rem, 0.68vw, 0.86rem) at weight 600 (global.css), 13.056 px at 1920. */
-const LIBRARY_META_FONT_SIZE: number = 13.056;
+/** Library's details panel meta: `.details-panel .tv-preview-meta` is clamp(0.62rem, 0.68vw, 0.86rem) at weight 600 (global.css), evaluated here
+ * in the 1920 px design space (1rem = 16, 1vw = 19.2); `tv()` then scales it to the live window. */
+const WEB_REM: number = 16;
+const WEB_VW: number = 1920 / 100;
+const LIBRARY_META_FONT_SIZE: number = Math.min(Math.max(0.62 * WEB_REM, 0.68 * WEB_VW), 0.86 * WEB_REM);
 const SYNOPSIS_FONT_WEIGHT: number = 400;
 const LIBRARY_SYNOPSIS_FONT_WEIGHT: number = 600; // web layout ref (library hero): 600 at 13.82, in the copy colour
 const COPY_TEXT_INK_ALPHA: number = 0.87;
