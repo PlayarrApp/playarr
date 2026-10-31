@@ -345,6 +345,7 @@ namespace Playarr.Xbox.Views
                 // Evidence, not a threshold: with the element hidden a pixel counts only if it differs from both the frame before
                 // and the frame after the element is shown again while those two agree exactly. Two rounds must both find paint.
                 var rounds = new int[2];
+                int rawHide = 0, unstable = 0; // diagnosis: pixels the hide frame changes at all, and pixels the base and re-show frames disagree on
                 var baseline = before;
                 for (var round = 0; round < 2; round++)
                 {
@@ -372,6 +373,12 @@ namespace Playarr.Xbox.Views
                             {
                                 proven++;
                             }
+
+                            if (round == 0)
+                            {
+                                rawHide += PixelEqual(hiddenFrame, baseline, i) ? 0 : 1;
+                                unstable += PixelEqual(baseline, shown, i) ? 0 : 1;
+                            }
                         }
                     }
 
@@ -385,7 +392,7 @@ namespace Playarr.Xbox.Views
 
                 var changed = rounds[0] > 0 && rounds[1] > 0; // an unplayed second round stays 0
                 var focusable = !changed && IsFocusableAndOnTop(candidate.Owner, candidate.Box);
-                log.Add($"#{log.Count} {Math.Round(candidate.Box.X)},{Math.Round(candidate.Box.Y)} {Math.Round(candidate.Box.Width)}x{Math.Round(candidate.Box.Height)} r1={rounds[0]} r2={rounds[1]} {(changed ? "visible" : focusable ? "focusable" : "covered")}");
+                log.Add($"#{log.Count} {Math.Round(candidate.Box.X)},{Math.Round(candidate.Box.Y)} {Math.Round(candidate.Box.Width)}x{Math.Round(candidate.Box.Height)} r1={rounds[0]} r2={rounds[1]} h={rawHide} u={unstable} o={candidate.Owner.Opacity:0.##} {(changed ? "visible" : focusable ? "focusable" : "covered")}");
                 if (!changed && !focusable)
                 {
                     hidden.Add(candidate.Item);
