@@ -2300,6 +2300,7 @@ struct TVLibraryKindView: View {
                         if active { Circle().fill(DesignTokens.Color.textSecondary).parityBox("container", radius: 12, fill: DesignTokens.Color.textSecondary) }
                     }
                     .frame(width: 44, height: 44)
+                    .parityBox("button", text: letter == "#" ? "Numbers and symbols" : letter) // the web letter button: the 44 pt cell
                     .frame(width: DesignTokens.Shell.libraryAlphabetWidth, height: 44)
             }
         }

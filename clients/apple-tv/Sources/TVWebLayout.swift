@@ -45,9 +45,17 @@ struct TVRailPanelGradient: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing)
+        let panel = LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing)
             .frame(width: width)
-            .frame(maxWidth: .infinity, alignment: .trailing)
+        return Group {
+            if bleed {
+                // the panel's own box (the web `.tv-rail-surface`); its paint is a gradient, so no flat fill is declared
+                panel.parityBox("container", bleed: true)
+            } else {
+                panel
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
     private var stops: [Gradient.Stop] {
@@ -132,7 +140,7 @@ struct TVPageHeader: View {
     #if os(macOS)
     private let headerSpacing: CGFloat = 22
     #else
-    private let headerSpacing: CGFloat = 24
+    private let headerSpacing: CGFloat = 23.04 // web `--page-header-gap`: clamp(14px, 1.2vw, 24px) at 1920 wide
     #endif
 
     var body: some View {
@@ -156,7 +164,7 @@ struct TVPageHeader: View {
                         .frame(width: 50, height: 50)
                 }
                 .frame(width: size, height: size, alignment: .leading)
-                .parityBox("container", radius: size / 2, fill: DesignTokens.Stage.surfaceStrong, alpha: 0.7) // before the offset
+                .parityBox(backRole, text: backName, radius: size / 2, fill: DesignTokens.Stage.surfaceStrong, alpha: 0.7) // the drawn disc is the web back link's box (same rect); before the offset
                 .offset(x: origin, y: backFocused ? 52.2 : 56.2)
             // Web `.page-header`: the title, a hairline divider and the subtitle in one row, centred on the title. Only when
             // the row would run into the clock (x 466) does the subtitle drop under the title.
