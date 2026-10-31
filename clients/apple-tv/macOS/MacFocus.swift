@@ -79,6 +79,8 @@ final class MacFocusEngine {
         /// on Filters, not on the nearer Calendar link).
         var focusName: String? = nil
         var downTo: String? = nil
+        /// Named targets other directions go to from here (the player's video surface: left Play, right Subtitles, up Seek).
+        var routes: [MacMoveDirection: String] = [:]
         /// The SwiftUI focus binding itself, for parity diagnostics independent of the state file tag.
         var isFocused: () -> Bool = { false }
     }
@@ -301,7 +303,8 @@ final class MacFocusEngine {
             #endif
             return
         }
-        var geometricTargets = candidates.filter { $0.key != fromID }
+        // a routed target (the player's video surface) is reached only by name, never as a geometric neighbour
+        var geometricTargets = candidates.filter { $0.key != fromID && $0.value.routes.isEmpty }
         if from.homeRailFocus && (direction == .left || direction == .right) {
             geometricTargets = geometricTargets.filter { _, target in
                 if target.homeRailFocus {
@@ -311,6 +314,10 @@ final class MacFocusEngine {
                 return direction == .left && from.parityIndex == 0
                     && target.frame.midX < Self.contentArea.minX
             }
+        }
+        if let name = from.routes[direction], let target = candidates.values.first(where: { $0.focusName == name }) {
+            target.focus()
+            return
         }
         if direction == .down, let name = from.downTo, let target = candidates.values.first(where: { $0.focusName == name }) {
             target.focus()
@@ -461,6 +468,7 @@ private struct MacSecondaryKey: EnvironmentKey { static let defaultValue: MacSec
 private struct MacPreferredKey: EnvironmentKey { static let defaultValue = false }
 private struct MacFocusNameKey: EnvironmentKey { static let defaultValue: String? = nil }
 private struct MacDownToKey: EnvironmentKey { static let defaultValue: String? = nil }
+private struct MacRoutesKey: EnvironmentKey { static let defaultValue: [MacMoveDirection: String] = [:] }
 struct MacFocusBindingBridge {
     let focusChanged: (Bool) -> Void
     let restore: () -> Void
@@ -492,6 +500,11 @@ extension EnvironmentValues {
     var macDownTo: String? {
         get { self[MacDownToKey.self] }
         set { self[MacDownToKey.self] = newValue }
+    }
+
+    var macRoutes: [MacMoveDirection: String] {
+        get { self[MacRoutesKey.self] }
+        set { self[MacRoutesKey.self] = newValue }
     }
 
     var macPreferredFocus: Bool {
@@ -544,6 +557,7 @@ struct MacFocusTarget: ViewModifier {
     @Environment(\.macPreferredFocus) private var preferred
     @Environment(\.macFocusName) private var focusName
     @Environment(\.macDownTo) private var downTo
+    @Environment(\.macRoutes) private var routes
     @Environment(\.macParityTag) private var parityTag
     @Environment(\.macFocusBindingBridge) private var focusBridge
     @FocusState private var focused: Bool
@@ -635,7 +649,7 @@ struct MacFocusTarget: ViewModifier {
                                                parityID: parityTag?.id, parityRail: parityTag?.rail, parityIndex: parityTag?.index,
                                                homeRailFocus: bridge != nil && parityTag?.rail != nil,
                                                activate: activate, secondary: secondary?.action, preferred: preferred,
-                                               focusName: focusName, downTo: downTo,
+                                               focusName: focusName, downTo: downTo, routes: routes,
                                                isFocused: focusQuery))
     }
 }

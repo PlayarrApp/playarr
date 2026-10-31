@@ -199,6 +199,9 @@ struct TVPlayerChrome: View {
                     .accessibilityLabel("Seek")
                     .accessibilityValue(value)
             }
+            .disabled(!controlsVisible)
+            .macFocusTarget()
+            .macPlayerTag("Seek", name: "seek")
             .placed(x: 70, y: 914, w: 1780, h: 44)
         #else
         return body
@@ -256,7 +259,7 @@ struct TVPlayerChrome: View {
         .focusEffectDisabled()
         .accessibilityLabel(name)
         .modifier(TVOptionalFocusTag(binding: focus, control: control))
-        .macPlayerMenuTarget(name)
+        .macPlayerMenuTarget(name, name: control == .subtitles ? "subtitles" : nil)
         .placed(x: x - 22, y: 958, w: 64, h: 64, alignment: .center)
     }
 
@@ -285,7 +288,7 @@ struct TVPlayerChrome: View {
             .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
             .disabled(!controlsVisible) // not .focusable: on a Button it adds a second, inert focus target
             .modifier(TVFocusTag(binding: focus, control: .play))
-            .macPlayerTag(state.isPlaying ? "Pause" : "Play", preferred: true)
+            .macPlayerTag(state.isPlaying ? "Pause" : "Play", name: "play")
             .placed(x: 147.6, y: 958, w: 64, h: 64)
             icon("forward.end", x: 247.2, name: "Next episode", enabled: state.hasNext, action: onNext)
             HStack(spacing: 0) {
@@ -639,19 +642,36 @@ enum TVPlayerStage: Equatable {
 extension View {
     /// The Mac's focus is its own engine, not a SwiftUI focus the labels can read: name the control in parity-state.json
     /// (applied outside the Button, where the focus target reads it). tvOS reads `parityFocusTag` inside the label.
-    @ViewBuilder fileprivate func macPlayerTag(_ title: String, preferred: Bool = false) -> some View {
+    @ViewBuilder fileprivate func macPlayerTag(_ title: String, preferred: Bool = false, name: String? = nil) -> some View {
         #if os(macOS)
         environment(\.macParityTag, MacParityTag(title: title, id: "player-" + title, rail: nil, index: nil, gridPosition: nil))
             .environment(\.macPreferredFocus, preferred)
+            .environment(\.macFocusName, name)
         #else
         self
         #endif
     }
 
     /// A menu button is not one of the module's shadowed Buttons: on the Mac it needs to be made a focus target as well.
-    @ViewBuilder fileprivate func macPlayerMenuTarget(_ title: String) -> some View {
+    @ViewBuilder fileprivate func macPlayerMenuTarget(_ title: String, name: String? = nil) -> some View {
         #if os(macOS)
-        macFocusTarget().macPlayerTag(title)
+        macFocusTarget().macPlayerTag(title, name: name)
+        #else
+        self
+        #endif
+    }
+}
+
+extension View {
+    /// The video itself as the player's opening focus (web: "video playback surface"): from it Left reaches Play, Right the first
+    /// menu control (subtitles) and Up the seek bar. On tvOS the surface carries these moves in TVPlayerView.
+    @ViewBuilder func macPlayerSurfaceTarget() -> some View {
+        #if os(macOS)
+        macFocusTarget()
+            .environment(\.macParityTag, MacParityTag(title: "video playback surface", id: "player-surface", rail: nil, index: nil, gridPosition: nil))
+            .environment(\.macPreferredFocus, true)
+            .environment(\.macFocusName, "surface")
+            .environment(\.macRoutes, [.left: "play", .right: "subtitles", .up: "seek"])
         #else
         self
         #endif

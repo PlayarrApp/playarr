@@ -186,8 +186,7 @@ struct TVPlayerView: View {
                 // While the controls are hidden this catches SELECT and moves to reveal them again.
                 Color.clear
                     .ignoresSafeArea()
-                    .focusable()
-                    .focused($focusedControl, equals: .surface)
+                    .modifier(TVPlayerSurfaceFocus(focus: $focusedControl))
                     .accessibilityLabel("Video playback surface")
                     .parityFocusTag("video playback surface")
                     .onTapGesture {
@@ -309,5 +308,18 @@ struct TVPlayerView: View {
         case .close: dismiss()
         case nil: break
         }
+    }
+}
+
+/// tvOS: a SwiftUI focus target bound to the surface. Mac: an engine target with the routes of the web's D-pad order.
+private struct TVPlayerSurfaceFocus: ViewModifier {
+    let focus: FocusState<TVPlayerControl?>.Binding
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        content.macPlayerSurfaceTarget()
+        #else
+        content.focusable().focused(focus, equals: .surface)
+        #endif
     }
 }
