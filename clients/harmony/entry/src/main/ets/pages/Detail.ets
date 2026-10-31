@@ -1741,7 +1741,6 @@ struct Detail {
   private playTriangle(): void {
     Text('\u25B6').fontFamily(nunito(400) + ',PlayarrGlyphs') // web draws the glyph (7.3 x 13 at 9.5 vp)
       .fontSize(9.5).lineHeight(webLineHeight(9.5)).halfLeading(true)
-      .letterSpacing(-4.54) // the fallback glyph's advance is 11.85 vp, web's 7.31: the Row gap below makes the difference up
       .fontColor(this.playInk())
   }
 
@@ -1756,7 +1755,7 @@ struct Detail {
   @Builder
   private playButton(enabled: boolean, height: number): void {
 
-    Row({ space: isTvMetrics() ? Spacing.sm : Spacing.sm + 3.34 }) {
+    Row({ space: Spacing.sm }) {
       if (isTvMetrics()) {
         Text('\u25B6').fontFamily(nunitoAt(400, PLAY_BUTTON_ICON_SIZE) + ',PlayarrGlyphs')
           .fontSize(PLAY_BUTTON_ICON_SIZE).lineHeight(webLineHeight(PLAY_BUTTON_ICON_SIZE)).halfLeading(true)
@@ -1875,20 +1874,14 @@ struct Detail {
     return primary && isTvMetrics() && !this.isSeriesPage() && this.playFocused;
   }
 
-  /** How much narrower the TV Play glyph is made (the focused film Play is drawn at 1.06). */
-  private playGlyphNarrowing(): number {
-    return this.isSeriesPage() ? 4.84 : 4.5;
-  }
-
   /** Web's action pill: a glyph and a label in a rounded translucent capsule, the primary one filled. */
   @Builder
   private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
-    Row({ space: tv(primary ? PILL_PRIMARY_GAP : PILL_SECONDARY_GAP) + (primary ? this.playGlyphNarrowing() : 0) }) {
+    Row({ space: tv(primary ? PILL_PRIMARY_GAP : PILL_SECONDARY_GAP) }) {
       Text(glyph).fontFamily(nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)) + ',PlayarrGlyphs')
         .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))).halfLeading(true)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : (resolvedThemeMode() === 'dark' ? PILL_GLYPH_DARK : PLAY_FOCUS_FILL))  // web: the secondary pills' glyph is pink
-        .letterSpacing(primary ? -this.playGlyphNarrowing() : 0) // the fallback glyph advances 4.5 to 4.8 px wider than web's: the Row gap above makes the difference up
-        .translate(primary ? { x: this.playGlyphNarrowing() / 2, y: this.isSeriesPage() ? -1.2 : 0 } : { y: glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35 })
+        .translate({ y: primary ? (this.isSeriesPage() ? -1.2 : 0) : (glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35) })
       Text(label).fontFamily(nunitoAt(700, tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)).letterSpacing((isTvMetrics() ? -0.053 : 0)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
@@ -2482,16 +2475,6 @@ struct Detail {
     }
   }
 
-  private metaChipSpacing(chip: string, index: number): number {
-    if (index === 0) {
-      return -0.1;
-    }
-    if (/^[0-9]+$/.test(chip)) {
-      return 0.3;
-    }
-    return chip.indexOf('\u00B7') >= 0 ? -0.17 : 0;
-  }
-
   /** Phone: the meta chips (web `.work-meta`): the first bold, the rest muted, 12 vp apart, wrapping. */
   @Builder
   private touchMetaChips(): void {
@@ -2499,7 +2482,6 @@ struct Detail {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
         Text(chip).fontFamily(nunitoAt(index === 0 ? 700 : 400, 10.24))
           .fontSize(10.24).lineHeight(webLineHeight(10.24)).halfLeading(true)
-          .letterSpacing(this.metaChipSpacing(chip, index)) // web widths: a bold first chip is a little narrower, a bare number wider, the episode code narrower
           .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
           .fontColor(toResourceColor(index === 0 ? activeColors().inkSoft : activeColors().inkMuted))
       }, (chip: string, index: number): string => index.toString() + chip)
@@ -2573,7 +2555,7 @@ struct Detail {
   @Builder
   private touchSeriesActionRow(): void {
     Row({ space: 8 }) {
-      Row({ space: 10.54 }) {
+      Row({ space: 6 }) {
         this.playTriangle()
         Text(this.primaryLabel()).fontFamily(nunitoAt(700, 11))
           .fontSize(11).lineHeight(webLineHeight(11)).halfLeading(true)
@@ -2684,7 +2666,7 @@ struct Detail {
               .fontSize(10.56).lineHeight(webLineHeight(10.56)).halfLeading(true)
               .height(16)
               .fontWeight(FontWeight.Bolder)
-              .letterSpacing((0.8) + (!isTvMetrics() ? -0.153 - (this.detail !== null && this.detail.work.kind === 'series' ? 0.118 : 0) : 0))
+              .letterSpacing((0.8) + (!isTvMetrics() ? -0.153 : 0))
               .textCase(TextCase.UpperCase)
               .fontColor(brandInk())
               .translate({ y: -1.1 }) // web's kicker box sits 1.1 higher
@@ -2696,7 +2678,7 @@ struct Detail {
                 Text(line).fontFamily(nunitoAt(560, 36))
                 .fontSize(36) // measured against the static refs
                 .fontWeight(FontWeight.Medium)
-                .letterSpacing((-2.59) + (!isTvMetrics() ? -0.089 - (this.detail !== null && this.detail.work.kind === 'movie' ? 0.09 : 0) : 0)) // web -0.072em (fitted to the refs' run width)
+                .letterSpacing((-2.59) + (!isTvMetrics() ? -0.089 : 0)) // web -0.072em (fitted to the refs' run width)
                 .lineHeight(webLineHeight(36)).lineSpacing(webLineSpacing(34, 36)).halfLeading(true)
                 .fontColor(toResourceColor(activeColors().ink))
                   .margin({ top: index > 0 ? 34 - webLineHeight(36) : 0 })
