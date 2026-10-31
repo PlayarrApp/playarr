@@ -822,9 +822,15 @@ private struct AuthenticatedPlayarrShell: View {
     private func profileButton(size: CGFloat, avatarSize: CGFloat, ring: Bool = true) -> some View {
         Button { select(.profiles) } label: {
             ZStack {
-                currentAvatar(size: avatarSize).parityBox("image")
+                if ring {
+                    currentAvatar(size: avatarSize).parityBox("image")
+                } else {
+                    // Web phone nav: the avatar is a round container 3.4 pt above the icon line, holding the image.
+                    currentAvatar(size: avatarSize).parityBox("image").parityBox("container", radius: avatarSize / 2)
+                }
             }
             .frame(width: avatarSize, height: avatarSize)
+            .offset(y: ring ? 0 : -3.36)
             .frame(width: size, height: ring ? size : 46)
             .background(ring ? PlayarrStyle.surfaceStrong.opacity(0.66) : .clear, in: Circle())
             .overlay { if ring { Circle().stroke(PlayarrStyle.line.opacity(0.7), lineWidth: 1) } }
