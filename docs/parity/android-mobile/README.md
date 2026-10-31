@@ -5,7 +5,7 @@ pixels, signed in as the static parity server's `parity` account, the web's own 
 headless emulator configured as 1170x2532 at 480 dpi, so 390x844 dp equals the web CSS viewport, against a FRESH fixture
 database (`scripts/fixtures/up.sh --fresh` in an empty `PLAYARR_FIXTURE_DIR`, seeded on the day of the frozen clock: re-seeding an
 old database keeps the wrong rail order). Screen ids and tolerance come from `scripts/parity/screens.json`; the diff is
-`scripts/parity/diff.mjs --theme both` (pixelmatch, threshold 0.1, `includeAA: false`).
+`scripts/parity/diff.mjs --theme both` (exact RGBA byte comparison).
 
 ## Result
 

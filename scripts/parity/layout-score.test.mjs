@@ -5,13 +5,13 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { deltaE, formatReport, loadExclusions, scoreLayout } from "./layout-score.mjs";
+import { TOL, deltaE, formatReport, loadExclusions, sameColour, scoreLayout } from "./layout-score.mjs";
 import { layoutPageFn, volatileFor } from "./layout-dump.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const load = (n) => JSON.parse(readFileSync(join(here, "fixtures/layout", n), "utf8"));
 
-test("a device inside every tolerance scores 100 and the volatile clock text is skipped", () => {
+test("a device identical in every field scores 100 and the volatile clock text is skipped", () => {
   const r = scoreLayout(load("web.json"), load("device-ok.json"));
   assert.equal(r.total, 4); // the maskOnly video is not scored
   assert.equal(r.score, 100);
@@ -209,4 +209,19 @@ test("heading-to-text alias: a device text matches a web heading only when passe
   assert.equal(scoreLayout(doc(el("heading", 20)), doc(el("text", 20))).score, 0);
   assert.equal(scoreLayout(doc(el("heading", 20)), doc(el("text", 20)), alias).score, 100);
   assert.equal(scoreLayout(doc(el("heading", 20)), doc(el("text", 30)), alias).score, 0);
+});
+
+test("tolerances are all zero and colours compare as exact 8-bit bytes", () => {
+  assert.ok(Object.values(TOL).every((v) => v === 0));
+  assert.equal(sameColour("#336699", "#336699"), true);
+  assert.equal(sameColour("#e50914", "#e60a14"), false);
+  assert.equal(sameColour("#00000080", "#7f7f7f"), true);
+});
+
+test("a one device pixel edge shift or a 0.1 font size drift fails", () => {
+  const d = load("device-ok.json");
+  d.elements[0].rect.left += 1;
+  d.elements[1].fontSize += 0.1;
+  const r = scoreLayout(load("web.json"), d);
+  assert.ok(r.score < 100);
 });

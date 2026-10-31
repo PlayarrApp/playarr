@@ -1,0 +1,1 @@
+Parity scoring is now exact with zero tolerance (owner order, 31 Oct 2026). `diff.mjs` compares RGBA bytes instead of pixelmatch and the `pixelmatchThreshold` setting is gone; `layout-score.mjs` compares edges on the whole device pixel, colours as identical 8-bit bytes, and font size, weight, radius and opacity strictly.
