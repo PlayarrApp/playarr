@@ -1,0 +1,1 @@
+- Tizen 6.5 (Chromium 85): the fitted line-height, margin and padding constants in tizen.css are removed; the engine's whole-pixel line boxes are restored from the exact computed line height by one generic rule (minimum block size of N lines, multi-line text on the nearest whole pixel pitch with the surplus taken from the block end margin), shared with the webOS fix.
