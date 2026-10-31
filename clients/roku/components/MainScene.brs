@@ -2945,7 +2945,7 @@ sub applyBrowseArtworkSize()
     else
         m.browseGrid.numColumns = 3
         m.browseGrid.numRows = 4
-        m.browseGrid.itemSize = [353.5, 240.5]
+        m.browseGrid.itemSize = [353.08, 240.41]
         m.browseGrid.itemSpacing = [0, 0]
     end if
 end sub
@@ -2957,7 +2957,7 @@ end sub
 function browseCardScale() as Float
     if m.browseArtworkSize = "small" then return 240.0 / 220.0
     if m.browseArtworkSize = "large" then return 480.0 / 220.0
-    return 327.2 / 220.0
+    return 327.17 / 220.0
 end function
 
 ' Mirrors web Library.tsx aside.tv-library-preview + TvStageShell key art.
@@ -3172,7 +3172,7 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
             x = m.browseGrid.translation[0] + 8 + column * (m.browseGrid.itemSize[0] + m.browseGrid.itemSpacing[0])
             y = m.browseGrid.translation[1] + 15 + rowIndex * (m.browseGrid.itemSize[1] + m.browseGrid.itemSpacing[1]) + item.padTop
             artWidth = 220 * cardScale
-            artHeight = 124 * cardScale
+            artHeight = artWidth * 9 / 16
             slot = m.artActiveScope + "-r" + rowIndex.ToStr() + "-c" + column.ToStr()
             if artRectVisible(x, y, artWidth, artHeight)
                 addPosterArtTelemetry(item, m.artActiveGeneration, m.artActiveScope, slot, 0)
@@ -5799,9 +5799,9 @@ end sub
 ' See buildDetailChaptersRail's comment for why moveDetailFocus (below)
 ' needs to rebuild this rail's content on every focus transition too.
 sub buildDetailSimilarRail(isActive as Boolean)
-    m.detailSimilar.rowItemSize = [[327.2, 270]]
+    m.detailSimilar.rowItemSize = [[327.17, 270]]
     m.detailSimilar.rowItemSpacing = [[24.8, 0]]
-    buildRailContent(m.detailSimilar, m.similarWorks, isActive, 327.2 / 220.0)
+    buildRailContent(m.detailSimilar, m.similarWorks, isActive, 327.17 / 220.0)
     row = m.detailSimilar.content.GetChild(0)
     if row <> invalid
         row.title = "Similar Titles"

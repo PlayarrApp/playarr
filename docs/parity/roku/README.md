@@ -74,8 +74,21 @@ titles cannot be reproduced). None of the screens is at or below 1% except where
 - Home hero title line pitch matches web (`lineSpacing`), hero fade, clock, rail geometry and focus ring from the bugfix PR.
 - `scripts/parity/roku/capture.mjs` drives the device over ECP and writes the layout `diff.mjs` reads.
 
-Captures are not committed: the device only produces JPEG screenshots ,
+Captures are not committed: the device only produces JPEG screenshots,
 and the report is reproducible with the commands above.
+
+## Device exception: the screenshot is lossy JPEG (31 Oct 2026, exact scoring)
+
+Exact scoring (every RGBA byte equal) cannot be met on Roku by pixel content, because the only screenshot path is lossy. This is a documented device exception. No tolerance is added anywhere.
+
+Evidence:
+- `POST /plugin_inspect` with `mysubmit=Screenshot` returns `pkgs/dev.jpg`. The file is a baseline JPEG, 1920x1080, 4:2:0 chroma subsampling, quantisation tables 8,6,5,8,12,20 (luma) and 9,9,12,24,50 (chroma), roughly quality 75.
+- Requests for `pkgs/dev.png` and `pkgs/dev.bmp` return 404, and the ECP port has no screenshot or capture endpoint (`/query/screenshot`, `/capture` return 404). The debug console ports (8085, 8061) are closed. The packager page has no screenshot action. Adding a form field (`format=png`) still returns `dev.jpg`.
+- The app paints the page background as `0x1B181B` (the web token `#1b181b`). Where the web reference is exactly `#1b181b` (548474 px on settings, dark), the converted device capture is 26,23,26 on 88.0% of them, 23..25 on about 5% and exactly 27,24,27 on 0.9%.
+- The result depends on the decoder, so it is not a fixed offset: ffmpeg decodes a flat region of one frame as 26,23,26, libjpeg (Pillow) decodes the same file as 26,24,27. Quantisation and chroma subsampling make flat colours and every edge unrepresentable, so no decoder choice restores the app's bytes.
+- Pixel parity on Roku is therefore dominated by the capture codec (5.3 dark / 2.2 light under exact scoring), not by the UI colours. The UI colours are the web tokens.
+
+A lossless path would need an HDMI capture of the device output, which is not available on the test bench. Layout (exported from the SceneGraph tree, not from pixels) is unaffected and stays the Roku lever.
 
 
 ## Light theme (measured 8 October, live web, same account)
