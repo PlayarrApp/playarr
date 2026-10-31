@@ -209,8 +209,19 @@ const HERO_WASH_HEIGHT: number = 562; // web stage wash: 72 vh
 // Web phone season rows (measured on the 360 vp reference): 187 vp cards, heading to cards 23, season to season 237.
 const PHONE_EPISODE_CARD_WIDTH: number = 187;
 const PHONE_EPISODE_RAIL_GAP: number = 11;
-const PHONE_SEASON_LIST_HEIGHT: number = 165;
-const PHONE_SEASON_HEADER_CARD_GAP: number = 21.18;
+// The rail's layout height is the list height minus its 24 vp bottom clip inset: 159.5 leaves exactly the 135.5 vp card (web: 136.5 incl. the 98 px scroll padding that its negative margins cancel).
+const PHONE_SEASON_LIST_HEIGHT: number = 159.5;
+/** Web phone Similar Titles: landscape 158 vp cards, 88.9 art, 113.6 in all (the tv-title-card at the phone width). */
+const PHONE_SIMILAR_CARD_WIDTH: number = 158;
+const PHONE_SIMILAR_CARD_ART_HEIGHT: number = 88.9;
+const PHONE_SIMILAR_CARD_HEIGHT: number = 113.6;
+const PHONE_SIMILAR_CARD_GAP: number = 12;
+/** Web phone rail surface: a 494.3 vp panel (24 vp above its first heading), 82 vp of page under it. */
+const PHONE_RAIL_SURFACE_HEIGHT: number = 494.3;
+const PHONE_PAGE_BOTTOM: number = 82;
+/** Web phone: the gap between two tracks (card bottom to the next heading). */
+const PHONE_TRACK_GAP: number = 65.5;
+const PHONE_SEASON_HEADER_CARD_GAP: number = 18.5; // web: cards start 61.8 under the heading's top (heading block 43.3)
 // 24 > the card's 20 vp ring glow, so the glow is not cut at the rail's left edge
 const PHONE_DETAIL_RAIL_CLIP_START: number = 24;
 const PHONE_DETAIL_RAIL_CLIP_TOP: number = 36;
@@ -219,8 +230,8 @@ const PHONE_BACK_SIZE: number = 44;
 const PHONE_HEADER_TOP: number = 16;
 const PHONE_HEADER_GAP: number = 8;
 const PHONE_HEADER_FADE: number = 28;
-// Season to season is 237 on web; the phone capture measured 14.3 vp short with 21, so the gap is 35.3.
-const PHONE_SEASON_ROW_GAP: number = 35.65;
+// Season to season on the static refs: track heading to heading 262.9 (web: 65.5 between a card row and the next heading).
+const PHONE_SEASON_ROW_GAP: number = 65.5; // web: 65.5 from a track's card bottom to the next heading (the earlier 35.65 was fitted to a scrolled ref)
 /** Web `--brand-strong`, the phone Play button's focused fill. */
 const PLAY_FOCUS_FILL: string = '#a52745';
 
@@ -1144,7 +1155,7 @@ struct Detail {
       if (item.similarWorkId === null) {
         continue;
       }
-      const result = await fetchWorkArtworkByPriority(item.similarWorkId, isTvMetrics() ? LANDSCAPE_ARTWORK_PRIORITY : COVER_ARTWORK_PRIORITY);
+      const result = await fetchWorkArtworkByPriority(item.similarWorkId, LANDSCAPE_ARTWORK_PRIORITY);
       if (!this.artworkStore.isCurrentGeneration(generation)) {
         return;
       }
@@ -1709,11 +1720,11 @@ struct Detail {
         variant: 'home',
         title: (item as DetailRow).title,
         subtitle: (item as DetailRow).subtitle,
-        cardWidth: TouchGeometry.homeRailCardWidthCover,
-        cardHeight: Math.round((TouchGeometry.homeRailCardWidthCover * 3) / 2),
-        artworkRadius: Radii.homeCardArtworkTouch,
-        titleFontSize: 12,
-        subtitleFontSize: 10,
+        cardWidth: PHONE_SIMILAR_CARD_WIDTH,
+        cardHeight: PHONE_SIMILAR_CARD_ART_HEIGHT,
+        artworkRadius: Radii.homeCardArtworkTv,
+        titleFontSize: 8.8, // web: the tv-title-card caption at the phone width
+        subtitleFontSize: 6.88,
         activeRailFactor: activeRailFactor,
         onCardFocus: this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration),
         onSelect: () => { this.selectRow((item as DetailRow)); },
@@ -1730,6 +1741,7 @@ struct Detail {
   private playTriangle(): void {
     Text('\u25B6').fontFamily(nunito(400) + ',PlayarrGlyphs') // web draws the glyph (7.3 x 13 at 9.5 vp)
       .fontSize(9.5).lineHeight(webLineHeight(9.5)).halfLeading(true)
+      .letterSpacing(-4.54) // the fallback glyph's advance is 11.85 vp, web's 7.31: the Row gap below makes the difference up
       .fontColor(this.playInk())
   }
 
@@ -1744,7 +1756,7 @@ struct Detail {
   @Builder
   private playButton(enabled: boolean, height: number): void {
 
-    Row({ space: Spacing.sm }) {
+    Row({ space: isTvMetrics() ? Spacing.sm : Spacing.sm + 3.34 }) {
       if (isTvMetrics()) {
         Text('\u25B6').fontFamily(nunitoAt(400, PLAY_BUTTON_ICON_SIZE) + ',PlayarrGlyphs')
           .fontSize(PLAY_BUTTON_ICON_SIZE).lineHeight(webLineHeight(PLAY_BUTTON_ICON_SIZE)).halfLeading(true)
@@ -1863,14 +1875,20 @@ struct Detail {
     return primary && isTvMetrics() && !this.isSeriesPage() && this.playFocused;
   }
 
+  /** How much narrower the TV Play glyph is made (the focused film Play is drawn at 1.06). */
+  private playGlyphNarrowing(): number {
+    return this.isSeriesPage() ? 4.84 : 4.5;
+  }
+
   /** Web's action pill: a glyph and a label in a rounded translucent capsule, the primary one filled. */
   @Builder
   private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
-    Row({ space: tv(primary ? PILL_PRIMARY_GAP : PILL_SECONDARY_GAP) }) {
+    Row({ space: tv(primary ? PILL_PRIMARY_GAP : PILL_SECONDARY_GAP) + (primary ? this.playGlyphNarrowing() : 0) }) {
       Text(glyph).fontFamily(nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)) + ',PlayarrGlyphs')
         .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))).halfLeading(true)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : (resolvedThemeMode() === 'dark' ? PILL_GLYPH_DARK : PLAY_FOCUS_FILL))  // web: the secondary pills' glyph is pink
-        .translate({ y: primary ? (this.isSeriesPage() ? -1.2 : 0) : (glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35) })
+        .letterSpacing(primary ? -this.playGlyphNarrowing() : 0) // the fallback glyph advances 4.5 to 4.8 px wider than web's: the Row gap above makes the difference up
+        .translate(primary ? { x: this.playGlyphNarrowing() / 2, y: this.isSeriesPage() ? -1.2 : 0 } : { y: glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35 })
       Text(label).fontFamily(nunitoAt(700, tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)).letterSpacing((isTvMetrics() ? -0.053 : 0)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
@@ -2084,7 +2102,7 @@ struct Detail {
   /** The right-hand column on web: the Chapters rail, then the Cast rail, straight on the page (no glass panel). */
   @Builder
   private tvRightColumn(): void {
-    Column({ space: tv(RIGHT_COLUMN_GAP) }) {
+    Column({ space: isTvMetrics() ? tv(RIGHT_COLUMN_GAP) : PHONE_TRACK_GAP }) {
       if (this.detail !== null && this.detail.work.kind === 'series') {
         this.tvSeriesSeasonRows()
       } else {
@@ -2125,7 +2143,7 @@ struct Detail {
         .alignItems(HorizontalAlign.Start)
       }
       if (this.cast.length > 0) {
-        Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
+        Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP) : PHONE_SEASON_HEADER_CARD_GAP }) {
           this.railHeading(t('pages.workDetail.cast', 'Cast'), this.cast.length.toString() + ' people')
           MediaRail({
             railId: 'cast',
@@ -2142,13 +2160,15 @@ struct Detail {
       }
       if (this.similarRail !== null) {
         // web: landscape cards (the Library's size) under a heading with the title count
-        Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
+        Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP) : PHONE_SEASON_HEADER_CARD_GAP }) {
           this.railHeading(this.similarRail.heading, tf(this.similarRail.items.length === 1 ? 'pages.workDetail.titlesCountOne' : 'pages.workDetail.titlesCountOther', this.similarRail.items.length === 1 ? '{{count}} title' : '{{count}} titles', { count: this.similarRail.items.length.toString() }))
           MediaRail({
             railId: this.similarRail.id,
             headingGap: 0,
-            listHeight: tv(Math.round(TvGeometry.homeRailCardWidthLandscape * 9 / 16) + SIMILAR_LIST_EXTRA),
-            itemGap: tv(TvGeometry.railItemGapHome),
+            listHeight: isTvMetrics() ? tv(Math.round(TvGeometry.homeRailCardWidthLandscape * 9 / 16) + SIMILAR_LIST_EXTRA) : PHONE_SIMILAR_CARD_HEIGHT + 24, // phone: the card row plus the list's 24 vp bottom clip inset
+            itemGap: isTvMetrics() ? tv(TvGeometry.railItemGapHome) : PHONE_SIMILAR_CARD_GAP,
+            clipInsetStart: isTvMetrics() ? 8 : PHONE_DETAIL_RAIL_CLIP_START,
+            bleedEnd: isTvMetrics() ? 0 : atLeast(16, this.safeRight),
             items: this.similarRail.items,
             itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
               this.similarItem(item, index, activeRailFactor);
@@ -2211,7 +2231,6 @@ struct Detail {
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .margin({ top: isTvMetrics() ? 0 : 35.2 })
   }
 
   @Builder
@@ -2463,13 +2482,24 @@ struct Detail {
     }
   }
 
+  private metaChipSpacing(chip: string, index: number): number {
+    if (index === 0) {
+      return -0.1;
+    }
+    if (/^[0-9]+$/.test(chip)) {
+      return 0.3;
+    }
+    return chip.indexOf('\u00B7') >= 0 ? -0.17 : 0;
+  }
+
   /** Phone: the meta chips (web `.work-meta`): the first bold, the rest muted, 12 vp apart, wrapping. */
   @Builder
   private touchMetaChips(): void {
-    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 9 : 10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
+    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
         Text(chip).fontFamily(nunitoAt(index === 0 ? 700 : 400, 10.24))
           .fontSize(10.24).lineHeight(webLineHeight(10.24)).halfLeading(true)
+          .letterSpacing(this.metaChipSpacing(chip, index)) // web widths: a bold first chip is a little narrower, a bare number wider, the episode code narrower
           .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
           .fontColor(toResourceColor(index === 0 ? activeColors().inkSoft : activeColors().inkMuted))
       }, (chip: string, index: number): string => index.toString() + chip)
@@ -2481,7 +2511,7 @@ struct Detail {
   /** Phone: web's action rows. Download, Playback and Add to Playlist open the title actions drawer; Play is the primary pill. */
   @Builder
   private touchActionButton(label: string, onTap: () => void, size: number = 8, glyph: string = '', share: boolean = false): void {
-    Row({ space: 6 }) {
+    Row({ space: 8.8 }) {
       if (glyph.length > 0) {
         // web: the pill glyphs are the brand pink (accent in light)
         Text(glyph).fontFamily(nunito(400))
@@ -2499,7 +2529,8 @@ struct Detail {
       .accessibilityText(this.pillName(label, glyph, false)).accessibilityRole(this.pillRole(false)).accessibilityGroup(true)
       .height(44)
       .justifyContent(FlexAlign.Center)
-      .padding({ left: 16, right: 16 })
+      .padding({ left: 15, right: 15 }) // plus the 1 vp transparent border: web's 16 vp
+      .constraintSize({ minWidth: 104 })
       .borderRadius(22)
       .layoutWeight(share ? 1 : 0)
       .backgroundColor(toResourceColor(activeColors().surfaceStrong)) // opaque so the soft web shadow below draws (ArkUI draws none for a translucent box)
@@ -2525,7 +2556,8 @@ struct Detail {
         .maxLines(1)
     }
     .accessibilityText(this.pillName(label, '+', false)).accessibilityRole(this.pillRole(false)).accessibilityGroup(true)
-    .padding({ left: 16, right: 16 })
+    .padding({ left: 15, right: 15 }) // plus the 1 vp transparent border: web's 16 vp
+    .constraintSize({ minWidth: 104 })
     .height(44)
     .justifyContent(FlexAlign.Center)
     .borderRadius(22)
@@ -2541,7 +2573,7 @@ struct Detail {
   @Builder
   private touchSeriesActionRow(): void {
     Row({ space: 8 }) {
-      Row({ space: 6 }) {
+      Row({ space: 10.54 }) {
         this.playTriangle()
         Text(this.primaryLabel()).fontFamily(nunitoAt(700, 11))
           .fontSize(11).lineHeight(webLineHeight(11)).halfLeading(true)
@@ -2652,7 +2684,7 @@ struct Detail {
               .fontSize(10.56).lineHeight(webLineHeight(10.56)).halfLeading(true)
               .height(16)
               .fontWeight(FontWeight.Bolder)
-              .letterSpacing((0.8) + (!isTvMetrics() ? -0.153 : 0))
+              .letterSpacing((0.8) + (!isTvMetrics() ? -0.153 - (this.detail !== null && this.detail.work.kind === 'series' ? 0.118 : 0) : 0))
               .textCase(TextCase.UpperCase)
               .fontColor(brandInk())
               .translate({ y: -1.1 }) // web's kicker box sits 1.1 higher
@@ -2664,7 +2696,7 @@ struct Detail {
                 Text(line).fontFamily(nunitoAt(560, 36))
                 .fontSize(36) // measured against the static refs
                 .fontWeight(FontWeight.Medium)
-                .letterSpacing((-2.59) + (!isTvMetrics() ? -0.089 : 0)) // web -0.072em (fitted to the refs' run width)
+                .letterSpacing((-2.59) + (!isTvMetrics() ? -0.089 - (this.detail !== null && this.detail.work.kind === 'movie' ? 0.09 : 0) : 0)) // web -0.072em (fitted to the refs' run width)
                 .lineHeight(webLineHeight(36)).lineSpacing(webLineSpacing(34, 36)).halfLeading(true)
                 .fontColor(toResourceColor(activeColors().ink))
                   .margin({ top: index > 0 ? 34 - webLineHeight(36) : 0 })
@@ -2680,7 +2712,7 @@ struct Detail {
                 .fontColor(toResourceColor(activeColors().inkSoft))
                 
                 .maxLines(1)
-                .translate({ y: -1.85 })
+                .translate({ y: 1.37 }) // web's episode line sits 3.2 lower than the old offset put it
                 .margin({ top: 2 })
             }
             this.touchMetaChips()
@@ -2710,32 +2742,29 @@ struct Detail {
 
           // the TV page's rails, Chapters and Cast column, one copy: its sizes are web CSS px, which are vp here
           // web phone: the rails of a film sit on a glass panel that fades in from the left edge, bleeding to both sides.
-          // Series keep the unpanelled rails: a panel layer behind the season rails left the dark episode art unpainted in the Previewer.
-          if (this.detail !== null && this.detail.work.kind === 'series') {
-            this.tvRightColumn()
-          } else {
-            // The glass is the panel's own background (a child sized by '100%' resolved against the Stack before its content, 325 of 535 vp).
-            Stack({ alignContent: Alignment.TopStart }) {
-              Column() {
-                this.tvRightColumn()
-              }
-              .width('100%')
-              .alignItems(HorizontalAlign.Start)
-              .padding({ top: 25.74, left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight) })
+          // The glass is the panel's own background (a child sized by '100%' resolved against the Stack before its content, 325 of 535 vp).
+          // Both kinds sit on the web `.tv-rail-surface`: 494.3 vp tall, 24 vp above the first heading.
+          Stack({ alignContent: Alignment.TopStart }) {
+            Column() {
+              this.tvRightColumn()
             }
-            .linearGradient({
-              direction: GradientDirection.Right,
-              colors: resolvedThemeMode() === 'dark' ?
-                [['rgba(255, 244, 255, 0)', 0.0], ['rgba(255, 244, 255, 0.058)', 0.35], ['rgba(255, 244, 255, 0.058)', 1.0]] :
-                [['rgba(255, 255, 255, 0.71)', 0.0], ['rgba(255, 255, 255, 0.71)', 1.0]],
-            })
-            .width(`calc(100% + ${atLeast(16, this.safeLeft) + atLeast(16, this.safeRight)}vp)`)
-            .margin({ left: -atLeast(16, this.safeLeft), top: 10.26 }) // web: the panel starts 10.3 lower than the list spacing alone puts it
+            .width('100%')
+            .alignItems(HorizontalAlign.Start)
+            .padding({ top: this.detail !== null && this.detail.work.kind === 'series' ? 25.2 : 25.74, left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight) })
           }
+          .height(PHONE_RAIL_SURFACE_HEIGHT)
+          .linearGradient({
+            direction: GradientDirection.Right,
+            colors: resolvedThemeMode() === 'dark' ?
+              [['rgba(255, 244, 255, 0)', 0.0], ['rgba(255, 244, 255, 0.058)', 0.35], ['rgba(255, 244, 255, 0.058)', 1.0]] :
+              [['rgba(255, 255, 255, 0.71)', 0.0], ['rgba(255, 255, 255, 0.71)', 1.0]],
+          })
+          .width(`calc(100% + ${atLeast(16, this.safeLeft) + atLeast(16, this.safeRight)}vp)`)
+          .margin({ left: -atLeast(16, this.safeLeft), top: this.detail !== null && this.detail.work.kind === 'series' ? 10 : 10.26 }) // web: the panel starts 10 lower than the list spacing alone puts it
         }
         .padding({
           top: TOUCH_TEXT_TOP,
-          bottom: TouchGeometry.detailListBottom,
+          bottom: PHONE_PAGE_BOTTOM,
           left: atLeast(16, this.safeLeft),
           right: atLeast(16, this.safeRight),
         })
@@ -2755,18 +2784,25 @@ struct Detail {
       .onAppear(() => { this.settleTouchEpisode(0); })
 
       // web (#175): on phones the Back row stays pinned and the content fades out under it (solid to the row, then the edge fade)
-      Column()
-        .width('100%')
-        .height(atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP + PHONE_HEADER_FADE)
-        .linearGradient({
-          direction: GradientDirection.Bottom,
-          colors: [
-            [toResourceColor(activeColors().surface), 0.0],
-            [toResourceColor(activeColors().surface), (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP) / (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP + PHONE_HEADER_FADE)],
-            [toResourceColorWithAlpha(activeColors().surface, 0), 1.0],
-          ],
-        })
-        .hitTestBehavior(HitTestMode.None)
+      // the solid part is a real surface fill (the Back row and its title sit on it, as on web's pinned header), then the edge fade
+      Column() {
+        Column()
+          .width('100%')
+          .height(atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP)
+          .backgroundColor(toResourceColor(activeColors().surface))
+        Column()
+          .width('100%')
+          .height(PHONE_HEADER_FADE)
+          .linearGradient({
+            direction: GradientDirection.Bottom,
+            colors: [
+              [toResourceColor(activeColors().surface), 0.0],
+              [toResourceColorWithAlpha(activeColors().surface, 0), 1.0],
+            ],
+          })
+      }
+      .width('100%')
+      .hitTestBehavior(HitTestMode.None)
       Row({ space: 10 }) {
         Text('←').fontFamily(arrowFont(720))
           .fontSize(12.8).lineHeight(webLineHeight(12.8)).halfLeading(true)
