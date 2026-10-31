@@ -66,7 +66,7 @@ internal static class LayoutExport
         var win = Window.Instance.WindowSize;
         var ctx = new Ctx { VW = win.Width, VH = win.Height };
         var bg = Window.Instance.BackgroundColor;
-        Walk(ctx, root, 0, 0, 1, 1, (Math.Round(bg.R * 255.0), Math.Round(bg.G * 255.0), Math.Round(bg.B * 255.0)), 1f, new RectF(0, 0, ctx.VW, ctx.VH));
+        Walk(ctx, root, 0, 0, 1, 1, (Math.Round(bg.R * 255.0), Math.Round(bg.G * 255.0), Math.Round(bg.B * 255.0)), 1f, new RectF(0, 0, ctx.VW, ctx.VH), 1f);
         return ctx;
     }
 
@@ -159,8 +159,16 @@ internal static class LayoutExport
 
     private static string Q(string s) => Newtonsoft.Json.JsonConvert.ToString(s);
 
+    // ts: the product of the CSS transforms (focus and active scale on plain views) above; a TextLabel's own 1/TextScale is a drawing detail, not a transform. The web reports border-radius as declared (pre-transform) but caps it at half the short side of the transformed box, so only the declared part is taken out of the transforms.
     // vx, vy: screen top-left of the parent; sx, sy: its accumulated scale; bg: the real backgrounds composited so far (over the window colour); op: accumulated opacity; clip: the visible area left by ancestors that clip their children
-    private static void Walk(Ctx ctx, Container parent, float vx, float vy, float sx, float sy, (double R, double G, double B) bg, float op, RectF clip)
+    // the web reports a declared radius before the transforms, but a radius that reaches half the short side (circle, pill, percentage) is capped on the transformed box
+    private static float CapRadius(float drawn, float ts, float w, float h)
+    {
+        var half = Math.Min(w, h) / 2f;
+        return drawn >= half - 0.01f ? half : Math.Min(drawn / ts, half);
+    }
+
+    private static void Walk(Ctx ctx, Container parent, float vx, float vy, float sx, float sy, (double R, double G, double B) bg, float op, RectF clip, float ts)
     {
         foreach (var child in parent.Children.OfType<View>().ToArray())
         {
@@ -172,6 +180,7 @@ internal static class LayoutExport
             var offY = child.PositionUsesPivotPoint ? 0 : size.Height * (1 - scale.Y) / 2;
             var cx = vx + sx * (child.PositionX + offX); var cy = vy + sy * (child.PositionY + offY);
             var csx = sx * scale.X; var csy = sy * scale.Y;
+            var cts = child is TextLabel ? ts : ts * scale.X;
             var w = size.Width * csx; var h = size.Height * csy;
             var id = ctx.NextId++; ctx.Views[id] = child;
             var role = Sem.RoleOf(child);
@@ -183,7 +192,7 @@ internal static class LayoutExport
                 // a label that draws its own pill (fill, border, rounded corners) is the web span: its fill is the run's background and its corner radius the run's radius
                 var own = label.BackgroundColor; var ownFill = own.A > 0.02f;
                 var runBg = bg; if (ownFill) runBg = Over(bg, own);
-                var runRadius = ownFill || label.BorderlineWidth > 0 ? Math.Min(label.CornerRadius.X * csx, Math.Min(w, h) / 2f) : 0;
+                var runRadius = ownFill || label.BorderlineWidth > 0 ? CapRadius(label.CornerRadius.X * csx, cts, w, h) : 0;
                 var pad = label.Padding; // TextGeometry is relative to the text area, which the label's padding insets
                 var runs = TextRuns(label, m).Select(run => (run.Text, R: new RectF(cx + (run.X + pad.Start) * csx, cy + (run.Y + pad.Top) * csy, run.W * csx, run.H * csy))).Where(r => r.R.W > 0 && r.R.H > 0).ToList();
                 foreach (var (runText, r) in runs)
@@ -202,7 +211,7 @@ internal static class LayoutExport
             (double R, double G, double B) cbg = bg;
             if (fills) cbg = Over(bg, bc, Sem.IsColorMix(child));
             var visible = w > 1 && h > 1 && box.Overlaps(clip);
-            var radius = Math.Min(child.CornerRadius.X * csx, Math.Min(w, h) / 2f);
+            var radius = CapRadius(child.CornerRadius.X * csx, cts, w, h);
             if (visible)
             {
                 // a section whose top edge is drawn as a hairline child (a top border) is a painted container
@@ -219,7 +228,7 @@ internal static class LayoutExport
                     ctx.Nodes.Add(new Node("", "container", cx, cy, w, h, null, Hex255(cbg), null, null, radius, cop, id, true));
             }
             var childClip = child.ClippingMode == ClippingModeType.ClipChildren ? clip.Intersect(box) : clip;
-            Walk(ctx, child, cx, cy, csx, csy, cbg, cop, childClip);
+            Walk(ctx, child, cx, cy, csx, csy, cbg, cop, childClip, cts);
         }
     }
 

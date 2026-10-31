@@ -112,7 +112,7 @@ internal sealed class Shell : View
             nv.Item64.Size = new Size(64, 64); nv.Item64.CornerRadius = 16; nv.Item64.PositionX = Cx - 32 - RailX; nv.Item64.PositionY = nv.CentreY - 32 - groupY;
             nv.Tile = Ui.Box(0, 0, 64, 64, null, 16);
             nv.Icon = Ui.Icon(item.Icon, 22, 15.1f, 20, _theme.InkMuted);
-            nv.Label = Ui.Text(item.Label, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
+            nv.Label = Ui.Text(item.Label, -6.75f, 39.9f, 8.832f, 680, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
             nv.Item64.Add(nv.Tile); nv.Item64.Add(nv.Icon); nv.Item64.Add(nv.Label);
             var navIndex = _nav.Count; // this item's index once added just below
             Sem.Tag(nv.Item64, "link", item.Label);
@@ -126,7 +126,7 @@ internal sealed class Shell : View
         _avatarIcon = new ImageView(Ui.ResPath("avatars/" + AvatarPresets.Default("")) + ".png") { PositionX = 0, PositionY = 0, Size = new Size(20, 20) };
         var avatarFrame = Ui.Box(22, 15.1f, 20, 20, _theme.Surface, 10); avatarFrame.ClippingMode = ClippingModeType.ClipChildren; avatarFrame.Add(_avatarIcon); // web: a rounded span holding the picture
         pv.Icon = null!;
-        pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
+        pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 680, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
         pv.Item64.Add(pv.Tile); pv.Item64.Add(avatarFrame); pv.Item64.Add(pv.Label);
         Sem.Tag(pv.Item64, "link", $"Signed in as {_env.Profile}. Open profiles.");
         chip.Add(pv.Item64);
