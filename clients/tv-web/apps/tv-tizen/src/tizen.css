@@ -240,3 +240,13 @@ b {
     line-height: calc(1.5em + 0.5px);
   }
 }
+
+/* Legacy Tizen app layout adjustment to match web line boxes (not engine rounding). The clamped Home feature synopsis and the preview overview are plain text
+   whose fractional unitless line height (1.58) Chromium 85 truncates to whole pixels, so the wrapped lines and every block below them (the agenda and
+   preview buttons) sit about 1.26 px higher than on the web. Half a pixel more rounds to the nearest pixel. Same gate as above: webOS and Tizen 7 never apply it. */
+@supports not (aspect-ratio: 1) {
+  .tv-home-feature > p:not(.tv-provider),
+  .tv-preview-overview {
+    line-height: calc(1.58em + 0.5px);
+  }
+}
