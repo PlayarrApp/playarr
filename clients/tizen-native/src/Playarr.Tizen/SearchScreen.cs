@@ -161,7 +161,7 @@ internal sealed class SearchScreen : IPage
     private void BuildEmpty()
     {
         Ui.Paragraph(_empty, "Find any available movie, series, artist or playlist.", 153.6f, 302.8f, 13.824f, 400, _t.InkMuted, 272, 21.43f, 0, 3);
-        var art = Ui.Box(1124.59f, 311.78f, 132, 132, _t.SurfaceStrong.Mixed(0.5f), 66);
+        var art = Ui.Box(1124.59f, 311.78f, 132, 132, _t.SurfaceStrong.Mixed(0.54f), 66);
         art.BorderlineWidth = 1; art.BorderlineColor = Ui.LineA(_t, 0.15f);
         art.Add(Ui.Icon("search-empty", 39f, 48f, 54f, 36f, _t.Name == "dark" ? Rgba.Hex(0xd75a79) : Rgba.Hex(0xae2f4b))); // web TvEmptyState "search" graphic (zoom-out, 1.2x)
         Sem.Tag(art, "container");
