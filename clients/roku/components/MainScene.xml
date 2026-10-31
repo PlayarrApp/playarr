@@ -681,7 +681,9 @@
           <Rectangle translation="[-3,-3]" width="2" height="86" color="0xFFFFFFFF" />
           <Rectangle translation="[79,-3]" width="2" height="86" color="0xFFFFFFFF" />
         </Group>
-        <Poster id="userAvatar" translation="[29,22.94]" width="20" height="20" />
+        <Poster id="userAvatarBg" translation="[29,22.94]" width="20" height="20">
+          <Poster id="userAvatar" translation="[0,0]" width="20" height="20" />
+        </Poster>
         <MaskGroup id="userAvatarCustomMask" translation="[29,22.94]" maskUri="pkg:/images/avatar-mask.png" maskSize="[20,20]" visible="false">
           <Poster id="userAvatarCustom" translation="[0,0]" width="20" height="20" loadDisplayMode="scaleToZoom" />
         </MaskGroup>

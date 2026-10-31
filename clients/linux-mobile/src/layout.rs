@@ -532,7 +532,16 @@ impl Walk<'_> {
                     }
                     // The label's real transform to the root (an ancestor's CSS scale is part of it), applied to the run's
                     // logical rectangle exactly as Pango laid it out (a fallback face keeps its own extents).
-                    let (top, height) = (lg.y(), lg.height());
+                    // A run that fills its only line of a label marked pa-fallback-box (a fallback-face glyph) takes the label's own box: the box is
+                    // the line box (an explicit min-height stands for a CSS line-height, which Pango applies to the font's
+                    // height rather than to its size and adds to the line, not to a fallback face's run).
+                    let (_, line_lg) = it.line_extents();
+                    let sole = lg.x() == line_lg.x() && lg.width() == line_lg.width();
+                    let (top, height) = if sole && layout.line_count() == 1 && l.has_css_class("pa-fallback-box") {
+                        (-oy * pango::SCALE, l.height() * pango::SCALE)
+                    } else {
+                        (lg.y(), lg.height())
+                    };
                     let local = graphene::Rect::new(
                         ox as f32 + x0 as f32 / s,
                         oy as f32 + top as f32 / s,
@@ -902,7 +911,10 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
         "occluded": occluded,
         "elements": elements,
     });
-    std::fs::write(path, serde_json::to_vec(&doc).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+    // Written beside the target and renamed into place, so a reader polling for the file never sees half of it.
+    let tmp = format!("{path}.part");
+    std::fs::write(&tmp, serde_json::to_vec(&doc).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, path).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -921,5 +933,70 @@ mod tests {
         assert_eq!(role_of(a.upcast_ref()), "group");
         assert_eq!(role_of(a.upcast_ref()), role_of(b.upcast_ref()));
         assert_eq!(role_of(c.upcast_ref()), "container");
+    }
+
+    #[test]
+    fn nested_clips_intersect() {
+        assert_eq!(intersect(None, [0.0, 0.0, 10.0, 10.0]), [0.0, 0.0, 10.0, 10.0]);
+        assert_eq!(
+            intersect(Some([0.0, 0.0, 10.0, 10.0]), [5.0, 5.0, 10.0, 10.0]),
+            [5.0, 5.0, 5.0, 5.0]
+        );
+        let apart = intersect(Some([0.0, 0.0, 4.0, 4.0]), [8.0, 8.0, 2.0, 2.0]);
+        assert!(
+            apart[2] == 0.0 && apart[3] == 0.0,
+            "disjoint clips leave nothing: {apart:?}"
+        );
+    }
+
+    fn frame(px: u8) -> Frame {
+        (4, 4, vec![px; 4 * 4 * 4])
+    }
+
+    #[test]
+    fn peak_diff_reads_only_inside_the_box() {
+        let (mut a, b) = (frame(0), frame(0));
+        a.2[(3 * 4 + 3) * 4] = 90;
+        let view = [0.0, 0.0, 4.0, 4.0];
+        assert_eq!(peak_diff(&a, &b, [0.0, 0.0, 2.0, 2.0], view), 0);
+        assert_eq!(peak_diff(&a, &b, [2.0, 2.0, 2.0, 2.0], view), 90);
+        // A box outside the viewport is cut to it, so it never reads past the frame.
+        assert_eq!(peak_diff(&a, &b, [3.0, 3.0, 50.0, 50.0], view), 90);
+    }
+
+    #[test]
+    fn a_failed_probe_render_is_an_error_not_a_blank_frame() {
+        if gtk4::init().is_err() {
+            return;
+        }
+        // Never shown, so it has no size and no renderer: a render must fail, and the visibility check with it.
+        let root = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        assert!(render(root.upcast_ref()).is_err());
+        let hidden = gtk4::Label::new(Some("x"));
+        let items = vec![Item {
+            widget: hidden.upcast(),
+            json: json!({}),
+            rect: [0.0, 0.0, 1.0, 1.0],
+            opaque: false,
+            end: 1,
+        }];
+        let r = confirm_hidden(root.upcast_ref(), &items, &[(0, vec![0])], [0.0, 0.0, 1.0, 1.0]);
+        assert!(r.is_err(), "a probe that cannot render must not hide anything");
+        // With nothing to confirm there is nothing to render.
+        assert_eq!(
+            confirm_hidden(root.upcast_ref(), &items, &[], [0.0, 0.0, 1.0, 1.0]),
+            Ok(vec![])
+        );
+    }
+
+    #[test]
+    fn a_moving_scene_keeps_its_records() {
+        // The re-check after the probes compares the first render with the last: a box that changed is not hidden.
+        let (base, last) = (frame(0), frame(7));
+        let view = [0.0, 0.0, 4.0, 4.0];
+        let mut hidden = vec![0usize];
+        let rects = [[0.0, 0.0, 2.0, 2.0]];
+        hidden.retain(|&i| peak_diff(&base, &last, rects[i], view) == 0);
+        assert!(hidden.is_empty());
     }
 }

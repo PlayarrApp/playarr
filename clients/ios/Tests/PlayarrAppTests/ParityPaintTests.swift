@@ -40,12 +40,19 @@ final class ParityPaintTests: XCTestCase {
         XCTAssertEqual(fade.alpha(at: CGPoint(x: 150, y: 5)), 0)
     }
 
-    func testScaleTransformsTheRectAboutItsCentre() {
+    func testScaleFactorsMultiplyAndNeverMoveAGlobalFrame() {
         var paint = ParityPaint()
-        paint.scales = [ParityScale(centre: CGPoint(x: 50, y: 50), factor: 1.1)]
-        let drawn = paint.drawn(CGRect(x: 40, y: 40, width: 20, height: 20))
-        XCTAssertEqual(drawn.width, 22, accuracy: 0.001)
-        XCTAssertEqual(drawn.midX, 50, accuracy: 0.001)
-        XCTAssertEqual(paint.scale, 1.1, accuracy: 0.001)
+        paint.scales = [ParityScale(factor: 1.1), ParityScale(factor: 1.1)]
+        XCTAssertEqual(paint.scale, 1.21, accuracy: 0.001)
+        // A frame read in the global space already includes the transform: the box is exported as measured.
+        let frame = CGRect(x: 40, y: 40, width: 22, height: 22)
+        XCTAssertEqual(paint.effective(frame), 1)
+    }
+
+    func testAClippedAwayFrameHasNoOpacity() {
+        var paint = ParityPaint()
+        paint.clips = [CGRect(x: 10, y: 10, width: 100, height: 40)]
+        XCTAssertNil(paint.effective(CGRect(x: 120, y: 12, width: 40, height: 40)))
+        XCTAssertEqual(paint.effective(CGRect(x: 100, y: 12, width: 40, height: 40)), 1)
     }
 }

@@ -1,0 +1,1 @@
+- Android TV parity: letter rail, version label, library card title and calendar chip and week text now sit where the web lays them out, the layout export reads the platform's own ellipsis and records search, group and TODAY-badge borders and the profile avatar paint, and the parity driver waits for focus to settle after select and back.

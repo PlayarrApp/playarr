@@ -75,7 +75,7 @@ import {
   ENTRY_RAILS_DELAY_MS,
 } from '../Motion';
 import { FeatureCopy } from './FeatureCopy';
-import { railFrostColors } from './KeyArtBackdrop';
+import { backdropSideColors, railFrostColors } from './KeyArtBackdrop';
 
 /** Gradient angles (brief 5.9), ArkUI's `linearGradient({angle})` uses the
  * same 0=up/clockwise convention as the source CSS `linear-gradient()`
@@ -83,7 +83,6 @@ import { railFrostColors } from './KeyArtBackdrop';
  * so every angle below is copied unchanged, no conversion. */
 const HORIZONTAL_ANGLE: number = 90;
 const VERTICAL_ANGLE: number = 0;
-const WASH_RIGHT_ANGLE: number = 270;
 
 /** Brief 5.7 -- entry "from" transforms. Not in `core/Tokens.ts`'s
  * `MotionTokens` (that table only holds durations/delays/curves). */
@@ -144,6 +143,7 @@ export struct Stage {
   /** The export role of the hero title (see FeatureCopy). */
   @Prop titleRole: string = 'heading';
   @Prop libraryCopy: boolean = false;
+  @Prop titleSpacingAdjust: number = 0;
   /** Moves the whole title panel (vp), for a page whose copy sits off the library's. */
   @Prop panelTopAdjust: number = 0;
 
@@ -213,20 +213,23 @@ export struct Stage {
         .draggable(false)
         .focusable(false)
 
-      // Alpha-overlay reproduction of the source CSS's `mask-image`
-      // (see this file's header comment): visible until 72% of the key
-      // art's own width, then fading to the stage's `surface` colour.
-      Row()
-        .width(tv(TvGeometry.keyArtWidthPx))
-        .height(tv(TvGeometry.keyArtHeightPx))
-        .linearGradient({
-          angle: HORIZONTAL_ANGLE,
-          colors: [
-            [toResourceColorWithAlpha(activeColors().surface, 0), 0],
-            [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.keyArtMaskFadeStartPct)],
-            [toResourceColorWithAlpha(activeColors().surface, 1), 1],
-          ],
-        })
+      // The vertical scrim (web `.tv-key-art::after`). Past the art's box the page is plain surface, which this colour cannot change, so the
+      // clipped box holds it; the mask, the horizontal scrim and the washes are the one `sideLayer` Row.
+      if (this.hasKeyArt()) {
+        Row()
+          .width('100%')
+          .height(tv(1080))
+          .position({ x: 0, y: tv(-TvGeometry.keyArtOffsetY) })
+          .linearGradient({
+            angle: VERTICAL_ANGLE,
+            colors: [
+              [toResourceColor(activeColors().surface), 0],
+              [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.keyArtScrimVerticalFadeInPct)],
+              [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.keyArtScrimVerticalFadeOutStartPct)],
+              [toResourceColor(activeColors().surface), 1],
+            ],
+          })
+      }
     }
     .width(tv(TvGeometry.keyArtWidthPx))
     .height(tv(TvGeometry.keyArtHeightPx))
@@ -242,78 +245,16 @@ export struct Stage {
     .blur(tv(KEY_ART_ENTRY_BLUR_FROM) * (1 - this.keyArtEntry))
   }
 
-  // Brief 5.9 -- "key-art scrims": two full-stage overlays over the key
-  // art (horizontal, then a top+bottom vertical vignette).
+  // Brief 5.9 -- the key-art mask, the horizontal scrim and the two stage washes, all `surface`-coloured, drawn as one full-stage Row
+  // (design/components/KeyArtBackdrop.ets backdropSideColors): web exports one wash box there, not four.
   @Builder
-  private horizontalScrimLayer(): void {
+  private sideLayer(): void {
     Row()
       .width('100%')
       .height('100%')
       .position({ x: 0, y: 0 })
       .hitTestBehavior(HitTestMode.Transparent)
-      .linearGradient({
-        angle: HORIZONTAL_ANGLE,
-        colors: [
-          [toResourceColor(activeColors().surface), 0],
-          [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.keyArtScrimHorizontalFadePct)],
-        ],
-      })
-  }
-
-  @Builder
-  private verticalScrimLayer(): void {
-    Row()
-      .width('100%')
-      .height('100%')
-      .position({ x: 0, y: 0 })
-      .hitTestBehavior(HitTestMode.Transparent)
-      .linearGradient({
-        angle: VERTICAL_ANGLE,
-        colors: [
-          [toResourceColor(activeColors().surface), 0],
-          [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.keyArtScrimVerticalFadeInPct)],
-          [
-            toResourceColorWithAlpha(activeColors().surface, 0),
-            pct100(TvGeometry.keyArtScrimVerticalFadeOutStartPct),
-          ],
-          [toResourceColor(activeColors().surface), 1],
-        ],
-      })
-  }
-
-  // Brief 5.9 -- "stage wash": two full-stage overlays, left (heavier) and
-  // right (lighter), framing the copy/rail-panel columns.
-  @Builder
-  private stageWashLeftLayer(): void {
-    Row()
-      .width('100%')
-      .height('100%')
-      .position({ x: 0, y: 0 })
-      .hitTestBehavior(HitTestMode.Transparent)
-      .linearGradient({
-        angle: HORIZONTAL_ANGLE,
-        colors: [
-          [toResourceColorWithAlpha(activeColors().surface, pct100(TvGeometry.stageWashLeftOpacityPct)), 0],
-          [toResourceColorWithAlpha(activeColors().surface, pct100(TvGeometry.stageWashLeftMidOpacityPct)), pct100(TvGeometry.stageWashLeftMidPct)],
-          [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.stageWashLeftFadePct)],
-        ],
-      })
-  }
-
-  @Builder
-  private stageWashRightLayer(): void {
-    Row()
-      .width('100%')
-      .height('100%')
-      .position({ x: 0, y: 0 })
-      .hitTestBehavior(HitTestMode.Transparent)
-      .linearGradient({
-        angle: WASH_RIGHT_ANGLE,
-        colors: [
-          [toResourceColorWithAlpha(activeColors().surface, pct100(TvGeometry.stageWashRightOpacityPct)), 0],
-          [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.stageWashRightFadePct)],
-        ],
-      })
+      .linearGradient({ angle: HORIZONTAL_ANGLE, colors: backdropSideColors(this.hasKeyArt(), this.hasKeyArt()) })
   }
 
   /** Web `.tv-home-rails`: the right 62% of the page carries a frost (surface-soft 48% over surface-strong, 44% in dark) that fades in from
@@ -346,6 +287,7 @@ export struct Stage {
         synopsisGapAdjust: this.synopsisGapAdjust,
         titleRole: this.titleRole,
         libraryCopy: this.libraryCopy,
+        titleSpacingAdjust: this.titleSpacingAdjust,
       })
       this.heroExtraSlot()
     }
@@ -423,13 +365,16 @@ export struct Stage {
     }
   }
 
+  /** False for the empty-string key art the pages pass when they have none (a resource or a picture counts as art). */
+  private hasKeyArt(): boolean {
+    return typeof this.keyArt !== 'string' || this.keyArt.length > 0;
+  }
+
   build() {
     Stack() {
-      this.keyArtLayer()
-      this.horizontalScrimLayer()
-      this.verticalScrimLayer()
-      this.stageWashLeftLayer()
-      this.stageWashRightLayer()
+      // Web draws the two scrims, the key-art mask and the right wash only when the page has art; without it the page shows one wash box.
+      this.keyArtLayer() // web keeps its key-art img on every page, with or without art
+      this.sideLayer()
       this.railFrostLayer()
       this.titlePanelLayer()
       this.railPanelLayer()
@@ -437,6 +382,5 @@ export struct Stage {
     .width('100%')
     .height('100%')
     .alignContent(Alignment.TopStart)
-    .backgroundColor(toResourceColor(activeColors().surface))
   }
 }

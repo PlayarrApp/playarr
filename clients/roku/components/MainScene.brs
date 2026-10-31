@@ -425,6 +425,8 @@ sub init()
     m.avatarValue = ""
     m.avatarCustomUri = ""
     m.userAvatar = m.top.findNode("userAvatar")
+    m.userAvatarBg = m.top.findNode("userAvatarBg")
+    m.userAvatarBg.id = "a11y|container|10|"
     m.userAvatarCustomMask = m.top.findNode("userAvatarCustomMask")
     m.userAvatarCustom = m.top.findNode("userAvatarCustom")
     applyShellAvatar()
@@ -3263,16 +3265,10 @@ sub searchChromeInit()
     m.searchHeaderCount = CreateObject("roSGNode", "TrackedText")
     holder.AppendChild(m.searchHeaderCount)
     pgIcon(holder, 178.6, 198.8, 24, "nav-search.png", "inkSoft")
-    m.searchClearLabel = CreateObject("roSGNode", "Label")
-    m.searchClearLabel.translation = [655, 201]
-    m.searchClearLabel.width = 70
-    m.searchClearLabel.height = 30
-    m.searchClearLabel.horizAlign = "right"
-    m.searchClearLabel.text = "Clear"
-    m.searchClearLabel.font = PlayarrMakeFont(700, 13)
+    ' A web text run at its natural width, right edge at x 725 (a fixed 70 x 30 Label would export its whole frame as the text).
+    m.searchClearLabel = pgLabel(holder, 655, 201, 0, 30, "Clear", 13, 700, "inkSoft", { vertAlign: "center" })
+    m.searchClearLabel.translation = [725 - m.searchClearLabel.textWidth, 201]
     m.searchClearLabel.visible = false
-    ThemeSetRole(m.searchClearLabel, "inkSoft")
-    holder.AppendChild(m.searchClearLabel)
     pgShellTile(holder, shellActionX(), shellActionY(0), "Filters", "tile-filters.png")
     setSearchHeader("")
 end sub

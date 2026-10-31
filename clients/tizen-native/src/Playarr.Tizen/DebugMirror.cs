@@ -186,7 +186,7 @@ internal sealed class DebugMirror
                             break;
                     }
                     var st = (_shell().Page as PlayerScreen)?.Status ?? (false, 0L);
-                    done.SetResult(custom ?? new { playing = st.Item1, positionMs = st.Item2, route = _shell().Route, focused = _shell().FocusedLabel, nav = _shell().NavFocused, ready = _shell().Ready, pending = _env().VisualWork.Pending, position = _shell().FocusPosition is { } fp ? new { rail = fp.Rail, index = fp.Index } : null, theme = _env().Theme.Name, animationMode = "none", measured });
+                    done.SetResult(custom ?? new { playing = st.Item1, positionMs = st.Item2, route = _shell().Route, focused = _shell().FocusedLabel, controls = _shell().PlayerControlsVisible, panel = _shell().PlayerPanelOpen, nav = _shell().NavFocused, ready = _shell().Ready, pending = _env().VisualWork.Pending, position = _shell().FocusPosition is { } fp ? new { rail = fp.Rail, index = fp.Index } : null, theme = _env().Theme.Name, animationMode = "none", measured });
                 }
                 catch (Exception e) { done.SetException(e); }
             });

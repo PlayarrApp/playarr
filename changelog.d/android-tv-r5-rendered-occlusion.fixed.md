@@ -1,0 +1,1 @@
+- Android TV parity export: occlusion is now decided on the rendered screen (hide the cover or lower window, screenshot, keep an element only if its own pixels change), drawer panel fills are read from the screenshot, the player video surface has a real accessibility label in all builds, ellipsized text keeps its ellipsis, and an unreadable window list fails the capture.

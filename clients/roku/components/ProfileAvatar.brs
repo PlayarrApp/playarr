@@ -5,6 +5,7 @@ sub init()
     m.focusShadow = m.top.findNode("focusShadow")
     m.focusRing = m.top.findNode("focusRing")
     m.avatarImage = m.top.findNode("avatarImage")
+    m.avatarGlyph = m.top.findNode("avatarGlyph")
     m.customMask = m.top.findNode("customMask")
     m.customImage = m.top.findNode("customImage")
     m.initial = m.top.findNode("initial")
@@ -33,12 +34,16 @@ sub onContentChanged()
         m.customImage.uri = customUri
         m.customMask.visible = true
         m.avatarImage.uri = ""
+        m.avatarGlyph.visible = false
     else if content.presetId = "add"
         m.customMask.visible = false
         m.avatarImage.uri = profileAddAvatarUri()
+        m.avatarGlyph.visible = false
     else
         m.customMask.visible = false
-        m.avatarImage.uri = "pkg:/images/avatar-" + content.presetId + ".png"
+        m.avatarImage.uri = "pkg:/images/avatar-bg-" + content.presetId + ".png"
+        m.avatarGlyph.uri = "pkg:/images/avatar-glyph-" + content.presetId + ".png"
+        m.avatarGlyph.visible = true
     end if
     ' Preset + add art already include mascot / plus — no letter overlay.
     m.initial.text = ""
@@ -48,7 +53,7 @@ sub onContentChanged()
     ' Accessible name as the web reads it, and the circle's container semantics (ECP prints ids).
     name = content.title + ", ready"
     if content.presetId = "add"
-        name = "+ Sign in ADD ANOTHER PROFILE"
+        name = "Sign in Add another profile"
     else if content.statusText = "WATCHING NOW"
         name = content.title + ", current profile"
     else if content.statusText = "PIN REQUIRED"

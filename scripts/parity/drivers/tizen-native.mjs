@@ -278,6 +278,20 @@ export async function createDriver({ request = call, delay = sleep, env = proces
       for (const id of ownedDownloads) await request("POST", `/dl/remove?id=${encodeURIComponent(id)}`).catch(() => {});
       ownedDownloads.clear();
     },
+    // Known state for the player checks: the video playing, the controls up and focus on play/pause (the app reports all three; up to 30 s, else throws).
+    async playerReady() {
+      const t0 = Date.now();
+      while (Date.now() - t0 < 30000) {
+        await verifyAccount(); await readState();
+        const running = state.route.startsWith("/player/") && state.playing && state.positionMs > 500;
+        if (running && state.controls === false) { await request("POST", "/key?name=up"); await delay(KEY_MS); continue; } // hidden controls: a key only reveals them
+        if (running && state.controls === true && (state.focused === "pause" || state.focused === "play")) return;
+        await delay(250);
+      }
+      throw new Error("player not ready: playing, controls up, focus on play/pause");
+    },
+    async playhead() { await verifyAccount(); await readState(); return state.positionMs / 1000; },
+    async panelOpen() { await verifyAccount(); await readState(); return state.panel === true; },
     async play(c, expect) {
       await verifyAccount();
       state = await request("POST", `/route?path=/player/${c.file}`);

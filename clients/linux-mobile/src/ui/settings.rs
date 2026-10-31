@@ -38,18 +38,18 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
             .build(),
     );
     // The web keeps the description on one line and ends it with an ellipsis where the text column stops.
-    col.append(
-        &gtk4::Label::builder()
-            .label(desc)
-            .css_classes(["pa-pref-desc"])
-            .xalign(0.0)
-            .ellipsize(gtk4::pango::EllipsizeMode::End)
-            .build(),
-    );
+    let desc_label = gtk4::Label::builder()
+        .label(desc)
+        .css_classes(["pa-pref-desc"])
+        .xalign(0.0)
+        .ellipsize(gtk4::pango::EllipsizeMode::End)
+        .build();
+    fit_ellipsis(&desc_label, desc);
+    col.append(&desc_label);
     row.append(&col);
     let arrow = gtk4::Label::builder()
         .label("→")
-        .css_classes(["pa-pref-arrow"])
+        .css_classes(["pa-pref-arrow", "pa-fallback-box"])
         .valign(gtk4::Align::Center)
         .build();
     // The web nudges the first (hovered) row's arrow 5 px right.
@@ -370,4 +370,32 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
         .css_classes(["pa-page"])
         .build();
     scroller.upcast()
+}
+
+/// Cut `full` where the label's column stops and end it with the ellipsis directly after the last glyph. Pango's own
+/// ellipsis can leave the word break's blank in front of it ("screen \u{2026}"); the web's reads "screen\u{2026}".
+fn fit_ellipsis(label: &gtk4::Label, full: &str) {
+    let full = full.to_string();
+    label.add_tick_callback(move |l, _| {
+        let width = l.width();
+        if width <= 0 {
+            return gtk4::glib::ControlFlow::Continue;
+        }
+        let fits = |t: &str| l.create_pango_layout(Some(t)).pixel_size().0 <= width;
+        if !fits(&full) {
+            let cuts: Vec<usize> = full.char_indices().map(|(i, _)| i).collect();
+            let (mut lo, mut hi) = (0, cuts.len());
+            while lo < hi {
+                let mid = (lo + hi).div_ceil(2);
+                let t = format!("{}\u{2026}", full[..cuts[mid]].trim_end());
+                if fits(&t) {
+                    lo = mid;
+                } else {
+                    hi = mid - 1;
+                }
+            }
+            l.set_text(&format!("{}\u{2026}", full[..cuts[lo]].trim_end()));
+        }
+        gtk4::glib::ControlFlow::Break
+    });
 }
