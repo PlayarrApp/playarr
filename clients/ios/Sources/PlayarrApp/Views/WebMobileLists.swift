@@ -13,8 +13,7 @@ private struct WMListPage<Content: View>: View {
     var body: some View {
         GeometryReader { proxy in
             let phone = PlayarrLayout.isPhone(proxy.size)
-            ZStack(alignment: .topLeading) {
-                WMPageFill()
+            ZStack(alignment: .topLeading) { // the page fill is the background below: one fill per screen
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 9.6) { content() }
                         .padding(.leading, phone ? 16 : max(102, proxy.size.width * 0.08))

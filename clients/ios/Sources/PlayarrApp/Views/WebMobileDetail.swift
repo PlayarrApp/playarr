@@ -284,8 +284,8 @@ struct WMDetailPage: View {
     // MARK: Body
 
     var body: some View {
+        // The one page fill is WorkDetailView's background behind this page: a second full-screen fill would cover it.
         ZStack(alignment: .topLeading) {
-            WMPageFill()
             ScrollView(.vertical) {
                 ZStack(alignment: .topLeading) {
                     artBackdrop
