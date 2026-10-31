@@ -5800,7 +5800,7 @@ end sub
 ' needs to rebuild this rail's content on every focus transition too.
 sub buildDetailSimilarRail(isActive as Boolean)
     m.detailSimilar.rowItemSize = [[327.17, 270]]
-    m.detailSimilar.rowItemSpacing = [[24.8, 0]]
+    m.detailSimilar.rowItemSpacing = [[24.83, 0]]
     buildRailContent(m.detailSimilar, m.similarWorks, isActive, 327.17 / 220.0)
     row = m.detailSimilar.content.GetChild(0)
     if row <> invalid
