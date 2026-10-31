@@ -100,7 +100,7 @@ for route in "$@"; do
 
   # Redraw the whole surface, then wait for the app to take the request: a frame built from partial redraws can differ
   # in a few shadow pixels from a full one (see the repaint control in the app).
-  "$SSH" "printf repaint > $control_q" || { echo "failed to request repaint for route: $route" >&2; exit 1; }
+  "$SSH" "printf %s repaint > $control_q" || { echo "failed to request repaint for route: $route" >&2; exit 1; }
   for ((attempt=1; attempt<=ACK_ATTEMPTS; attempt++)); do
     "$SSH" "[ ! -e $control_q ]" && break
     sleep 2
