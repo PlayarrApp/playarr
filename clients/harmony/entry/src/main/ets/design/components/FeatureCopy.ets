@@ -62,11 +62,16 @@ const META_CHIP_ROW_GAP: number = 6.4;
 
 const COPY_TEXT_FONT_SIZE: number = 12.864;
 const COPY_TEXT_FONT_WEIGHT: number = 600;
-/** Library's details panel meta: `.details-panel .tv-preview-meta` is clamp(0.62rem, 0.68vw, 0.86rem) at weight 600 (global.css), evaluated here
- * in the 1920 px design space (1rem = 16, 1vw = 19.2); `tv()` then scales it to the live window. */
+/** Library's details panel meta: `.details-panel .tv-preview-meta` is clamp(0.62rem, 0.68vw, 0.86rem) at weight 600 (global.css). Evaluated from the
+ * live window: 1vw is a hundredth of the window width in vp, 1rem is the design 16 px scaled by the same window-to-1920 ratio as every other metric.
+ * Returns live vp (already scaled), so callers must not pass it through `tv()` again. */
 const WEB_REM: number = 16;
-const WEB_VW: number = 1920 / 100;
-const LIBRARY_META_FONT_SIZE: number = Math.min(Math.max(0.62 * WEB_REM, 0.68 * WEB_VW), 0.86 * WEB_REM);
+const DESIGN_WIDTH: number = 1920;
+function libraryMetaFontSize(): number {
+  const rem: number = tv(WEB_REM);
+  const vw: number = tv(DESIGN_WIDTH) / 100;
+  return Math.min(Math.max(0.62 * rem, 0.68 * vw), 0.86 * rem);
+}
 const SYNOPSIS_FONT_WEIGHT: number = 400;
 const LIBRARY_SYNOPSIS_FONT_WEIGHT: number = 600; // web layout ref (library hero): 600 at 13.82, in the copy colour
 const COPY_TEXT_INK_ALPHA: number = 0.87;
@@ -235,8 +240,8 @@ export struct FeatureCopy {
           ForEach(
             this.metaRuns,
             (run: string, runIndex: number) => {
-              Text(run).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(this.libraryCopy ? LIBRARY_META_FONT_SIZE : COPY_TEXT_FONT_SIZE)))
-                .fontSize(tv(this.libraryCopy ? LIBRARY_META_FONT_SIZE : COPY_TEXT_FONT_SIZE)).lineHeight(webLineHeight(tv(this.libraryCopy ? LIBRARY_META_FONT_SIZE : COPY_TEXT_FONT_SIZE))).halfLeading(true)
+              Text(run).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, (this.libraryCopy ? libraryMetaFontSize() : tv(COPY_TEXT_FONT_SIZE))))
+                .fontSize((this.libraryCopy ? libraryMetaFontSize() : tv(COPY_TEXT_FONT_SIZE))).lineHeight(webLineHeight((this.libraryCopy ? libraryMetaFontSize() : tv(COPY_TEXT_FONT_SIZE)))).halfLeading(true)
                 .fontWeight(COPY_TEXT_FONT_WEIGHT)
                 .letterSpacing((this.libraryCopy ? 0 : -0.3 + 0.236) + (!this.libraryCopy && runIndex === 0 ? -0.104 : 0) + (!this.libraryCopy && runIndex === 1 ? 0.045 : 0)) // agenda's first run (18 characters) is 1.9 wider than web's; web's run is narrower than ArkUI lays it out (agenda: 7-8 px over on 18 and 34 characters at +0.236)
                 .fontColor(this.copyTextColor())
