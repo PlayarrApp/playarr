@@ -25,6 +25,10 @@ G = (20, 220, 20)
 frame("clean", lambda d: None)
 frame("green-block", lambda d: d.rectangle((100, 300, 140, 340), fill=G))
 frame("black-green-edge", lambda d: (d.rectangle((0, 400, 63, 463), fill=(0, 0, 0)), d.rectangle((64, 400, 66, 463), fill=G)))
+frame("black-band", lambda d: d.rectangle((0, 124, 63, 127), fill=(0, 0, 0)))
+frame("black-band-wide", lambda d: d.rectangle((0, 124, 200, 127), fill=(0, 0, 0)))
+frame("black-letterbox", lambda d: d.rectangle((0, 124, 719, 131), fill=(0, 0, 0)))
+frame("black-short-run", lambda d: d.rectangle((0, 124, 40, 127), fill=(0, 0, 0)))
 frame("black-only", lambda d: d.rectangle((0, 400, 63, 463), fill=(0, 0, 0)))
 frame("black-short-green", lambda d: (d.rectangle((0, 400, 63, 463), fill=(0, 0, 0)), d.rectangle((64, 400, 66, 410), fill=G)))
 PY
@@ -34,6 +38,10 @@ ok() { python3 -I "$ROOT/nogreen.py" "$T/$1.png"; }
 ok clean || fail "clean frame rejected"
 bad green-block || fail "solid green block accepted"
 bad black-green-edge || fail "black tile with a green edge accepted"
+bad black-band || fail "thin black tile band accepted"
+ok black-band-wide || fail "wide black line rejected"
+ok black-letterbox || fail "full-width black line rejected"
+ok black-short-run || fail "short black run rejected"
 ok black-only || fail "black art without a green edge rejected"
 ok black-short-green || fail "short green run beside black rejected"
 echo "nogreen mocked regression checks passed"

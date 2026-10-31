@@ -1,7 +1,9 @@
 """usage: nogreen.py frame.png  exit 1 when the frame holds an unpainted VM display tile.
 
-Two signatures: a solid block of the VM's green fill, or a solid black block outlined by a straight green edge.
-Poster art can hold pure black or a little green, but not a long straight run of strong green, so black alone is ignored.
+Three signatures: a solid block of the VM's green fill, a solid black block outlined by a straight green edge, or a
+thin band of pure black that is exactly one 64 px aligned tile wide (a tile caught part-painted; the pixels beside it
+and the rows above and below it are not black). Poster art can hold pure black or a little green, but not a long straight run of strong
+green, so black alone is ignored.
 """
 import sys
 
@@ -27,7 +29,27 @@ def solid_block(mask, n):
     return bool((s == n * n).any())
 
 
-bad = solid_block(green, 16) or (
+def black_tile_band(mask, tile=64, max_rows=16):
+    """True when a pure-black band under `max_rows` tall spans a whole tile-aligned span of columns."""
+    h, w = mask.shape
+    for x0 in range(0, w - tile + 1, tile):
+        full = mask[:, x0 : x0 + tile].all(axis=1)
+        y = 0
+        while y < h:
+            if not full[y]:
+                y += 1
+                continue
+            y1 = y
+            while y1 < h and full[y1]:
+                y1 += 1
+            beside = [mask[y:y1, x].any() for x in (x0 - 1, x0 + tile) if 0 <= x < w]
+            if y1 - y < max_rows and y > 0 and y1 < h and not any(beside):
+                return True
+            y = y1
+    return False
+
+
+bad = black_tile_band(black) or solid_block(green, 16) or (
     int(black.sum()) >= 600 and (has_run(green, 24) or has_run(green.T, 24))
 )
 sys.exit(1 if bad else 0)

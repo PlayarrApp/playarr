@@ -98,6 +98,14 @@ for route in "$@"; do
     theme*) continue ;;
   esac
 
+  # Redraw the whole surface, then wait for the app to take the request: a frame built from partial redraws can differ
+  # in a few shadow pixels from a full one (see the repaint control in the app).
+  "$SSH" "printf repaint > $control_q" || { echo "failed to request repaint for route: $route" >&2; exit 1; }
+  for ((attempt=1; attempt<=ACK_ATTEMPTS; attempt++)); do
+    "$SSH" "[ ! -e $control_q ]" && break
+    sleep 2
+  done
+  sleep 2
   # Once per route, before the first screenshot: the idle wait above is what stalls the display (see nudge.sh).
   "$NUDGE" || { echo "display nudge failed for route: $route" >&2; exit 1; }
 

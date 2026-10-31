@@ -528,6 +528,13 @@ impl App {
                 if let Some(iso) = text.strip_prefix("parityNow=") {
                     // Pins the app's own clock (calendar today, entry times) and stops it ticking.
                     PARITY_NOW.with(|n| *n.borrow_mut() = Some(iso.to_string()));
+                } else if text == "repaint" {
+                    // Invalidates the whole surface so the next frame is drawn in full: a partial redraw can blur a
+                    // shadow a few pixels differently from a full one, which makes captures depend on the redraw history.
+                    if let Some(surface) = me.window.surface() {
+                        surface.queue_render();
+                    }
+                    me.window.queue_draw();
                 } else if let Some(spec) = text.strip_prefix("layout:") {
                     // layout:<screen>:<output file>; exports the widget tree without touching the screen.
                     if let Some((screen, file)) = spec.split_once(':') {
