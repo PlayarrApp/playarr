@@ -701,7 +701,7 @@ private struct AuthenticatedPlayarrShell: View {
                 #else
                 let clockDate = context.date
                 #endif
-                HStack(alignment: .firstTextBaseline, spacing: 11) {
+                HStack(alignment: .firstTextBaseline, spacing: 9.03) {
                     Text(clockDate.formatted(headerTimeStyle))
                         .wm(13.12, 760, text: clockDate.formatted(headerTimeStyle))
                     Text(clockDate.formatted(headerDateStyle).uppercased())
@@ -710,7 +710,7 @@ private struct AuthenticatedPlayarrShell: View {
                         .parityRenderedText(clockDate.formatted(headerDateStyle).uppercased(), role: "text", size: 8.32, weight: 640, color: PlayarrStyle.ink)
                 }
                 .foregroundStyle(PlayarrStyle.ink)
-                .offset(x: proxy.size.width * 0.24, y: chromeTop + 14)
+                .offset(x: proxy.size.width * 0.2438, y: chromeTop + 11.7) // web header clock at x 333.08, y 65.39 on the 1366x1024 capture
             }
             }
 
@@ -718,7 +718,7 @@ private struct AuthenticatedPlayarrShell: View {
             PlayarrLogo(size: 32.09)
                 .accessibilityHidden(true)
                 .parityBox("image")
-                .offset(x: navEdge + 23.34, y: chromeTop + 5.94)
+                .offset(x: navEdge + 23.34, y: chromeTop + 7.24)
 
             // Web rail: Downloads and Search, then the four browse tabs, then the four personal tabs, each in its own pill.
             VStack(spacing: 13) {

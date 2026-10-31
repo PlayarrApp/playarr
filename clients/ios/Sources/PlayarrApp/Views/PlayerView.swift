@@ -316,14 +316,14 @@ struct PlayerView: View {
                         .background(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58), in: Capsule())
                         .overlay(Capsule().strokeBorder(.white.opacity(0.28), lineWidth: 1))
                     }
-                    .parityButtonStyle(.plain).accessibilityLabel("Minimise")
+                    .parityButtonStyle(.plain).accessibilityLabel("Minimise player")
                     Button { dismiss() } label: {
                         PlayerGlyphView(glyph: .close, size: 15 * s)
                             .frame(width: 48 * s, height: 48 * s)
                             .background(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58), in: Circle())
                             .overlay(Circle().strokeBorder(.white.opacity(0.28), lineWidth: 1))
                     }
-                    .parityButtonStyle(.plain).accessibilityLabel("Close")
+                    .parityButtonStyle(.plain).accessibilityLabel("Close player")
                 }
                 .padding(.top, 35.8 * s).padding(.trailing, max(47.8 * s, WM.trailingInset))
             }
@@ -334,9 +334,9 @@ struct PlayerView: View {
 
     private func phoneTopButtons(size: CGSize) -> some View {
         ZStack(alignment: .topLeading) {
-            circleButton(.minimise, size: 20, label: "Minimise") { dismiss() }
+            circleButton(.minimise, size: 20, label: "Minimise player") { dismiss() }
                 .offset(x: size.width - max(16, WM.trailingInset) - 44 - 8 - 44, y: topInset)
-            circleButton(.close, size: 22, label: "Close") { dismiss() }
+            circleButton(.close, size: 22, label: "Close player") { dismiss() }
                 .offset(x: size.width - max(16, WM.trailingInset) - 44, y: topInset)
             if showsCastAffordance {
                 CastButton(tintColor: .white)
@@ -386,12 +386,12 @@ struct PlayerView: View {
                 .padding(.bottom, 2)
 
                 HStack(spacing: 2) {
-                    iconButton(.previous, disabled: true, label: "Previous") {}
+                    iconButton(.previous, disabled: true, label: "Previous episode") {}
                     iconButton(isPlaying ? .pause : .play, primary: true, label: isPlaying ? "Pause" : "Play") {
                         viewModel.togglePlayPause()
                         reveal()
                     }
-                    iconButton(.next, disabled: queueEntries.isEmpty, label: "Next") {
+                    iconButton(.next, disabled: queueEntries.isEmpty, label: "Next episode") {
                         playQueueEntry(at: 0, viewModel)
                     }
                     iconButton(isMuted ? .volumeMuted : .volumeHigh, label: isMuted ? "Unmute" : "Mute") {
@@ -410,9 +410,9 @@ struct PlayerView: View {
                     qualityButton(selectedQuality, disabled: viewModel.qualityOptions.isEmpty)
                 }
                 HStack(spacing: 2) {
-                    iconButton(.info, active: activeMenu == .info, label: "Playback info") { toggle(.info) }
+                    iconButton(.info, active: activeMenu == .info, label: "Info and playback health") { toggle(.info) }
                     ZStack {
-                        iconButton(.castDevices, label: "Cast to a device") {}
+                        iconButton(.castDevices, label: "Play on another device") {}
                         if showsCastAffordance {
                             CastButton(tintColor: .clear)
                                 .frame(width: 42, height: 42)
@@ -448,7 +448,7 @@ struct PlayerView: View {
             seekTrack(viewModel, width: size.width - edge - trail)
                 .padding(.vertical, 19 * s)
             HStack(spacing: 13.6 * s) {
-                iconButton(.previous, disabled: true, label: "Previous", box: box) {}
+                iconButton(.previous, disabled: true, label: "Previous episode", box: box) {}
                 Button {
                     viewModel.togglePlayPause()
                     reveal()
@@ -458,7 +458,7 @@ struct PlayerView: View {
                         .background(Circle().fill(.white.opacity(0.14)))
                                         }
                 .parityButtonStyle(.plain).accessibilityLabel(isPlaying ? "Pause" : "Play")
-                iconButton(.next, disabled: queueEmpty, label: "Next", box: box) { playQueueEntry(at: 0, viewModel) }
+                iconButton(.next, disabled: queueEmpty, label: "Next episode", box: box) { playQueueEntry(at: 0, viewModel) }
                 HStack(spacing: 5.6) {
                     Text(playerTimeString(shownTime))
                         .parityRenderedText(playerTimeString(shownTime), role: "text", size: 9.92 + 1, weight: 400, color: .white)
@@ -487,9 +487,9 @@ struct PlayerView: View {
                         .frame(width: 160.4 * s, height: 45.1 * s, alignment: .leading)
                     }
                     .parityButtonStyle(.plain).disabled(viewModel.qualityOptions.isEmpty)
-                    iconButton(.info, active: activeMenu == .info, label: "Playback info", box: box) { toggle(.info) }
+                    iconButton(.info, active: activeMenu == .info, label: "Info and playback health", box: box) { toggle(.info) }
                     ZStack {
-                        iconButton(.castDevices, label: "Cast to a device", box: box) {}
+                        iconButton(.castDevices, label: "Play on another device", box: box) {}
                         if showsCastAffordance { CastButton(tintColor: .clear).frame(width: 42, height: 42).opacity(0.02) }
                     }
                 }
