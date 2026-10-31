@@ -572,6 +572,7 @@ struct PlayerView: View {
                 .opacity(scrubTime != nil ? 1 : 0)
         }
         .frame(width: width, height: 6)
+        .parityToggle()
         .contentShape(Rectangle().inset(by: -18))
         .gesture(
             DragGesture(minimumDistance: 0)

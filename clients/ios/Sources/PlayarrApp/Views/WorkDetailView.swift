@@ -1591,6 +1591,8 @@ struct WorkDetailView: View {
         .contentShape(Rectangle())
         .offset(y: selected && tabletScale != nil ? -7 * scale : 0)
         .animation(.easeOut(duration: 0.24), value: selected)
+        // The tablet card is named from what it shows (number, code, title) every time, not from whichever parts have drawn yet.
+        .tabletEpisodeName(tabletScale != nil ? "\(String(format: "%02d", detail.episode.episodeNumber)), \(label), \(title)" : nil)
     }
 
     private func episodeArtworkSources(_ episode: EpisodeDetail, workID: UUID) -> [WMRemoteImage.Source] {
@@ -1943,3 +1945,14 @@ final class ParityMeasuredLabel: UILabel {
     }
 }
 #endif
+
+private extension View {
+    @ViewBuilder
+    func tabletEpisodeName(_ name: String?) -> some View {
+        if let name {
+            accessibilityElement(children: .ignore).accessibilityLabel(name)
+        } else {
+            self
+        }
+    }
+}
