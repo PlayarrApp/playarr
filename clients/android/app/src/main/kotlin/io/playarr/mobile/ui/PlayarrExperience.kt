@@ -350,6 +350,8 @@ internal val webSymbolFamily: androidx.compose.ui.text.font.FontFamily by lazy {
 }
 /** A symbol drawn from [webSymbolFamily] inside a Nunito Sans text, as a browser falls back for one missing glyph (the line keeps Nunito's metrics). */
 internal fun webSymbol(glyph: String): androidx.compose.ui.text.AnnotatedString =
+    // Basic Latin (a plain "+") is in Nunito Sans: web draws it from the primary font, so it stays in the text's own family.
+    if (glyph.all { it.code < 0x80 }) androidx.compose.ui.text.AnnotatedString(glyph) else
     androidx.compose.ui.text.buildAnnotatedString { withStyle(androidx.compose.ui.text.SpanStyle(fontFamily = webSymbolFamily)) { append(glyph) } }
 
 internal var webMonoFamily: androidx.compose.ui.text.font.FontFamily? = null
