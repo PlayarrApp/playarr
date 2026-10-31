@@ -347,8 +347,7 @@ internal object PlayarrLayoutExport {
                         val probe = kept.firstOrNull() ?: runStart
                         val drawPaint = checkNotNull(shapedRunPaint(layout, i, probe)) { "shaped paint of '${runText.take(20)}' unavailable" }
                         val fm = drawPaint.fontMetrics
-                        val extent = shapedRunExtent(layout, i, kept.firstOrNull() ?: runStart, (kept.lastOrNull() ?: (runEnd - 1)) + 1, drawPaint)
-                        val ascent = maxOf(-fm.ascent, extent?.first ?: 0f); val descent = maxOf(fm.descent, extent?.second ?: 0f)
+                        val ascent = -fm.ascent; val descent = fm.descent
                         val baseline = layout.getLineBaseline(i)
                         // The drawn ellipsis is part of the text and of the width: the platform layout's own line extent covers it, on the side of the shown characters it was drawn at.
                         val rtl = platformLine?.let { (pl, local, _) -> pl.getParagraphDirection(local) == android.text.Layout.DIR_RIGHT_TO_LEFT } ?: false

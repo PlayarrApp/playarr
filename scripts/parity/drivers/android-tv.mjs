@@ -505,7 +505,8 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       const layoutFile = join(dirname(dirname(file)), "layout", theme, `${screen}.json`);
       rmSync(layoutFile, { force: true });
       const why = [];
-      for (let attempt = 0; attempt < 6; attempt++) {
+      // The paused player frame can take a while to composite on a loaded host (light player-controls stayed black for six tries): it gets more tries.
+      for (let attempt = 0; attempt < (screen === "player-controls" ? 30 : 6); attempt++) {
         const before = await grab();
         const json = env.PARITY_LAYOUT !== "0" ? await requestLayout(theme, screen) : "";
         if (json === null) { why.push("no layout"); continue; }
