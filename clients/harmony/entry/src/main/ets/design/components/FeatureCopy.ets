@@ -121,6 +121,8 @@ export struct FeatureCopy {
   @Prop libraryCopy: boolean = false;
   /** Added to the hero title's tracking (vp per character): the agenda's titles run 1.6 to 5 wider than web's at the shared tracking. */
   @Prop titleSpacingAdjust: number = 0;
+  /** Letter-spacing correction for the kicker (the series detail's "S01 · E01" runs 2.3 wider than web's). */
+  @Prop kickerSpacingAdjust: number = 0;
 
   // Tracked purely to force a re-render on theme / TV-scale change; the
   // actual values always go through design/Theme.ets's resolvers and
@@ -170,7 +172,7 @@ export struct FeatureCopy {
         Text(this.kicker).fontFamily(nunitoAt(KICKER_FONT_WEIGHT, tv(KICKER_FONT_SIZE)))
           .fontSize(tv(KICKER_FONT_SIZE)).lineHeight(webLineHeight(tv(KICKER_FONT_SIZE))).halfLeading(true)
           .fontWeight(KICKER_FONT_WEIGHT)
-          .letterSpacing((tv(KICKER_LETTER_SPACING)) + -0.078)
+          .letterSpacing((tv(KICKER_LETTER_SPACING)) + -0.078 + this.kickerSpacingAdjust)
           .fontColor(this.kickerColor())
           .textCase(TextCase.UpperCase)
           .margin({ bottom: tv(GAP_KICKER_TITLE) })

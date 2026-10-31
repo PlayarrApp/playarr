@@ -1749,7 +1749,6 @@ struct Detail {
         Text('\u25B6').fontFamily(nunitoAt(400, PLAY_BUTTON_ICON_SIZE) + ',PlayarrGlyphs')
           .fontSize(PLAY_BUTTON_ICON_SIZE).lineHeight(webLineHeight(PLAY_BUTTON_ICON_SIZE)).halfLeading(true)
           .fontColor(this.playInk())
-          .translate({ y: this.isSeriesPage() ? -2.8 : -1.5 }) // web's glyph sits higher in the pill (measured: series 2.8, movie 1.5)
       } else {
         this.playTriangle()
       }
@@ -1759,7 +1758,6 @@ struct Detail {
         .fontSize(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11).letterSpacing((!isTvMetrics() ? 0.127 : 0)).lineHeight(webLineHeight(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11)).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.playInk())
-        .translate(isTvMetrics() ? { x: this.isSeriesPage() ? -2.5 : -3.4, y: this.isSeriesPage() ? -3.1 : -1.8 } : { x: 0, y: 0 }) // web's label sits left of and above the centred one (measured on the TV refs)
     }
     .accessibilityText(this.pillName(this.primaryLabel(), '', true)).accessibilityRole(this.pillRole(true)).accessibilityGroup(true)
     .layoutWeight(1)
@@ -1872,12 +1870,12 @@ struct Detail {
       Text(glyph).fontFamily(nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)) + ',PlayarrGlyphs')
         .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))).halfLeading(true)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : (resolvedThemeMode() === 'dark' ? PILL_GLYPH_DARK : PLAY_FOCUS_FILL))  // web: the secondary pills' glyph is pink
-        .translate({ y: primary ? 1.6 : (glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35) })
+        .translate({ y: primary ? (this.isSeriesPage() ? -1.2 : 0) : (glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35) })
       Text(label).fontFamily(nunitoAt(700, tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)).letterSpacing((isTvMetrics() ? -0.053 : 0)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : toResourceColor(activeColors().ink))
-        .translate({ y: primary ? 1.5 : (glyph === '+' || glyph === '\u2713' ? -1.25 : 0) })
+        .translate(primary ? { x: this.isSeriesPage() ? -2.5 : -3.43, y: this.isSeriesPage() ? -1.55 : -0.3 } : { y: (glyph === '+' || glyph === '\u2713' ? -1.25 : 0) }) // primary label: web's sits left of and above ArkUI's centred one (measured on the TV refs; the film pill is scaled 1.06)
         .maxLines(1)
     }
     .accessibilityText(this.pillName(label, primary ? '' : glyph, primary)).accessibilityRole(this.pillRole(primary)).accessibilityGroup(true)
@@ -2252,6 +2250,7 @@ struct Detail {
           synopsis: this.tvCopySynopsis(),
           synopsisMaxWidth: 310,
           strongSynopsis: false,
+          kickerSpacingAdjust: this.isSeriesPage() ? -0.26 : 0,
         })
         this.tvActions()
       }
