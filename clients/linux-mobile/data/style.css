@@ -41,9 +41,9 @@ button.pa-card:focus-visible .pa-rail-title { font-size: 22px; font-weight: 400;
 .pa-nav viewport { background: transparent; }
 /* The web's tiles carry a 14px radius even at rest; a faint wash gives the rounded box something to paint (a transparent tile
    has nothing for the clip to hold, so GTK drops it). */
-button.pa-navbtn { background: none; border: none; box-shadow: none; border-radius: 14px; min-width: 42px; min-height: 46px; padding: 0; }
+button.pa-navbtn { background: alpha(@pa_ink, 0.008); border: none; box-shadow: none; border-radius: 14px; min-width: 42px; min-height: 46px; padding: 0; }
 button.pa-navbtn.active { background: @pa_ink; }
-.pa-nav-avatar { border-radius: 999px; background: none; }
+.pa-nav-avatar { border-radius: 999px; background: alpha(@pa_ink, 0.008); }
 .pa-pagehead { font-size: 30px; font-weight: 300; color: @pa_ink; }
 
 /* Detail */
