@@ -472,3 +472,9 @@ function WebCardWidth() as Float
     cols = 3.0
     return WebLayoutUnit((62.0 * vw - padLeft - padRight - (cols - 1.0) * WebCardGridGapCss()) / cols)
 end function
+
+' Left edge of the first grid card minus the 8 px grid inset: the stage rail starts at (100 - --card-rail-vw 62) vw = 38 vw
+' (page-layout.css) and the card column starts --card-pad-left (--library-rail-left, clamp(28px, 2.8 * --vw, 54px)) inside it.
+function WebGridLeft() as Float
+    return 38.0 * WebVw() + WebClamp(28.0, 2.8 * WebVw(), 54.0) - 8.0
+end function

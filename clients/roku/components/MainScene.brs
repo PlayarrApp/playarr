@@ -2917,7 +2917,7 @@ sub applyBrowseView()
         m.browseGrid.itemSize = [210.7, 349]
         m.browseGrid.itemSpacing = [0, 0]
         ' The cards reserve the focus lift and ring inside the cell (8 px sides, 15 px top), so the grid sits that far out.
-        m.browseGrid.translation = [775.4, 139]
+        m.browseGrid.translation = [WebGridLeft(), 139]
     else if m.browseView = "list"
         ' Web list view: a 173 x 97 thumbnail with the title and genre line beside it, 122 px apart.
         m.browseGrid.numColumns = 1
@@ -2927,7 +2927,7 @@ sub applyBrowseView()
         m.browseGrid.translation = [792, 157]
     else
         applyBrowseArtworkSize()
-        m.browseGrid.translation = [775.4, 139]
+        m.browseGrid.translation = [WebGridLeft(), 139]
     end if
 end sub
 
@@ -3214,9 +3214,9 @@ sub onBrowseItemFocused(event as Object)
     ' Web keeps the focused row 70 px clear of the bottom edge once the grid scrolls (its rows then sit 56 px higher).
     if m.browseView = "screen"
         if Int(itemIndex / m.browseGrid.numColumns) >= 4
-            m.browseGrid.translation = [775.4, 83]
+            m.browseGrid.translation = [WebGridLeft(), 83]
         else
-            m.browseGrid.translation = [775.4, 139]
+            m.browseGrid.translation = [WebGridLeft(), 139]
         end if
     end if
     moreAvailable = m.browseTotal = invalid or m.browseItems.Count() < m.browseTotal
