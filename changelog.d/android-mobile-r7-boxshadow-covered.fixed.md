@@ -1,0 +1,1 @@
+- Android: web box-shadows on the navigation group and identity card are drawn from a CPU raster so repeated captures are identical, and the layout export drops rows covered by another surface.

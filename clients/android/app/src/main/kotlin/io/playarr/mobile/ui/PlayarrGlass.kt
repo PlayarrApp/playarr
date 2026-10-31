@@ -1,6 +1,5 @@
 package io.playarr.mobile.ui
 
-import io.playarr.shared.designsystem.page.parityPaint
 import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
@@ -17,33 +16,42 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.asAndroidPath
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalGraphicsContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import io.playarr.shared.designsystem.page.parityPaint
+import kotlin.math.ceil
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.BufferOverflow
@@ -51,7 +59,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.withContext
-import kotlin.math.roundToInt
 
 /*
  * Native "frosted glass" for the Playarr TV and phone shells.
@@ -75,7 +82,7 @@ internal object WebGlass {
     val PhoneNav = GlassSpec(saturation = 1.0f, tintAlpha = 0.88f, borderAlphaDark = 0f, borderAlphaLight = 0f, shadow = 0.dp)
 
     /** `.app-user-identity`: blur(22px) saturate(1.2), surface-strong @ .66, shadow 0 18 48. */
-    val Identity = GlassSpec(saturation = 1.2f, tintAlpha = 0.66f, borderAlphaDark = 0.077f, borderAlphaLight = 0.099f, shadow = 18.dp)
+    val Identity = GlassSpec(saturation = 1.2f, tintAlpha = 0.66f, borderAlphaDark = 0.077f, borderAlphaLight = 0.099f, shadow = 18.dp, shadowBlur = 48.dp)
 
     /** `.tv-page-back` and small round controls: blur(18px), surface-strong @ .70. */
     val Control = GlassSpec(saturation = 1.0f, tintAlpha = 0.70f, borderAlphaDark = 0.077f, borderAlphaLight = 0.099f, shadow = 0.dp)
@@ -105,7 +112,7 @@ internal class GlassSpec(
     val borderAlphaDark: Float,
     val borderAlphaLight: Float,
     val shadow: Dp,
-    /** CSS `box-shadow` blur radius; above zero the shadow is drawn as the web does (see [cssBoxShadow]) instead of the platform elevation. */
+    /** CSS box-shadow blur radius; when set the shadow is the web's own gaussian (offset [shadow] down) instead of the platform elevation shadow. */
     val shadowBlur: Dp = 0.dp,
 )
 
@@ -245,27 +252,60 @@ private fun Modifier.glassBackdropSource(): Modifier {
         }
 }
 
+private fun saturationFilter(saturation: Float): ColorFilter? =
+    if (saturation == 1f) null else ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(saturation) })
+
 /**
- * CSS `box-shadow: 0 <offsetY> <blur> <colour>`: the outline blurred with a Gaussian of sigma blur / 2, shifted down by
- * [offsetY], and never painted inside the box itself (a translucent box shows the page, not its own shadow).
+ * CSS `box-shadow: 0 <offsetY> <blur> colour`: a gaussian of sigma blur/2 of the shape, drawn only outside the
+ * border box (the web never paints a box-shadow under its own box). Drawn by the same CPU-independent mask filter
+ * every frame, so two runs of the same layout give the same pixels (the platform elevation shadow did not).
  */
-internal fun Modifier.cssBoxShadow(shape: Shape, color: Color, offsetY: Dp, blur: Dp): Modifier = drawBehind {
-    val path = when (val outline = shape.createOutline(size, layoutDirection, this)) {
-        is androidx.compose.ui.graphics.Outline.Generic -> outline.path
-        is androidx.compose.ui.graphics.Outline.Rounded -> androidx.compose.ui.graphics.Path().apply { addRoundRect(outline.roundRect) }
-        is androidx.compose.ui.graphics.Outline.Rectangle -> androidx.compose.ui.graphics.Path().apply { addRect(outline.rect) }
+internal fun Modifier.cssBoxShadow(shape: Shape, offsetY: Dp, blur: Dp, color: Color): Modifier = composed {
+    val density = LocalDensity.current
+    val direction = LocalLayoutDirection.current
+    var box by remember { mutableStateOf(IntSize.Zero) }
+    // Rasterised once per size on the CPU: the hardware blur path dithered differently from run to run.
+    val raster = remember(box, shape, density, direction, offsetY, blur, color) {
+        if (box.width <= 0 || box.height <= 0) null else cpuBoxShadow(box, shape, density, direction, offsetY, blur, color)
     }
-    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-        this.color = android.graphics.Color.argb((color.alpha * 255f).roundToInt(), (color.red * 255f).roundToInt(), (color.green * 255f).roundToInt(), (color.blue * 255f).roundToInt())
-        maskFilter = android.graphics.BlurMaskFilter(blur.toPx() / 2f, android.graphics.BlurMaskFilter.Blur.NORMAL)
-    }
-    clipPath(path, androidx.compose.ui.graphics.ClipOp.Difference) {
-        translate(0f, offsetY.toPx()) { drawContext.canvas.nativeCanvas.drawPath(path.asAndroidPath(), paint) }
+    this.onSizeChanged { box = it }.drawBehind {
+        if (raster == null) return@drawBehind
+        translate(-raster.margin.toFloat(), -raster.margin.toFloat()) {
+            drawImage(raster.image, filterQuality = FilterQuality.None)
+        }
     }
 }
 
-private fun saturationFilter(saturation: Float): ColorFilter? =
-    if (saturation == 1f) null else ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(saturation) })
+private class CpuShadow(val image: ImageBitmap, val margin: Int)
+
+private fun cpuBoxShadow(box: IntSize, shape: Shape, density: Density, direction: LayoutDirection, offsetY: Dp, blur: Dp, color: Color): CpuShadow {
+    val offset = with(density) { offsetY.toPx() }
+    val sigma = with(density) { blur.toPx() } / 2f
+    val margin = ceil(sigma * 3f + offset).toInt() + 2
+    val bitmap = Bitmap.createBitmap(box.width + 2 * margin, box.height + 2 * margin, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bitmap)
+    val outline = shape.createOutline(Size(box.width.toFloat(), box.height.toFloat()), direction, density)
+    val path = (when (outline) {
+        is Outline.Rectangle -> Path().apply { addRect(outline.rect) }
+        is Outline.Rounded -> Path().apply { addRoundRect(outline.roundRect) }
+        is Outline.Generic -> outline.path
+    }).asAndroidPath()
+    canvas.translate(margin.toFloat(), margin.toFloat())
+    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        this.color = color.toArgb()
+        maskFilter = android.graphics.BlurMaskFilter(((sigma - 0.5f) / 0.57735f).coerceAtLeast(0.1f), android.graphics.BlurMaskFilter.Blur.NORMAL)
+    }
+    canvas.save()
+    canvas.translate(0f, offset)
+    canvas.drawPath(path, paint)
+    canvas.restore()
+    // The web never paints a box-shadow under its own box.
+    val erase = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR)
+    }
+    canvas.drawPath(path, erase)
+    return CpuShadow(bitmap.asImageBitmap(), margin)
+}
 
 /**
  * Frosted-glass surface: shadow, cached blurred backdrop clipped to [shape],
@@ -284,8 +324,8 @@ internal fun Modifier.glass(shape: Shape, spec: GlassSpec, dark: Boolean = webIs
     return this
         .onGloballyPositioned { position = it.positionInRoot() }
         .then(
-            if (spec.shadowBlur > 0.dp) {
-                Modifier.cssBoxShadow(shape, WebGlass.ShadowColor, spec.shadow, spec.shadowBlur)
+            if (spec.shadow > 0.dp && spec.shadowBlur > 0.dp) {
+                Modifier.cssBoxShadow(shape, spec.shadow, spec.shadowBlur, WebGlass.ShadowColor)
             } else if (spec.shadow > 0.dp) {
                 Modifier.shadow(spec.shadow, shape, clip = false, ambientColor = WebGlass.ShadowColor, spotColor = WebGlass.ShadowColor)
             } else {

@@ -89,7 +89,7 @@ internal sealed class SettingsScreen : IPage
         _root.Add(Sem.Tag(Ui.PanelWash(_t, 1248), "container")); // web .tv-directory: the right 65 % carries the library panel frost
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
-        back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
+        back.Add(Ui.Text("←", 0, 12, 17.28f, 720, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
         Sem.Tag(back, "button", "Settings");
         _backRing = Ring.Make(50, 50, 25, new Rgba(1, 1, 1)); back.Add(_backRing);
         _root.Add(back);

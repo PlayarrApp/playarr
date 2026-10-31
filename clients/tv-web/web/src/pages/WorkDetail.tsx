@@ -368,12 +368,17 @@ function formatRuntime(durationMs: number, t: TFunc): string {
 function formatDetailDate(value: string): string | null {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat(undefined, {
+  const formatter = new Intl.DateTimeFormat(undefined, {
     day: "numeric",
     month: "short",
     year: "numeric",
     timeZone: "UTC",
-  }).format(date);
+  });
+  const formatted = formatter.format(date);
+  // Older ICU data (Chromium 85, Tizen 6.5) abbreviates en-GB September to "Sep"; current engines and the web reference say "Sept".
+  return formatter.resolvedOptions().locale === "en-GB" && date.getUTCMonth() === 8
+    ? formatted.replace(/\bSep\b/, "Sept")
+    : formatted;
 }
 
 function relatedWorkScore(target: Work, candidate: Work): number {
