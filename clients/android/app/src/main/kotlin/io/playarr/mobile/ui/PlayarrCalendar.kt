@@ -709,6 +709,8 @@ internal fun TvCalendarAgenda(
             val listStart = if (tablet) 534.dp else 783.dp
             // Tablet web: the list ends at x 1193, clear of the right action column (measured on the 1280 x 800 static refs).
             val listWidth = if (tablet) (maxWidth - listStart - 87.dp) else 1033.4.dp
+            // Web `ListPanel` (.tv-library-grid-panel): the right 65% carries the library frost gradient, full height; the pinned day headings paint the same frost over it.
+            if (!tablet) Box(Modifier.offset(x = maxWidth * 0.35f).width(maxWidth * 0.65f).fillMaxHeight().background(webRailSurfaceBrush()))
             val dayFont = LocalCalendarMetrics.current
             val detailScroll = rememberScrollState()
             // The details are the library hero: keep them on the stage (1920 values); only the day list is in css px.
