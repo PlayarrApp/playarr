@@ -5,11 +5,11 @@
 //
 // Each dir holds <id>.png (dark) and light/<id>.png (or <dark|light>/<id>.png for the suite runner's output). Compares the band
 // x 140..1920, y 0..128 (header bottom + 8 px; the nav rail is left of x 140 and is masked) with the clock/date box and the
-// result count and the Calendar range selector (its text is the shown week, which differs) masked, as pixelmatch threshold 0.1. Native against web is judged at the campaign's <= 1 % (rasteriser
+// result count and the Calendar range selector (its text is the shown week, which differs) masked, by an exact RGBA byte compare (zero tolerance). Native against web is judged at the campaign's <= 1 % (rasteriser
 // differences), not the web's 0 px. Prints one line per screen and theme.
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import pixelmatch from "pixelmatch";
+import { countDiff } from "../exact-pixels.mjs";
 import { PNG } from "pngjs";
 
 const args = process.argv.slice(2);
@@ -27,7 +27,7 @@ export function bandMismatch(refPng, candPng) {
     return out;
   };
   const a = crop(refPng), b = crop(candPng);
-  return (100 * pixelmatch(a.data, b.data, null, BAND.w, BAND.h, { threshold: 0.1 })) / (BAND.w * BAND.h);
+  return (100 * countDiff(a.data, b.data, BAND.w, BAND.h)) / (BAND.w * BAND.h);
 }
 
 const find = (dir, theme, id) => [theme === "dark" ? join(dir, `${id}.png`) : join(dir, "light", `${id}.png`), join(dir, theme, `${id}.png`)].find(existsSync);

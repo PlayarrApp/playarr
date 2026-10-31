@@ -54,7 +54,7 @@ rasterisation).
 ## Setup
 
 ```sh
-cd scripts/parity && npm ci          # pixelmatch, pngjs, playwright-core
+cd scripts/parity && npm ci          # pngjs, playwright-core
 npx playwright-core install chromium # once, or set PARITY_CHROMIUM to a Chromium binary
 ```
 

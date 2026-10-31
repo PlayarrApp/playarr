@@ -272,7 +272,7 @@ TV layout (Playwright, 1920x1080, Android TV user agent, dark, the same account 
 Captures are kept outside the repository (they show real library artwork). Navigation on the emulator is D-pad only where
 possible: a single `input tap` puts the emulator in touch mode, and Compose then shows no keyboard focus at all.
 
-Parity per screen, as the device wall computes it (100 minus the pixelmatch mismatch at threshold 0.1, live data, so artwork,
+Parity per screen, as the device wall computes it (100 minus the exact RGBA byte mismatch, live data, so artwork,
 clock and focus position differ between the two sides even where the layout matches):
 
 | Screen | Parity | Notes |
