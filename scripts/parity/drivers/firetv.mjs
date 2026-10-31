@@ -234,7 +234,17 @@ export async function createDriver({ out } = {}) {
       if (!key) throw new Error(`unknown key ${name}`);
       await settled();
       if (long) {
-        // Menu is the long press on Vega (opens the title actions drawer)
+        // Menu is the long press on Vega (opens the title actions drawer). It acts on the focused card, so look at the focus right
+        // before it: wait for the focus to be a real card and to hold still across two reads, and keep it in the run log.
+        let focus = null;
+        for (let i = 0; i < 6; i++) {
+          const a = JSON.stringify((await state(8000).catch(() => ({}))).focus ?? null);
+          await sleep(1000);
+          const b = JSON.stringify((await state(8000).catch(() => ({}))).focus ?? null);
+          focus = b;
+          if (a === b && b !== "null" && !b.includes('"nav"')) break;
+        }
+        console.error(`firetv: focus before Menu: ${focus}`);
         await press("F2");
         await sleep(2500);
         return;
