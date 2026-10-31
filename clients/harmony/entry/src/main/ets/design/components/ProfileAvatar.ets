@@ -237,7 +237,7 @@ export struct ProfileAvatar {
     // A circle clip: the rounded-rect clip left the drawing's sides flat in the Previewer.
     .clipShape(new CircleShape({ width: this.diameter, height: this.diameter }))
     .border({
-      width: this.ringWidth,
+      width: this.ringOpacity() > 0 ? this.ringWidth : 0, // a ring that is not drawn takes no border: the scaled tile is then the full 244 box web's halo is
       color: toResourceColorWithAlpha(this.ringColour(), this.ringOpacity()),
       radius: this.diameter / 2,
     })
