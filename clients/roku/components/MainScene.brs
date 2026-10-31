@@ -4022,7 +4022,7 @@ function createHomeRail(contentTarget as Object) as Object
     ' full shadow canvas below the art, so its blur fades before the RowList
     ' clip instead of ending at the old 262 px row boundary.
     row.rowItemSize = [[343, 320]]
-    row.rowItemSpacing = [[9, 0]]
+    row.rowItemSpacing = [[9.13, 0]]
     row.rowHeights = [320]
     row.showRowLabel = false
     row.focusXOffset = [96]
@@ -4513,7 +4513,7 @@ sub finishHomeLoad()
             rail.row.itemSize = [1232, 320]
             rail.row.rowHeights = [320]
         end if
-        buildRailContent(rail.row, rail.works, isActiveRail, 1.4864, m.artActiveGeneration, "home", railIndex)
+        buildRailContent(rail.row, rail.works, isActiveRail, 1.48714, m.artActiveGeneration, "home", railIndex)
         m.visibleRails.Push({ row: rail.row, works: rail.works, first: 0, col: 0, last: 0, jumping: -1, rightAligned: false })
         ' Rails sit 366 px apart (web .tv-home-rail rhythm with the 327 px cards); 470 px with covers.
         y += homeRailPitch()
@@ -4785,7 +4785,7 @@ function moveHomeFocus(delta as Integer) as Boolean
     if oldIndex >= 0 and oldIndex < m.visibleRails.Count()
         oldRail = m.visibleRails[oldIndex]
         oldRail.row.SetFocus(false)
-        buildRailContent(oldRail.row, oldRail.works, false, 1.4864)
+        buildRailContent(oldRail.row, oldRail.works, false, 1.48714)
     end if
     m.homeFocusIndex = newIndex
     newRail = m.visibleRails[newIndex]
@@ -4802,7 +4802,7 @@ function moveHomeFocus(delta as Integer) as Boolean
         newRail.last = desired
         newRail.row.jumpToRowItem = [0, desired]
     end if
-    buildRailContent(newRail.row, newRail.works, true, 1.4864)
+    buildRailContent(newRail.row, newRail.works, true, 1.48714)
     newRail.row.SetFocus(true)
     if desired = 0 and m.homeLeftProxy <> invalid then m.homeLeftProxy.SetFocus(true)
     scrollHomeToFocusedRail()
