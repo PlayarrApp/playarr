@@ -62,6 +62,7 @@ final class TVParityLayoutRegistry {
     }
 
     private var answeredRequest: String?
+    private var lastVisibility: Visibility?
     private var watcher: Task<Void, Never>?
 
     private var requestURL: URL? { TVParityState.stateURL?.deletingLastPathComponent().appendingPathComponent("parity-layout-request") }
@@ -83,7 +84,12 @@ final class TVParityLayoutRegistry {
                 for _ in 0..<25 {
                     guard let data = self.snapshot(captureID: id, visibility: nil) else { try? await Task.sleep(nanoseconds: 300_000_000); continue }
                     if data == previous {
-                        let visibility = await self.measureVisibility()
+                        // A request ending "-a" is the visibility pass (it hides and shows every item, which re-renders the screen); the request
+                        // that follows the saved frame reuses that pass's answer and changes nothing on screen, so the frame saved is the one
+                        // the layout is published for.
+                        let visibility: Visibility
+                        if !id.hasSuffix("-a"), let kept = self.lastVisibility { visibility = kept } else { visibility = await self.measureVisibility() }
+                        if id.hasSuffix("-a") { self.lastVisibility = visibility }
                         if let data = self.snapshot(captureID: id, visibility: visibility) { self.publish(data) }
                         self.answeredRequest = id
                         break
