@@ -35,13 +35,15 @@ run() { case $1 in
   calendar-agenda) NOKEY=1 open "calendar?query=view%3Dagenda" 25; sleep 3; python3 -I $HERE/uiexpect.py 'Calendar' || { echo "wrong screen calendar-agenda"; return 1; }; shot $1 ;;
   calendar-link) NOKEY=1 open "calendar?query=panel%3Dsubscription" 25; python3 -I $HERE/uiexpect.py 'Your personal calendar link' || { echo "wrong screen calendar-link"; return 1; }; sleep 3; shot $1 ;;
   filters) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select; sleep 3; adb shell input tap 2495 298; sleep 2; python3 -I $HERE/uiexpect.py 'Sort by|Library controls' || { echo "wrong screen filters"; return 1; }; shot $1 ;;
-  actions) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select right; adb shell input keyevent --longpress 23; sleep 1.5
-    # Key long-press did not open the drawer before; fall back to a 1.5 s touch hold on the card, then insist the drawer is on screen.
-    python3 -I $HERE/uiexpect.py 'Mark as Watched' || { adb shell input swipe ${ACT_X:-1939} ${ACT_Y:-256} ${ACT_X:-1939} ${ACT_Y:-256} 1500; sleep 1.5; }
-    python3 -I $HERE/uiexpect.py 'Mark as Watched' || { echo "wrong screen actions (drawer not open)"; return 1; }
-    # The web ref opens the actions of the second library card: fail (and retry) on any other title instead of capturing it.
-    python3 -I $HERE/uiexpect.py 'Amber Cathedral 18' || { echo "wrong title in the actions drawer"; return 1; }; shot $1 ;;
-  actions-bottom) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select right; adb shell input keyevent --longpress 23; sleep 1.5
+  actions) for try in 1 2 3; do
+      open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select; sleep 3; kseq right; adb shell input keyevent --longpress 23; sleep 1.5
+      # Key long-press did not open the drawer before; fall back to a 1.5 s touch hold on the card, then insist the drawer is on screen.
+      python3 -I $HERE/uiexpect.py 'Mark as Watched' || { adb shell input swipe ${ACT_X:-1939} ${ACT_Y:-256} ${ACT_X:-1939} ${ACT_Y:-256} 1500; sleep 1.5; }
+      python3 -I $HERE/uiexpect.py 'Mark as Watched' || { echo "wrong screen actions (drawer not open)"; continue; }
+      # The web ref opens the actions of the second library card: retry from a fresh launch when a loaded host dropped the Right key and another card opened.
+      python3 -I $HERE/uiexpect.py 'Amber Cathedral 18' && { shot $1; return $?; }; echo "wrong title in the actions drawer"
+    done; return 1 ;;
+  actions-bottom) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select; sleep 3; kseq right; adb shell input keyevent --longpress 23; sleep 1.5
     # Key long-press did not open the drawer before; fall back to a 1.5 s touch hold on the card, then insist the drawer is on screen.
     python3 -I $HERE/uiexpect.py 'Mark as Watched' || { adb shell input swipe ${ACT_X:-1939} ${ACT_Y:-256} ${ACT_X:-1939} ${ACT_Y:-256} 1500; sleep 1.5; }
     python3 -I $HERE/uiexpect.py 'Mark as Watched' || { echo "wrong screen actions (drawer not open)"; return 1; }; kseq down*8; shot $1 ;;
