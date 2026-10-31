@@ -160,6 +160,7 @@ struct WorkDetailView: View {
             }
         }
         .background(WMPageFill())
+        .parityFill(WM.page)
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
     }

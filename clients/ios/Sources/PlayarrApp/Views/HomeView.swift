@@ -88,6 +88,7 @@ struct HomeView: View {
             }
         }
         .background(WMPageFill())
+        .parityFill(WM.page) // what the page really paints behind its content, for the backdrop the export reports
         .ignoresSafeArea(edges: .horizontal)
         .navigationBarHidden(true)
     }

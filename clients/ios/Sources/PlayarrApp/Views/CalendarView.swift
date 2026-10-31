@@ -55,7 +55,7 @@ struct CalendarView: View {
                 tabletBody(proxy: proxy)
             }
         }
-        .parityFill(PlayarrStyle.background)
+        .parityFill(WM.page) // the page fill every calendar body paints (WMPageFill)
         .foregroundStyle(PlayarrStyle.ink)
         .navigationBarHidden(true)
         .parityScreenLoad(parityLoadState)

@@ -63,6 +63,8 @@ final class ParityLayoutRegistry {
     private var paintRegions: [UUID: ParityPaint] = [:]
     /// Frames of controls that can be hidden through `parityToggle` (buttons and links without a styled box of their own).
     private var toggleFrames: [UUID: CGRect] = [:]
+    /// The composited colour behind each toggled view (what the web reports as the background of a control that paints none).
+    private var toggleBackdrops: [UUID: String] = [:]
     /// A control that has no toggle of its own is judged through the views drawn inside its frame: the probe hides all of
     /// them together under one group id. The ids are kept so the two snapshots of one probe agree on them.
     private var groupIDs: [String: UUID] = [:]
@@ -105,9 +107,10 @@ final class ParityLayoutRegistry {
         schedule()
     }
 
-    func setToggle(_ id: UUID, _ frame: CGRect?) {
-        guard toggleFrames[id] != frame else { return }
+    func setToggle(_ id: UUID, _ frame: CGRect?, backdrop: String? = nil) {
+        guard toggleFrames[id] != frame || toggleBackdrops[id] != backdrop else { return }
         toggleFrames[id] = frame
+        toggleBackdrops[id] = backdrop
         schedule()
     }
 
@@ -120,6 +123,7 @@ final class ParityLayoutRegistry {
     func remove(_ id: UUID) {
         alive.remove(id)
         toggleFrames[id] = nil
+        toggleBackdrops[id] = nil
         guard items[id] != nil || textRuns[id] != nil else { return }
         items[id] = nil
         textRuns[id] = nil
@@ -241,6 +245,8 @@ final class ParityLayoutRegistry {
             } else if let target = toggleFrames.filter({ distance($0.value, entry.rect) < 6 }).min(by: { distance($0.value, entry.rect) < distance($1.value, entry.rect) }) {
                 // A control without a styled box: the view that draws it carries a `parityToggle`, found by its frame.
                 entry.toggle = target.key
+                // A control that paints nothing of its own sits on whatever is behind it, as in the web export.
+                if entry.background == nil { entry.background = toggleBackdrops[target.key] }
                 // The control's own container carries the ancestors' opacity: an artwork image reports it from there.
                 if entry.opacity >= 0.995, let paint = paintRegions[target.key] { entry.opacity = paint.effective(entry.rect) ?? paint.opacity }
             } else if entry.rect.width > 1, entry.rect.height > 1 {
@@ -850,14 +856,20 @@ private struct ParityGradientModifier: ViewModifier {
 /// Makes a control hideable by the visibility probe: its view fades to nothing while the probe renders without it.
 private struct ParityToggleModifier: ViewModifier {
     @State private var id = UUID()
+    @Environment(\.self) private var environment
+
+    private func backdrop(_ frame: CGRect) -> String {
+        environment.parityBackdrop.rgb(at: CGPoint(x: frame.midX, y: frame.midY), environment).hex
+    }
 
     func body(content: Content) -> some View {
         content
             .opacity(ParityHide.shared.ids.contains(id) ? 0 : 1)
             .background(GeometryReader { proxy in
                 Color.clear
-                    .onAppear { ParityLayoutRegistry.shared.setToggle(id, proxy.frame(in: .global)) }
-                    .onChange(of: proxy.frame(in: .global)) { _, value in ParityLayoutRegistry.shared.setToggle(id, value) }
+                    .onAppear { ParityLayoutRegistry.shared.setToggle(id, proxy.frame(in: .global), backdrop: backdrop(proxy.frame(in: .global))) }
+                    .onChange(of: proxy.frame(in: .global)) { _, value in ParityLayoutRegistry.shared.setToggle(id, value, backdrop: backdrop(value)) }
+                    .onChange(of: environment.parityBackdrop) { _, _ in ParityLayoutRegistry.shared.setToggle(id, proxy.frame(in: .global), backdrop: backdrop(proxy.frame(in: .global))) }
             })
             .onDisappear { ParityLayoutRegistry.shared.setToggle(id, nil) }
     }
