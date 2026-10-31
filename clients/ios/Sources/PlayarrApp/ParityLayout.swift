@@ -654,6 +654,8 @@ private struct ParityLayoutModifier: ViewModifier {
     let box: Color?
     let radius: CGFloat
     let enabled: Bool
+    /// Measured over the whole window, safe areas included (the web body covers the viewport).
+    var bleed = false
     @Environment(\.self) private var environment
     @State private var id = UUID()
     @State private var frame = CGRect.zero
@@ -677,6 +679,7 @@ private struct ParityLayoutModifier: ViewModifier {
                         .onAppear { frame = proxy.frame(in: .global); report(frame) }
                         .onChange(of: proxy.frame(in: .global)) { _, new in frame = new; report(new) }
                 }
+                .ignoresSafeArea(edges: bleed ? .all : [])
             )
             .onChange(of: environment.parityPaint) { _, _ in report(frame) }
             .onChange(of: environment.parityBackdrop) { _, _ in report(frame) }
@@ -927,9 +930,9 @@ extension View {
 
     /// Reports this view's text, style and frame to the parity layout export (debug builds only).
     @ViewBuilder
-    func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0, box: Color? = nil, radius: CGFloat = 0, enabled: Bool = true) -> some View {
+    func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0, box: Color? = nil, radius: CGFloat = 0, enabled: Bool = true, bleed: Bool = false) -> some View {
         #if DEBUG
-        modifier(ParityLayoutModifier(text: text, role: role, size: size, weight: weight, color: color, tracking: tracking, box: box, radius: radius, enabled: enabled))
+        modifier(ParityLayoutModifier(text: text, role: role, size: size, weight: weight, color: color, tracking: tracking, box: box, radius: radius, enabled: enabled, bleed: bleed))
         #else
         self
         #endif
@@ -949,8 +952,8 @@ extension View {
     }
 
     /// Reports a native control or a view that actually paints a background.
-    func parityBox(_ role: String, name: String? = nil, background: Color? = nil, radius: CGFloat = 0, enabled: Bool = true) -> some View {
-        parityLayout(text: name, role: role, box: background, radius: radius, enabled: enabled)
+    func parityBox(_ role: String, name: String? = nil, background: Color? = nil, radius: CGFloat = 0, enabled: Bool = true, bleed: Bool = false) -> some View {
+        parityLayout(text: name, role: role, box: background, radius: radius, enabled: enabled, bleed: bleed)
     }
 }
 

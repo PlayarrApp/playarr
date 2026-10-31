@@ -434,7 +434,7 @@ private struct AuthenticatedPlayarrShell: View {
         // The web `body`: the shell colour behind the page, and the ancestor of everything on screen (black behind the player).
         // It is judged like web's body, by hiding it with everything inside it; each page paints its one page fill above it.
         .background(rootColor.ignoresSafeArea())
-        .parityBox("container", background: rootColor)
+        .parityBox("container", background: rootColor, bleed: true)
         // The shell colour, then the page colour every screen paints over it (each page draws WM.page full-bleed).
         .parityFill(PlayarrStyle.surface)
         .parityFill(PlayarrStyle.background)
