@@ -266,6 +266,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   const deviceScaleFactor = positiveNumber("PLAYARR_WEB_VIEWPORT_DPR", mobile ? 3 : 1);
   let cdp, browser, ctx, page, theme = "dark", session, detailActionRequired = false, fixedNow = null, disableAnimations = false, pinnedZone = null, pinnedLocale = null;
   let manualLoginStarted = false, manualLoginSucceeded = false; // session: this run's own storage state, in memory
+  let avatarSynced = false; // the profile-avatar sync answered for the current document
   let networkFlaps = 0; // requests Chrome aborted because the host's network interfaces changed
   const apiErrors = []; // failing /api/ responses of the current page, named in the error-page failure
   let drainApiErrors = async () => {};
@@ -338,6 +339,14 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       }
     }
     await labelled("loading placeholders gone", () => page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true]"), null, { timeout: 20000 }));
+    // the shell's avatar sync (see the response listener): wait for its answer, then for the re-render
+    if (await page.evaluate(() => !!document.querySelector(".app-nav-link"))) {
+      const t0 = Date.now();
+      while (!avatarSynced) {
+        if (Date.now() - t0 > 20000) throw new Error("readiness timeout: the profile avatar sync never answered");
+        await page.waitForTimeout(100);
+      }
+    }
     await drainApiErrors();
     assertNoApiErrors(apiErrors);
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -394,6 +403,11 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     });
     page = await ctx.newPage();
     page.on?.("requestfailed", (r) => { if (r.failure()?.errorText === "net::ERR_NETWORK_CHANGED") networkFlaps += 1; });
+    // The shell syncs the account's profile avatar after it mounts (GET /api/v1/users/me/profile-avatar): until that answer is back the nav rail and profile
+    // chip draw the generated default preset, not the server's choice. settle() waits for the answer so a shot never races it.
+    avatarSynced = false;
+    page.on?.("framenavigated", (frame) => { if (frame === page.mainFrame()) avatarSynced = false; });
+    page.on?.("response", (response) => { if (/\/api\/v1\/users\/me\/profile-avatar$/.test(new URL(response.url()).pathname) && response.request().method() === "GET" && response.status() < 500) avatarSynced = true; });
     apiErrors.length = 0;
     manualLoginStarted = false;
     manualLoginSucceeded = false;

@@ -97,6 +97,14 @@ internal static class LayoutExport
                 input.BackgroundColor = loud;
                 Restores.Add(() => input.BackgroundColor = fill);
             }
+            else if (v is ImageView overlay && n.PaintOnly && !whole)
+            {
+                // a generated gradient that stands for a container's fill (the panel frost): its image is swapped for opaque magenta over its own box, so it shows on the real screen
+                // only where it is topmost (a dim 6-level frost would otherwise fall under the visibility threshold, although nothing covers it)
+                var url = overlay.ResourceUrl; var bc = overlay.BackgroundColor; var fill = new Color(bc.R, bc.G, bc.B, bc.A);
+                overlay.ResourceUrl = ""; overlay.BackgroundColor = loud;
+                Restores.Add(() => { overlay.ResourceUrl = url; overlay.BackgroundColor = fill; });
+            }
             else if (n.PaintOnly && !whole)
             {
                 // NUI hands back live objects (a Color bound to the view), so the values are copied before the paint is changed
@@ -199,7 +207,7 @@ internal static class LayoutExport
                 var painted = (fills || border || shadow || hairline) && !shadowLayer;
                 var control = role is not null and not ("container" or "none" or "text" or "img");
                 if (child is ImageView)
-                    ctx.Nodes.Add(new Node(role == "video" ? name ?? "" : "", role is null or "none" ? "image" : role, cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, radius, cop, id, false));
+                    ctx.Nodes.Add(new Node(role == "video" ? name ?? "" : "", role is null or "none" ? "image" : role, cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, radius, cop, id, role == "container" && Sem.IsOverlay(child)));
                 else if (control || (role == "img" && painted))
                     ctx.Nodes.Add(new Node(name ?? "", role!, cx, cy, w, h, null, Hex(cbg.R, cbg.G, cbg.B, 1), null, null, radius, cop, id, false));
                 else if (painted)
