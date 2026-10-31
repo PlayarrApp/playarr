@@ -395,6 +395,7 @@ struct WMIconView: View {
 
     var body: some View {
         // Parity captures blit a bitmap drawn once (the vector strokes antialias a little differently on each simulator).
+        #if DEBUG
         if ParityLaunch.zeroInsets, let image = WMIconBitmap.image(icon: icon, color: color, size: size, environment: environment) {
             Image(uiImage: image).resizable().frame(width: size, height: size)
                 .parityBox("image")
@@ -402,6 +403,10 @@ struct WMIconView: View {
             WMIconCanvas(icon: icon, color: color, size: size)
                 .parityBox("image")
         }
+        #else
+        WMIconCanvas(icon: icon, color: color, size: size)
+            .parityBox("image")
+        #endif
     }
 }
 
@@ -568,6 +573,7 @@ struct WMUnseenDot: View {
     var body: some View {
         // Parity captures draw the dot from a bitmap rendered once per theme: the GPU antialiasing of the ring and its
         // shadow differs a little from one simulator to the next, a blitted bitmap does not.
+        #if DEBUG
         if ParityLaunch.zeroInsets, let image = WMUnseenDotBitmap.image(scheme) {
             Image(uiImage: image).resizable().frame(width: 33, height: 33).frame(width: 9, height: 9)
                 .parityBox("image", background: WM.pink, radius: 4.5)
@@ -575,6 +581,10 @@ struct WMUnseenDot: View {
             WMUnseenDotVector()
                 .parityBox("image", background: WM.pink, radius: 4.5)
         }
+        #else
+        WMUnseenDotVector()
+            .parityBox("image", background: WM.pink, radius: 4.5)
+        #endif
     }
 }
 
