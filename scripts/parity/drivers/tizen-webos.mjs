@@ -549,7 +549,7 @@ export async function createDriver() {
       // The simulator opens the player slower than web: a key sent while the title is still loading toggles or opens the wrong thing.
       if (device === "webos") {
         const onPlayer = await ev(`/^#\\/player\\//.test(location.hash)`).catch(() => false);
-        if (onPlayer && !playerStarted) { await until(`(() => { const v = document.querySelector("video"); return !!v && !v.paused && v.currentTime > 1; })()`, 30000); playerStarted = true; }
+        if (onPlayer && !playerStarted) { await until(tizen65 ? `(() => { try { const a = window.webapis.avplay; return a.getState() === "PLAYING" && a.getCurrentTime() > 1000; } catch (e) { return false; } })()` : `(() => { const v = document.querySelector("video"); return !!v && !v.paused && v.currentTime > 1; })()`, 30000); playerStarted = true; }
         if (!onPlayer) playerStarted = false;
         await guard();
       }
@@ -585,8 +585,24 @@ export async function createDriver() {
       await sleep(device === "webos" ? 1000 : 350);
       await guard();
     },
+    // Known state for the player checks on the Tizen 6.5 lane (tizen65 only): the AVPlay shim (tizen-webos/avplay-shim.js, decodes nothing) is PLAYING past 0.5 s,
+    // the controls are up and focus is on play/pause. The shim D-pad proves the focus and controls logic only, not decoding or the native plane (up to 30 s, else throws).
+    async playerReady() {
+      if (!tizen65) throw new Error("stable capture unsupported: playerReady is the Tizen 6.5 AVPlay shim lane only");
+      await guard();
+      const ready = `(() => { try { const a = window.webapis.avplay, c = document.querySelector(".player-controls");
+        if (a.getState() === "PAUSED" && a.getCurrentTime() < 59000) a.play();
+        return a.getState() === "PLAYING" && a.getCurrentTime() > 500 && !!c && !c.classList.contains("is-hidden") && !!document.activeElement?.closest("[data-player-default-focus]"); } catch (e) { return false; } })()`;
+      if (!(await until(ready, 30000))) throw new Error("player not ready: AVPlay shim playing, controls up, focus on play/pause");
+      // The controls hide 5 s after playback starts (the pinned capture frame was paused, so the timer began at the play() above): a mouse move restarts it,
+      // so the check keys run inside a fresh window, as the web driver's start does.
+      await ev(`(() => { const s = document.querySelector(".player-shell") || document.body; s.dispatchEvent(new MouseEvent("mousemove", { bubbles: true })); return true; })()`);
+      await sleep(300);
+      if (!(await until(ready, 5000))) throw new Error("player not ready after refreshing the controls timer");
+      await guard();
+    },
     // Used by the shared runner before the first key of a player check (alongside the webOS wait in key()).
-    async playhead() { await guard(); const value = await ev(`(() => { const v = document.querySelector("video"); return v ? v.currentTime : null; })()`); await guard(); return value; },
+    async playhead() { await guard(); const value = await ev(`(() => { try { const a = window.webapis.avplay; if (a.getState() !== "NONE") return a.getCurrentTime() / 1000; } catch (e) {} const v = document.querySelector("video"); return v ? v.currentTime : null; })()`); await guard(); return value; },
     async panelOpen() { await guard(); const value = !!(await ev(`[...document.querySelectorAll(".player-quality-menu")].some((m) => m.getBoundingClientRect().width > 0)`)); await guard(); return value; },
     async location() { await guard(); const value = (await ev("location.hash.replace(/^#/, '')")) ?? null; await guard(); return value; },
     async focused() {
@@ -678,6 +694,11 @@ export async function createDriver() {
         await sleep(300);
       }
       if (tizen65) {
+        // A focused Search field blinks its text caret: the grab lands on either phase (twin f3/f4 differed in one 1x24 px column there), and the web refs show none. Hide the caret for the grab.
+        await ev(`(() => { if (!document.getElementById("parity-no-caret")) { const s = document.createElement("style"); s.id = "parity-no-caret"; s.textContent = "input, textarea { caret-color: transparent !important; }"; document.head.appendChild(s); } return true; })()`);
+        // Finite CSS transitions still running at the grab leave a colour one level off at rounded corners (twin f3/f4: four pixels of the active nav item, 1/255): wait until they have finished.
+        if (!(await until(`document.getAnimations().every((a) => a.playState !== "running" || !Number.isFinite(a.effect.getComputedTiming().endTime))`, 10000))) throw new Error("finite animations still running before the grab");
+        await sleep(100);
         // This Xvfb is larger than the page (a window the size of the screen loses a pixel row and column), and the XWD grab fails on it: ImageMagick grabs the root, the page is its top-left 1920x1080.
         execFileSync("magick", ["import", "-display", display, "-window", "root", "-crop", "1920x1080+0+0", "+repage", `png:${file}`]);
         await guard();

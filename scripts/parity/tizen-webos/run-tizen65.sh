@@ -20,4 +20,6 @@ cd "$here"
 eval "$(node parity-config.mjs --shell)"
 export DEVICE=tizen65 PARITY_CLIENT=${PARITY_CLIENT:-tizen65} PARITY_LOCK_DIR=${PARITY_LOCK_DIR:-$out.lock}
 mkdir -p "$PARITY_LOCK_DIR"
-exec node suite-run.mjs --driver drivers/tizen-webos.mjs --out "$out" "$@" --only screens,dpad --skip-player
+# --player runs the 12 player D-pad checks through the AVPlay shim (focus and controls logic only, no decoding); without it they are skipped.
+case " $* " in *" --player "*) extra="" ;; *) extra="--skip-player" ;; esac
+exec node suite-run.mjs --driver drivers/tizen-webos.mjs --out "$out" "$@" --only screens,dpad $extra
