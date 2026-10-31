@@ -305,13 +305,14 @@ struct PlayerView: View {
         if isTablet(size) {
             let s = size.width / 1366
             return AnyView(ZStack(alignment: .topTrailing) {
-                HStack(spacing: 10 * s) {
+                // Web: a 124 x 48 pill (23.6 pt side padding, 20 pt glyph, 8.8 pt gap) and a 48 pt close circle 12 pt apart, 47.8 pt from the right edge.
+                HStack(spacing: 12 * s) {
                     Button { dismiss() } label: {
-                        HStack(spacing: 9 * s) {
-                            PlayerGlyphView(glyph: .minimise, size: 17 * s)
-                            WMText("Minimise", 11 * s + 2, 600, color: .white, lh: 16)
+                        HStack(spacing: 8.8 * s) {
+                            PlayerGlyphView(glyph: .minimise, size: 20 * s)
+                            WMText("Minimise", 12 * s, 600, color: .white, lh: 15)
                         }
-                        .padding(.horizontal, 18 * s).frame(height: 48 * s)
+                        .padding(.horizontal, 23.6 * s).frame(height: 48 * s)
                         .background(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58), in: Capsule())
                         .overlay(Capsule().strokeBorder(.white.opacity(0.28), lineWidth: 1))
                     }
@@ -324,7 +325,7 @@ struct PlayerView: View {
                     }
                     .parityButtonStyle(.plain).accessibilityLabel("Close")
                 }
-                .padding(.top, 36 * s).padding(.trailing, max(53 * s, WM.trailingInset))
+                .padding(.top, 35.8 * s).padding(.trailing, max(47.8 * s, WM.trailingInset))
             }
             .frame(width: size.width, height: size.height, alignment: .topTrailing))
         }
@@ -439,22 +440,25 @@ struct PlayerView: View {
         selectedQuality: PlaybackQualityOption?, queueEmpty: Bool
     ) -> some View {
         let s = size.width / 1366
-        let edge = max(55 * s, WM.leadingInset)
-        return VStack(spacing: 14 * s) {
-            seekTrack(viewModel, width: size.width - edge - max(60 * s, WM.trailingInset))
-            HStack(spacing: 0) {
-                iconButton(.previous, disabled: true, label: "Previous") {}
+        // Web: 54.6 pt side margins, a 44 pt seek box (6 pt bar) straight above a row of 51.9 pt buttons 13.6 pt apart, 47.8 pt above the bottom.
+        let edge = max(54.6 * s, WM.leadingInset)
+        let trail = max(54.6 * s, WM.trailingInset)
+        let box = 51.9 * s
+        return VStack(spacing: 0) {
+            seekTrack(viewModel, width: size.width - edge - trail)
+                .padding(.vertical, 19 * s)
+            HStack(spacing: 13.6 * s) {
+                iconButton(.previous, disabled: true, label: "Previous", box: box) {}
                 Button {
                     viewModel.togglePlayPause()
                     reveal()
                 } label: {
                     PlayerGlyphView(glyph: isPlaying ? .pause : .play, size: 22 * s + 4)
-                        .frame(width: 52 * s, height: 52 * s)
+                        .frame(width: box, height: box)
                         .background(Circle().fill(.white.opacity(0.14)))
                                         }
                 .parityButtonStyle(.plain).accessibilityLabel(isPlaying ? "Pause" : "Play")
-                .padding(.horizontal, 19 * s)
-                iconButton(.next, disabled: queueEmpty, label: "Next") { playQueueEntry(at: 0, viewModel) }
+                iconButton(.next, disabled: queueEmpty, label: "Next", box: box) { playQueueEntry(at: 0, viewModel) }
                 HStack(spacing: 5.6) {
                     Text(playerTimeString(shownTime))
                         .parityRenderedText(playerTimeString(shownTime), role: "text", size: 9.92 + 1, weight: 400, color: .white)
@@ -464,35 +468,36 @@ struct PlayerView: View {
                         .parityRenderedText(playerTimeString(viewModel.duration), role: "text", size: 9.92 + 1, weight: 400, color: .white)
                 }
                 .font(WM.font(9.92 + 1).monospacedDigit()).foregroundStyle(.white)
-                .padding(.leading, 28 * s)
                 Spacer(minLength: 24)
-                HStack(spacing: 22 * s) {
-                    iconButton(isMuted ? .volumeMuted : .volumeHigh, label: isMuted ? "Unmute" : "Mute") {
+                HStack(spacing: 13.6 * s) {
+                    iconButton(isMuted ? .volumeMuted : .volumeHigh, label: isMuted ? "Unmute" : "Mute", box: box) {
                         viewModel.avPlayer?.isMuted.toggle()
                         isMuted = viewModel.avPlayer?.isMuted ?? false
                         reveal()
                     }
-                    iconButton(.subtitles, active: activeMenu == .subtitles, label: "Subtitles") { toggle(.subtitles) }
-                    iconButton(.playlist, active: activeMenu == .queue, label: "Queue") { toggle(.queue) }
+                    iconButton(.subtitles, active: activeMenu == .subtitles, label: "Subtitles", box: box) { toggle(.subtitles) }
+                    iconButton(.playlist, active: activeMenu == .queue, label: "Queue", box: box) { toggle(.queue) }
                     Button { toggle(.quality) } label: {
-                        HStack(spacing: 10) {
+                        // Web: a 160.4 x 45.1 button, badge 22.2 pt in, label 16.6 pt after the badge.
+                        HStack(spacing: 16.6 * s) {
                             WMText(PlayerQuality.badge(selectedQuality), 7.68, 650, color: .white, lh: 20, ls: 0.3072)
-                            WMText(PlayerQuality.displayLabel(selectedQuality), 11, 650, color: .white, lh: 16, ls: 0.1)
+                            WMText(PlayerQuality.displayLabel(selectedQuality), 10.7, 650, color: .white, lh: 16, ls: 0.1)
                         }
-                        .padding(.leading, 26).padding(.trailing, 12)
+                        .padding(.leading, 22.2 * s).padding(.trailing, 14.3 * s)
+                        .frame(width: 160.4 * s, height: 45.1 * s, alignment: .leading)
                     }
                     .parityButtonStyle(.plain).disabled(viewModel.qualityOptions.isEmpty)
-                    iconButton(.info, active: activeMenu == .info, label: "Playback info") { toggle(.info) }
+                    iconButton(.info, active: activeMenu == .info, label: "Playback info", box: box) { toggle(.info) }
                     ZStack {
-                        iconButton(.castDevices, label: "Cast to a device") {}
+                        iconButton(.castDevices, label: "Cast to a device", box: box) {}
                         if showsCastAffordance { CastButton(tintColor: .clear).frame(width: 42, height: 42).opacity(0.02) }
                     }
                 }
             }
         }
         .padding(.leading, edge)
-        .padding(.trailing, max(60 * s, WM.trailingInset))
-        .padding(.bottom, max(34 * s + 10.5, bottomInset)) // the web row sits about 10 pt higher
+        .padding(.trailing, trail)
+        .padding(.bottom, max(47.8 * s, bottomInset))
         .frame(width: size.width, height: size.height, alignment: .bottom)
     }
 
@@ -503,11 +508,11 @@ struct PlayerView: View {
 
     private func iconButton(
         _ glyph: PlayerGlyph, primary: Bool = false, disabled: Bool = false, active: Bool = false,
-        label: String, action: @escaping () -> Void
+        label: String, box: CGFloat = 42, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             PlayerGlyphView(glyph: glyph, size: 20)
-                .frame(width: 42, height: 42)
+                .frame(width: box, height: box)
                 .background {
                     if primary {
                         Circle().fill(.white.opacity(0.14))
