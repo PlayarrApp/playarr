@@ -686,7 +686,7 @@ private struct AuthenticatedPlayarrShell: View {
         }
         .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         .parityTopLayer()
-        .parityFill(WM.page) // the nav floats over the page fill the screen paints (web composites its 88% fill over it)
+        .parityFill(WM.shell) // the nav is fixed over the shell colour (--bg), outside the page container: web composites its 88% fill over it
     }
 
     private func stageChrome(proxy: GeometryProxy) -> some View {
