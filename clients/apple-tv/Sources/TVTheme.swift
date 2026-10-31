@@ -1091,6 +1091,8 @@ struct TVFloatingNav: View {
 
     @ViewBuilder
     private func navButton(_ tab: TVNavTab) -> some View {
+        let iconH = TVNavIconVector.renderedSize
+        let labelH: CGFloat = 10.6
         let isActive = selection == tab
         let isFocused = externalFocus.wrappedValue == .nav(tab)
         let isOneShotFocusTarget = oneShotFocusTarget == tab
@@ -1114,14 +1116,16 @@ struct TVFloatingNav: View {
         } label: {
             VStack(spacing: 2.75) { // web: the label's top sits 22.75 pt below the icon's
                 TVNavVectorIcon(tab: tab)
-                // Web scales the whole link by 1.05 (transform); the label is drawn at that size directly and counter-scaled against the
-                // group's transform, so the glyphs are not re-rasterised through a fractional scale each time the layer is re-created.
+                    .scaleEffect(isActive || isFocused ? 1.05 : 1)
+                    .offset(y: isActive || isFocused ? -0.05 * (iconH + 2.75 + labelH - iconH) / 2 : 0)
+                // Web scales the whole link by 1.05 (transform). Text is drawn at the scaled size directly (font, tracking and offsets x 1.05)
+                // and only the tile and icon are transformed, so glyphs are never re-rasterised through a fractional scale.
                 let k: CGFloat = isActive || isFocused ? 1.05 : 1
                 Text(tab.title)
+                    .offset(y: isActive || isFocused ? 0.05 * (iconH + 2.75) / 2 : 0)
                     .font(TVTheme.font(size: 8.832 * k, css: 680))
                     .tracking(0.31 * k)
                     .lineLimit(1)
-                    .scaleEffect(1 / k)
                     .parityLayout(text: tab.title, size: 8.832 * k, weight: 680, color: isActive || isFocused ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled, tracking: 0.31 * k)
             }
             // Web: the icon sits 15.2 pt below the link's top, 1 pt lower than the centred pair.
@@ -1135,7 +1139,6 @@ struct TVFloatingNav: View {
                 width: DesignTokens.Shell.navItemSize,
                 height: DesignTokens.Shell.navItemSize
             )
-            .parityBox("link", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Color.textPrimary : nil, alpha: 0.09)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(
@@ -1143,9 +1146,15 @@ struct TVFloatingNav: View {
                             ? DesignTokens.Color.textPrimary.opacity(0.09)
                             : Color.clear
                     )
+                    .scaleEffect(isActive || isFocused ? 1.05 : 1)
             )
-            // Web `.app-nav-link.is-active`: transform scale(1.05) (tile and content).
-            .scaleEffect(isActive || isFocused ? 1.05 : 1)
+            // Web `.app-nav-link.is-active`: transform scale(1.05) (tile and content); the box is reported at the scaled frame.
+            .overlay(
+                Color.clear
+                    .parityBox("link", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Color.textPrimary : nil, alpha: 0.09)
+                    .scaleEffect(isActive || isFocused ? 1.05 : 1)
+                    .allowsHitTesting(false)
+            )
             // Web TV nav: focus looks like the active tab (filled tile, ink text); no ring, no scale.
         }
         // Card-like style stays focusable; .plain can drop remote hand-off.
