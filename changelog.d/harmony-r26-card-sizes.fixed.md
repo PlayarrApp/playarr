@@ -1,0 +1,1 @@
+- Harmony parity r26: the phone Home rails use web's unrounded card height and rail pitch (218.56), the card link ends 24.68 under the art, and the TV Detail Similar cards are web's 327.17 px wide.

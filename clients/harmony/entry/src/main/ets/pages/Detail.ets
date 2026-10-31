@@ -275,6 +275,7 @@ const CHAPTER_CARD_WIDTH: number = 268;
 const CHAPTER_CARD_HEIGHT: number = 150.75; // 16:9 of the 268 card
 /** Room under a landscape Similar card for its caption and the focus shadow. */
 const SIMILAR_LIST_EXTRA: number = 70;
+const SIMILAR_CARD_WIDTH: number = 327.17;
 const CAST_CIRCLE: number = 104;
 /** Web's first circle starts 24 vp in from the rail edge (the item is wider than ours); ours sat at 10. */
 const CAST_LEFT_INSET: number = 14;
@@ -1706,8 +1707,8 @@ struct Detail {
         variant: 'home',
         title: (item as DetailRow).title,
         subtitle: (item as DetailRow).subtitle,
-        cardWidth: tv(TvGeometry.homeRailCardWidthLandscape),
-        cardHeight: Math.round((tv(TvGeometry.homeRailCardWidthLandscape) * 9) / 16),
+        cardWidth: SIMILAR_CARD_WIDTH, // web DOM dump: 327.17 x 213.41 (the integer card width is 0.17 short)
+        cardHeight: (SIMILAR_CARD_WIDTH * 9) / 16,
         artworkRadius: Radii.homeCardArtworkTv,
         activeRailFactor: activeRailFactor,
         onCardFocus: this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration),
