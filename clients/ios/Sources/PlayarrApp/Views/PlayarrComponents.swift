@@ -180,12 +180,25 @@ struct PlayarrProfileAvatar: View {
                     .resizable()
                     .scaledToFill()
             } else {
-                WMAvatarPresetView(presetID: presetID, size: size)
+                preset
             }
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
         .accessibilityLabel("\(userName ?? "Playarr") avatar")
+    }
+
+    /// Parity captures blit the preset drawn once as a bitmap (the vector eyes and strokes antialias a little differently per run).
+    @ViewBuilder private var preset: some View {
+        #if DEBUG
+        if ParityLaunch.zeroInsets, let image = WMAvatarBitmap.image(presetID: presetID, size: size) {
+            Image(uiImage: image).resizable().frame(width: size, height: size)
+        } else {
+            WMAvatarPresetView(presetID: presetID, size: size)
+        }
+        #else
+        WMAvatarPresetView(presetID: presetID, size: size)
+        #endif
     }
 
     private var customImage: UIImage? {
@@ -458,3 +471,20 @@ enum PlayarrArtworkPrefs {
     /// Web `--card-size-step`: small +1 column, large -1.
     static func columnStep(_ size: String) -> Int { size == "small" ? 1 : size == "large" ? -1 : 0 }
 }
+
+#if DEBUG
+@MainActor
+enum WMAvatarBitmap {
+    private static var cache: [String: UIImage] = [:]
+
+    static func image(presetID: String, size: CGFloat) -> UIImage? {
+        let key = "\(presetID)|\(size)"
+        if let cached = cache[key] { return cached }
+        let renderer = ImageRenderer(content: WMAvatarPresetView(presetID: presetID, size: size).frame(width: size, height: size))
+        renderer.scale = UIScreen.main.scale
+        guard let image = renderer.uiImage else { return nil }
+        cache[key] = image
+        return image
+    }
+}
+#endif
