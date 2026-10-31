@@ -7,7 +7,7 @@ CLOCK=${PARITY_CLOCK:-$(sed -n 's/.*"clock": *"\([^"]*\)".*/\1/p' "$HERE/../../s
 export PATH=$HOME/Android/Sdk/platform-tools:$PATH ANDROID_SERIAL=${ANDROID_SERIAL:-emulator-5568}
 # A hung emulator must not stall the run: every adb call is bounded (30 s, one retry) and then fails like any other failed command.
 adb() { local rc n; for n in 1 2; do timeout 30 "$HOME/Android/Sdk/platform-tools/adb" "$@"; rc=$?; [ $rc -ne 124 ] && return $rc; done; return 124; }
-O=$1; T=$2; shift 2; adb shell settings put global sysui_demo_allowed 1 >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command enter >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 1200 >/dev/null 2>&1; pkg=io.playarr.mobile; mkdir -p "$O"
+O=$1; T=$2; shift 2; adb shell settings put global sysui_demo_allowed 1 >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command enter >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 1200 >/dev/null 2>&1; for c in '-e command notifications -e visible false' '-e command network -e mobile hide -e sims 0 -e nosim hide -e satellite hide -e wifi show -e level 4 -e fully true' '-e command battery -e level 100 -e plugged false'; do adb shell am broadcast -a com.android.systemui.demo $c >/dev/null 2>&1; done; pkg=io.playarr.mobile; mkdir -p "$O"
 adb shell am force-stop $pkg
 # Web refs format dates as en-GB ("THU 15 OCTOBER"); the app follows the device region, so pin it for captures.
 adb shell cmd locale set-app-locales $pkg --locales en-GB >/dev/null 2>&1
