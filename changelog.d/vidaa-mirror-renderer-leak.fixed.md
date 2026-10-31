@@ -1,0 +1,1 @@
+- Fix the debug-mirror renderer leak that hung the VIDAA TV: frames are rasterised from a revoked blob URL into one reused image and canvas, not a fresh multi-megabyte data URL image per frame (about 12 MB to about 1 MB of renderer growth per frame).
