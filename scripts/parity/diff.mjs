@@ -2,7 +2,7 @@
 // Pixel diff of candidate captures against the web reference, per theme, with an HTML report.
 //
 //   node diff.mjs --ref <dir> --cand <dir> --layout tv|mobile [--theme light|dark|both] [--out <dir>]
-//                 [--screens id,id (ids missing from screens.json, such as home-scrolled, are compared too)] [--threshold 0.1] [--max 1] [--fail]
+//                 [--screens id,id (ids missing from screens.json, such as home-scrolled, are compared too)] [--max 1] [--fail]
 //                 [--mask-rect x,y,w,h[,screen-id]]... [--keep-rect x,y,w,h[,screen-id]]... [--chrome-only]
 //                 [--no-manifest-masks]
 //
@@ -20,7 +20,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import pixelmatch from "pixelmatch";
+import { countDiff } from "./exact-pixels.mjs";
 import { PNG } from "pngjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -36,11 +36,10 @@ const cand = opt("cand");
 const themeOpt = opt("theme", "both");
 const themes = themeOpt === "both" ? spec.themes : themeOpt.split(",");
 if (!cand || !spec.layouts[layout] || themes.some((t) => !spec.themes.includes(t))) {
-  console.error("usage: diff.mjs --ref <dir> --cand <dir> --layout tv|mobile [--theme light|dark|both] [--out dir] [--screens a,b] [--threshold 0.1] [--max 1] [--fail]");
+  console.error("usage: diff.mjs --ref <dir> --cand <dir> --layout tv|mobile [--theme light|dark|both] [--out dir] [--screens a,b] [--max 1] [--fail]");
   process.exit(2);
 }
 const out = resolve(opt("out", join(cand, `diff-${layout}`)));
-const threshold = Number(opt("threshold", spec.tolerance.pixelmatchThreshold));
 const maxPct = Number(opt("max", spec.tolerance.maxMismatchPercent));
 const only = opt("screens", "")?.split(",").filter(Boolean);
 const cliMasks = args.flatMap((a, i) => (a === "--mask-rect" && args[i + 1] ? [args[i + 1]] : [])).map((v) => {
@@ -124,7 +123,7 @@ const find = (root, theme, id) => {
 };
 
 mkdirSync(join(out, "img"), { recursive: true });
-const report = { layout, threshold, maxMismatchPercent: maxPct, generatedFrom: { ref, cand }, themes: {} };
+const report = { layout, comparison: "exact RGBA bytes", maxMismatchPercent: maxPct, generatedFrom: { ref, cand }, themes: {} };
 for (const theme of themes) {
   const rows = [];
   for (const s of screens) {
@@ -149,8 +148,16 @@ for (const theme of themes) {
     }
     const w = Math.max(a.width, b.width);
     const h = Math.max(a.height, b.height);
+    const ca = onCanvas(a, w, h);
+    const cb = onCanvas(b, w, h);
+    const bad = countDiff(ca, cb, w, h); // exact: all four RGBA bytes must be identical
     const diff = new PNG({ width: w, height: h });
-    const bad = pixelmatch(onCanvas(a, w, h), onCanvas(b, w, h), diff.data, w, h, { threshold, includeAA: false });
+    for (let i = 0; i < w * h; i += 1) {
+      const o = i * 4;
+      const same = ca[o] === cb[o] && ca[o + 1] === cb[o + 1] && ca[o + 2] === cb[o + 2] && ca[o + 3] === cb[o + 3];
+      const px = same ? [Math.round(ca[o] * 0.2 + 204), Math.round(ca[o + 1] * 0.2 + 204), Math.round(ca[o + 2] * 0.2 + 204)] : [255, 0, 0];
+      diff.data[o] = px[0]; diff.data[o + 1] = px[1]; diff.data[o + 2] = px[2]; diff.data[o + 3] = 255;
+    }
     const pct = (bad / (w * h)) * 100;
     const stem = `${layout}-${theme}-${s.id}`;
     copyFileSync(rp, join(out, "img", `${stem}-ref.png`));
@@ -202,7 +209,7 @@ writeFileSync(
 <style>body{font:14px system-ui;margin:16px;background:#fafafa;color:#222}table{border-collapse:collapse}td,th{padding:4px 10px;border:1px solid #ccc;text-align:left}
 section{margin:24px 0}.fail h3{color:#b00020}.pass h3{color:#0a6b2d}small{font-weight:400;color:#555}.row{display:flex;gap:12px;align-items:flex-start;overflow-x:auto}
 figure{margin:0;flex:0 0 auto}figcaption{font-weight:600}img{max-height:560px;border:1px solid #ccc;background:#fff}</style>
-<h1>Parity report: ${esc(layout)}</h1><p>pixelmatch threshold ${threshold}, pass at or below ${maxPct}% mismatch. Themes: ${themes.map((t) => `<a href="#${t}">${t}</a>`).join(", ")}.</p>
+<h1>Parity report: ${esc(layout)}</h1><p>exact RGBA byte comparison (zero tolerance), pass at or below ${maxPct}% mismatch. Themes: ${themes.map((t) => `<a href="#${t}">${t}</a>`).join(", ")}.</p>
 ${themes.map((t) => sectionFor(t, report.themes[t])).join("\n")}
 `
 );

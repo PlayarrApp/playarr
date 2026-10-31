@@ -75,6 +75,8 @@ internal sealed class Shell : View
     /// <summary>{ rail, index }: "nav" and the item number from the top on the nav rail, else the page's own position (Home).</summary>
     public (string Rail, int Index)? FocusPosition => _navFocus >= 0 ? ("nav", _navFocus) : _page?.FocusPosition is { } p ? (p.Rail.ToString(), p.Index) : null;
     public string? FocusedLabel => _navFocus >= 0 ? _nav[_navFocus].Item.Label.ToLowerInvariant() : _page?.FocusedLabel;
+    public bool? PlayerControlsVisible => (_page as PlayerScreen)?.ControlsVisible;
+    public bool? PlayerPanelOpen => (_page as PlayerScreen)?.PanelOpen;
 
     public Shell(AppEnv env, Action exit)
     {

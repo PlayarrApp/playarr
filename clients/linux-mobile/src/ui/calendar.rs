@@ -882,6 +882,11 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     let head = header::build(&app, "Calendar", "filters");
     head.action.set_visible(true);
     head.extra.set_visible(true);
+    {
+        let (app, client) = (app.clone(), client.clone());
+        head.extra
+            .connect_clicked(move |_| super::calendar_link::show(&app, &client));
+    }
     page.append(&head.widget);
 
     let content = gtk4::Box::new(gtk4::Orientation::Vertical, 0);

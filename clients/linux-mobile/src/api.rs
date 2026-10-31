@@ -314,6 +314,32 @@ impl Client {
             .get::<CalendarResponse>(&format!("/api/v1/calendar?start={start}&end={end}"))?
             .entries)
     }
+    /// The viewer's private calendar feed URL: the status call, then a create when there is no link yet. An existing
+    /// link is never replaced (rotating is a separate, explicit action).
+    pub fn calendar_feed_url(&self) -> Result<String> {
+        #[derive(serde::Deserialize)]
+        struct Feed {
+            url: Option<String>,
+        }
+        let status: serde_json::Value = self.get("/api/v1/calendar/feed")?;
+        let active = status.get("active").and_then(|v| v.as_bool()).unwrap_or(false);
+        let available = status.get("link_available").and_then(|v| v.as_bool()).unwrap_or(false);
+        if let Some(u) = status.get("url").and_then(|v| v.as_str()).filter(|_| active) {
+            return Ok(u.to_string());
+        }
+        if !active || available {
+            let made: Feed = serde_json::from_reader(
+                self.send("POST", "/api/v1/calendar/feed", Some(&serde_json::json!({})), None)?
+                    .into_body()
+                    .into_reader(),
+            )
+            .map_err(|e| ApiError::Decode(e.to_string()))?;
+            return made
+                .url
+                .ok_or_else(|| ApiError::Decode("the server sent no link".into()));
+        }
+        Err(ApiError::Message("the link was made on another device".into()))
+    }
     pub fn add_to_watchlist(&self, w: &Work) -> Result<()> {
         let body = serde_json::json!({ "kind": w.kind, "title": w.title, "work_id": w.id, "year": w.year().and_then(|y| y.parse::<i32>().ok()) });
         self.send("POST", "/api/v1/watchlist", Some(&body), None)?;

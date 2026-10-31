@@ -113,18 +113,35 @@ pub fn texture(name: &str, color: &str, px: i32) -> Option<gdk::Texture> {
 /// An icon cropped to the vertical band `top..top+height` (css px) of its `px` square drawing, drawn crisply into a
 /// non-square area: the web draws such glyphs in an svg box of the glyph's own aspect.
 pub fn banded(name: &str, px: i32, top: f64, height: f64, tone: Tone) -> gtk4::DrawingArea {
-    let bytes = glib::Bytes::from_owned(svg(name, color(tone)).into_bytes());
-    let stream = gio::MemoryInputStream::from_bytes(&bytes);
-    let pb = gdk_pixbuf::Pixbuf::from_stream_at_scale(&stream, px * 2, px * 2, true, gio::Cancellable::NONE).ok();
     let area = gtk4::DrawingArea::builder()
         .content_width(px)
         .content_height(height.round() as i32)
         .build();
+    // The glyph follows the theme: it is rasterised for the theme showing at draw time and again when the theme flips.
+    let name = name.to_string();
+    let cache: RefCell<Option<(bool, gdk_pixbuf::Pixbuf)>> = RefCell::new(None);
     area.set_draw_func(move |_, cr, _, _| {
-        if let Some(pb) = &pb {
+        let dark = adw::StyleManager::default().is_dark();
+        let mut cache = cache.borrow_mut();
+        if cache.as_ref().map(|(d, _)| *d) != Some(dark) {
+            let bytes = glib::Bytes::from_owned(svg(&name, color(tone)).into_bytes());
+            let stream = gio::MemoryInputStream::from_bytes(&bytes);
+            *cache = gdk_pixbuf::Pixbuf::from_stream_at_scale(&stream, px * 2, px * 2, true, gio::Cancellable::NONE)
+                .ok()
+                .map(|pb| (dark, pb));
+        }
+        if let Some((_, pb)) = cache.as_ref() {
             cr.scale(0.5, 0.5);
             gtk4::prelude::GdkCairoContextExt::set_source_pixbuf(cr, pb, 0.0, -top * 2.0);
             let _ = cr.paint();
+        }
+    });
+    adw::StyleManager::default().connect_dark_notify({
+        let area = area.downgrade();
+        move |_| {
+            if let Some(a) = area.upgrade() {
+                a.queue_draw();
+            }
         }
     });
     area
@@ -152,6 +169,8 @@ pub enum Tone {
     OnAccent,
     /// Brand tint.
     Brand,
+    /// The web's empty-state glyph: brand mixed 78% into the body ink (`color-mix(in srgb, var(--brand) 78%, var(--ink))`).
+    BrandInk,
     /// Always white (on the black player stage).
     White,
 }
@@ -170,6 +189,8 @@ pub fn color(tone: Tone) -> &'static str {
         (Tone::OnAccent, false) => "#ffffff",
         (Tone::Brand, true) => "#eaa6b6",
         (Tone::Brand, false) => "#821e36",
+        (Tone::BrandInk, true) => "#d75b79",
+        (Tone::BrandInk, false) => "#ae2f4b",
         (Tone::White, _) => "#ffffff",
     }
 }

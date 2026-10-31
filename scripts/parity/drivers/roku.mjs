@@ -409,10 +409,13 @@ export function calendarReadinessSnapshot(state, expectedView, baseline = {}) {
 export function calendarCellLeftEdgeAction(focus) {
   if (!focus || focus.action !== "cell" || !Number.isFinite(focus.rect?.x)) return "unknown";
   if (focus.rect.x < CALENDAR_CONTENT_LEFT_EDGE) return "unknown";
-  if (focus.rect.x <= CALENDAR_CONTENT_LEFT_EDGE + 1) return "edge";
+  // A first-column whole-cell stop starts at the grid edge; its chip stop sits 5.8 px in.
+  if (focus.rect.x <= CALENDAR_CONTENT_LEFT_EDGE + 7) return "edge";
   return "left";
 }
 
+// Same grid row: a whole-cell stop (centre 75 px down) and a chip stop (centre 22 px down) of one row are at most 53 px apart; the next row is 150 px away.
+const CALENDAR_SAME_ROW_DY = 60;
 export function calendarFocusTransitionError(from, key, to) {
   if (!from || !to || !CALENDAR_ACTIONS.has(from.action) || !CALENDAR_ACTIONS.has(to.action)) return null;
   const fromX = from.rect.x + from.rect.w / 2;
@@ -420,11 +423,11 @@ export function calendarFocusTransitionError(from, key, to) {
   const toX = to.rect.x + to.rect.w / 2;
   const toY = to.rect.y + to.rect.h / 2;
   if (from.action === "cell" && key === "right" &&
-      (to.action !== "cell" || Math.abs(toY - fromY) > 2 || toX <= fromX + 1)) {
+      (to.action !== "cell" || Math.abs(toY - fromY) > CALENDAR_SAME_ROW_DY || toX <= fromX + 1)) {
     return "calendar-right-did-not-move-to-a-later-cell-in-the-same-row";
   }
   if (from.action === "cell" && key === "left" &&
-      (to.action !== "cell" || Math.abs(toY - fromY) > 2 || toX >= fromX - 1)) {
+      (to.action !== "cell" || Math.abs(toY - fromY) > CALENDAR_SAME_ROW_DY || toX >= fromX - 1)) {
     return "calendar-left-did-not-move-to-an-earlier-cell-in-the-same-row";
   }
   if (from.action === "cell" && key === "up") {
@@ -695,7 +698,6 @@ export function createDriver({ out, args = [] } = {}) {
       parityState.artMarkers = { home: 0, movies: 0, series: 0, music: 0, calendar: 0 };
     }
     const beforeScreenSeq = screenSeq;
-    const beforeFocusSeq = focusSeq;
     resetObservedState();
     await sendEcp(`launch/dev${artEnabled ? `?parityArtReady=1${pinArg}` : ""}`);
     await connectDebug();
@@ -712,9 +714,21 @@ export function createDriver({ out, args = [] } = {}) {
       await sendEcp(`keypress/${KEY_NAMES[key]}`);
       await sleep(650);
     }
-    await waitFor(() => focusSeq > beforeFocusSeq && focusSeq > focusFloorAtScreen && focusScreenSeq === screenSeq, "fresh profile focus", 5000);
-    if (!hasFreshScreenFocus({ screen, screenSeq, focus, focusSeq, focusScreenSeq }, "profiles", process.env.ROKU_PROFILE_NAME ?? "Device Test", beforeScreenSeq, beforeFocusSeq)) {
-      throw new Error(`Roku did not report fresh ${process.env.ROKU_PROFILE_NAME ?? "Device Test"} profile focus; refusing to select another profile`);
+    // The focused profile is read from the screen itself (the focused ProfileAvatar item and the name of its button), not from a focus
+    // event: the keys above may leave focus where it already was, which sends no event.
+    const wanted = process.env.ROKU_PROFILE_NAME ?? "Device Test";
+    const focusedProfile = (xml) => {
+      const at = xml.search(/<ProfileAvatar\b[^>]*\bfocused="true"/);
+      if (at < 0) return "";
+      return /name="hit\|button\|0\|([^"]*)"/.exec(xml.slice(at))?.[1] ?? "";
+    };
+    let seen = "none";
+    const profileDeadline = Date.now() + 10000;
+    for (;;) {
+      seen = focusedProfile(await fetchAppUi());
+      if (seen.startsWith(`${wanted},`)) break;
+      if (Date.now() > profileDeadline) throw new Error(`Roku did not focus the ${wanted} profile (focused: ${seen || "none"}); refusing to select another profile`);
+      await sleep(400);
     }
   };
 
@@ -862,24 +876,28 @@ export function createDriver({ out, args = [] } = {}) {
     let hits = 0;
     let lastSeen = "none";
     let sent = false;
-    let sentAt = 0;
-    let lastMs = -1;
     const seekDeadline = Date.now() + 30000;
+    const seekTrail = [];
     while (hits < 2) {
-      if (Date.now() > seekDeadline) throw new Error(`Roku player did not settle at 2.000 s (last ${lastSeen})`);
-      // A seek input that arrives before the channel takes it is sent again (the channel acknowledges with seekat 2000).
-      if (!sent || (seekAt !== 2000 && Date.now() - sentAt > 6000)) { seekAt = -1; sentAt = Date.now(); await sendEcp(`input?paritySeek=2000`); sent = true; }
+      if (Date.now() > seekDeadline) throw new Error(`Roku player did not settle at 2.000 s (last ${lastSeen}; trail ${seekTrail.join(" ")})`);
+      // The seek input is sent once, after the player has been playing past 1.9 s; the channel acknowledges it with seekat 2000.
+      if (!sent) { seekAt = -1; await sendEcp(`input?paritySeek=2000`); sent = true; }
       await sleep(900);
       const xml = await (await sendEcp("query/media-player", "GET")).text();
       const ms = Number(/<position>(\d+) ms/.exec(xml)?.[1] ?? "0");
       const paused = /<player\b[^>]*\bstate="pause"/i.test(xml);
       lastSeen = `${paused ? "pause" : "other"} ${ms} ms`;
-      // ECP's own position is the pipeline's (about 2.1 s here); the exact position is the channel's Video node, reported once held.
-      hits = paused && seekAt === 2000 && ms === lastMs ? hits + 1 : 0;
-      lastMs = ms;
+      seekTrail.push(`${paused ? "P" : "o"}${ms}@${seekAt}`);
+      // ECP's own state and position are the pipeline's and lag behind the channel (it kept reporting the pre-seek 8.0 s in a state other than pause
+      // after the channel held 2000 ms), so they are only logged. The exact position is the channel's Video node, reported once held.
+      hits = seekAt === 2000 ? hits + 1 : 0;
     }
-    await sendEcp("keypress/Down");
-    await sleep(1500);
+    // The controls may already be up after the seek; a key on up controls moves focus to Play and draws its ring (web's frame has none).
+    // So Down is sent only when the seek slider is not in the tree (it then just raises the controls).
+    if (!/name="a11y\|slider\|0\|Seek"/.test(await fetchAppUi())) {
+      await sendEcp("keypress/Down");
+      await sleep(1500);
+    }
     playerShot = true;
   };
 
@@ -1051,7 +1069,11 @@ export function createDriver({ out, args = [] } = {}) {
             throw new Error(traceFailure(`Calendar Back-to-range path left the expected cell route at step ${step + 1}: ${JSON.stringify({ from, to: next })}`));
           }
         }
-        const selector = viaToday ? currentCalendarFocus() : await observeCalendarKey("up");
+        let selector = viaToday ? currentCalendarFocus() : await observeCalendarKey("up");
+        // With real day cells and chip stops the fifth Right can sit under Today; Left twice is the range selector from there.
+        if (selector.action === "calToday") {
+          for (let i = 0; i < 2; i += 1) selector = await observeCalendarKey("left");
+        }
         if (selector.action !== "calView") {
           throw new Error(traceFailure(`Calendar measured Back + Right x5 + Up path did not focus the range selector: ${JSON.stringify(selector)}`));
         }
@@ -1163,18 +1185,25 @@ export function createDriver({ out, args = [] } = {}) {
       // The player frame is taken only with the controls up and the progress fill at 2 s of 60 (59.33 px): the controls hide on their own
       // and a seek that did not land leaves another fill, so the measured tree is checked first and the state restored until it holds.
       const playerHeld = (xml) => /name="a11y\|slider\|0\|Seek"/.test(xml) && /name="playerProgressFill"[^>]*bounds="\{70, 933, 59\.\d+, 6\}"|bounds="\{70, 933, 59\.\d+, 6\}"[^>]*name="playerProgressFill"/.test(xml);
+      // A key press moves focus from the seek stop to Play and draws its ring (web's frame has no ring), so Down is sent only while the
+      // controls are down (no seek slider in the tree); a wrong fill is fixed with the seek input alone.
+      const sliderUp = (xml) => /name="a11y\|slider\|0\|Seek"/.test(xml);
+      const focusRingUp = (xml) => /<Poster\b(?![^>]*visible="false")[^>]*uri="pkg:\/images\/round-outline-r25\.9\.png"[^>]*bounds="\{[\d.]+, 9\d\d/.test(xml) || /<Poster\b(?![^>]*visible="false")[^>]*bounds="\{[\d.]+, 9\d\d[^>]*uri="pkg:\/images\/round-outline-r25\.9\.png"/.test(xml);
       if (playerShot) {
         let held = false;
         for (let i = 0; i < 8 && !held; i += 1) {
-          held = playerHeld(await fetchAppUi());
-          if (held) break;
-          await sendEcp("keypress/Down");
-          await sleep(1500);
-          if (playerHeld(await fetchAppUi())) { held = true; break; }
+          const xml = await fetchAppUi();
+          if (playerHeld(xml)) { held = true; break; }
+          if (!sliderUp(xml)) {
+            await sendEcp("keypress/Down");
+            await sleep(1500);
+            if (playerHeld(await fetchAppUi())) { held = true; break; }
+          }
           seekAt = -1;
           await sendEcp("input?paritySeek=2000");
           await sleep(3000);
         }
+        if (held && focusRingUp(await fetchAppUi())) throw new Error("Roku player shows a focus ring; the web frame has none");
         if (!held) throw new Error("Roku player controls were not up at 2.000 s");
       }
       // Settle: take the frame only when two consecutive frames are identical (animations, focus glide and art loads finished).

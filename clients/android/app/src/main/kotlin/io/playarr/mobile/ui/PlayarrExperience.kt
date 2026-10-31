@@ -2326,7 +2326,7 @@ private fun TelevisionNavigationContent(
                     description = profile.description,
                     slotIsImage = false,
                 ) {
-                    PlayarrProfileAvatar(userId = profile.userId, preference = profile.avatar, modifier = Modifier.size(20.dp).parityBox("container", radius = 999f), artworkModifier = Modifier.parityBox("image"), glyphSize = 10.sp)
+                    PlayarrProfileAvatar(userId = profile.userId, preference = profile.avatar, modifier = Modifier.size(20.dp).parityBox("container", radius = 999f), artworkModifier = Modifier.parityBox("image"), glyphSize = 10.sp, artworkFraction = 1f)
                 }
             }
             Text(
@@ -2551,7 +2551,7 @@ private fun ProfileControl(
             }
         }
         Box(
-            modifier = Modifier.width(if (isTelevision) 36.dp else 42.dp).padding(top = if (isTelevision) 3.dp else 3.8.dp, start = if (isTelevision) 7.8.dp else 0.dp),
+            modifier = Modifier.width(if (isTelevision) 36.dp else 42.dp).padding(top = if (isTelevision) 4.61.dp else 3.8.dp, start = if (isTelevision) 7.8.dp else 0.dp),
             contentAlignment = if (isTelevision) Alignment.CenterStart else Alignment.Center,
         ) {
             Text(
@@ -3851,7 +3851,7 @@ internal fun ExperienceLandscapeCard(
                 )
             }
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) (if (LocalStageScale.current != 1f) (3f / LocalStageScale.current).dp else 3.08.dp) else 3.dp).parityBackground("img", Color.White.copy(alpha = 0.2f))) {
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) (if (LocalStageScale.current != 1f) (3f / LocalStageScale.current).dp else 3.08.dp) else 3.dp).parityBackground("img", Color.White.copy(alpha = 0.2f)).semantics { role = Role.Image }) {
                     // Web `.tv-watch-progress` (white 20%) and its `i` fill: `--brand` (#cf3157) in both themes.
                     Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", Color(0xFFCF3157)))
                 }
@@ -3878,7 +3878,7 @@ internal fun ExperienceLandscapeCard(
             // A tablet takes the viewport's own clamp: title clamp(8.8, 0.62 vw, 12.48) and the fixed 0.72 rem (11.52 px) gap, in stage units.
             val tabletCard = LocalStageScale.current != 1f
             val titleSize = if (tabletCard) webVw(8.8f, 0.62f, 12.48f).value.sp else 11.904.sp
-            Text(displayTitle, color = if (focused || selected) Color.White else WebInk, fontSize = titleSize, fontWeight = FontWeight(610), letterSpacing = if (tabletCard) (-0.015f * titleSize.value).sp else (-0.17856).sp, lineHeight = if (tabletCard) titleSize * 1.504f else 17.9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletCard) (11.52f / LocalStageScale.current).dp else 9.9.dp, start = 1.9.dp, bottom = if (tabletCard) 0.dp else 1.dp))
+            Text(displayTitle, color = if (focused || selected) Color.White else WebInk, fontSize = titleSize, fontWeight = FontWeight(610), letterSpacing = if (tabletCard) (-0.015f * titleSize.value).sp else (-0.17856).sp, lineHeight = if (tabletCard) titleSize * 1.504f else 17.9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletCard) (11.52f / LocalStageScale.current).dp else 10.5.dp, start = 1.9.dp, bottom = if (tabletCard) 0.dp else 0.4.dp))
         } else if (webTvStyle) {
             // Web `.tv-home-card` copy: strong 11.328 px / 630, small 8.64 px, 9.9 px under the art.
             // Static web refs: strong 11.904 px / 610 with -0.18 px tracking, small 8.832 px / 400 (both white under the focused card).
@@ -4008,7 +4008,7 @@ private fun PlayarrUnwatchedDot(modifier: Modifier = Modifier, size: Dp = 12.dp,
             else Modifier)
             .parityBackground("img", UnwatchedDotColour, CircleShape, radius = 999f)
             .border(2.dp, Color.White.copy(alpha = 0.94f), CircleShape)
-            .semantics { contentDescription = label },
+            .semantics { role = Role.Image; contentDescription = label },
     )
 }
 
@@ -4363,7 +4363,8 @@ private fun TvLanguageMultiSelect(title: String, entries: List<LanguageFacetEntr
     Column(verticalArrangement = Arrangement.spacedBy(if (LocalTabletDrawerCssPx.current) 12.dp else 12.dp)) {
         PlayarrTvDrawerHeading(title)
         Column(
-            Modifier.fillMaxWidth().parityShape(12f).background(WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp))
+            // The app has no group semantics for this container: it is exported as the painted container it is, not as web's role=group.
+            Modifier.fillMaxWidth().parityShape(12f).parityBackground("container", WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp), radius = 12f)
                 .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder, RoundedCornerShape(12.dp)).padding(7.4.dp),
         ) {
             Row(
@@ -4569,7 +4570,11 @@ private fun LibraryViewIcon(mode: LibraryViewMode, colour: Color) {
         else -> Triple(3, 4f, 13f)
     }
     val list = mode == LibraryViewMode.List
-    val bar = Modifier.size(w.dp, h.dp).parityBox("container", radius = 1f).let { if (list && !tv) it.background(colour, RoundedCornerShape(1.dp)) else it.border(1.dp, colour, RoundedCornerShape(1.dp)) }
+    // A filled bar records its fill; an outlined one records that it draws a border (no fill), so the export keeps the box the app really paints.
+    val bar = Modifier.size(w.dp, h.dp).let {
+        if (list && !tv) it.parityBackground("container", colour, RoundedCornerShape(1.dp), radius = 1f)
+        else it.parityBackground("container", Color.Transparent, RoundedCornerShape(1.dp), radius = 1f, drawsBorder = true).border(1.dp, colour, RoundedCornerShape(1.dp))
+    }
     if (list) Column(verticalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }
     else Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }
 }
@@ -4866,6 +4871,8 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                                     color = if (active) WebBackground else WebInkMuted,
                                     fontSize = if (alphaTablet) (6.88f * alphaCss).sp else 9.216.sp,
                                     fontWeight = FontWeight.Normal,
+                                    // Chromium rounds the glyph box (12 px) and sets its baseline 0.5 dp higher than the unrounded 12.57 dp box Compose centres.
+                                    modifier = if (alphaTablet) Modifier else Modifier.offset(y = (-0.5).dp),
                                 )
                             }
                             }
@@ -5381,7 +5388,8 @@ private fun TelevisionSearchBody(
                 .parityShape(999f)
                 .webFocusRing(focused, radius = 38.dp, offset = 2.dp)
                 .clip(CircleShape)
-                .background(WebSurfaceStrong.copy(alpha = 0.88f), CircleShape)
+                // Android has no search landmark: the pill is exported as the painted container it is, not as web's role=search.
+                .parityBackground("container", WebSurfaceStrong.copy(alpha = 0.88f), CircleShape, radius = 999f)
                 .border(1.dp, WebInkMuted.copy(alpha = 0.3f), CircleShape)
                 .padding(start = 25.dp, end = 22.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -7186,7 +7194,7 @@ private fun VideoDetailCopy(
                 color = WebInkMuted,
                 // Web `.tv-detail-synopsis`: clamp(9.28, 0.67 vw, 13.44) css px, line height 1.58 (12.864 / 20.325 at 1920).
                 fontSize = webVw(9.28f, 0.67f, 13.44f).value.sp,
-                lineHeight = (webVw(9.28f, 0.67f, 13.44f).value * 1.58f).sp,
+                                lineHeight = (webVw(9.28f, 0.67f, 13.44f).value * 1.58f).sp,
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
                 // Tablet web measured at 1280 x 800 for series episodes: the synopsis is 3 dp lower and 347 dp wide (the actions row below keeps its place).
@@ -7870,7 +7878,7 @@ private fun WebEpisodeDetailCard(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 11.5.dp, bottom = 8.8.dp),
             )
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).parityBackground("img", Color.White.copy(alpha = 0.28f))) {
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).parityBackground("img", Color.White.copy(alpha = 0.28f)).semantics { role = Role.Image }) {
                     Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", WebAccent))
                 }
             }
@@ -10182,18 +10190,22 @@ private fun ExperiencePlayerScreen(
                         playing = playbackState.playWhenReady,
                     )
                 } else {
+                    // The surface is named for accessibility (release builds too): once on the Compose node and once on the native view TalkBack reaches.
+                    val videoSurfaceName = playarrString(PlayarrString.PlayerVideoSurface)
                     androidx.compose.ui.viewinterop.AndroidView(
-                        modifier = Modifier.fillMaxSize().parityBox("video", label = playarrString(PlayarrString.PlayerVideoSurface)),
+                        modifier = Modifier.fillMaxSize().semantics { contentDescription = videoSurfaceName }.parityBox("video"),
                         factory = { context ->
                             androidx.media3.ui.PlayerView(context).apply {
                                 player = viewModel.player.rawPlayer
                                 useController = false
+                                contentDescription = videoSurfaceName
                             }
                         },
                         // Re-bind on every recomposition (layout and PiP size changes) so the surface
                         // never stays attached to a stale or detached player.
                         update = { view ->
                             if (view.player !== viewModel.player.rawPlayer) view.player = viewModel.player.rawPlayer
+                            if (view.contentDescription != videoSurfaceName) view.contentDescription = videoSurfaceName
                         },
                     )
                 }

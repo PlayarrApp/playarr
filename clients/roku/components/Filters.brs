@@ -76,6 +76,11 @@ sub filtersRender()
         return
     end if
     m.filtersFocus = []
+    if m.filtersRow < 0
+        ' Web's Close button is a focus stop above the first row.
+        pgRound(g, 1823, 51, 54, 56, 28, "focusRing", -1, true)
+        pgRound(g, 1824, 52, 52, 54, 27, "focusRing", -1, true)
+    end if
     filtersHeading(g, 163.4, "VIEW")
     views = ["list", "screen", "cover"]
     names = ["List", "Screen", "Cover"]
@@ -138,7 +143,7 @@ sub filtersViewTile(g as Object, x as Float, name as String, chosen as Boolean, 
     end if
     role = "inkMuted"
     if chosen then role = "bg"
-    pgMark(g, "button", name, bx, by, bw, bh, 12)
+    pgMark(g, "button", kind, bx, by, bw, bh, 12)
     for i = 0 to 2
         if kind = "list"
             ux = x + 32
@@ -243,6 +248,10 @@ sub filtersEmitFocus()
         parityEmit("focus", "language " + m.filtersPickerIndex.ToStr())
         return
     end if
+    if m.filtersRow < 0
+        parityEmit("focus", "Close filters")
+        return
+    end if
     labels = [["List", "Screen", "Cover"], ["Title", "Date Added"], ["A-Z", "Z-A"], ["Audio language"], ["Subtitle language"], ["Clear languages"]]
     parityEmit("focus", labels[m.filtersRow][m.filtersCol])
 end sub
@@ -331,6 +340,14 @@ function filtersOnKey(key as String) as Boolean
     end if
     if key = "back"
         filtersClose()
+    else if key = "OK" and m.filtersRow < 0
+        filtersClose()
+        return true
+    else if key = "up" and m.filtersRow = 0
+        m.filtersRow = -1
+    else if key = "down" and m.filtersRow < 0
+        m.filtersRow = 0
+        m.filtersCol = 0
     else if key = "up" and m.filtersRow > 0
         m.filtersRow = m.filtersRow - 1
         if m.filtersCol >= filtersRowSize(m.filtersRow) then m.filtersCol = filtersRowSize(m.filtersRow) - 1
@@ -491,6 +508,12 @@ sub calFiltersRender()
     pgRound(g, 1826.5, 54.5, 49, 49, 25, "surfaceSoft")
     pgRound(g, 1826.5, 54.5, 49, 49, 25, "line", -1, true)
     pgGlyph(g, "×", 1841.9, 60.84, 26.88, 720, "ink", false)
+    pgMark(g, "button", "Close filters", 1826.5, 54.5, 49, 49, 25)
+    if m.filtersRow < 0
+        ' Web's Close button is a focus stop above the first row.
+        pgRound(g, 1823.5, 51.5, 55, 55, 28, "focusRing", -1, true)
+        pgRound(g, 1824.5, 52.5, 53, 53, 27, "focusRing", -1, true)
+    end if
     m.filtersFocus = []
     pgLabel(g, 1606, 162, 250, 16, "VIEW", 10, 700, "inkMuted")
     views = ["month", "week", "agenda"]
@@ -528,6 +551,10 @@ function calFiltersRowCount() as Integer
 end function
 
 sub calFiltersEmitFocus()
+    if m.filtersRow < 0
+        parityEmit("focus", "Close filters")
+        return
+    end if
     labels = [["Month", "Week", "Agenda"], ["TV", "Movies"], ["Music", "Books"], ["Aired", "Upcoming"], ["Downloaded", "Missing"], ["Monitored only"], ["Clear filters"]]
     parityEmit("focus", labels[m.filtersRow][m.filtersCol])
 end sub
@@ -536,8 +563,13 @@ function calFiltersOnKey(key as String) as Boolean
     if key = "back"
         calFiltersClose()
         return true
-    else if key = "up" and m.filtersRow > 0
+    else if key = "OK" and m.filtersRow < 0
+        calFiltersClose()
+        return true
+    else if key = "up" and m.filtersRow >= 0
         m.filtersRow = m.filtersRow - 1
+    else if key = "down" and m.filtersRow < 0
+        m.filtersRow = 0
     else if key = "down" and m.filtersRow < calFiltersRowCount() - 1
         m.filtersRow = m.filtersRow + 1
     else if key = "left" and m.filtersCol > 0
@@ -548,7 +580,7 @@ function calFiltersOnKey(key as String) as Boolean
         calFiltersChoose()
         return true
     end if
-    if m.filtersCol >= calFiltersRowSize(m.filtersRow) then m.filtersCol = calFiltersRowSize(m.filtersRow) - 1
+    if m.filtersRow >= 0 and m.filtersCol >= calFiltersRowSize(m.filtersRow) then m.filtersCol = calFiltersRowSize(m.filtersRow) - 1
     calFiltersRender()
     calFiltersEmitFocus()
     return true

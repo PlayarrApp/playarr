@@ -184,6 +184,17 @@ function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }
         fills.push(it);
       } // a bitmap with no declared tint (artwork) paints no background of its own: nothing is guessed from its pixels
     } else if ((it.kind === "rect" || (it.kind === "a11y" && it.node.tag === "Rectangle")) && alphaOf(it.node.attrs.color) > 0) {
+      // A childless Rectangle that is not a control and paints the colour already behind it at its corners and centre is not a fill
+      // (the web rule: a background identical to the one behind it is not a fill). Read from native colours and paint order only.
+      if (it.node.tag === "Rectangle" && it.node.attrs.color && !it.node.children.length && !(it.kind === "a11y" && CONTROL_ROLES.has(it.role))) {
+        const al = alphaOf(it.node.attrs.color) * it.op, c = rgb(it.node.attrs.color);
+        const r = it.rect, pts = [[r.x + r.w / 2, r.y + r.h / 2], [r.x + 0.5, r.y + 0.5], [r.x + r.w - 0.5, r.y + 0.5], [r.x + 0.5, r.y + r.h - 0.5], [r.x + r.w - 0.5, r.y + r.h - 0.5]];
+        const same = pts.every(([px, py]) => {
+          const under = rgb(background({ x: px, y: py, w: 0, h: 0 }, it.order, false));
+          return toHex(c.map((v, k) => v * al + under[k] * (1 - al))) === toHex(under);
+        });
+        if (same && fills.length) { it.dropped = true; continue; }
+      }
       it.opaque = alphaOf(it.node.attrs.color) * it.op >= 0.99;
       fills.push(it);
     }
@@ -215,6 +226,7 @@ function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }
     });
   };
   for (const g of groups) {
+    if (g.single?.dropped) continue;
     curOrder = g.order;
     curSource = g.labels ? { node: g.labels[0].node, chain: g.labels[0].chain } : { node: g.single.node, chain: g.single.chain };
     if (g.labels) {

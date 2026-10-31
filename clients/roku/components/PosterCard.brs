@@ -461,9 +461,19 @@ sub applyCaptionFocus()
     if m.global.cardFocusOff = true then effective = 0
     if effective > 1 then effective = 1
     if effective < 0 then effective = 0
+    ' The first and last 10 % of the focus transition (0.5 px of lift) are invisible; snapping it keeps the caption box from depending on when the capture lands.
+    if effective < 0.1 then effective = 0
+    if effective > 0.9 then effective = 1
     m.title.scale = [1, 1]
     m.kind.scale = [1, 1]
+    ' A caption that was lifted returns to its rest position when focus ends (the lifted translation must not outlive the focus).
+    if m.captionLifted = true and effective = 0
+        m.title.translation = [m.cardTitleX, m.titleY]
+        m.kind.translation = [m.cardTitleX, m.titleY + 19.5]
+        m.captionLifted = false
+    end if
     if m.cardScaleValue > 1 and m.homeCardFocusStyle <> true and m.cardListMode <> true and m.cardArtW <> invalid and m.cardArtW > 0 and effective > 0
+        m.captionLifted = true
         k = 1 + 0.015 * effective
         cx = m.cardArtW / 2
         cy = (m.posterBg.height + 29.38) / 2

@@ -2,7 +2,7 @@
 
 Reference: the committed shared captures docs/parity/web/mobile/{light,dark} (390x844 CSS px at 3x). Candidate: the iOS app on an
 iPhone simulator (1170x2532), driven locally by scripts/parity/apple/capture-ios.sh on a Mac against a
-fresh fixture database, status bar and home indicator masked. Diff: scripts/parity/diff.mjs (pixelmatch 0.1, target 1% or less).
+fresh fixture database, status bar and home indicator masked. Diff: scripts/parity/diff.mjs (exact RGBA byte comparison, target 1% or less).
 The captures here are the native frames at a third of the size (390x844, 64 colours); the workflow artifact has the full ones.
 
 | Screen | Dark | Light |

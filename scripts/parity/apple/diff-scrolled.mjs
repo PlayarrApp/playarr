@@ -8,7 +8,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import pixelmatch from "pixelmatch";
+import { diffInto } from "../exact-pixels.mjs";
 import { PNG } from "pngjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -29,7 +29,7 @@ for (const theme of themes) {
   const w = Math.max(a.width, b.width), h = Math.max(a.height, b.height);
   const pad = (p) => { const q = new PNG({ width: w, height: h }); PNG.bitblt(p, q, 0, 0, p.width, p.height, 0, 0); return q; };
   const A = pad(a), B = pad(b), D = new PNG({ width: w, height: h });
-  const n = pixelmatch(A.data, B.data, D.data, w, h, { threshold: 0.1 });
+  const n = diffInto(A.data, B.data, D.data, w, h);
   const pct = (100 * n) / (w * h);
   writeFileSync(join(out, `${theme}-${id}-diff.png`), PNG.sync.write(D));
   const edge = (side, file) => spawnSync("node", [join(here, "../check-edge-fade.mjs"), file, "--edge", "left", "--band", BAND, "--bg", BG[theme], "--max-ratio", "0.35"], { encoding: "utf8" });

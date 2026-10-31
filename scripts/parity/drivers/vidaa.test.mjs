@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cliFailure, createDriver, launchPath, sameState, suiteRoute, usableFrame } from "./vidaa.mjs";
+import { cliFailure, createDriver, launchPath, sameState, suiteRoute, tvHealthProblem, usableFrame } from "./vidaa.mjs";
 
 const trusted = "https://test.example";
 const secrets = { token: "tok", device: { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_SERVER_URL: trusted } };
@@ -77,4 +77,23 @@ test("a stale-image frame is skipped: settles only on two distinct matching fram
 test("a failed CLI call reports the CLI's own message on one line", () => {
   assert.equal(cliFailure(["key", "KEY_DOWN"], { stderr: "abort: identity heartbeat is stale\n", status: 1 }), "vidaa key failed: abort: identity heartbeat is stale");
   assert.equal(cliFailure(["state"], { stderr: "", status: 1 }), "vidaa state failed (exit 1)");
+});
+
+test("tvHealthProblem flags memory guard, heap and slow captures only", () => {
+  assert.equal(tvHealthProblem({ env: { mem: { usedMb: 80 } }, captureMs: 3000 }), null);
+  assert.match(tvHealthProblem({ captureError: "memory guard: JS heap 310 MB" }), /memory guard/);
+  assert.match(tvHealthProblem({ env: { mem: { usedMb: 400 } } }), /heap is 400 MB/);
+  assert.match(tvHealthProblem({ captureMs: 90000 }), /took 90 s/);
+  assert.equal(tvHealthProblem({}), null);
+  assert.equal(tvHealthProblem(null), null);
+});
+
+test("an unhealthy TV page halts the run: later calls send the TV nothing", async () => {
+  const { driver, cli } = harness([frame({ env: { mem: { usedMb: 600, limitMb: 4096 } } })]);
+  const d = await driver;
+  await assert.rejects(d.location(), /unhealthy/);
+  const before = cli.length;
+  await assert.rejects(d.key("down"), /unhealthy/);
+  await assert.rejects(d.home(), /unhealthy/);
+  assert.equal(cli.length, before);
 });

@@ -189,7 +189,7 @@ struct NavTile {
         .textAlign(TextAlign.Center)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .margin({ top: -1.4 }) // web's label run sits 1.4 higher than ArkUI's half-leading line puts it
+        .margin({ top: -0.2 }) // web's label run centre sits 1.2 lower than the -1.4 first fitted (layout export, all TV screens)
     }
     .id(`${this.item.id}-nav-tile`)
     .accessibilityText(this.item.label)
@@ -304,7 +304,8 @@ export struct NavRail {
   private profileGroup(top: number): void {
     Stack({ alignContent: Alignment.TopStart }) {
       Column({ space: NAV_TILE_ICON_LABEL_GAP }) {
-        ProfileAvatar({ presetId: this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(this.profileId), diameter: tv(PROFILE_AVATAR_SIZE), illustrationRatio: 1 })
+        ProfileAvatar({ presetId: this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(this.profileId), diameter: tv(PROFILE_AVATAR_SIZE), illustrationRatio: 1, ringWidth: 0 }) // web: the rail avatar is 20 px edge to edge, no reserved ring
+          .translate({ y: 1.3 }) // web's circle top is 975.34
           .focusable(false)
         Text(this.firstName()).fontFamily(nunitoAt(TvGeometry.navTileLabelWeight, tv(TvGeometry.navTileLabelSize)))
           .fontSize(tv(TvGeometry.navTileLabelSize)).lineHeight(webLineHeight(tv(TvGeometry.navTileLabelSize))).halfLeading(true)

@@ -487,7 +487,7 @@ export struct PosterCard {
 
       if (this.episodeCaption.length > 0) {
         // two text elements as web has them (the caption, then the title on the same baseline)
-        Row({ space: tv(SERIES_EPISODE_CAPTION_TITLE_GAP) }) {
+        Row({ space: tv(SERIES_EPISODE_CAPTION_TITLE_GAP) - (isTvMetrics() && this.episodeCaption.length > 6 ? 1.15 : 0) }) { // a long TV caption box snaps 1.15 wider than its run (web: title starts 8.8 after the run)
           Text(this.episodeCaption).fontFamily(nunitoAt(700, this.subtitleFontSize))
             .fontSize(this.subtitleFontSize).letterSpacing((isTvMetrics() ? -0.212 : 0)).lineHeight(webLineHeight(this.subtitleFontSize)).halfLeading(true)
             .fontWeight(FontWeight.Bold)
@@ -531,7 +531,7 @@ export struct PosterCard {
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .letterSpacing(isTvMetrics() ? -0.2 : -0.11) // web's subtitle run is narrower than ArkUI lays it out
           .padding(this.softCaption ? { left: 2.3, top: 0.5 } : { left: tv(TV_CAPTION_INSET), top: 0.5 })
-          .margin({ bottom: this.variant === 'home' ? (isTvMetrics() ? -14.2 : -10.5) : 0 }) // web Home: the card link ends above the subtitle line
+          .margin({ bottom: this.variant === 'home' ? (isTvMetrics() ? -14.2 : -11.49) : 0 }) // web Home: the card link ends above the subtitle line (phone: art + 24.68 = 113.56 vp)
       }
     }
     .width(this.cardWidth)
