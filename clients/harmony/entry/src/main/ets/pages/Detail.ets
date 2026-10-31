@@ -2771,13 +2771,43 @@ struct Detail {
       // web (#175): on phones the Back row stays pinned and the content fades out under it (solid to the row, then the edge fade)
       // the solid part is a real surface fill (the Back row and its title sit on it, as on web's pinned header), then the edge fade
       Column() {
-        Column()
-          .width('100%')
-          .height(atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP)
-          .backgroundColor(toResourceColor(activeColors().surface))
+        // the Back row is a child of the solid fill, so its text sits on the page surface as on web (the exporter reads the ancestor's fill)
+        Stack({ alignContent: Alignment.TopStart }) {
+          Row({ space: 10 }) {
+            Text('←').fontFamily(arrowFont(720))
+              .fontSize(12.8).lineHeight(webLineHeight(12.8)).halfLeading(true)
+              .fontWeight(FontWeight.Normal)
+              .fontColor(toResourceColor(activeColors().inkSoft))
+              .textAlign(TextAlign.Center)
+              .width(PHONE_BACK_SIZE)
+              .height(PHONE_BACK_SIZE)
+              .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
+              .borderRadius(PHONE_BACK_SIZE / 2)
+              .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+              .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+              .accessibilityText('Back to ' + this.phoneKindTitle()).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+              .onClick(() => {
+                popRoute(getNavStack());
+              })
+            Text(this.phoneKindTitle()).fontFamily(nunitoAt(580, 21.6))
+          
+              .fontSize(21.6).lineHeight(webLineHeight(21.6)).halfLeading(true)
+              .letterSpacing((-0.972) + (!isTvMetrics() ? -0.096 : 0))
+              .fontWeight(FontWeight.Medium)
+              .fontColor(toResourceColor(activeColors().ink))
+              .translate({ y: (-1.2) + (!isTvMetrics() ? 1.2 : 0) }) // web's title box sits 1.2 higher
+          }
+          .padding({ left: atLeast(16, this.safeLeft), top: atLeast(PHONE_HEADER_TOP, this.safeTop) })
+          .alignItems(VerticalAlign.Center)
+        }
+        .width('100%')
+        .height(atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP)
+        .backgroundColor(toResourceColor(activeColors().surface))
+        .hitTestBehavior(HitTestMode.Transparent)
         Column()
           .width('100%')
           .height(PHONE_HEADER_FADE)
+          .hitTestBehavior(HitTestMode.None)
           .linearGradient({
             direction: GradientDirection.Bottom,
             colors: [
@@ -2786,34 +2816,9 @@ struct Detail {
             ],
           })
       }
-      .width('100%')
-      .hitTestBehavior(HitTestMode.None)
-      Row({ space: 10 }) {
-        Text('←').fontFamily(arrowFont(720))
-          .fontSize(12.8).lineHeight(webLineHeight(12.8)).halfLeading(true)
-          .fontWeight(FontWeight.Normal)
-          .fontColor(toResourceColor(activeColors().inkSoft))
-          .textAlign(TextAlign.Center)
-          .width(PHONE_BACK_SIZE)
-          .height(PHONE_BACK_SIZE)
-          .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
-          .borderRadius(PHONE_BACK_SIZE / 2)
-          .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
-          .accessibilityText('Back to ' + this.phoneKindTitle()).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
-          .onClick(() => {
-            popRoute(getNavStack());
-          })
-        Text(this.phoneKindTitle()).fontFamily(nunitoAt(580, 21.6))
-          
-          .fontSize(21.6).lineHeight(webLineHeight(21.6)).halfLeading(true)
-          .letterSpacing((-0.972) + (!isTvMetrics() ? -0.096 : 0))
-          .fontWeight(FontWeight.Medium)
-          .fontColor(toResourceColor(activeColors().ink))
-          .translate({ y: (-1.2) + (!isTvMetrics() ? 1.2 : 0) }) // web's title box sits 1.2 higher
       }
-      .padding({ left: atLeast(16, this.safeLeft), top: atLeast(PHONE_HEADER_TOP, this.safeTop) })
-      .alignItems(VerticalAlign.Center)
+      .width('100%')
+      .hitTestBehavior(HitTestMode.Transparent)
 
       // Keep the floating nav above page overlays and below title actions.
       TouchNavBar({ selectedId: this.detail !== null ? this.detail.work.kind : '' })
