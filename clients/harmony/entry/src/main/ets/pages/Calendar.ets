@@ -211,10 +211,12 @@ const PANEL_BUTTON_FONT: number = 14.72;
 const PANEL_BUTTON_PADDING: number = 21;
 const PANEL_BUTTON_GAP: number = 9.6;
 
-// Web `.calendar-days-week` and `.calendar-month`: from (154, 174), 1663 wide, 787 high.
-const GRID_LEFT: number = 154;
+// Web `.calendar-days-week` and `.calendar-month`: from (153.6, 174), 787 high. `.page-shell` pads the left by clamp(102px, 8vw, 160px) = 153.6
+// and `.calendar-page.page-shell` pads the right by --directory-controls-edge (0.65vw = 12.48) + max(--directory-controls-width (clamp 48..62px), 56px) = 62
+// + --directory-controls-gap (1.5vw = 28.8) = 103.28 (page-layout.css), so the grid is 1920 - 153.6 - 103.28 = 1663.12 wide.
+const GRID_LEFT: number = 153.6;
 const GRID_TOP: number = 174;
-const GRID_WIDTH: number = 1663;
+const GRID_WIDTH: number = 1663.12;
 const GRID_HEIGHT: number = 787;
 const WEEK_COLUMN_WIDTH: number = 440;
 const WEEK_COLUMN_GAP: number = 20;
