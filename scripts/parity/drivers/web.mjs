@@ -406,7 +406,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     // The shell syncs the account's profile avatar after it mounts (GET /api/v1/users/me/profile-avatar): until that answer is back the nav rail and profile
     // chip draw the generated default preset, not the server's choice. settle() waits for the answer so a shot never races it.
     avatarSynced = false;
-    page.on?.("framenavigated", (frame) => { if (frame === page.mainFrame()) avatarSynced = false; });
+    page.on?.("request", (request) => { if (request.isNavigationRequest() && request.frame() === page.mainFrame()) avatarSynced = false; }); // a real document load only: a pushState route change keeps the answered sync
     page.on?.("response", (response) => { if (/\/api\/v1\/users\/me\/profile-avatar$/.test(new URL(response.url()).pathname) && response.request().method() === "GET" && response.status() < 500) avatarSynced = true; });
     apiErrors.length = 0;
     manualLoginStarted = false;
