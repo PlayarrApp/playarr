@@ -27,7 +27,9 @@ export function needsLineBoxFix(userAgent) {
 
 /**
  * @param {Window & typeof globalThis} win
- * @param {{ force?: boolean }} [options] `force` skips the user agent test for engines whose agent carries no Chrome token (Tizen: "85.0.4183.93/6.5 TV Safari")
+ * @param {{ force?: boolean, roundPitch?: boolean }} [options] `roundPitch` also lays the lines of a multi-line text leaf out on the nearest whole pixel
+ * pitch instead of the truncated one (the engine keeps whole pixels per line) and takes the surplus back from the block's end margin, so the block keeps
+ * the web height. `force` skips the user agent test for engines whose agent carries no Chrome token (Tizen: "85.0.4183.93/6.5 TV Safari")
  */
 export function installLineBoxFix(win, options = {}) {
   if (!options.force && !needsLineBoxFix(win.navigator.userAgent)) return;
@@ -37,7 +39,12 @@ export function installLineBoxFix(win, options = {}) {
   const run = () => {
     scheduled = false;
     observer.disconnect();
-    for (const el of touched) /** @type {HTMLElement} */ (el).style.minBlockSize = "";
+    for (const el of touched) {
+      const style = /** @type {HTMLElement} */ (el).style;
+      style.minBlockSize = "";
+      style.lineHeight = "";
+      style.marginBlockEnd = "";
+    }
     touched.clear();
     const jobs = [];
     for (const el of doc.body.querySelectorAll("*")) {
@@ -61,11 +68,17 @@ export function installLineBoxFix(win, options = {}) {
         ? parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)
         : 0;
       // The block's own minimum (a clamp() height on a button) must keep winning over the line-box minimum.
-      return { el, target: Math.max(lines * lh + box, parseFloat(cs.minBlockSize) || 0) };
+      // The nearest whole pixel pitch (only a leaf: nothing inside inherits the length), the surplus handed back through the end margin.
+      const pitch = options.roundPitch && lines > 1 && el.childElementCount === 0 && Math.round(lh) > lh ? Math.round(lh) : 0;
+      return { el, pitch, surplus: pitch ? (pitch - lh) * lines : 0, margin: parseFloat(cs.marginBlockEnd) || 0, target: Math.max(lines * lh + box, parseFloat(cs.minBlockSize) || 0) };
     });
     for (const s of sized) {
       if (!s) continue;
       /** @type {HTMLElement} */ (s.el).style.minBlockSize = `${s.target}px`;
+      if (s.pitch) {
+        /** @type {HTMLElement} */ (s.el).style.lineHeight = `${s.pitch}px`;
+        /** @type {HTMLElement} */ (s.el).style.marginBlockEnd = `${s.margin - s.surplus}px`;
+      }
       touched.add(s.el);
     }
     observe();
