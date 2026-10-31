@@ -12,7 +12,7 @@ const VOLATILE = JSON.parse(readFileSync(join(here, "layout-volatile.json"), "ut
 export const volatileFor = (screen) => [...(VOLATILE["*"] ?? []), ...(VOLATILE[screen] ?? [])];
 
 export function layoutPageFn(volatile, opts) {
-  var planes = (opts && opts.opaquePlanes) || [];
+  var cells = (opts && opts.coveredCells) || null;
   var round = function (n) { return Math.round(n * 100) / 100; };
   var hex2 = function (n) { var s = Math.round(n).toString(16); return s.length < 2 ? "0" + s : s; };
   var parse = function (c) {
@@ -95,7 +95,7 @@ export function layoutPageFn(volatile, opts) {
     return out;
   };
   /* One run per rendered line: the text on the line and the bounds of its non-blank glyphs. */
-  var lineRuns = function (nodes, cs) {
+  var lineRuns = function (nodes, cs, el) {
     var lines = [], cur = null, range = document.createRange();
     for (var a = 0; a < nodes.length; a++) {
       var data = nodes[a].data;
@@ -114,8 +114,10 @@ export function layoutPageFn(volatile, opts) {
         cur.l = cur.l ? { left: Math.min(cur.l.left, cr.left), top: Math.min(cur.l.top, cr.top), right: Math.max(cur.l.right, cr.right), bottom: Math.max(cur.l.bottom, cr.bottom) } : { left: cr.left, top: cr.top, right: cr.right, bottom: cr.bottom };
       }
     }
+    /* The last glyph of a line carries letter-spacing after it, which draws nothing: take it off the run's right edge once per line (non-zero spacing only). */
+    var spacing = (parseFloat(cs.letterSpacing) || 0) * zoomOf(el);
     return lines.filter(function (x) { return x.l && norm(x.text); }).map(function (x) {
-      return { text: shown(norm(x.text), cs), left: x.l.left, top: x.l.top, w: x.l.right - x.l.left, h: x.l.bottom - x.l.top };
+      return { text: shown(norm(x.text), cs), left: x.l.left, top: x.l.top, w: x.l.right - x.l.left - spacing, h: x.l.bottom - x.l.top };
     });
   };
   /* A single line cut by text-overflow: ellipsis draws its "…" in the engine, not in the DOM, so the cut cannot be read. The app must render truncated strings
@@ -145,7 +147,8 @@ export function layoutPageFn(volatile, opts) {
     var tag = el.tagName.toLowerCase();
     if (tag === "button") return "button";
     if (tag === "a") return "link";
-    if (tag === "input" || tag === "textarea") return el.type === "checkbox" ? "checkbox" : el.type === "radio" ? "radio" : "textbox";
+    /* implicit ARIA role of an input by type (HTML-AAM): search, range and number have their own; text, email, tel, url and the rest are textboxes */
+    if (tag === "input" || tag === "textarea") return el.type === "checkbox" ? "checkbox" : el.type === "radio" ? "radio" : el.type === "search" ? "searchbox" : el.type === "range" ? "slider" : el.type === "number" ? "spinbutton" : "textbox";
     if (tag === "select") return "select";
     if (tag === "img" || tag === "svg" || tag === "canvas") return "image";
     if (tag === "video") return "video";
@@ -186,8 +189,28 @@ export function layoutPageFn(volatile, opts) {
     }
     return null;
   };
+  /* The colour showing right under el at its centre: the computed background colours of everything stacked below it there (ancestors and earlier painted layers),
+     bottom first. null when something below paints an image or gradient (the colour is then unknown). */
+  var underColour = function (el) {
+    var b = el.getBoundingClientRect();
+    var x = Math.min(Math.max((b.left + b.right) / 2, 0), innerWidth - 1), y = Math.min(Math.max((b.top + b.bottom) / 2, 0), innerHeight - 1);
+    var stack = document.elementsFromPoint(x, y), at = stack.indexOf(el);
+    if (at < 0) return null;
+    var acc = [255, 255, 255, 1], below = stack.slice(at + 1).reverse();
+    for (var i = 0; i < below.length; i++) {
+      var bs = getComputedStyle(below[i]);
+      if (bs.backgroundImage !== "none") return null;
+      acc = over(parse(bs.backgroundColor), acc);
+    }
+    return acc;
+  };
+  /* A colour-only layer whose composite equals what is already under it adds no paint: a second full-screen layer of the same colour is not a fill. */
   var visibleFill = function (cs, el) {
     var shade = parse(cs.backgroundColor)[3] > 0 && (!el.parentElement || toHex(backdrop(el)) !== toHex(backdrop(el.parentElement)));
+    if (shade && cs.backgroundImage === "none" && !(parseFloat(cs.borderTopWidth) > 0 && parse(cs.borderTopColor)[3] > 0) && cs.boxShadow === "none") {
+      var under = underColour(el);
+      if (under && toHex(under) === toHex(backdrop(el))) shade = false;
+    }
     return shade || cs.backgroundImage !== "none" || parseFloat(cs.borderTopWidth) > 0 && parse(cs.borderTopColor)[3] > 0 || cs.boxShadow !== "none";
   };
   var hiddenHost = function (el) {
@@ -215,18 +238,13 @@ export function layoutPageFn(volatile, opts) {
     }
     return false;
   };
-  /* A native video plane (opts.opaquePlanes: selectors such as the AVPlay object, whose rect the app syncs to the player shell) is drawn above the browser by the
-     emulator, so a point inside its rect is covered. Covered when, at every sample point, some layer above the element (any pointer-transparent one is skipped by the hit test) paints over it.
-     A pointer-events:none subject is made hit-testable for the test so its place in the stack is known. */
+  /* A native video plane that the platform composites above the browser (the Samsung emulator's AVPlay layer) cannot be seen by a hit test. The driver measures it on
+     the rendered screen instead: it grabs the screen with the plane shown and hidden and passes the grid cells whose pixels changed (opts.coveredCells: cols, rows, and
+     one 0/1 per cell, row by row). A point inside a changed cell is covered by the plane; a point in an unchanged cell shows the page. */
   var planeAt = function (x, y) {
-    for (var p = 0; p < planes.length; p++) {
-      var nodes = document.querySelectorAll(planes[p]);
-      for (var k = 0; k < nodes.length; k++) {
-        var ps = getComputedStyle(nodes[k]), pb = nodes[k].getBoundingClientRect();
-        if (ps.display !== "none" && ps.visibility !== "hidden" && x >= pb.left && x < pb.right && y >= pb.top && y < pb.bottom) return true;
-      }
-    }
-    return false;
+    if (!cells) return false;
+    var cx = Math.min(cells.cols - 1, Math.max(0, Math.floor(x / innerWidth * cells.cols))), cy = Math.min(cells.rows - 1, Math.max(0, Math.floor(y / innerHeight * cells.rows)));
+    return cells.covered[cy * cells.cols + cx] === 1;
   };
   var occluded = function (el, r) {
     if (!document.elementsFromPoint) return false;
@@ -277,7 +295,7 @@ export function layoutPageFn(volatile, opts) {
     var control = /^(a|button|input|select|textarea)$/.test(tag) || /^(button|link|tab|switch|checkbox|menuitem|option|slider)$/.test(el.getAttribute("role") || "") || el.tabIndex >= 0 && el.hasAttribute("tabindex");
     var r = el.getBoundingClientRect();
     /* the glyph runs of the element's own text: one per rendered line, the union is the row box */
-    var runs = own ? lineRuns(texts, cs) : [];
+    var runs = own ? lineRuns(texts, cs, el) : [];
     if (runs.length) {
       var ux = Math.min.apply(null, runs.map(function (q) { return q.left; })), uy = Math.min.apply(null, runs.map(function (q) { return q.top; }));
       var ur = Math.max.apply(null, runs.map(function (q) { return q.left + q.w; })), ub = Math.max.apply(null, runs.map(function (q) { return q.top + q.h; }));
@@ -289,13 +307,15 @@ export function layoutPageFn(volatile, opts) {
     if (op <= 0) continue;
     var media = tag === "img" || tag === "svg" || tag === "canvas" || tag === "video";
     var painted = visibleFill(cs, el);
-    if (!own && !control && !media && !painted) continue;
+    /* an explicit role=img or role=dialog carries its accessible name (aria-labelledby, aria-label, alt): never an invented one, empty when the page has none */
+    var named = /^(img|image|dialog|alertdialog)$/.test(el.getAttribute("role") || "") ? norm(nameOf(el)) : "";
+    if (!own && !control && !media && !painted && !named) continue;
     if (occluded(el, r)) { dropped++; continue; }
     if (own && cs.textOverflow === "ellipsis" && cs.overflowX !== "visible" && el.scrollWidth > el.clientWidth + 1) refuseCut(el);
     if (own && cs.webkitLineClamp && cs.webkitLineClamp !== "none" && cs.overflowY !== "visible" && el.scrollHeight > el.clientHeight + 1) refuseCut(el);
     if ((tag === "textarea" || tag === "input" && !/^(checkbox|radio|button|submit|reset|hidden|range|file|image|color)$/.test(el.type)) && el.value && !vol) refuseValue(el);
     var label = nameOf(el);
-    var text = own || (control || media ? norm(label) : "") || (control ? norm(contentName(el) || (isToggle(el) ? "" : el.value)) : "");
+    var text = own || (control || media || named ? norm(label) : "") || (control ? norm(contentName(el) || (isToggle(el) ? "" : el.value)) : "");
     var zoom = zoomOf(el);
     var rawRadius = cs.borderTopLeftRadius;
     var box = el.getBoundingClientRect();
@@ -307,7 +327,7 @@ export function layoutPageFn(volatile, opts) {
     var split = control && !!own;
     if (split && box.width >= 1 && box.height >= 1 && !clipped(el, box) && !occluded(el, box)) {
       var crow = {
-        text: norm(label) || own,
+        text: norm(label) || norm(contentName(el)) || own,
         role: roleOf(el, false),
         rect: { x: round(box.left), y: round(box.top), w: round(box.width), h: round(box.height) },
         color: null,

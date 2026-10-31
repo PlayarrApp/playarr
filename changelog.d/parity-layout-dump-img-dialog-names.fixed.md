@@ -1,0 +1,2 @@
+- Parity layout dump names elements with an explicit `role=img` or `role=dialog` by their accessible name (aria-labelledby, aria-label, alt), empty when the page has none; the shared web layout references need recapturing after this lands.
+- Parity layout dump drops the paint of a colour-only layer equal to the composite already under it (second full-screen layer), so refs and devices agree; the shared web layout references need recapturing after this lands.
