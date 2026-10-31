@@ -94,25 +94,31 @@ export struct PageShell {
   }
 
   /** Web `detailFitsInline` (lib/pageHeaderLayout.ts): the detail goes beside the title only while it clears the clock by 16. */
-  private measureHeaderText(text: string, size: number, weight: number, spacing: number): number {
+  private measureHeaderText(text: string, size: number, weight: number, spacing: number, family: string = ''): number {
     const ui = this.getUIContext();
     return ui.px2vp(ui.getMeasureUtils().measureText({
       textContent: text, fontSize: tv(size), fontWeight: weight, letterSpacing: tv(spacing),
+      fontFamily: family.length > 0 ? family : undefined,
     }));
+  }
+
+  /** The title as headerTitle() draws it (same family, weight and letter spacing), so the wrapped column is as wide as the title it holds. */
+  private titleWidth(): number {
+    return this.measureHeaderText(this.title, TITLE_SIZE, 500, TITLE_LETTER_SPACING + (isTvMetrics() ? -0.23 / tv(1) : 0), nunitoAt(580, tv(TITLE_SIZE)));
   }
 
   private detailTextWidth(): number {
     return Math.ceil(this.measureHeaderText(this.kicker.toUpperCase(), DETAIL_SIZE, DETAIL_WEIGHT, DETAIL_LETTER_SPACING)) + 2;
   }
 
+  /** Web: the wrapped block is as wide as the wider of its title and detail, and its rule (the detail's top border) spans exactly that. */
   private wrappedColumnWidth(): number {
-    const title = this.measureHeaderText(this.title, TITLE_SIZE, 500, TITLE_LETTER_SPACING);
     const detail = this.measureHeaderText(this.kicker.toUpperCase(), DETAIL_SIZE, DETAIL_WEIGHT, DETAIL_LETTER_SPACING);
-    return Math.ceil(Math.max(title, detail)) + 2;
+    return Math.max(this.titleWidth(), detail) + 0.05; // a hair of room: a title wider than its column by rounding would wrap
   }
 
   private detailFitsInline(): boolean {
-    const title = this.measureHeaderText(this.title, TITLE_SIZE, 500, TITLE_LETTER_SPACING);
+    const title = this.titleWidth();
     const detail = this.measureHeaderText(this.kicker.toUpperCase(), DETAIL_SIZE, DETAIL_WEIGHT, DETAIL_LETTER_SPACING);
     const right = tv(TvGeometry.titlePanelLeft + HEADER_SIZE + HEADER_GAP) + title + tv(HEADER_GAP) + detail + tv(HEADER_GAP + 1);
     return right + tv(16) <= tv(CLOCK_STOP);

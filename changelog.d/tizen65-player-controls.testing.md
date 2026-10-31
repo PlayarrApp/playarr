@@ -1,0 +1,1 @@
+- Tizen 6.5 parity lane: the player-controls screen now runs in the Chromium 85 stand-in through an AVPlay shim and is scored with the video hidden on both sides (web ref group `tv-tizen65`), and the capture waits for the Downloads nav item so the rail is complete.

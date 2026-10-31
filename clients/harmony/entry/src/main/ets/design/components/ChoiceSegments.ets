@@ -124,7 +124,7 @@ export struct ChoiceSegments {
           Text(this.description).fontFamily(nunitoAt(400, tv(DESCRIPTION_SIZE)))
             .fontSize(tv(DESCRIPTION_SIZE)).letterSpacing((isTvMetrics() ? -0.093 : 0)).lineHeight(webLineHeight(tv(DESCRIPTION_SIZE))).halfLeading(true)
             .fontColor(toResourceColor(activeColors().inkMuted))
-            .margin({ top: tv(isTvMetrics() ? -4.8 : -5), bottom: tv(isTvMetrics() ? 1.53 : 1) })
+            .margin({ top: tv(isTvMetrics() ? -4.8 : -5), bottom: tv(isTvMetrics() ? 2.53 : 1) }) // TV: web's choices sit 1 lower under the copy
         }
       } else {
         Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))

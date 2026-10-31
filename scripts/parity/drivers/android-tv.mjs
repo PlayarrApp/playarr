@@ -436,6 +436,17 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       await guardDeviceAccount();
       await shell("input", "keyevent", ...(long ? ["--longpress"] : []), `KEYCODE_${KEYS[k]}`);
       await sleep(long ? 1500 : k === "select" || k === "back" ? 2500 : 600); // a page change takes a moment to settle focus
+      // A loaded host can still be mid-transition after the fixed wait, and the next key then lands on the old focus (the actions
+      // capture once opened the first card instead of the second). After select/back, wait until the focused node stops moving.
+      if (!long && (k === "select" || k === "back") && !clock.sleep) {
+        let last = null, same = 0;
+        for (let i = 0; i < 10 && same < 2; i++) {
+          const f = (((await tree()).match(/<node [^>]*>/g) ?? []).find((n) => attr(n, "focused") === "true" && bounds(n)[2] - bounds(n)[0] < 1900)) ?? "";
+          const sig = f ? `${attr(f, "bounds")}|${attr(f, "content-desc")}|${attr(f, "text")}` : "";
+          same = sig === last ? same + 1 : 0; last = sig;
+          if (same < 2) await sleep(400);
+        }
+      }
     },
     // The app's state in web terms, from the debug log lines (route, calendar view, Filters panel).
     async location() {

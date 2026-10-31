@@ -1,0 +1,1 @@
+- Android TV layout export reads an ellipsized line's end from the platform text layout instead of rebuilding it, and exports a status dot or progress track as an image only when the app gives it the image role.

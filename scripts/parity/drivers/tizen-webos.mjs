@@ -1,5 +1,5 @@
 // Suite driver (docs/parity/SUITE.md) for the Samsung Tizen emulator and the LG webOS simulator.
-//   DEVICE=tizen|webos  [TIZEN_DISPLAY=:25] [WEBOS_DISPLAY=:26] [WEBOS_CDP=9226] [PARITY_NETLOG=<dir>]
+//   DEVICE=tizen|webos|tizen65  [TIZEN_DISPLAY=:25] [WEBOS_DISPLAY=:26] [WEBOS_CDP=9226] [PARITY_NETLOG=<dir>]
 //   PARITY_PIN_CLOCK=2026-10-07T12:00:00Z  [webos only] pins Date, zone and locale from the inspector without stable mode
 // webOS: Chrome DevTools Protocol (keys and eval). Tizen: X key events to the emulator window plus the debug build's
 // netlog.js eval channel (a debug build with scripts/parity/tizen-webos/netlog.js; the host side is logserver.py <dir>/log.txt). Both then drive the same page functions.
@@ -103,10 +103,14 @@ function tapAvplayListener() {
 
 export async function createDriver() {
   // TIZEN_REAL=1 runs the Samsung TV through the webOS CDP path, so DEVICE=webos is forced for it.
-  const device = TIZEN_REAL ? "webos" : process.env.DEVICE;
-  if (!["tizen", "webos"].includes(device)) throw new Error("DEVICE=tizen|webos required");
-  const display = device === "tizen" ? process.env.TIZEN_DISPLAY ?? ":25" : process.env.WEBOS_DISPLAY ?? ":26";
-  const cdpPort = process.env.WEBOS_CDP ?? "9226";
+  // DEVICE=tizen65 is the Tizen 6.5 engine stand-in: the built Tizen web package in a pinned Chromium 85 (the Tizen 6.5 engine) with the Tizen 6.5
+  // user agent, on its own Xvfb display (TIZEN65_DISPLAY, default :65) and inspector port (TIZEN65_CDP, default 9285). It is driven exactly like the
+  // webOS simulator (inspector keys and page evaluation, root grab), with no webOS system keyboard and no Luna hooks.
+  const tizen65 = !TIZEN_REAL && process.env.DEVICE === "tizen65";
+  const device = TIZEN_REAL || tizen65 ? "webos" : process.env.DEVICE;
+  if (!["tizen", "webos"].includes(device)) throw new Error("DEVICE=tizen|webos|tizen65 required");
+  const display = tizen65 ? process.env.TIZEN65_DISPLAY ?? ":65" : device === "tizen" ? process.env.TIZEN_DISPLAY ?? ":25" : process.env.WEBOS_DISPLAY ?? ":26";
+  const cdpPort = tizen65 ? process.env.TIZEN65_CDP ?? "9285" : process.env.WEBOS_CDP ?? "9226";
   let playerStarted = false;
   let tizenPinScript = null; // base64 of the page script that pins Date, zone and locale: stored for netlog.js to run before the app renders
   // PARITY_PIN_CLOCK=<ISO instant> pins the clock without the isolated-account stable mode (the real TV stays on the shared Device Test account), so Calendar renders the web refs' date.
@@ -133,7 +137,7 @@ export async function createDriver() {
   }
   async function cdpConnect() {
     const list = await (await fetch(`http://${CDP_HOST}:${cdpPort}/json/list`)).json();
-    const t = list.find((x) => new RegExp(process.env.WEBOS_MATCH ?? "webos-stage").test(x.url));
+    const t = list.find((x) => new RegExp(process.env.WEBOS_MATCH ?? (tizen65 ? "^https?://" : "webos-stage")).test(x.url));
     if (!t) throw new Error("webOS app page not found (launcher showing?)");
     const socket = new WebSocket(t.webSocketDebuggerUrl);
     const requests = new Map();
@@ -147,6 +151,7 @@ export async function createDriver() {
     // Records the Media Session action handlers (the now-playing buttons) on every new document, as the web driver does.
     await cdp("Page.enable");
     await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(${pageHook})();(${installCaretHide})()` });
+    if (tizen65) await cdp("Page.addScriptToEvaluateOnNewDocument", { source: readFileSync(new URL("../tizen-webos/avplay-shim.js", import.meta.url), "utf8") });
     if (TIZEN_MIRROR) await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `window.__mirrorPause = true;(${installLoopbackArt})();` });
     if (pin) {
       // The same pin the web driver gives the browser: zone, locale and a fixed Date (wall time still advances), for this document and every new one.
@@ -159,7 +164,7 @@ export async function createDriver() {
     }
   }
   async function keyboardVisible() {
-    if (TIZEN_REAL) return false; // the Samsung TV shows no system keyboard target on the inspector
+    if (TIZEN_REAL || tizen65) return false; // the Samsung TV shows no system keyboard target on the inspector
     const list = await (await fetch(`http://${CDP_HOST}:${cdpPort}/json/list`)).json();
     const target = list.find((item) => /#\/keyboard\//.test(item.url));
     if (!target) throw new Error("webOS system keyboard visibility is unavailable");
@@ -206,7 +211,8 @@ export async function createDriver() {
       if (v.requestVideoFrameCallback) await new Promise((res) => { v.requestVideoFrameCallback(() => res()); setTimeout(res, 3000); });
       return v.paused && Math.abs(v.currentTime - ${t}) < 0.001;
     })()`);
-    if (device === "tizen") {
+    const avplay = device === "tizen" || tizen65; // the Tizen 6.5 stand-in plays through the AVPlay shim (tizen-webos/avplay-shim.js)
+    if (avplay) {
       // Tizen plays through AVPlay, a native plane. Method of docs/parity/DEVICES.md: hold the clip paused at exactly 2000 ms (seek while
       // paused, no play-then-pause), read the position back from the player, and refuse the capture unless it is paused on that frame.
       const av = `(() => { const a = window.webapis && window.webapis.avplay; return a ? a.getState() : "none"; })()`;
@@ -249,10 +255,10 @@ export async function createDriver() {
       await ev(`(document.querySelector("video").pause(), true)`);
     }
     // A late play() or a timer can resume playback: hold the frame until it stays paused for two checks 0.7 s apart.
-    let held = device === "tizen" ? 2 : 0;
+    let held = avplay ? 2 : 0;
     for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2.03)) ? held + 1 : 0; await sleep(700); }
     if (held < 2) throw new Error("player did not hold a paused frame at 2 s");
-    if (device !== "tizen") {
+    if (!avplay) {
       // The seek bar fill follows the last position tick the app received, which can lag the paused position by a few frames. Hand the app the position the
       // video really holds (a timeupdate, as the Tizen path does with the AVPlay position) and refuse the capture until the fill shows that position.
       const synced = `(() => { const v = document.querySelector("video"), f = document.querySelector(".player-seek-progress"); return !!v && !!f && Math.abs(parseFloat(f.style.width) - 100 * v.currentTime / v.duration) < 0.15; })()`;
@@ -548,9 +554,11 @@ export async function createDriver() {
     },
     strictReadiness: true,
     // The simulator runs the web client in Chromium 94: Media Session is readable like on web; Tizen has no CDP hook for the handlers.
-    supports: device === "webos" ? { nowPlaying: true, downloads: true, notifications: true, "grouped-downloads": true } : {},
+    supports: device === "webos" && !tizen65 ? { nowPlaying: true, downloads: true, notifications: true, "grouped-downloads": true } : {},
     async start() {
       if (device === "webos") {
+        // Chromium shows a link's address in a status bubble over the page while the pointer rests on it: park the pointer outside the 1920x1080 page, on the larger Xvfb screen.
+        if (tizen65) execFileSync("python3", [XCLICK, display, "park", "1990", "1190"], { stdio: "ignore" });
         await cdpConnect();
         if (TIZEN_MIRROR) {
           await cdp("Page.navigate", { url: mirrorEntry("/") });
@@ -789,6 +797,17 @@ export async function createDriver() {
       if (await ev(`/^#\\/(movies|series)\\/[^/]+\\/?$/.test(location.hash)`)) await ev(`(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; return true; })()`);
       await settleVisibleImages();
       await guard();
+      if (tizen65 && (await ev(`!!document.querySelector('.app-nav-link')`))) {
+        // The nav rail adds Downloads once the downloads capability and storage probe resolve (App.tsx render filter): a grab before that shows a rail one item short (screens without a rail, profiles and the player, skip it).
+        if (!(await until(`!!document.querySelector('.app-nav-link[href$="/downloads"]')`, 20000))) throw new Error("the nav rail never showed Downloads");
+        await sleep(300);
+      }
+      if (tizen65) {
+        // This Xvfb is larger than the page (a window the size of the screen loses a pixel row and column), and the XWD grab fails on it: ImageMagick grabs the root, the page is its top-left 1920x1080.
+        execFileSync("magick", ["import", "-display", display, "-window", "root", "-crop", "1920x1080+0+0", "+repage", `png:${file}`]);
+        await guard();
+        return;
+      }
       const xwd = `${file}.xwd`;
       writeFileSync(xwd, execFileSync("xwd", ["-display", display, "-root", "-silent"], { maxBuffer: 64 << 20 }));
       await guard();

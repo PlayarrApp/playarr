@@ -1,0 +1,1 @@
+- Harmony parity r23: the HarmonyOS TV Play and Start pills put their glyph and label where web does (the earlier offsets were applied to a path TV never draws), the series detail kicker and episode titles line up with web's widths and x positions.

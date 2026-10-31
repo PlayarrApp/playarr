@@ -7,7 +7,7 @@ import { PNG } from "pngjs";
 const [dir, theme] = process.argv.slice(2);
 if (!process.env.PARITY_ROOT || !dir || !["dark", "light"].includes(theme)) throw new Error("usage: PARITY_ROOT=<root> node score.mjs <dir> <dark|light>");
 const R = `${process.env.PARITY_ROOT}/postmarketos/web/${theme === "light" ? "light/" : ""}`;
-const map = { film: "film-detail", music: "music", series: "series", player: "player-controls", "series-detail": "series-detail", movies: "movies", home: "home", search: "search", filters: "filters", actions: "actions", "calendar-month": "calendar-month", "calendar-week": "calendar-week", "calendar-agenda": "calendar-agenda", settings: "settings", profiles: "profiles" };
+const map = { film: "film-detail", music: "music", series: "series", player: "player-controls", "series-detail": "series-detail", movies: "movies", home: "home", search: "search", filters: "filters", actions: "actions", "calendar-month": "calendar-month", "calendar-week": "calendar-week", "calendar-agenda": "calendar-agenda", "calendar-link": "calendar-link", settings: "settings", profiles: "profiles" };
 const regions = [[0, 47, 390, 265], [0, 531, 390, 178], [0, 715, 390, 95]];
 for (const [route, id] of Object.entries(map)) {
   const f = `${dir}/${route}.png`; if (!existsSync(f)) continue;

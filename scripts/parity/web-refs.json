@@ -31,13 +31,13 @@
         "xbox": [
           "firetv",
           "apple",
-          "tizen-native",
           "macos",
           "vidaa",
           "xbox"
         ],
         "tv-webos": [
-          "tizen-webos"
+          "tizen-webos",
+          "tizen-native"
         ]
       }
     },
@@ -57,6 +57,26 @@
       ],
       "actionsTitle": "Amber Cathedral 18",
       "userAgent": "xbox",
+      "hideVideo": true
+    },
+    "tv-tizen65": {
+      "$comment": "Samsung Tizen 6.5 (dir tizen65): the tv-webos platform capture, player-controls shot with the video picture hidden because the Chromium 85 stand-in has no H.264. Run: --groups tv-tizen65 --screens player-controls --bak <name>. No other group lists the dir.",
+      "viewport": [
+        1920,
+        1080
+      ],
+      "dpr": 1,
+      "mobile": false,
+      "pixels": [
+        1920,
+        1080
+      ],
+      "dirs": [
+        "tizen65"
+      ],
+      "actionsTitle": "Amber Cathedral 18",
+      "userAgent": "tv-webos",
+      "platformBuild": "tv-webos",
       "hideVideo": true
     },
     "tv-nodl": {

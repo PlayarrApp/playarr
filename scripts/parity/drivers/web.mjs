@@ -508,6 +508,12 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     if (["movies", "series", "calendar", "search"].includes(screen)) await page.waitForSelector("main", { timeout: 30000 });
     if (["/movies", "/series", "/music"].includes(path)) {
       await page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 });
+      // The preview panel fills its runtime in when the focused item's detail request lands (useFocusedDetail), and the page keeps a live connection open, so network idle never comes: capture only once the preview text has stayed unchanged for 1.5 s, or a theme can shoot before the final "N min" span exists.
+      await page.waitForFunction(() => {
+        const text = document.querySelector(".tv-library-preview")?.textContent ?? "";
+        const w = window; if (w.__previewSeen?.text !== text) w.__previewSeen = { text, since: performance.now() };
+        return performance.now() - w.__previewSeen.since > 1500;
+      }, null, { timeout: 30000, polling: 100 });
     }
     if (path === "/calendar") await page.waitForSelector(".calendar-page", { timeout: 30000 });
     if (path === "/search") await page.waitForSelector(".tv-search-results-grid:visible, .tv-empty-state:visible, .tv-search-prompt:visible", { timeout: 30000 }); // :visible, as the phone layout also renders a hidden prompt
@@ -818,8 +824,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
         };
         tick();
       }));
-      // The time label follows timeupdate events and can still show the pre-seek second, and the mute button the muted state: wait for 0:02 and an unmuted player.
-      await page.waitForFunction(() => /(^|[^\d:])0:02(?![\d:])/.test(document.querySelector(".player-controls")?.textContent?.replace(/\s+/g, " ") ?? "") && document.querySelector("video")?.muted === false && !!document.querySelector(".player-controls [aria-label='Mute'],.player-controls [title='Mute']"), null, { timeout: 10000, polling: 100 });
+      // The time label follows timeupdate events and can still show the pre-seek second, and the mute button the muted state: wait for 0:02 and an unmuted player. A packaged TV (hash routing) has system volume only: no Mute button to wait for.
+      await page.waitForFunction((system) => /(^|[^\d:])0:02(?![\d:])/.test(document.querySelector(".player-controls")?.textContent?.replace(/\s+/g, " ") ?? "") && document.querySelector("video")?.muted === false && (system || !!document.querySelector(".player-controls [aria-label='Mute'],.player-controls [title='Mute']")), hashMode, { timeout: 10000, polling: 100 });
       await page.waitForTimeout(600); // the player moves focus to play/pause on a timer: let it, then drop it
       await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
       await guard();

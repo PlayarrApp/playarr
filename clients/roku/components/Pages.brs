@@ -118,6 +118,7 @@ end function
 
 function pgRadiusFor(h as Float, r as Float) as Integer
     if r >= 82 then return 82
+    if r = 29 and h >= 56 and h <= 60 then return 29
     if r >= 25 then return 25
     if r >= 12 then return 12
     return 6
@@ -2082,7 +2083,7 @@ sub renderCalendarBody()
     end if
 end sub
 
-' Calendar header controls at the web's boxes: a 50 px circle (the arrow is a text glyph there) and a 52.8 px pill whose text box is 20 px tall.
+' Calendar header controls at the web's boxes: a 50 px circle (the arrow is a text glyph there) and a 50 px pill whose text box is 20 px tall.
 sub pgCalendarCircle(x as Float, name as String, icon as String, glyphX as Float, action as String)
     pgRound(m.pageHead, x, 56.2, 50, 50, 25, "surface")
     pgRound(m.pageHead, x, 56.2, 50, 50, 25, "line", -1, true)
@@ -2095,10 +2096,10 @@ end sub
 
 sub pgCalendarPill(x as Float, text as String, action as String)
     w = PlayarrTextWidth(text, 14.72, 720, 0) + 41.2
-    pgTag(pgRound(m.pageHead, x, 54.8, w, 52.8, 26.4, "surface"), "button", 0, text)
-    pgRound(m.pageHead, x, 54.8, w, 52.8, 26.4, "line", -1, true)
+    pgTag(pgRound(m.pageHead, x, 56.2, w, 50, 25, "surface"), "button", 0, text)
+    pgRound(m.pageHead, x, 56.2, w, 50, 25, "line", -1, true)
     pgLabel(m.pageHead, x + 20.6, 71.1, w - 41.2, 20, text, 14.72, 720, "inkSoft", { horizAlign: "center" })
-    pgFocusable(x, 54.8, w, 52.8, 26.4, action)
+    pgFocusable(x, 56.2, w, 50, 25, action)
 end sub
 
 sub renderCalendarAgenda(entries as Object)
@@ -2199,7 +2200,7 @@ sub renderCalendarAgenda(entries as Object)
             pgTint(hg, 775, ay, 1060, 58, "panel")
             headRole = "ink"
             if day = today then headRole = "accent"
-            headLabel = pgLabel(hg, 783.4, ay + 9.2, 0, 25, calendarDayHeading(edt, false), 18.4, 640, headRole)
+            headLabel = pgLabel(hg, 783.4, ay + 9.2, 0, 25, calendarDayHeading(edt, false), 18.4, 640, headRole, { aria: "heading" })
             if day = today
                 hx = 783.4 + headLabel.textWidth + 18.5
                 pgRound(hg, hx - 9.35, ay + 10.1, 61, 22, 11, "lineStrong", -1, true)
@@ -2220,7 +2221,11 @@ function calendarButton(x as Float, y as Float, text as String, style as String,
     size = 14.72
     textRole = "inkSoft"
     parts = [text]
-    if style = "secondary" and Left(text, 2) = "+ " then parts = ["+", Mid(text, 3)]
+    buttonName = text
+    if style = "secondary" and Left(text, 2) = "+ "
+        parts = ["+", Mid(text, 3)]
+        buttonName = Mid(text, 3)
+    end if
     w = 42.0
     gap = 9.6
     for i = 0 to parts.Count() - 1
@@ -2230,10 +2235,10 @@ function calendarButton(x as Float, y as Float, text as String, style as String,
         if i > 0 then w = w + gap
     end for
     if style = "primary"
-        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "accent"), "button", 0, text)
+        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "accent"), "button", 0, buttonName)
         textRole = "onAccent"
     else
-        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "surface"), "button", 0, text)
+        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "surface"), "button", 0, buttonName)
         pgRound(m.pageHead, x, y, w, 58, 29, "line", -1, true)
     end if
     tx = x + 21
@@ -2295,11 +2300,7 @@ sub renderCalendarMonth(entries as Object)
         day = calAddDays(r.start, i)
         x = gx + (i mod 7) * cw
         y = gy + Int(i / 7) * ch
-        if Mid(day, 6, 2) <> monthOf
-            pgRect(m.pageBody, x, y, cw, ch, "ink", 12).id = "a11y|container|0|"
-        else
-            ' A day of the month draws no fill of its own (it shows the page behind it): its cell is the focus target registered below.
-        end if
+        if Mid(day, 6, 2) <> monthOf then pgRect(m.pageBody, x, y, cw, ch, "ink", 12).id = "a11y|container|0|"
     end for
     for rr = 0 to rows
         pgRect(m.pageBody, gx, gy + rr * ch, cw * 7, 1, "line")
@@ -2307,6 +2308,8 @@ sub renderCalendarMonth(entries as Object)
     for c = 0 to 7
         pgRect(m.pageBody, gx + c * cw, gy, 1, ch * rows, "line")
     end for
+    firstStop = m.pageItems.Count()
+    weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     for i = 0 to days - 1
         day = calAddDays(r.start, i)
         x = gx + (i mod 7) * cw
@@ -2339,16 +2342,26 @@ sub renderCalendarMonth(entries as Object)
             if chips[k].status = "Missing" then dotRole = "danger"
             pgRound(m.pageBody, x + 11.4, cy + 17.6, 8.8, 8.8, 4.4, dotRole)
             pgMark(m.pageBody, "container", "", x + 11.4, cy + 17.6, 8.8, 8.8, 50)
+            ' The chip is a control: web names it "Title, Status, Weekday D Month" and it is 226 x 44 (a later chip is cut by the next one).
+            chipH = 44.0
+            if k < shown - 1 then chipH = 25.4
+            chipName = chips[k].title + ", " + chips[k].status + ", " + weekdays[calWeekday(day)] + " " + Val(Mid(day, 9, 2)).ToStr() + " " + calendarMonthName(Val(Mid(day, 6, 2)), false)
+            pgHit(m.pageBody, "button", chipName, x + 5.8, cy, 226, chipH, 0)
+            if k = 0 and day = today then todayIdx = m.pageItems.Count()
+            pgFocusable(x + 5.8, cy, 226, chipH, 6, "cell", day)
             pgLabel(m.pageBody, x + 27.4, cy + 12.5, cw - 38, 17, text, 12.48, 400, "ink", { maxLines: 1 })
         end for
         numRole = "ink"
         if Mid(day, 6, 2) <> monthOf then numRole = "inkMuted"
         pgLabel(m.pageBody, x + 8.8, y + 117.9, 60, 18, Val(Mid(day, 9, 2)).ToStr(), 12.8, 640, numRole)
         if n > shown then pgLabel(m.pageBody, x + 60, y + ch - 24, cw - 70, 16, "+" + (n - shown).ToStr() + " more", 11, 600, "inkMuted", { horizAlign: "right" })
-        if day = today then todayIdx = m.pageItems.Count()
-        pgFocusable(x + 1, y + 1, cw - 1, ch - 1, 6, "cell", day)
+        ' A day with chips is reached through its chips; an empty day keeps the whole-cell stop that opens it in the agenda.
+        if shown = 0
+            if day = today then todayIdx = m.pageItems.Count()
+            pgFocusable(x + 1, y + 1, cw - 1, ch - 1, 6, "cell", day)
+        end if
     end for
-    m.pageFocusIdx = m.pageItems.Count() - days + 0
+    m.pageFocusIdx = firstStop
     if todayIdx > 0 then m.pageFocusIdx = todayIdx
 end sub
 

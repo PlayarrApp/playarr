@@ -256,6 +256,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
             emit("text", " ".join(value.split()), box, under, clip, 0.0, hex_of(over(col, under)), round(num(a.get("fontSize")) * kx, 2), weight_of(a), opacity)
             glyphs.append((box, col[3] * opacity))
 
+    real_surface = [False]
+
     def walk(node, under, opacity, chain, clip, nohit=False):
         a = attrs_of(node)
         kind = str(node.get("$type", ""))
@@ -325,6 +327,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
                 emit("container", "", box, here, clip, radius, opacity=opacity)
             text_lines(node, a, raw, here, opacity, mychain, clip, "text", radius if painted and not control else 0.0)
         elif inview:
+            if kind == "XComponent":
+                real_surface[0] = True  # a real surface component, not the preview's replacement Column
             if kind == "Divider":  # a drawn rule: its stroke colour, over what is under it
                 stroke = argb(a.get("color"))
                 if stroke is not None and stroke[3] * opacity > 0.0:
@@ -436,7 +440,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
     limits.add("occlusion is measured on the rendered screen: an element the geometry flags as covered is dropped only if hiding it in the running app changed no pixel of its box (exact diff of two screenshots, noise between two unchanged shots ignored)")
     if unmeasured:
         limits.add("a flagged element the probe could not measure (no key, hide refused, unstable screen) is exported, never dropped on geometry")
-    if any(e.get("role") == "video" for e in kept):  # only a tree that still holds a surface XComponent carries the Previewer's placeholder
+    if real_surface[0] and any(e.get("role") == "video" for e in kept):  # only a tree that still holds a surface XComponent carries the Previewer's placeholder
         limits.add("the Previewer's XComponent placeholder text ('Preview not available for this component.') has no glyph runs, so it is not exported as text")
     doc["limits"] = sorted(limits)
     if with_src:

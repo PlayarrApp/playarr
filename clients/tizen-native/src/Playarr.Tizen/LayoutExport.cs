@@ -17,7 +17,7 @@ internal static class Sem
     {
         ["button"] = Role.PushButton, ["container"] = Role.Panel, ["heading"] = Role.Heading, ["img"] = Role.Image, ["link"] = Role.Link,
         ["none"] = Role.RedundantObject, ["text"] = Role.Text, ["textbox"] = Role.Entry, ["slider"] = Role.Slider, ["dialog"] = Role.Dialog,
-        ["group"] = Role.Grouping, ["search"] = Role.Form, ["status"] = Role.StatusBar,
+        ["video"] = Role.Video, ["group"] = Role.Grouping, ["search"] = Role.Form, ["status"] = Role.StatusBar,
     };
     // views the app never tagged keep their class default role (an ImageView reports Image, a plain View a panel), which says nothing about intent: only a tagged view's role is read
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, object> Tagged = new();
@@ -90,7 +90,14 @@ internal static class LayoutExport
         {
             if (index < 0 || index >= ctx.Nodes.Count) continue;
             var n = ctx.Nodes[index]; var v = ctx.Views[n.Id];
-            if (n.PaintOnly && !whole)
+            if (v is TextField input && !whole)
+            {
+                // an input draws nothing of its own while it is empty (its placeholder is a sibling label), so hiding it changes no pixel: its box is painted loud instead, which shows on the real screen only where the field is topmost
+                var bc = input.BackgroundColor; var fill = new Color(bc.R, bc.G, bc.B, bc.A);
+                input.BackgroundColor = loud;
+                Restores.Add(() => input.BackgroundColor = fill);
+            }
+            else if (n.PaintOnly && !whole)
             {
                 // NUI hands back live objects (a Color bound to the view), so the values are copied before the paint is changed
                 var bc = v.BackgroundColor; var fill = new Color(bc.R, bc.G, bc.B, bc.A); var bcol = v.BorderlineColor; var border = new Color(bcol.R, bcol.G, bcol.B, bcol.A); var sh = v.BoxShadow;
@@ -192,7 +199,7 @@ internal static class LayoutExport
                 var painted = (fills || border || shadow || hairline) && !shadowLayer;
                 var control = role is not null and not ("container" or "none" or "text" or "img");
                 if (child is ImageView)
-                    ctx.Nodes.Add(new Node("", role is null or "none" ? "image" : role, cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, radius, cop, id, false));
+                    ctx.Nodes.Add(new Node(role == "video" ? name ?? "" : "", role is null or "none" ? "image" : role, cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, radius, cop, id, false));
                 else if (control || (role == "img" && painted))
                     ctx.Nodes.Add(new Node(name ?? "", role!, cx, cy, w, h, null, Hex(cbg.R, cbg.G, cbg.B, 1), null, null, radius, cop, id, false));
                 else if (painted)
