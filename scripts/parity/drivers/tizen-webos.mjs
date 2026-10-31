@@ -709,7 +709,15 @@ export async function createDriver() {
         if (!(await until(`document.getAnimations().every((a) => a.playState !== "running" || !Number.isFinite(a.effect.getComputedTiming().endTime))`, 10000))) throw new Error("finite animations still running before the grab");
         await sleep(100);
         // This Xvfb is larger than the page (a window the size of the screen loses a pixel row and column), and the XWD grab fails on it: ImageMagick grabs the root, the page is its top-left 1920x1080.
-        execFileSync("magick", ["import", "-display", display, "-window", "root", "-crop", "1920x1080+0+0", "+repage", `png:${file}`]);
+        // The software compositor keeps refining soft shadows for a moment after the page settles (repeat grabs of one still page differ by a few pixels of 1/255 and then converge), so grab until two consecutive frames decode to the same pixels.
+        const grab = (to) => execFileSync("magick", ["import", "-display", display, "-window", "root", "-crop", "1920x1080+0+0", "+repage", `png:${to}`]);
+        const same = (x, y) => { try { execFileSync("cmp", ["-s", x, y]); return true; } catch { return false; } };
+        const probe = `${file}.probe.png`;
+        grab(file);
+        let stable = false;
+        for (let i = 0; i < 12 && !stable; i += 1) { await sleep(400); grab(probe); stable = same(file, probe); if (!stable) writeFileSync(file, readFileSync(probe)); }
+        rmSync(probe, { force: true });
+        if (!stable) throw new Error("the screen never settled to two identical grabs");
         await guard();
         return;
       }
