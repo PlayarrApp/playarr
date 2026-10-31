@@ -1,1 +1,2 @@
 - iPhone and iPad layout export: the visibility probe now judges controls with no toggle of their own through the views drawn inside their frame, hides the UIKit title label it could not hide before, counts a faint layer that shifts a quarter of its own pixels, and lists unhideable elements in the probe counts; parity captures hide the home indicator.
+- iPhone and iPad parity captures draw the unseen dots and nav icons from bitmaps rendered once and run without implicit animations, so antialiasing noise between simulators cannot reach the screenshot.
