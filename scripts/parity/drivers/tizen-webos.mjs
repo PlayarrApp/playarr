@@ -204,6 +204,15 @@ export async function createDriver() {
       // paused, no play-then-pause), read the position back from the player, and refuse the capture unless it is paused on that frame.
       const av = `(() => { const a = window.webapis && window.webapis.avplay; return a ? a.getState() : "none"; })()`;
       if (!(await until(`(${av}) === "PLAYING" || (${av}) === "PAUSED"`, 60000))) throw new Error("AVPlay did not start");
+      if (tizen65) {
+        // Pause through the app's own play/pause control, not through the AVPlay object: a bare avplay.pause() leaves the app's state (and the button name) at "Pause", where the web shows "Play" for the paused clip.
+        const label = () => ev(`document.querySelector("[data-player-default-focus]")?.getAttribute("aria-label") ?? ""`);
+        if (!(await until(`!!document.querySelector("[data-player-default-focus]")`, 15000))) throw new Error("player play/pause control not found");
+        if (/pause/i.test(await label())) {
+          await ev(`(document.querySelector("[data-player-default-focus]").click(), true)`);
+          if (!(await until(`/play/i.test(document.querySelector("[data-player-default-focus]")?.getAttribute("aria-label") ?? "")`, 10000))) throw new Error("the app did not show the paused state");
+        }
+      }
       let held = false;
       for (let i = 0; i < 8 && !held; i += 1) {
         const state = await ev(`new Promise((resolve) => { const a = window.webapis.avplay; try { a.pause(); a.seekTo(2000, () => resolve("ok"), () => resolve("seek failed")); } catch (e) { resolve(String(e)); } setTimeout(() => resolve("timeout"), 15000); })`);
