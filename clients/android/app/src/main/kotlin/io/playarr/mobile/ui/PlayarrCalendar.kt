@@ -1650,7 +1650,7 @@ private fun CalendarMonthChips(
                                 Column(Modifier.weight(1f)) {
                                     shown.forEachIndexed { slot, item ->
                                         CalendarLine(
-                                            item, calendarItemTone(item, today, zone), onClick = { onSelect(item) }, inMonth = inMonth,
+                                            item, calendarItemTone(item, today, zone), onClick = { onSelect(item) }, inMonth = inMonth, tvGlyphLift = !phoneStrip && !tabletCss,
                                             modifier = Modifier.weight(1f).wrapContentHeight(Alignment.Top).focusRequester(requesters[cell][slot]).calendarDpad(handleKey(slot)).calendarFocusReveal(),
                                         )
                                     }
@@ -2220,7 +2220,7 @@ internal fun calendarRangeLabelShort(mode: CalendarViewMode, anchor: LocalDate, 
 
 /** Web `.calendar-line`: a 25 dp row, a 9 dp dot in the tone colour, the 12.48 px title (a group is bold, "Title · 2×"). */
 @Composable
-private fun CalendarLine(item: CalendarItem, tone: CalendarPillTone, onClick: () -> Unit, modifier: Modifier = Modifier, inMonth: Boolean = true) {
+private fun CalendarLine(item: CalendarItem, tone: CalendarPillTone, onClick: () -> Unit, modifier: Modifier = Modifier, inMonth: Boolean = true, tvGlyphLift: Boolean = false) {
     val source = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(4.dp)
     val label = when (item) {
@@ -2250,8 +2250,9 @@ private fun CalendarLine(item: CalendarItem, tone: CalendarPillTone, onClick: ()
         Box(Modifier.size(8.8.dp).parityBackground("container", dot, CircleShape, radius = 999f))
         Text(
             label, color = WebInk, fontSize = 12.48.sp, lineHeight = 14.976.sp, fontWeight = if (item is CalendarItem.Series) FontWeight(680) else FontWeight.Normal,
-            // Web sets the 17 px glyph box 12.5 px under the chip's top; Compose's centred line sits 1.9 dp lower.
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 7.dp).offset(y = (-2).dp),
+            // Web TV sets the 17 px glyph box 12.5 px under the chip's top; Compose's centred line sits 1.9 dp lower. Phone and tablet keep the
+            // centred line (their web glyph box sits 12.5 px under the chip top too, and the unshifted line is 0.9 px off, not 1.9).
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 7.dp).then(if (tvGlyphLift) Modifier.offset(y = (-2).dp) else Modifier),
         )
     }
 }

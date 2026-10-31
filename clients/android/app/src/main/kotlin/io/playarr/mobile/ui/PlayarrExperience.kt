@@ -10713,13 +10713,15 @@ internal fun AuthenticatedMediaThumbnail(
     } else {
         // The label stands in while the picture loads or fails; a loaded (opaque) thumbnail covers it, so it is no longer composed.
         var loaded by remember(request) { mutableStateOf(false) }
+        // Capture readiness waits for the composition that has dropped the label: reporting at onSuccess let an export see the label still composed under the loaded picture.
+        androidx.compose.runtime.LaunchedEffect(loaded) { if (loaded) PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) }
         Box(modifier.background(WebSurfaceSoft), contentAlignment = Alignment.Center) {
             if (!loaded) ThumbnailFallbackLabel(fallbackLabel)
             AsyncImage(
                 model = request,
                 contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
-                onSuccess = { loaded = true; PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
+                onSuccess = { loaded = true },
                 onError = { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
                 modifier = Modifier.fillMaxSize().parityCaptureArtwork(captureToken, captureKey),
             )
