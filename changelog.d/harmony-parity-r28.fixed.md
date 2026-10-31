@@ -1,0 +1,1 @@
+- HarmonyOS TV Home: the right-hand rail frost now lives on the scrolling rails box, so the web scroll-edge fade dims it with the cards (bottom strip colour matches web).
