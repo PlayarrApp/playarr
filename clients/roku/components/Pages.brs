@@ -150,6 +150,19 @@ function pgRound(parent as Object, x as Float, y as Float, w as Float, h as Floa
     return poster
 end function
 
+' A box drawn as its 1 px border only (a 9-patch with square corners), tinted by `role`.
+function pgOutlineBox(parent as Object, x as Float, y as Float, w as Float, h as Float, role as String) as Object
+    poster = CreateObject("roSGNode", "Poster")
+    poster.uri = "pkg:/images/square-outline.9.png"
+    poster.translation = [x, y]
+    poster.width = w
+    poster.height = h
+    poster.blendColor = ThemeColor(role)
+    ThemeSetRole(poster, role)
+    parent.AppendChild(poster)
+    return poster
+end function
+
 ' Control semantics: the drawn bitmap of the control (its fill, laid just before this call at the same box) takes the id
 ' `a11y|role|radius|name` (ECP query/app-ui prints ids). A control with no drawn box gets a hit rectangle (pgHit) at its layout
 ' box, but only a control the viewer can focus or act on: a role that is no control (image, container) with nothing drawn gets nothing.
@@ -2305,11 +2318,10 @@ sub renderCalendarMonth(entries as Object)
         y = gy + Int(i / 7) * ch
         if Mid(day, 6, 2) <> monthOf then pgRect(m.pageBody, x, y, cw, ch, "ink", 12).id = "a11y|container|0|"
     end for
-    for rr = 0 to rows
-        pgRect(m.pageBody, gx, gy + rr * ch, cw * 7, 1, "line")
-    end for
-    for c = 0 to 7
-        pgRect(m.pageBody, gx + c * cw, gy, 1, ch * rows, "line")
+    ' Each day cell is a box with its own 1 px border (web .calendar-month-cell): a bordered container, no corner.
+    for i = 0 to days - 1
+        cellBox = pgOutlineBox(m.pageBody, gx + (i mod 7) * cw, gy + Int(i / 7) * ch, cw, ch, "line")
+        cellBox.id = "a11y|container|0|"
     end for
     firstStop = m.pageItems.Count()
     weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
