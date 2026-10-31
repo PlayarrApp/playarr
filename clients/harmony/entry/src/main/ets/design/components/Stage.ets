@@ -143,6 +143,7 @@ export struct Stage {
   /** The export role of the hero title (see FeatureCopy). */
   @Prop titleRole: string = 'heading';
   @Prop libraryCopy: boolean = false;
+  @Prop titleSpacingAdjust: number = 0;
   /** Moves the whole title panel (vp), for a page whose copy sits off the library's. */
   @Prop panelTopAdjust: number = 0;
 
@@ -286,6 +287,7 @@ export struct Stage {
         synopsisGapAdjust: this.synopsisGapAdjust,
         titleRole: this.titleRole,
         libraryCopy: this.libraryCopy,
+        titleSpacingAdjust: this.titleSpacingAdjust,
       })
       this.heroExtraSlot()
     }
