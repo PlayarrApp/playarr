@@ -428,7 +428,11 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       theme = t;
       const xml = `<?xml version="1.0" encoding="utf-8" standalone="yes" ?><map><string name="theme">${t === "light" ? "Light" : "Dark"}</string></map>`;
       await shell("am", "force-stop", pkg);
-      await shell(`run-as ${pkg} sh -c 'echo "${xml.replaceAll('"', '\\"')}" > shared_prefs/playarr_display.xml'`);
+      // run-as exits 255 while the just-stopped app's data dir is still being torn down on a loaded host (it ended a dpad run once): retry.
+      for (let attempt = 0; ; attempt++) {
+        try { await shell(`run-as ${pkg} sh -c 'echo "${xml.replaceAll('"', '\\"')}" > shared_prefs/playarr_display.xml'`); break; }
+        catch (e) { if (attempt >= 4) throw e; await sleep(1500); }
+      }
     },
     async home() { await launch("home"); await settled(); await relink("home", true); },
     async route(r) { const a = appRoute(r); await launch(a); await settled(); await relink(a, true); },
@@ -500,21 +504,23 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       const theme = basename(dirname(file)), screen = basename(file, ".png");
       const layoutFile = join(dirname(dirname(file)), "layout", theme, `${screen}.json`);
       rmSync(layoutFile, { force: true });
-      for (let attempt = 0; attempt < 6; attempt++) {
+      const why = [];
+      // The paused player frame can take a while to composite on a loaded host (light player-controls stayed black for six tries): it gets more tries.
+      for (let attempt = 0; attempt < (screen === "player-controls" ? 30 : 6); attempt++) {
         const before = await grab();
         const json = env.PARITY_LAYOUT !== "0" ? await requestLayout(theme, screen) : "";
-        if (json === null) continue;
+        if (json === null) { why.push("no layout"); continue; }
         const after = await grab();
-        if (!before.equals(after)) { await sleep(500); continue; }
+        if (!before.equals(after)) { why.push("frame moved"); await sleep(500); continue; }
         // The player frame may not be composited yet (the video surface shows black): a capture of the paused frame is retried until the frame is there.
         if (screen === "player-controls") {
           const img = PNG.sync.read(before);
           let sum = 0;
           for (let i = 0; i < img.data.length; i += 4) sum += img.data[i] + img.data[i + 1] + img.data[i + 2];
-          if (sum / (img.data.length / 4) < 12) { await sleep(1000); continue; }
+          if (sum / (img.data.length / 4) < 12) { why.push("black frame"); await sleep(1000); continue; }
         }
         const layout = json ? JSON.parse(json) : null;
-        if (layout && !(await resolveCovered(layout, before))) { await sleep(500); continue; }
+        if (layout && !(await resolveCovered(layout, before))) { why.push("covered check"); await sleep(500); continue; }
         writeFileSync(file, before);
         if (layout) {
           mkdirSync(dirname(layoutFile), { recursive: true });
@@ -522,7 +528,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
         }
         return;
       }
-      throw new Error(`no stable frame with a layout export for ${theme}/${screen}`);
+      throw new Error(`no stable frame with a layout export for ${theme}/${screen} (${why.join(", ")})`);
     },
     // Plays media file `c.file` through the player route and watches the position the debug log reports.
     async play(c, expect) {

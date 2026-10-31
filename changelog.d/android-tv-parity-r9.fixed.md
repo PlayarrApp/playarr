@@ -1,0 +1,1 @@
+- Android TV parity round 9: occlusion nomination is clipped to the screen (a covered alphabet control is no longer exported), scale uses both axes, search and language selector are exported as the painted containers they are (no web role copied), the driver waits longer for the paused player frame.
