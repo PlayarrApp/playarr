@@ -62,6 +62,8 @@ const META_CHIP_ROW_GAP: number = 6.4;
 
 const COPY_TEXT_FONT_SIZE: number = 12.864;
 const COPY_TEXT_FONT_WEIGHT: number = 600;
+/** Library's details panel meta: `.details-panel .tv-preview-meta` is clamp(0.62rem, 0.68vw, 0.86rem) at weight 600 (global.css), 13.056 px at 1920. */
+const LIBRARY_META_FONT_SIZE: number = 13.056;
 const SYNOPSIS_FONT_WEIGHT: number = 400;
 const LIBRARY_SYNOPSIS_FONT_WEIGHT: number = 600; // web layout ref (library hero): 600 at 13.82, in the copy colour
 const COPY_TEXT_INK_ALPHA: number = 0.87;
@@ -230,10 +232,10 @@ export struct FeatureCopy {
           ForEach(
             this.metaRuns,
             (run: string, runIndex: number) => {
-              Text(run).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(COPY_TEXT_FONT_SIZE)))
-                .fontSize(tv(COPY_TEXT_FONT_SIZE)).lineHeight(webLineHeight(tv(COPY_TEXT_FONT_SIZE))).halfLeading(true)
-                .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
-                .letterSpacing((this.libraryCopy ? -0.14 : -0.3) + 0.236 + (!this.libraryCopy && runIndex === 0 ? -0.104 : 0) + (!this.libraryCopy && runIndex === 1 ? 0.045 : 0)) // agenda's first run (18 characters) is 1.9 wider than web's; web's run is narrower than ArkUI lays it out (agenda: 7-8 px over on 18 and 34 characters at +0.236)
+              Text(run).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(this.libraryCopy ? LIBRARY_META_FONT_SIZE : COPY_TEXT_FONT_SIZE)))
+                .fontSize(tv(this.libraryCopy ? LIBRARY_META_FONT_SIZE : COPY_TEXT_FONT_SIZE)).lineHeight(webLineHeight(tv(this.libraryCopy ? LIBRARY_META_FONT_SIZE : COPY_TEXT_FONT_SIZE))).halfLeading(true)
+                .fontWeight(COPY_TEXT_FONT_WEIGHT)
+                .letterSpacing((this.libraryCopy ? 0 : -0.3 + 0.236) + (!this.libraryCopy && runIndex === 0 ? -0.104 : 0) + (!this.libraryCopy && runIndex === 1 ? 0.045 : 0)) // agenda's first run (18 characters) is 1.9 wider than web's; web's run is narrower than ArkUI lays it out (agenda: 7-8 px over on 18 and 34 characters at +0.236)
                 .fontColor(this.copyTextColor())
             },
             (run: string, index: number) => `${index}-${run}`

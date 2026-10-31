@@ -1,0 +1,1 @@
+- Harmony: the Library details-panel meta line uses the web's 13.056 px at weight 600 with no letter-spacing, and the static Nunito Sans instances now cover every web weight (500, 570, 590, 600, 650, 690, 750 added, built by tools/make-nunito-instances.py from the web's own font).
