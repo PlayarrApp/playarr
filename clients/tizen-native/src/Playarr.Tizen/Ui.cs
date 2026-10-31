@@ -188,7 +188,7 @@ internal static class Ui
         else if (family == Font && text is "⇩" or "☷" or "⌄" or "✓" or "▶") { family = "Playarr Symbols"; weight = weight >= 600 ? 700 : 400; }
         if (!multiline && w <= 0) w = TextWidth(upper ? text.ToUpperInvariant() : text, size, weight, spacing, family); // an inline run is as wide as its text
         (family, weight) = Face(family, weight, size);
-        var cssWeight = family.StartsWith(Font + " W", StringComparison.Ordinal) ? int.Parse(family[(Font.Length + 2)..]) : weight;
+        var cssWeight = family.StartsWith(Font + " W", StringComparison.Ordinal) ? int.Parse(family[(Font.Length + 2)..]) : family == "Liberation Sans" ? reqWeight /* a fallback-font arrow: the style weight the page asked for, as the web reports it, not the face file */ : weight;
         var cssY = y;
         var line = lh > 0 ? lh : size * 1.4f;
         // a single line is a label exactly as tall as the browser's content area (rounded ascent plus rounded descent), top-aligned and centred in the CSS line box
