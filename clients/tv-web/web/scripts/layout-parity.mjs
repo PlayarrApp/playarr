@@ -34,7 +34,7 @@ const repo = join(web, "../../..");
 const tools = join(repo, "scripts/parity/node_modules");
 const load = (path) => import(pathToFileURL(join(tools, path)).href);
 const { chromium } = await load("playwright-core/index.mjs");
-const { default: pixelmatch } = await load("pixelmatch/index.js");
+const { diffInto } = await import(pathToFileURL(join(repo, "scripts/parity/exact-pixels.mjs")).href);
 const { PNG } = (await load("pngjs/lib/png.js")).default;
 
 const args = process.argv.slice(2);
@@ -147,7 +147,7 @@ const decode = (buffer) => PNG.sync.read(buffer);
 function diffImages(a, b, name) {
   if (a.width !== b.width || a.height !== b.height) return { bad: Infinity, size: `${a.width}x${a.height} vs ${b.width}x${b.height}` };
   const diff = new PNG({ width: a.width, height: a.height });
-  const bad = pixelmatch(a.data, b.data, diff.data, a.width, a.height, { threshold: 0.1, includeAA: false });
+  const bad = diffInto(a.data, b.data, diff.data, a.width, a.height);
   if (bad > 0) {
     const file = join(outDir, `${name.replace(/[^A-Za-z0-9._-]+/g, "-")}.diff.png`);
     mkdirSync(dirname(file), { recursive: true });

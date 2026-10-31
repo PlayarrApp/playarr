@@ -1,0 +1,1 @@
+- VIDAA parity capture no longer drives the TV browser out of memory: the debug mirror releases each frame's canvas, bounds its artwork cache, frees its heartbeat worker URL, slows down on an idle page and stops capturing at a per-load frame budget or heap ceiling; the VIDAA driver halts the run cleanly on that notice.

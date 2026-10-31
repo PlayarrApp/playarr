@@ -12,7 +12,16 @@ namespace Playarr.Tizen;
 /// </summary>
 internal static class Sem
 {
-    internal static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, string> Roles = new();
+    // the native accessibility role each exported role name stands for; the role lives on the view itself (View.AccessibilityRole) and the export reads it back from there
+    private static readonly Dictionary<string, Role> Native = new()
+    {
+        ["button"] = Role.PushButton, ["container"] = Role.Panel, ["heading"] = Role.Heading, ["img"] = Role.Image, ["link"] = Role.Link,
+        ["none"] = Role.RedundantObject, ["text"] = Role.Text, ["textbox"] = Role.Entry, ["slider"] = Role.Slider, ["dialog"] = Role.Dialog,
+        ["video"] = Role.Video, ["group"] = Role.Grouping, ["search"] = Role.Form, ["status"] = Role.StatusBar,
+    };
+    // views the app never tagged keep their class default role (an ImageView reports Image, a plain View a panel), which says nothing about intent: only a tagged view's role is read
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, object> Tagged = new();
+    internal static string? RoleOf(View v) => !Tagged.TryGetValue(v, out _) ? null : Native.FirstOrDefault(p => p.Value == v.AccessibilityRole).Key;
 
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, object> Overlays = new();
     /// <summary>A generated gradient or scrim image: translucent by construction, so it never hides what is under it.</summary>
@@ -21,7 +30,8 @@ internal static class Sem
 
     public static T Tag<T>(T v, string role, string? name = null) where T : View
     {
-        Roles.Remove(v); Roles.Add(v, role);
+        v.AccessibilityRole = Native.TryGetValue(role, out var native) ? native : throw new ArgumentException("no native role for " + role);
+        Tagged.Remove(v); Tagged.Add(v, v);
         if (name is not null) v.AccessibilityName = name;
         return v;
     }
@@ -80,7 +90,14 @@ internal static class LayoutExport
         {
             if (index < 0 || index >= ctx.Nodes.Count) continue;
             var n = ctx.Nodes[index]; var v = ctx.Views[n.Id];
-            if (n.PaintOnly && !whole)
+            if (v is TextField input && !whole)
+            {
+                // an input draws nothing of its own while it is empty (its placeholder is a sibling label), so hiding it changes no pixel: its box is painted loud instead, which shows on the real screen only where the field is topmost
+                var bc = input.BackgroundColor; var fill = new Color(bc.R, bc.G, bc.B, bc.A);
+                input.BackgroundColor = loud;
+                Restores.Add(() => input.BackgroundColor = fill);
+            }
+            else if (n.PaintOnly && !whole)
             {
                 // NUI hands back live objects (a Color bound to the view), so the values are copied before the paint is changed
                 var bc = v.BackgroundColor; var fill = new Color(bc.R, bc.G, bc.B, bc.A); var bcol = v.BorderlineColor; var border = new Color(bcol.R, bcol.G, bcol.B, bcol.A); var sh = v.BoxShadow;
@@ -144,7 +161,7 @@ internal static class LayoutExport
             var csx = sx * scale.X; var csy = sy * scale.Y;
             var w = size.Width * csx; var h = size.Height * csy;
             var id = ctx.NextId++; ctx.Views[id] = child;
-            Sem.Roles.TryGetValue(child, out var role);
+            var role = Sem.RoleOf(child);
             var name = string.IsNullOrEmpty(child.AccessibilityName) ? null : child.AccessibilityName;
             var box = new RectF(cx, cy, w, h);
 
@@ -182,7 +199,7 @@ internal static class LayoutExport
                 var painted = (fills || border || shadow || hairline) && !shadowLayer;
                 var control = role is not null and not ("container" or "none" or "text" or "img");
                 if (child is ImageView)
-                    ctx.Nodes.Add(new Node("", role is null or "none" ? "image" : role, cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, radius, cop, id, false));
+                    ctx.Nodes.Add(new Node(role == "video" ? name ?? "" : "", role is null or "none" ? "image" : role, cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, radius, cop, id, false));
                 else if (control || (role == "img" && painted))
                     ctx.Nodes.Add(new Node(name ?? "", role!, cx, cy, w, h, null, Hex(cbg.R, cbg.G, cbg.B, 1), null, null, radius, cop, id, false));
                 else if (painted)
@@ -202,7 +219,7 @@ internal static class LayoutExport
             if (char.IsWhiteSpace(text[i])) continue;
             var pos = TextGeometry.GetTextPosition(label, i, i); var sz = TextGeometry.GetTextSize(label, i, i);
             if (pos.Count == 0 || sz.Count == 0) continue;
-            float y = pos[0].Y, x = pos[0].X, w = sz[0].Width + label.CharacterSpacing /* a glyph's size is its advance without letter spacing; the layout places the next glyph at x + size + CharacterSpacing, so the glyph's laid-out advance (what the web run box measures) includes the spacing */, h = sz[0].Height;
+            float y = pos[0].Y, x = pos[0].X, w = sz[0].Width, h = sz[0].Height;
             var li = meta.Multiline ? lines.FindIndex(l => Math.Abs(l.Top - y) < h * 0.5f) : (lines.Count > 0 ? 0 : -1);
             if (li < 0) lines.Add((y, y + h, x, x + w, i, i));
             else { var l = lines[li]; lines[li] = (Math.Min(l.Top, y), Math.Max(l.Bottom, y + h), Math.Min(l.L, x), Math.Max(l.R, x + w), l.First, i); }

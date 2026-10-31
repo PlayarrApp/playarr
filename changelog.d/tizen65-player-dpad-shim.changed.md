@@ -1,0 +1,1 @@
+- Samsung Tizen 6.5 parity: the player D-pad checks run through the AVPlay shim (focus and controls logic only, no decoding).

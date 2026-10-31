@@ -1,0 +1,1 @@
+- Harmony parity r25: the phone film and series pages' pinned Back row now sits inside its page-surface fill, so the title text sits on the same background as on web.

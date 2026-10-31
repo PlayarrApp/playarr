@@ -91,6 +91,11 @@ fn clip_rect(a: Rect, b: Rect) -> Rect {
     [x0, y0, (x1 - x0).max(0.0), (y1 - y0).max(0.0)]
 }
 
+/// A clip nested in another is the overlap of the two.
+fn intersect(outer: Option<Rect>, inner: Rect) -> Rect {
+    outer.map_or(inner, |o| clip_rect(o, inner))
+}
+
 /// The corner radius of the rounded clip a fill is painted under, when the clip is the fill's own box.
 fn clip_radius(rclip: Option<(Rect, f32)>, b: Rect) -> f32 {
     rclip.filter(|(cb, _)| near(*cb, b, 0.55)).map_or(0.0, |(_, r)| r)
@@ -175,7 +180,7 @@ fn collect(
                 m,
                 opacity,
                 Some((to_root(m, n.clip().bounds()), r)),
-                clip,
+                Some(intersect(clip, to_root(m, n.clip().bounds()))),
                 out,
             );
         }
@@ -187,7 +192,14 @@ fn collect(
         }
         T::ClipNode => {
             let n = node.downcast_ref::<gsk::ClipNode>().unwrap();
-            collect(&n.child(), m, opacity, rclip, Some(to_root(m, &n.clip())), out);
+            collect(
+                &n.child(),
+                m,
+                opacity,
+                rclip,
+                Some(intersect(clip, to_root(m, &n.clip()))),
+                out,
+            );
         }
         T::ColorMatrixNode => collect(
             &node.downcast_ref::<gsk::ColorMatrixNode>().unwrap().child(),
@@ -205,7 +217,22 @@ fn collect(
             clip,
             out,
         ),
-        T::InsetShadowNode | T::OutsetShadowNode => {}
+        // A ring (`box-shadow: 0 0 0 4px`, no blur) is an outline the widget paints round its own box, like a border.
+        T::OutsetShadowNode => {
+            let n = node.downcast_ref::<gsk::OutsetShadowNode>().unwrap();
+            if n.spread() > 0.0 && n.blur_radius() == 0.0 {
+                let o = n.outline();
+                out.fills.push(Fill {
+                    b: to_root(m, o.bounds()),
+                    rgba: [0.0; 4],
+                    radius: o.corner()[0].width(),
+                    gradient: None,
+                    border: true,
+                    opacity,
+                });
+            }
+        }
+        T::InsetShadowNode => {}
         _ => out.other = true,
     }
 }
@@ -476,7 +503,8 @@ impl Walk<'_> {
             el
         };
         let own_op = own.map_or(inherited * factor, |f| inherited * f.opacity);
-        let opaque_fill = own.is_some_and(|f| f.gradient.is_none() && f.rgba[3] * f.opacity * inherited >= 0.5);
+        // A candidate cover is any box that paints at all (gradient, translucent fill); the rendered screen decides.
+        let opaque_fill = own.is_some() && w.can_target();
         let end = self.items.len() + 1;
         if let Some(l) = w.downcast_ref::<gtk4::Label>() {
             let layout = l.layout();
@@ -490,11 +518,12 @@ impl Walk<'_> {
             // One record per shaped style run (a run holds one font and one colour); neighbours on a line with the same
             // colour are one record. Text is each run's own, the ellipsis run reading as the ellipsis.
             let mut recs: Vec<(Rect, String, [f32; 4], f32)> = Vec::new();
-            let primary = {
-                let ctx = layout.context();
-                let fd = layout.font_description().or_else(|| ctx.font_description());
-                fd.map(|fd| ctx.metrics(Some(&fd), None))
-            };
+            // A text box is the CSS content area of the element's own (first available) font: its ascent and descent
+            // around the baseline, whichever face draws a glyph. The web sizes the box of a glyph that comes from a
+            // fallback face (an arrow, a play triangle) this way; Pango's run rectangle carries the fallback face's smaller
+            // ascent and descent instead, which is the named font difference.
+            let ctx = layout.context();
+            let primary = ctx.metrics(ctx.font_description().as_ref(), None);
             let mut it = layout.iter();
             loop {
                 if let Some(run) = it.run_readonly() {
@@ -522,13 +551,15 @@ impl Walk<'_> {
                             }
                         }
                     }
-                    // The label's real transform to the root (an ancestor's CSS scale is part of it), applied to the run box.
-                    // The run box spans the label font's own ascent and descent (Pango font metrics of the primary face), so
-                    // a glyph drawn from a fallback face keeps the line box of the text around it.
-                    let (top, height) = match &primary {
-                        Some(m) => (it.baseline() - m.ascent(), m.ascent() + m.descent()),
-                        None => (lg.y(), lg.height()),
-                    };
+                    // The label's real transform to the root (an ancestor's CSS scale is part of it), applied to the run's
+                    // logical rectangle exactly as Pango laid it out (a fallback face keeps its own extents).
+                    let (top, height) =
+                        if item.analysis().flags() & PANGO_FLAG_IS_ELLIPSIS != 0 || primary.height() <= 0 {
+                            (lg.y(), lg.height())
+                        } else {
+                            let base = it.baseline();
+                            (base - primary.ascent(), primary.ascent() + primary.descent())
+                        };
                     let local = graphene::Rect::new(
                         ox as f32 + x0 as f32 / s,
                         oy as f32 + top as f32 / s,
@@ -560,7 +591,7 @@ impl Walk<'_> {
             let mut any = false;
             for (r, shown, col, op) in recs {
                 let shown = shown.split_whitespace().collect::<Vec<_>>().join(" ");
-                if shown.is_empty() || !self.shown(r, clip) {
+                if shown.is_empty() || !self.shown(r, clip) || inherited * op * col[3] <= 0.004 {
                     continue;
                 }
                 let mut el = base(role_of(w), &shown, r, inherited * op, bg);
@@ -589,14 +620,18 @@ impl Walk<'_> {
             let mut u: Option<Rect> = None;
             let mut op = factor;
             for t in &lp.textures {
-                u = Some(union(u, t.b));
+                let tb = t.clip.map_or(t.b, |c| clip_rect(t.b, c));
+                if tb[2] <= 0.0 || tb[3] <= 0.0 {
+                    continue;
+                }
+                u = Some(union(u, tb));
                 op = t.opacity;
             }
             if u.is_some() || (pic && lp.other) {
                 rect = if pic { b } else { u.unwrap_or(b) };
                 role = if w.has_css_class("pa-video") { "video" } else { "image" };
                 opacity = inherited * op;
-                opaque = pic && opacity >= 0.5;
+                opaque = opacity > 0.004 && w.can_target();
                 emit = true;
             } else {
                 emit = false;
@@ -639,7 +674,7 @@ impl Walk<'_> {
         } else {
             emit = false;
         }
-        if !emit {
+        if !emit || opacity <= 0.004 {
             return (false, bg);
         }
         let el = base(role, &text, rect, opacity, bg);
@@ -701,21 +736,31 @@ fn child_text(w: &gtk4::Widget) -> String {
 }
 
 /// The screen as the renderer draws it: width, height and premultiplied BGRA pixels.
-fn render(root: &gtk4::Widget) -> Option<(usize, usize, Vec<u8>)> {
+fn render(root: &gtk4::Widget) -> Result<(usize, usize, Vec<u8>), String> {
     let (w, h) = (root.width(), root.height());
     if w <= 0 || h <= 0 {
-        return None;
+        return Err(format!("the screen has no size ({w}x{h})"));
     }
     let paintable = gtk4::WidgetPaintable::new(Some(root));
     let snap = gtk4::Snapshot::new();
     paintable.snapshot(&snap, f64::from(w), f64::from(h));
-    let node = snap.to_node()?;
-    let renderer = root.native()?.renderer()?;
+    let node = snap.to_node().ok_or_else(|| {
+        format!(
+            "the screen drew nothing (mapped {}, visible {}, opacity {})",
+            root.is_mapped(),
+            root.is_visible(),
+            root.opacity()
+        )
+    })?;
+    let renderer = root
+        .native()
+        .and_then(|n| n.renderer())
+        .ok_or("the screen has no renderer")?;
     let tex = renderer.render_texture(&node, Some(&graphene::Rect::new(0.0, 0.0, w as f32, h as f32)));
     let (tw, th) = (tex.width() as usize, tex.height() as usize);
     let mut buf = vec![0u8; tw * th * 4];
     tex.download(&mut buf, tw * 4);
-    Some((tw, th, buf))
+    Ok((tw, th, buf))
 }
 
 type Frame = (usize, usize, Vec<u8>);
@@ -754,9 +799,9 @@ fn settle() {
     }
 }
 
-/// A render with `hide` widgets at opacity 0 (and the widgets restored afterwards). A screen with nothing left to draw
-/// is a blank frame.
-fn render_hiding(root: &gtk4::Widget, hide: &[gtk4::Widget], like: &Frame) -> Frame {
+/// A render with `hide` widgets at opacity 0 (and the widgets restored afterwards). A failed render is an error, never a
+/// blank frame.
+fn render_hiding(root: &gtk4::Widget, hide: &[gtk4::Widget]) -> Result<Frame, String> {
     let saved: Vec<f64> = hide.iter().map(|w| w.opacity()).collect();
     for w in hide {
         w.set_opacity(0.0);
@@ -766,7 +811,7 @@ fn render_hiding(root: &gtk4::Widget, hide: &[gtk4::Widget], like: &Frame) -> Fr
     for (w, o) in hide.iter().zip(saved) {
         w.set_opacity(o);
     }
-    f.unwrap_or_else(|| (like.0, like.1, vec![0u8; like.2.len()]))
+    f.map_err(|e| format!("a probe render failed: {e}"))
 }
 
 /// Of the records the geometry calls covered, those the rendered screen shows no more than half of. A record is
@@ -780,13 +825,11 @@ fn confirm_hidden(
     items: &[Item],
     candidates: &[(usize, Vec<usize>)],
     viewport: Rect,
-) -> Vec<usize> {
+) -> Result<Vec<usize>, String> {
     if candidates.is_empty() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
-    let (Some(base), Some(again)) = (render(root), render(root)) else {
-        return Vec::new();
-    };
+    let (base, again) = (render(root)?, render(root)?);
     let mut hidden = Vec::new();
     let mut by_cover: std::collections::BTreeMap<Vec<usize>, Vec<usize>> = Default::default();
     for (i, cover) in candidates {
@@ -794,7 +837,7 @@ fn confirm_hidden(
     }
     for (cover, group) in by_cover {
         let cover_w: Vec<gtk4::Widget> = cover.iter().map(|&c| items[c].widget.clone()).collect();
-        let open_base = render_hiding(root, &cover_w, &base);
+        let open_base = render_hiding(root, &cover_w)?;
         for i in group {
             let r = items[i].rect;
             if peak_diff(&base, &again, r, viewport) > 0 {
@@ -802,15 +845,20 @@ fn confirm_hidden(
             }
             let mut both = cover_w.clone();
             both.push(items[i].widget.clone());
-            let open = peak_diff(&open_base, &render_hiding(root, &both, &base), r, viewport);
+            let open = peak_diff(&open_base, &render_hiding(root, &both)?, r, viewport);
             let one = [items[i].widget.clone()];
-            let seen = peak_diff(&base, &render_hiding(root, &one, &base), r, viewport);
+            let seen = peak_diff(&base, &render_hiding(root, &one)?, r, viewport);
             if u32::from(seen) * 2 <= u32::from(open) + 8 {
                 hidden.push(i);
             }
         }
     }
-    hidden
+    // The scene must still be the one measured: a record whose box differs between the first render and one taken after
+    // the probes is moving, so it is kept, not hidden.
+    settle();
+    let last = render(root).map_err(|e| format!("after the visibility check: {e}"))?;
+    hidden.retain(|&i| peak_diff(&base, &last, items[i].rect, viewport) == 0);
+    Ok(hidden)
 }
 
 /// Writes the layout of `root` to `path`; `screen` and `theme` label the document.
@@ -864,7 +912,7 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
     }
     // The cover is a candidate only: the rendered screen decides. Hiding the record's widget and drawing the screen again
     // must leave its box unchanged, or it is visible and stays.
-    for i in confirm_hidden(root, &walk.items, &candidates, viewport) {
+    for i in confirm_hidden(root, &walk.items, &candidates, viewport)? {
         keep[i] = false;
         occluded += 1;
     }
@@ -881,7 +929,10 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
         "occluded": occluded,
         "elements": elements,
     });
-    std::fs::write(path, serde_json::to_vec(&doc).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+    // Written beside the target and renamed into place, so a reader polling for the file never sees half of it.
+    let tmp = format!("{path}.part");
+    std::fs::write(&tmp, serde_json::to_vec(&doc).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, path).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -900,5 +951,70 @@ mod tests {
         assert_eq!(role_of(a.upcast_ref()), "group");
         assert_eq!(role_of(a.upcast_ref()), role_of(b.upcast_ref()));
         assert_eq!(role_of(c.upcast_ref()), "container");
+    }
+
+    #[test]
+    fn nested_clips_intersect() {
+        assert_eq!(intersect(None, [0.0, 0.0, 10.0, 10.0]), [0.0, 0.0, 10.0, 10.0]);
+        assert_eq!(
+            intersect(Some([0.0, 0.0, 10.0, 10.0]), [5.0, 5.0, 10.0, 10.0]),
+            [5.0, 5.0, 5.0, 5.0]
+        );
+        let apart = intersect(Some([0.0, 0.0, 4.0, 4.0]), [8.0, 8.0, 2.0, 2.0]);
+        assert!(
+            apart[2] == 0.0 && apart[3] == 0.0,
+            "disjoint clips leave nothing: {apart:?}"
+        );
+    }
+
+    fn frame(px: u8) -> Frame {
+        (4, 4, vec![px; 4 * 4 * 4])
+    }
+
+    #[test]
+    fn peak_diff_reads_only_inside_the_box() {
+        let (mut a, b) = (frame(0), frame(0));
+        a.2[(3 * 4 + 3) * 4] = 90;
+        let view = [0.0, 0.0, 4.0, 4.0];
+        assert_eq!(peak_diff(&a, &b, [0.0, 0.0, 2.0, 2.0], view), 0);
+        assert_eq!(peak_diff(&a, &b, [2.0, 2.0, 2.0, 2.0], view), 90);
+        // A box outside the viewport is cut to it, so it never reads past the frame.
+        assert_eq!(peak_diff(&a, &b, [3.0, 3.0, 50.0, 50.0], view), 90);
+    }
+
+    #[test]
+    fn a_failed_probe_render_is_an_error_not_a_blank_frame() {
+        if gtk4::init().is_err() {
+            return;
+        }
+        // Never shown, so it has no size and no renderer: a render must fail, and the visibility check with it.
+        let root = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        assert!(render(root.upcast_ref()).is_err());
+        let hidden = gtk4::Label::new(Some("x"));
+        let items = vec![Item {
+            widget: hidden.upcast(),
+            json: json!({}),
+            rect: [0.0, 0.0, 1.0, 1.0],
+            opaque: false,
+            end: 1,
+        }];
+        let r = confirm_hidden(root.upcast_ref(), &items, &[(0, vec![0])], [0.0, 0.0, 1.0, 1.0]);
+        assert!(r.is_err(), "a probe that cannot render must not hide anything");
+        // With nothing to confirm there is nothing to render.
+        assert_eq!(
+            confirm_hidden(root.upcast_ref(), &items, &[], [0.0, 0.0, 1.0, 1.0]),
+            Ok(vec![])
+        );
+    }
+
+    #[test]
+    fn a_moving_scene_keeps_its_records() {
+        // The re-check after the probes compares the first render with the last: a box that changed is not hidden.
+        let (base, last) = (frame(0), frame(7));
+        let view = [0.0, 0.0, 4.0, 4.0];
+        let mut hidden = vec![0usize];
+        let rects = [[0.0, 0.0, 2.0, 2.0]];
+        hidden.retain(|&i| peak_diff(&base, &last, rects[i], view) == 0);
+        assert!(hidden.is_empty());
     }
 }

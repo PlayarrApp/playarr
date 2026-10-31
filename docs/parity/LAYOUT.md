@@ -53,6 +53,11 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
   the zoom product. A shell that scales with a `transform` (VIDAA) reports rects in stage px already, so font sizes stay unscaled
   there too. Native exporters report the CSS-px size the rendered glyphs have (for example Qt `pixelSize` divided by the window
   scale), never the raw device px. A heading of 15.23 px on web is 15.23, not 16: the web value is the truth.
+  A focus scale (a `scale` transform on a focused control, for example the TV Play or Start pill at 1.06) is a drawn-size effect, not a
+  font size: the exporter may report the unscaled size only when it reads it from the node's own `fontSize` property, and it never derives
+  a size from the transform or from a web value. The rect still carries the transform. A native client must not compensate for this with
+  per-text letter spacing or offsets: a spacing value is kept only when it equals a web computed `letter-spacing` or follows from a named
+  font or metric difference, stated in a comment next to it.
 - `clockPinned` (device documents): the app's own clock was pinned to the fixture instant (see Freezing).
 
 Layout refs: `<legend dir>/web/layout/<theme>/<screen>.json` for every ref group (`capture-refs.mjs` writes them with every capture;
@@ -64,8 +69,9 @@ Layout refs: `<legend dir>/web/layout/<theme>/<screen>.json` for every ref group
 
 Matching (deterministic, in web order): 1. normalised text and role, nearest rect; 2. same text, other role (a `role` failure);
 3. textless and volatile elements: same role, best overlap; 4. remaining elements: same role, best overlap (a `text` failure).
-Score = web elements matched and equal / scored web elements. Tolerances: each rect edge 1 px, colour and background CIE76 deltaE 2
-(translucent colours composited first), font size 0.5 px, weight 50, radius 1 px, opacity 0.05. Every failure lists the field,
+Score = web elements matched and equal / scored web elements. Zero tolerance (owner order, 31 Oct 2026): each rect edge must
+equal on the whole device pixel (`Math.round(px * dpr)`), colour and background must be identical 8-bit sRGB bytes after compositing
+translucent colours (deltaE is only reported), and font size, weight, radius and opacity must be strictly equal. Every failure lists the field,
 the web and device values, and the delta. Extra device elements are counted, not penalised.
 
 ## Per-client exclusions

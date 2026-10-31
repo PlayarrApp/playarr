@@ -1,0 +1,1 @@
+- Tizen native layout export: text runs are the native text geometry as returned, roles are the views native accessibility role, calendar chips are no longer exported as buttons, the player volume is a working slider (Select steps it) and mute works.

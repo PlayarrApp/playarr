@@ -120,7 +120,7 @@ const PANEL_LEFT: number = 774;
 const PANEL_TOP: number = 216;
 const PANEL_WIDTH: number = 1042;
 const PANEL_TEXT_SIZE: number = 13.824;
-const SETTING_CARD_TOP: number = 1 + 34 + 1.77 + 1.27; // web: from a setting's top rule to its heading (the rule's own px included)
+const SETTING_CARD_TOP: number = 1 + 34 + 1.77 + 1.27 - 1.3; // web: from a setting's top rule to its heading (the rule's own px included)
 /** Phone: the panel is the page width less 16 each side (the 360 vp web phone width). */
 const TOUCH_PANEL_WIDTH: number = 328;
 
@@ -351,6 +351,7 @@ export struct SettingsScreen {
       selected: this.homeView,
       large: true,
       sectionWidth: this.panelWidth(),
+      trailingGap: false,
       onChoose: (value: string) => {
         this.homeView = value;
         saveAppearance('homeView', value);
@@ -359,6 +360,7 @@ export struct SettingsScreen {
     }
     .width(tv(this.panelWidth()))
     .padding({ top: tv(SETTING_CARD_TOP) })
+    .margin({ bottom: tv(30.23) }) // web: the 30.2 px gap lies between the setting boxes, outside their rules
     .border({ width: { top: 1 }, color: toResourceColorWithAlpha(activeColors().ink, 0.083) }) // web: the setting's own box, a 1 px rule on its top edge
     Column() {
     ChoiceSegments({
@@ -368,6 +370,7 @@ export struct SettingsScreen {
       selected: this.artworkSize,
       large: true,
       sectionWidth: this.panelWidth(),
+      trailingGap: false,
       onChoose: (value: string) => {
         this.artworkSize = value;
         saveAppearance('artworkSize', value);
@@ -376,6 +379,7 @@ export struct SettingsScreen {
     }
     .width(tv(this.panelWidth()))
     .padding({ top: tv(SETTING_CARD_TOP) })
+    .margin({ bottom: tv(30.23) }) // web: the 30.2 px gap lies between the setting boxes, outside their rules
     .border({ width: { top: 1 }, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
   }
 
@@ -691,6 +695,7 @@ export struct SettingsScreen {
       PageShell({
         railFrostWidthPct: 65,
         railFrostFullBox: false, // web: the detail panel is its own 65% wide box
+        stageWash: isTvMetrics(), // web: the page's `.tv-stage-wash` is a full-page box under the panel
         title: t('settings.index.title', 'Preferences'),
         backLabel: 'Settings',
         backRole: 'button',

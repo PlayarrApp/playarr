@@ -133,11 +133,39 @@ SHARED_AVATARS = Path(__file__).resolve().parents[2] / "shared" / "profile-avata
 AVATAR_PRESETS = ("astronaut", "cat", "dinosaur", "robot", "pirate", "alien")
 
 
+def avatar_plates() -> None:
+    """Web draws the avatar as a 264 px gradient circle (container) holding a separate artwork picture. avatar-bg-<id>.png is the
+    plate without the artwork (the shared renderer's 145deg gradient and 34%/26% sheen); avatar-glyph-<id>.png is the artwork alone."""
+    import json
+    import numpy as np
+    spec = json.loads((SHARED_AVATARS / "presets.json").read_text(encoding="utf-8"))
+    size = 240
+    ys, xs = np.mgrid[0:size, 0:size].astype(np.float64) + 0.5
+    rad = np.radians(145)
+    dx, dy = np.sin(rad), -np.cos(rad)
+    length = size * (abs(dx) + abs(dy))
+    t = np.clip(((xs - size / 2) * dx + (ys - size / 2) * dy) / length + 0.5, 0, 1)
+    sheen = np.clip(1 - np.hypot(xs - size * 0.34, ys - size * 0.26) / (size * 0.2677), 0, 1) * 0.28
+    big = Image.new("L", (size * SS, size * SS), 0)
+    ImageDraw.Draw(big).ellipse((0, 0, size * SS - 1, size * SS - 1), fill=255)
+    alpha = big.resize((size, size), Image.LANCZOS)
+    for preset in spec["presets"]:
+        a = np.array([int(preset["start"][i:i + 2], 16) for i in (1, 3, 5)], dtype=np.float64)
+        b = np.array([int(preset["end"][i:i + 2], 16) for i in (1, 3, 5)], dtype=np.float64)
+        rgb = a[None, None, :] * (1 - t[..., None]) + b[None, None, :] * t[..., None]
+        rgb = rgb * (1 - sheen[..., None]) + 255 * sheen[..., None]
+        img = Image.fromarray(np.clip(rgb + 0.5, 0, 255).astype(np.uint8), "RGB").convert("RGBA")
+        img.putalpha(alpha)
+        img.save(IMAGES / f"avatar-bg-{preset['id']}.png")
+        shutil.copyfile(SHARED_AVATARS / "art" / f"{preset['id']}.png", IMAGES / f"avatar-glyph-{preset['id']}.png")
+
+
 def avatars() -> None:
     """The six preset avatars are the shared plates (clients/shared/profile-avatars, rendered from the web client's art), and
     avatar-mask.png is the circle a custom photo is clipped to (a MaskGroup mask: only its alpha counts)."""
     for preset in AVATAR_PRESETS:
         shutil.copyfile(SHARED_AVATARS / "plates" / f"{preset}.png", IMAGES / f"avatar-{preset}.png")
+    avatar_plates()
     size = 240
     big = Image.new("L", (size * SS, size * SS), 0)
     ImageDraw.Draw(big).ellipse((0, 0, size * SS - 1, size * SS - 1), fill=255)
@@ -467,6 +495,8 @@ def main() -> None:
     for r in (6, 12, 25):
         nine_patch(f"round-r{r}", r)
         nine_patch(f"round-outline-r{r}", r, 1.2)
+    nine_patch("round-r29", 29)  # the 58 px pills (calendar agenda actions): web's radius is half the height
+    nine_patch("round-outline-r29", 29, 1.2)
     nine_patch("round-r38", 38)
     nine_patch("round-outline-r38", 38, 1.2)  # the search pill
     nine_patch("round-r82", 82)

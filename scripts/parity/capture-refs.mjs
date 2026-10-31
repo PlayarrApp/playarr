@@ -153,7 +153,7 @@ for (const name of groups) {
           // a poster still loading after the readiness wait.
           for (let attempt = 1; ; attempt++) {
             await driver.home();
-            if (s.id === "player-controls") await driver.playerControls(film.media_file_id);
+            if (s.id === "player-controls") { await driver.playerControls(film.media_file_id); if (g.hideVideo) await driver.hideVideo(); }
             else if (s.id === "actions" && g.mobile) { await driver.route("/movies"); await driver.openActions(); }
             else if (s.open) await driver.route(s.open, { requireHeroAction: /^\/(?:movies|series)\/[^/]+\/?$/.test(s.open) });
             else if (!g.mobile && s.keys) for (const { key, long } of expandKeys(s.keys)) { await driver.key(key, { long }); await sleep(250); } // let the route or panel the key opened settle before the next key

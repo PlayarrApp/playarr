@@ -74,7 +74,7 @@ sub renderSettings()
         end if
         pgGlyph(m.pageBody, "→", arrowX, y + 31.3, 20.8, 400, arrowRole)
         pgMark(m.pageBody, "link", numText + " " + sections[i].title, 153.6, y, 470.4, 91.9, 0)
-        pgFocusable(153.6, y, 480.4, 91.9, 12, "section", sections[i].id, true)
+        pgFocusable(153.6, y, 470.4, 91.9, 12, "section", sections[i].id, true)
     end for
     id = m.settingsPanel
     if id = "appearance"

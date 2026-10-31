@@ -22,6 +22,7 @@ fn row(icon: &str, label: &str, _tone: Tone) -> gtk4::Button {
         .label(glyph(icon))
         .css_classes(["pa-row-glyph", icon])
         .xalign(0.0)
+        .valign(gtk4::Align::Center)
         .width_request(42)
         .build();
     crate::layout::decorative(&mark);

@@ -348,7 +348,7 @@ class NavigationContractTests(unittest.TestCase):
         brs_path = ROOT / "components" / "ProfileAvatar.brs"
         self.assertTrue(brs_path.is_file())
         brs_source = brs_path.read_text(encoding="utf-8")
-        self.assertIn('m.avatarImage.uri = "pkg:/images/avatar-" + content.presetId + ".png"', brs_source)
+        self.assertIn('m.avatarImage.uri = "pkg:/images/avatar-bg-" + content.presetId + ".png"', brs_source)
         # Every preset PNG this component can reference must actually be
         # packaged (see scripts/package.sh, which bundles the whole images/
         # directory), or a real profile could resolve to a missing asset.

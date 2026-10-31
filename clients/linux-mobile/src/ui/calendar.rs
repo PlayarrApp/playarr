@@ -882,6 +882,11 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     let head = header::build(&app, "Calendar", "filters");
     head.action.set_visible(true);
     head.extra.set_visible(true);
+    {
+        let (app, client) = (app.clone(), client.clone());
+        head.extra
+            .connect_clicked(move |_| super::calendar_link::show(&app, &client));
+    }
     page.append(&head.widget);
 
     let content = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
@@ -898,12 +903,12 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     let range_label = gtk4::Label::builder().css_classes(["pa-pill-label"]).build();
     let range = gtk4::Button::builder()
         .child(&range_label)
-        .css_classes(["pa-pill"])
+        .css_classes(["pa-pill", "range"])
         .build();
     let prev = round_arrow("←");
-    // The web's previous button sits 1.8 px right of the whole-pixel flow.
-    prev.set_margin_start(2);
-    prev.set_margin_end(-2);
+    // The web's previous button sits 0.8 px right of the whole-pixel flow.
+    prev.set_margin_start(1);
+    prev.set_margin_end(-1);
     let today_btn = pill("Today");
     today_btn.add_css_class("selected");
     let next = round_arrow("→");

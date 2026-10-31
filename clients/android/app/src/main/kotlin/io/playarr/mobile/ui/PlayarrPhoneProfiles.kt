@@ -224,7 +224,7 @@ internal fun PhoneAddProfileChoice(selected: Boolean, enabled: Boolean, onFocus:
             verticalArrangement = Arrangement.spacedBy(8.8.dp),
         ) {
             PhoneProfileAvatarPlate(selected, Modifier, dashed = true) {
-                Box(Modifier.fillMaxSize().parityBox("container", radius = 999f), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("+", color = WebInkSoft, fontSize = 38.4.sp, lineHeight = 57.6.sp, fontWeight = FontWeight(300), style = WebTextStyle, modifier = Modifier)
                 }
             }
@@ -266,7 +266,9 @@ private fun PhoneProfileAvatarPlate(
         innerModifier = Modifier
             .then(
                 if (dashed) {
+                    // The plate's own node paints the gradient, so it is the exported container.
                     Modifier
+                        .parityBox("container", radius = 999f)
                         .background(Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)))
                         .drawBehind {
                             val css = Math.toRadians(145.0)

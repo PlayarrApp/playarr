@@ -161,8 +161,8 @@ const CHROME_GLASS: RgbaColor = { r: 12, g: 9, b: 12, a: 1 };
 const CHROME_TEXT_SECONDARY: RgbaColor = { r: 255, g: 255, b: 255, a: 0.7 };
 /** web: the slash between the elapsed and total time is the muted text token, the two times are white */
 const CHROME_TEXT_MUTED: RgbaColor = { r: 165, g: 150, b: 158, a: 1 };
-const CHROME_TRACK_ALPHA: number = 0.28;
-const CHROME_BUFFERED_ALPHA: number = 0.46;
+const CHROME_TRACK_ALPHA: number = 0.2; // web `.player-seek-track`: rgba(255,255,255,.2)
+const CHROME_BUFFERED_ALPHA: number = 0.34; // web `.player-seek-buffered`: rgba(255,255,255,.34)
 
 // Brief 5.4's "button" typographic role (16 / 720 -> `FontWeight.Bold` per
 // that section's own weight-rounding guidance) -- reused for every text
@@ -554,13 +554,13 @@ export struct PlayerChrome {
       Row()
         .width('100%')
         .height(height)
-        .borderRadius(height / 2)
+        .borderRadius(isTvMetrics() ? height / 2 : 0) // web phone: a square-ended track
         .backgroundColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CHROME_TRACK_ALPHA))
 
       Row()
         .width(`${this.bufferedPercent()}%`)
         .height(height)
-        .borderRadius(height / 2)
+        .borderRadius(isTvMetrics() ? height / 2 : 0)
         .backgroundColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CHROME_BUFFERED_ALPHA))
 
       Row()
@@ -717,16 +717,16 @@ export struct PlayerChrome {
               .width(tv(130))
               .height(tv(44))
               .trackColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, 0.3))
-              .selectedColor(toResourceColor(CHROME_TEXT_PRIMARY))
-              .blockColor(toResourceColor(CHROME_TEXT_PRIMARY))
+              .selectedColor(toResourceColor(BRAND_PINK)) // web: the range and its thumb take the player accent
+              .blockColor(toResourceColor(BRAND_PINK))
               .accessibilityText('Volume').accessibilityRole(AccessibilityRoleType.SLIDER)
               .onChange((value: number): void => {
                 this.volumePercent = value;
               })
           }
           Blank()
-          // web: the audio-track button; drawn at full strength with no alternative track, named "Audio: Unavailable"
-          this.tvIcon($r('app.media.player_audio'), (): void => {}, true, 'Audio: Unavailable')
+          // web: the audio-track button is disabled (opacity .28) with no alternative track, named "Audio: Unavailable"
+          this.tvIcon($r('app.media.player_audio'), (): void => {}, false, 'Audio: Unavailable')
           this.tvIcon($r('app.media.player_subtitles'), (): void => { if (this.hasTracks) { this.onOpenTracks(); } }, true, 'Subtitles: Off')
           this.tvIcon($r('app.media.player_queue'), (): void => {}, true, 'Playlist: 1 item')
           if (this.qualityLabel.length > 0) {
@@ -859,19 +859,26 @@ export struct PlayerChrome {
         .position({ x: 66, y: 674 })
       this.phoneSkip(false, this.canNext, this.onNext, 112, 674)
       this.phoneButton('Mute', $r('app.media.player_volume'), 20, this.onToggleMute, false, 158, 674)
-      this.phoneButton('Audio: Unavailable', $r('app.media.player_audio'), 20, (): void => {}, false, 204, 674)
+      this.phoneButton('Audio: Unavailable', $r('app.media.player_audio'), 20, (): void => {}, false, 204, 674, true) // web: the audio button is disabled (opacity .28) with no alternative track
       this.phoneButton('Subtitles: Off', $r('app.media.player_subtitles'), 20, this.onOpenTracks, false, 250, 674)
       this.phoneButton('Playlist: 1 item', $r('app.media.player_queue'), 20, (): void => {}, false, 296, 674)
-      Row() {
-        Text('HD').fontFamily(nunitoAt(700, 7.68)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
-        Text(this.qualityLabel).fontFamily(nunitoAt(700, 10.56)).fontSize(10.56).lineHeight(webLineHeight(10.56)).halfLeading(true).fontWeight(FontWeight.Bold)
-          .fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).width(40.31).maxLines(3).textAlign(TextAlign.Center)
+      // web phone: the button is 44 wide with no padding; its content (a 22 wide HD glyph, 8.8 gap, the label at its widest word) is wider
+      // and overflows centred, the label wrapping to one word a line
+      Stack({ alignContent: Alignment.Center }) {
+        Row({ space: 8.8 }) {
+          Text('HD').fontFamily(nunitoAt(700, 7.68)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Bold)
+            .letterSpacing(0.307) // web: .player-quality-glyph letter-spacing 0.04em
+            .fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).width(22).textAlign(TextAlign.Center)
+          Text(this.qualityLabel).fontFamily(nunitoAt(700, 10.56)).fontSize(10.56).lineHeight(webLineHeight(10.56)).halfLeading(true).fontWeight(FontWeight.Bold)
+            .letterSpacing(0.1056) // web: .player-quality-button letter-spacing 0.01em
+            .fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).width(40.31).maxLines(3).textAlign(TextAlign.Center)
+        }
+        .width(71.11)
       }
       .width(44)
       .height(44)
       .accessibilityText('Quality: ' + this.qualityLabel).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
       .borderRadius(22)
-      .justifyContent(FlexAlign.Center)
       .position({ x: 89, y: 722 })
       .onClick(() => {
         this.onOpenQuality();
