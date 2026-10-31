@@ -2320,7 +2320,12 @@ sub renderCalendarMonth(entries as Object)
     end for
     ' Each day cell is a box with its own 1 px border (web .calendar-month-cell): a bordered container, no corner.
     for i = 0 to days - 1
-        cellBox = pgOutlineBox(m.pageBody, gx + (i mod 7) * cw, gy + Int(i / 7) * ch, cw, ch, "line")
+        ' Edges land on whole pixels, as the web snaps a border: two neighbours show two adjacent 1 px borders.
+        bx0 = Int(gx + (i mod 7) * cw + 0.5)
+        bx1 = Int(gx + ((i mod 7) + 1) * cw + 0.5)
+        by0 = Int(gy + Int(i / 7) * ch + 0.5)
+        by1 = Int(gy + (Int(i / 7) + 1) * ch + 0.5)
+        cellBox = pgOutlineBox(m.pageBody, bx0, by0, bx1 - bx0, by1 - by0, "line")
         cellBox.id = "a11y|container|0|"
     end for
     firstStop = m.pageItems.Count()
