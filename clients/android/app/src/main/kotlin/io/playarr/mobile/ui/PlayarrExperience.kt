@@ -123,7 +123,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import io.playarr.shared.designsystem.page.Surface
-import androidx.compose.material3.Text
+import io.playarr.shared.designsystem.page.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -1424,14 +1424,8 @@ internal val WebTextStyle: androidx.compose.ui.text.TextStyle
     // Chromium lays glyphs out with unhinted, fractional advances; Compose's default hints them (about 4% narrower at
     // 11 sp). The animated text motion turns hinting off and positions glyphs at subpixel offsets.
     textMotion = if (webFontFamily != null) androidx.compose.ui.text.style.TextMotion.Animated else null,
-    lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
-        alignment = if (webFontFamily != null) {
-            androidx.compose.ui.text.style.LineHeightStyle.Alignment(0.3f)
-        } else {
-            androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center
-        },
-        trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.None,
-    ),
+    // The phone derives the line box from Chromium's rules per size (PlayarrWebText); the tablet keeps the plain centre.
+    lineHeightStyle = if (webFontFamily != null) io.playarr.shared.designsystem.page.WebLineBox else androidx.compose.ui.text.style.LineHeightStyle(androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center, androidx.compose.ui.text.style.LineHeightStyle.Trim.None),
 )
 
 /**
