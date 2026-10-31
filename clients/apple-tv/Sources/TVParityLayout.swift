@@ -1,5 +1,4 @@
 import SwiftUI
-import CoreText
 #if os(macOS)
 import AppKit
 #endif
@@ -565,9 +564,6 @@ struct TVParityStageRender {
 /// Drawing is unchanged; nothing is measured by another renderer.
 @available(tvOS 18.0, macOS 15.0, *)
 private struct TVParityTextRenderer: TextRenderer {
-    /// The font size and weight the text is set in (the face's own line metrics decide the box a browser reports for a run).
-    let size: CGFloat
-    let weight: Int
     let report: ([CGRect], [String]) -> Void
 
     func draw(layout: Text.Layout, in context: inout GraphicsContext) {
@@ -580,37 +576,7 @@ private struct TVParityTextRenderer: TextRenderer {
             }
             return parts.joined().trimmingCharacters(in: .whitespaces)
         }
-        report(layout.map { TVParityFontMetrics.contentBox(of: $0.typographicBounds, size: size, weight: weight) }, strings)
-    }
-}
-
-/// The box a browser reports for a run of text (`Range.getBoundingClientRect`, docs/parity/LAYOUT.md): the font's content area, from the
-/// `hhea` ascender and descender of the face the text is set in, on the run's own baseline. SwiftUI's typographic bounds split the same
-/// line height between ascent and descent differently, so the box sits lower than the glyphs it measures; the baseline is the same.
-@available(tvOS 18.0, macOS 15.0, *)
-enum TVParityFontMetrics {
-    private static var cache: [String: (ascent: CGFloat, descent: CGFloat)?] = [:]
-
-    /// The face's `hhea` ascender and descender as fractions of the em, read from the font file itself.
-    static func hhea(size: CGFloat, weight: Int) -> (ascent: CGFloat, descent: CGFloat)? {
-        let key = "\(weight)"
-        if let hit = cache[key] { return hit }
-        let font = CTFontCreateWithName(TVFontLoader.uiFont(mono: false, size: 100, weight: CGFloat(weight)).fontName as CFString, 100, nil)
-        var result: (CGFloat, CGFloat)?
-        if let head = CTFontCopyTable(font, CTFontTableTag(kCTFontTableHead), []) as Data?,
-           let hhea = CTFontCopyTable(font, CTFontTableTag(kCTFontTableHhea), []) as Data?, head.count >= 20, hhea.count >= 8 {
-            func i16(_ d: Data, _ o: Int) -> CGFloat { CGFloat(Int16(bitPattern: UInt16(d[d.startIndex + o]) << 8 | UInt16(d[d.startIndex + o + 1]))) }
-            let upem = CGFloat(UInt16(head[head.startIndex + 18]) << 8 | UInt16(head[head.startIndex + 19]))
-            if upem > 0 { result = (i16(hhea, 4) / upem, -i16(hhea, 6) / upem) }
-        }
-        cache[key] = result
-        return result
-    }
-
-    static func contentBox(of bounds: Text.Layout.TypographicBounds, size: CGFloat, weight: Int) -> CGRect {
-        guard size > 0, let m = hhea(size: size, weight: weight), m.ascent + m.descent > 0 else { return bounds.rect }
-        let baseline = bounds.rect.minY + bounds.ascent
-        return CGRect(x: bounds.rect.minX, y: baseline - m.ascent * size, width: bounds.rect.width, height: (m.ascent + m.descent) * size)
+        report(layout.map { $0.typographicBounds.rect }, strings)
     }
 }
 
@@ -688,7 +654,7 @@ private struct TVParityLayoutModifier: ViewModifier {
     @ViewBuilder
     private func rendered(_ content: Content) -> some View {
         if #available(tvOS 18.0, macOS 15.0, *), text != nil, size != nil {
-            content.textRenderer(TVParityTextRenderer(size: size ?? 0, weight: weight ?? 400) { bounds, strings in
+            content.textRenderer(TVParityTextRenderer { bounds, strings in
                 let key = id
                 Task { @MainActor in TVParityLayoutRegistry.shared.setLines(key, bounds, texts: strings) }
             })
