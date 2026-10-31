@@ -322,48 +322,14 @@ namespace Playarr.Xbox.Views
 
         private static bool PixelEqual(byte[] a, byte[] b, int i) => a[i] == b[i] && a[i + 1] == b[i + 1] && a[i + 2] == b[i + 2];
 
-        private static bool InMask(List<Rect> masks, int x, int y)
-        {
-            foreach (var m in masks)
-            {
-                if (x >= m.X && x < m.Right && y >= m.Y && y < m.Bottom)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>Video surfaces change every frame, so their pixels are never evidence either way.</summary>
-        private static List<Rect> VideoBoxes(FrameworkElement root)
-        {
-            var boxes = new List<Rect>();
-            var scale = root.ActualWidth > 0 ? 1920.0 / root.ActualWidth : 1.0;
-            void Visit(DependencyObject node)
-            {
-                if (node is FrameworkElement { ActualWidth: >= 1 } fe && (node is MediaPlayerElement || node is MediaElement || node is SwapChainPanel))
-                {
-                    var r = fe.TransformToVisual(root).TransformBounds(new Rect(0, 0, fe.ActualWidth, fe.ActualHeight));
-                    boxes.Add(new Rect(r.X * scale, r.Y * scale, r.Width * scale, r.Height * scale));
-                }
-
-                for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
-                {
-                    Visit(VisualTreeHelper.GetChild(node, i));
-                }
-            }
-
-            Visit(root);
-            return boxes;
-        }
+        // Video needs no mask: a pixel that changes between the base and re-show frames (a playing picture) is never evidence,
+        // and the player's video surface spans the whole screen, so a box mask would blind every control on it.
 
         private static async Task<(HashSet<object> Hidden, bool Stable, string Diff)> ToggleAllAsync(FrameworkElement root)
         {
             var (before, width, height) = await GrabAsync(root);
             var hidden = new HashSet<object>();
             var log = new List<string>();
-            var masks = VideoBoxes(root);
             foreach (var candidate in Candidates)
             {
                 var x0 = Math.Max(0, (int)Math.Floor(candidate.Box.X));
@@ -401,11 +367,6 @@ namespace Playarr.Xbox.Views
                     {
                         for (var x = x0; x < x1; x++)
                         {
-                            if (InMask(masks, x, y))
-                            {
-                                continue;
-                            }
-
                             var i = (y * width + x) * 4;
                             if (PixelEqual(baseline, shown, i) && !PixelEqual(hiddenFrame, baseline, i))
                             {
