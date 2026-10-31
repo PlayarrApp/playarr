@@ -450,7 +450,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       }
       rmSync(probe, { force: true });
       if (!settled) console.log(`  frame never settled in 30 s (${basename(file)}), capturing anyway`);
-      const shot = await grab(file);
+      const shotFirst = await grab(file);
       if (!existsSync(file) || statSync(file).size < 20000) throw new Error("empty frame");
       if ((state().route ?? "").startsWith("/login")) throw new Error("signed out");
       // The request goes out only now, with the screenshot taken: the app hides each item in turn to measure what is visible, which
@@ -458,18 +458,40 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       // Layout export (docs/parity/LAYOUT.md): the app's own style values and frames for this capture, written beside the screenshot.
       const themeDir = dirname(file), id = basename(file, ".png");
       if (!/^(dark|light)$/.test(basename(themeDir))) return; // not a screen capture (a crop or a player case): no request is written
-      writeFileSync(join(base, "parity-layout-request"), captureID);
-      let layout = null;
-      for (let i = 0; i < 240 && !layout; i += 1) { // the app renders the screen once per batch of hidden items
-        await sleep(500);
-        try {
-          const doc = JSON.parse(readFileSync(join(base, "parity-layout.json"), "utf8"));
-          if (doc.captureID === captureID) layout = doc;
-        } catch { /* not written yet */ }
+      // Ask the app for a layout and wait for the answer stamped with this request's id.
+      const measure = async (requestID) => {
+        writeFileSync(join(base, "parity-layout-request"), requestID);
+        for (let i = 0; i < 240; i += 1) { // the app renders the screen once per batch of hidden items
+          await sleep(500);
+          try {
+            const doc = JSON.parse(readFileSync(join(base, "parity-layout.json"), "utf8"));
+            if (doc.captureID === requestID) return doc;
+          } catch { /* not written yet */ }
+        }
+        return null;
+      };
+      // tvOS: the visibility pass hides and shows every item, and SwiftUI rasterises layers it re-creates (shadows, blurs, circle
+      // edges, text over a gradient) with different low bits than the first render. So the frame saved is the settled frame AFTER one
+      // complete pass, and the layout comes from a second pass that starts from exactly that frame: PNG and layout then describe one
+      // render, and the check below stays a byte comparison. Both passes always run; nothing is retried until equal.
+      let shot = shotFirst;
+      if (!mac) {
+        if (!(await measure(`${captureID}-a`))) throw new Error(`layout export missing (${id})`);
+        rmSync(join(base, "parity-layout.json"), { force: true });
+        let prevS = await grab(probe);
+        for (let i = 0; i < 20; i += 1) {
+          await sleep(1000);
+          const next = await grab(probe);
+          const steady = next.equals(prevS);
+          prevS = next;
+          if (steady) break;
+        }
+        shot = prevS;
+        writeFileSync(file, shot);
+        rmSync(probe, { force: true });
       }
+      const layout = await measure(captureID);
       if (!layout) throw new Error(`layout export missing or not for this capture (${id})`);
-      // The layout and the PNG must describe one render: the screen as it is once the layout is measured must equal the frame saved.
-      // Hiding each item in turn restarts image decoding and fades; let the screen settle again (two equal grabs) before comparing.
       let after = await grab(probe);
       for (let i = 0; i < 20; i += 1) {
         if (after.equals(shot)) break;

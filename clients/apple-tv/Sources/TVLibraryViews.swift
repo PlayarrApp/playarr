@@ -1433,16 +1433,23 @@ struct TVSearchView: View {
                     .placed(x: 62, y: 0, w: 480, h: 76)
             }
             // the real field is always laid out; a frozen (parity) page keeps it inert so it takes no focus and no keyboard
-            TextField("", text: query)
-                .font(TVTheme.font(size: 17.66, weight: .regular))
-                .foregroundStyle(DesignTokens.Color.textPrimary)
-                .accessibilityLabel("Search your libraries and playlists")
-                .focused($searchFieldFocused)
-                .onSubmit(onSubmit)
-                .disabled(frozen)
-                .frame(width: 480, height: 76, alignment: .leading)
-                .parityBox("textbox", text: "Search your libraries and playlists") // before the offset: the box is the field's own frame
-                .offset(x: 62, y: 0)
+            // A frozen (parity) page has no field at all: a disabled field still took the system focus and drew its platter in the saved
+            // frame, then lost it when the layout pass hid it (the platter is not on the web page). The textbox is still reported.
+            Group {
+                if frozen {
+                    Color.clear
+                } else {
+                    TextField("", text: query)
+                        .font(TVTheme.font(size: 17.66, weight: .regular))
+                        .foregroundStyle(DesignTokens.Color.textPrimary)
+                        .accessibilityLabel("Search your libraries and playlists")
+                        .focused($searchFieldFocused)
+                        .onSubmit(onSubmit)
+                }
+            }
+            .frame(width: 480, height: 76, alignment: .leading)
+            .parityBox("textbox", text: "Search your libraries and playlists") // before the offset: the box is the field's own frame
+            .offset(x: 62, y: 0)
             if hasQuery {
                 Text("Clear")
                     .font(TVTheme.font(size: 10.94, weight: .bold))
