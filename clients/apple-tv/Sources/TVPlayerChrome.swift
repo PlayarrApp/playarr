@@ -115,7 +115,8 @@ struct TVPlayerChrome: View {
                 rightGroup
                 if state.menuOpen { qualityMenu }
             }
-            .opacity(controlsVisible ? 1 : 0)
+            .parityOpacity(controlsVisible ? 1 : 0)
+            .parityScrim(Color.black, frame: CGRect(x: 0, y: 561.6, width: 1920, height: 518.4), stops: [(0, 0), (1, 0.82)]) // the scrim drawn above
             .allowsHitTesting(controlsVisible)
         }
         .animation(.timingCurve(0.25, 0.1, 0.25, 1, duration: 0.24), value: controlsVisible)

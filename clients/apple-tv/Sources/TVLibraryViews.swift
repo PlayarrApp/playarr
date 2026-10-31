@@ -2306,10 +2306,7 @@ struct TVLibraryKindView: View {
         .offset(x: 3.03) // web: the buttons sit 3 pt further right
         .frame(height: 1080 - 277, alignment: .top)
         .clipped()
-        .mask(
-            LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.8),
-                                   .init(color: .black.opacity(0.2), location: 1)], startPoint: .top, endPoint: .bottom)
-        )
+        .parityFadeMask(horizontal: false) { _ in [(0, 1), (0.8, 1), (1, 0.2)] }
     }
 
     @ViewBuilder

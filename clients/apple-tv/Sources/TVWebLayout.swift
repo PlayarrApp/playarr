@@ -388,17 +388,7 @@ struct TVKeyArt: View {
                 .clipped()
                 .parityBox("image", fill: DesignTokens.Stage.surface, opacity: scheme == .light ? 0.24 : DesignTokens.Shell.keyArtOpacity)
                 .modifier(TVKeyArtFilter())
-                .mask(
-                    LinearGradient(
-                        stops: [
-                            .init(color: .black, location: 0),
-                            .init(color: .black, location: DesignTokens.Shell.keyArtMaskSolidEnd),
-                            .init(color: .clear, location: 1),
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
+                .parityFadeMask(horizontal: true) { _ in [(0, 1), (DesignTokens.Shell.keyArtMaskSolidEnd, 1), (1, 0)] }
                 .offset(x: 133.03, y: -22.9) // web: the key art box starts 133 pt in and is 900 wide
             }
             keyArtAfter.frame(width: 1920, height: 1080)
@@ -1087,20 +1077,17 @@ private struct MacEdgeFade: ViewModifier {
     let size: CGFloat
 
     func body(content: Content) -> some View {
-        // The GeometryReader sits in the mask, so it takes the masked view's size and never changes the layout.
-        content.mask {
-            GeometryReader { proxy in
-                let length = axis == .horizontal ? proxy.size.width : proxy.size.height
-                let k = min(1, Double(size / max(length, 1)))
-                LinearGradient(stops: [
-                    .init(color: .black, location: 0),
-                    .init(color: .black, location: 1 - k),
-                    .init(color: .black.opacity(alpha(0.844)), location: 1 - k * 0.75),
-                    .init(color: .black.opacity(alpha(0.5)), location: 1 - k * 0.5),
-                    .init(color: .black.opacity(alpha(0.156)), location: 1 - k * 0.25),
-                    .init(color: .black.opacity(endFloor), location: 1),
-                ], startPoint: axis == .horizontal ? .leading : .top, endPoint: axis == .horizontal ? .trailing : .bottom)
-            }
+        // The mask measures the masked view's own length, so it never changes the layout; the items inside report what it leaves.
+        content.parityFadeMask(horizontal: axis == .horizontal) { length in
+            let k = min(1, Double(size / max(length, 1)))
+            return [
+                (0, 1),
+                (1 - k, 1),
+                (1 - k * 0.75, alpha(0.844)),
+                (1 - k * 0.5, alpha(0.5)),
+                (1 - k * 0.25, alpha(0.156)),
+                (1, endFloor),
+            ]
         }
     }
 

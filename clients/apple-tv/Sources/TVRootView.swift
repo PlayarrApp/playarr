@@ -936,7 +936,7 @@ struct TVProfilesView: View {
                     // over the plate looked like a broken focus ornament.
                     profileRow(scale: s, avatarSize: size)
                         .padding(.top, 121.33 * s)
-                        .opacity(isLoading && profiles.isEmpty ? 0.92 : 1)
+                        .parityOpacity(isLoading && profiles.isEmpty ? 0.92 : 1)
 
                     if let loadError {
                         Text(loadError)

@@ -737,7 +737,7 @@ struct TVCalendarView: View {
         .buttonStyle(TVFocusableCardButtonStyle())
         .focusEffectDisabled()
         .accessibilityLabel(name)
-        .opacity(enabled ? 1 : 0.5)
+        .parityOpacity(enabled ? 1 : 0.5)
         .placed(x: x, y: y, w: width, h: 58)
     }
 

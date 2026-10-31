@@ -353,6 +353,109 @@ extension EnvironmentValues {
 }
 
 
+/// A gradient an ancestor draws over or through its content: with no `color` it is a mask (the content shows at the stop alpha
+/// there), with a `color` it is a paint (the colour is laid over the content at the stop alpha, a scrim). Frames are in screen space.
+struct TVParityGradient: Equatable {
+    struct Stop: Equatable { var location: Double; var alpha: Double }
+    var horizontal: Bool
+    var frame: CGRect
+    var stops: [Stop]
+    var color: Color?
+
+    /// The gradient's alpha at a screen point, interpolated between the stops the way the drawn gradient is.
+    func alpha(at point: CGPoint) -> Double {
+        let length = horizontal ? frame.width : frame.height
+        guard length > 0, let first = stops.first, let last = stops.last else { return 1 }
+        let t = max(0, min(1, (horizontal ? point.x - frame.minX : point.y - frame.minY) / length))
+        if t <= first.location { return first.alpha }
+        for index in 1..<stops.count {
+            let a = stops[index - 1], b = stops[index]
+            if t <= b.location {
+                let span = b.location - a.location
+                return span <= 0 ? b.alpha : a.alpha + (b.alpha - a.alpha) * (t - a.location) / span
+            }
+        }
+        return last.alpha
+    }
+}
+
+private struct TVParityGradientsKey: EnvironmentKey { static let defaultValue: [TVParityGradient] = [] }
+private struct TVParityOpacityKey: EnvironmentKey { static let defaultValue: Double = 1 }
+extension EnvironmentValues {
+    /// The masks and scrims of the ancestors, outermost first.
+    var parityGradients: [TVParityGradient] {
+        get { self[TVParityGradientsKey.self] }
+        set { self[TVParityGradientsKey.self] = newValue }
+    }
+    /// The product of the opacity modifiers of the ancestors.
+    var parityOpacity: Double {
+        get { self[TVParityOpacityKey.self] }
+        set { self[TVParityOpacityKey.self] = newValue }
+    }
+}
+
+/// What an item at `rect` really shows of itself: the opacity of its ancestors times every ancestor mask at the item's centre.
+private func parityEffectiveOpacity(ancestors: Double, gradients: [TVParityGradient], rect: CGRect) -> Double {
+    let centre = CGPoint(x: rect.midX, y: rect.midY)
+    return gradients.reduce(ancestors) { $0 * ($1.color == nil ? $1.alpha(at: centre) : 1) }
+}
+
+/// `base` with every ancestor scrim over it at the item's centre: the colour a box or a text run really sits on.
+private func parityComposite(_ base: Color, gradients: [TVParityGradient], rect: CGRect, in environment: EnvironmentValues) -> Color {
+    let centre = CGPoint(x: rect.midX, y: rect.midY)
+    let first = base.resolve(in: environment)
+    var (red, green, blue) = (first.red, first.green, first.blue)
+    for gradient in gradients {
+        guard let color = gradient.color else { continue }
+        let top = color.resolve(in: environment)
+        let a = Float(gradient.alpha(at: centre)) * top.opacity
+        (red, green, blue) = (top.red * a + red * (1 - a), top.green * a + green * (1 - a), top.blue * a + blue * (1 - a))
+    }
+    return Color(.sRGB, red: Double(red), green: Double(green), blue: Double(blue))
+}
+
+/// Applies a gradient mask and records it for the items inside (the frame is the masked view's, read from the rendered layout).
+private struct TVParityMaskModifier: ViewModifier {
+    let horizontal: Bool
+    let stops: (CGFloat) -> [(Double, Double)]
+    @Environment(\.parityGradients) private var inherited
+    @State private var frame = CGRect.zero
+
+    private func gradient(_ length: CGFloat) -> LinearGradient {
+        LinearGradient(stops: stops(length).map { .init(color: .black.opacity($0.1), location: $0.0) },
+                       startPoint: horizontal ? .leading : .top, endPoint: horizontal ? .trailing : .bottom)
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .mask { GeometryReader { proxy in gradient(horizontal ? proxy.size.width : proxy.size.height) } }
+            .background(
+                GeometryReader { proxy in
+                    Color.clear
+                        .onAppear { frame = proxy.frame(in: tvScreenSpace) }
+                        .onChange(of: proxy.frame(in: tvScreenSpace)) { _, new in frame = new }
+                }
+            )
+            .environment(\.parityGradients, inherited + [TVParityGradient(horizontal: horizontal, frame: frame,
+                stops: stops(horizontal ? frame.width : frame.height).map { .init(location: $0.0, alpha: $0.1) }, color: nil)])
+    }
+}
+
+/// Records a scrim an ancestor lays over its siblings' backdrop (drawn by a sibling view, so the frame is the design's).
+private struct TVParityScrimModifier: ViewModifier {
+    let gradient: TVParityGradient
+    @Environment(\.parityGradients) private var inherited
+    func body(content: Content) -> some View { content.environment(\.parityGradients, inherited + [gradient]) }
+}
+
+private struct TVParityOpacityModifier: ViewModifier {
+    let value: Double
+    @Environment(\.parityOpacity) private var inherited
+    func body(content: Content) -> some View {
+        content.opacity(value).environment(\.parityOpacity, inherited * value)
+    }
+}
+
 /// The views the visibility pass hides: each reported view fades to nothing while it is in the set.
 @Observable
 final class TVParityHide {
@@ -513,6 +616,8 @@ private struct TVParityLayoutModifier: ViewModifier {
     @Environment(\.self) private var environment
     @Environment(\.parityLayer) private var layer
     @Environment(\.parityBackdrop) private var backdrop
+    @Environment(\.parityGradients) private var gradients
+    @Environment(\.parityOpacity) private var ancestorOpacity
     @Environment(\.colorScheme) private var scheme
     @State private var id = UUID()
     private let hide = TVParityHide.shared
@@ -524,18 +629,20 @@ private struct TVParityLayoutModifier: ViewModifier {
         return r.opacity < 0.999 ? base + String(format: "%02x", byte(r.opacity)) : base
     }
 
-    private var behind: Color {
-        let base = over ?? backdrop ?? (onPage ? DesignTokens.Stage.bg : DesignTokens.Stage.surface)
+    private func behind(_ rect: CGRect) -> Color {
+        let flat = over ?? backdrop ?? (onPage ? DesignTokens.Stage.bg : DesignTokens.Stage.surface)
+        let base = over == nil ? parityComposite(flat, gradients: gradients, rect: rect, in: environment) : flat
         guard let fill else { return base }
         let top = fill.resolve(in: environment)
         let under = base.resolve(in: environment)
-        let a = Float(fillAlpha)
+        let a = Float(fillAlpha) * top.opacity
         return Color(.sRGB, red: Double(top.red * a + under.red * (1 - a)), green: Double(top.green * a + under.green * (1 - a)), blue: Double(top.blue * a + under.blue * (1 - a)))
     }
 
     private func item(_ rect: CGRect, scale: CGFloat) -> TVParityLayoutRegistry.Item {
         .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: rect, tracking: tracking,
-              background: hex(behind), radius: radius, lines: lines, layer: layer, scale: scale)
+              background: hex(behind(rect)), radius: radius, lines: lines, layer: layer,
+              opacity: parityEffectiveOpacity(ancestors: ancestorOpacity, gradients: gradients, rect: rect), scale: scale)
     }
 
     @ViewBuilder
@@ -565,6 +672,8 @@ private struct TVParityLayoutModifier: ViewModifier {
                         .onChange(of: scale) { _, new in report(frame, new) }
                         // anything the item records but the frame: text, colour, fill, backdrop, radius, role, layer, size, weight
                         .onChange(of: item(.zero, scale: 1)) { _, _ in report(frame, scale) }
+                        .onChange(of: gradients) { _, _ in report(frame, scale) }
+                        .onChange(of: ancestorOpacity) { _, _ in report(frame, scale) }
                 }
             )
             .onDisappear { TVParityLayoutRegistry.shared.remove(id) }
@@ -596,6 +705,8 @@ private struct TVParityBoxModifier: ViewModifier {
     var textStyle: (size: CGFloat, weight: Int, color: Color)? = nil
     @Environment(\.self) private var environment
     @Environment(\.parityBackdrop) private var backdrop
+    @Environment(\.parityGradients) private var gradients
+    @Environment(\.parityOpacity) private var ancestorOpacity
     @Environment(\.colorScheme) private var scheme
     @Environment(\.parityLayer) private var layer
     @State private var id = UUID()
@@ -612,20 +723,29 @@ private struct TVParityBoxModifier: ViewModifier {
                         .onAppear { report(frame) }
                         .onChange(of: frame) { _, new in report(new) }
                         .onChange(of: build(.zero)) { _, _ in report(frame) }
+                        .onChange(of: gradients) { _, _ in report(frame) }
+                        .onChange(of: ancestorOpacity) { _, _ in report(frame) }
                 }
                 .ignoresSafeArea(edges: bleed ? .all : [])
             )
-            .environment(\.parityBackdrop, painted)
+            .environment(\.parityBackdrop, painted(.zero, scrims: false))
+            .transformEnvironment(\.parityGradients) { all in
+                if solid { all.removeAll { $0.color != nil } } // an opaque fill covers the scrims that were under it
+            }
             .onDisappear { TVParityLayoutRegistry.shared.remove(id) }
     }
 
-    /// The colour this box paints on screen: its fill at `alpha` composited over the backdrop (the page background by default).
-    private var painted: Color? {
+    /// The colour this box paints on screen: its fill at `alpha` (times the fill's own opacity and the ancestors') composited over
+    /// what is behind it: the backdrop (the page background by default) with the ancestor scrims over it at the box's centre.
+    private var solid: Bool { fill != nil && Float(alpha) * (fill?.resolve(in: environment).opacity ?? 1) * Float(ancestorOpacity) >= 0.999 }
+
+    private func painted(_ frame: CGRect, scrims: Bool = true) -> Color? {
         guard let fill else { return backdrop }
         let top = fill.resolve(in: environment)
-        guard alpha < 0.999 else { return Color(.sRGB, red: Double(top.red), green: Double(top.green), blue: Double(top.blue)) }
-        let base = (backdrop ?? DesignTokens.Stage.bg).resolve(in: environment)
-        let a = Float(alpha)
+        let a = Float(alpha) * top.opacity * Float(ancestorOpacity)
+        guard a < 0.999 else { return Color(.sRGB, red: Double(top.red), green: Double(top.green), blue: Double(top.blue)) }
+        let flat = backdrop ?? DesignTokens.Stage.bg
+        let base = (scrims ? parityComposite(flat, gradients: gradients, rect: frame, in: environment) : flat).resolve(in: environment)
         return Color(.sRGB, red: Double(top.red * a + base.red * (1 - a)), green: Double(top.green * a + base.green * (1 - a)), blue: Double(top.blue * a + base.blue * (1 - a)))
     }
 
@@ -635,7 +755,7 @@ private struct TVParityBoxModifier: ViewModifier {
 
     private func build(_ frame: CGRect) -> TVParityLayoutRegistry.Item {
         var item = TVParityLayoutRegistry.Item(text: text, role: role, rect: frame)
-        if let painted {
+        if let painted = painted(frame) {
             let r = painted.resolve(in: environment)
             func byte(_ v: Float) -> Int { max(0, min(255, Int((v * 255).rounded()))) }
             item.background = String(format: "#%02x%02x%02x", byte(r.red), byte(r.green), byte(r.blue))
@@ -650,7 +770,7 @@ private struct TVParityBoxModifier: ViewModifier {
             item.color = String(format: "#%02x%02x%02x", byte(c.red), byte(c.green), byte(c.blue))
         }
         item.radius = radius
-        item.opacity = opacity
+        item.opacity = opacity * parityEffectiveOpacity(ancestors: ancestorOpacity, gradients: gradients, rect: frame)
         item.layer = layer
         return item
     }
@@ -665,6 +785,43 @@ extension View {
         modifier(TVParityLayerScope())
         #else
         self
+        #endif
+    }
+
+    /// A gradient mask (black at each stop's alpha, stops as `(location, alpha)` for a given length along the axis). Release builds
+    /// draw the same mask; debug builds also record it so the items inside report what the mask leaves of them.
+    @ViewBuilder
+    func parityFadeMask(horizontal: Bool, stops: @escaping (CGFloat) -> [(Double, Double)]) -> some View {
+        #if DEBUG && (os(tvOS) || os(macOS))
+        modifier(TVParityMaskModifier(horizontal: horizontal, stops: stops))
+        #else
+        mask {
+            GeometryReader { proxy in
+                LinearGradient(stops: stops(horizontal ? proxy.size.width : proxy.size.height).map { .init(color: .black.opacity($0.1), location: $0.0) },
+                               startPoint: horizontal ? .leading : .top, endPoint: horizontal ? .trailing : .bottom)
+            }
+        }
+        #endif
+    }
+
+    /// Declares a scrim a sibling view draws over the backdrop of the items inside (debug builds only): `color` at each stop's alpha
+    /// over `frame` (screen space), stops as `(location, alpha)`.
+    @ViewBuilder
+    func parityScrim(_ color: Color, horizontal: Bool = false, frame: CGRect, stops: [(Double, Double)]) -> some View {
+        #if DEBUG && (os(tvOS) || os(macOS))
+        modifier(TVParityScrimModifier(gradient: TVParityGradient(horizontal: horizontal, frame: frame, stops: stops.map { .init(location: $0.0, alpha: $0.1) }, color: color)))
+        #else
+        self
+        #endif
+    }
+
+    /// `opacity(_:)` that also tells the items inside how much of them the ancestors leave (debug builds record the product).
+    @ViewBuilder
+    func parityOpacity(_ value: Double) -> some View {
+        #if DEBUG && (os(tvOS) || os(macOS))
+        modifier(TVParityOpacityModifier(value: value))
+        #else
+        opacity(value)
         #endif
     }
 
