@@ -1,0 +1,1 @@
+- Apple TV: the parity layout measurement leaves the screen as it found it. The focused item keeps its focus after the visibility pass, and the nav icons and profile avatar are rasterised once instead of re-drawn by a live Canvas, so the saved frame and the layout describe one render.

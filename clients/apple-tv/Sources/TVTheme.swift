@@ -680,30 +680,70 @@ struct TVNavIconVector {
     }
 }
 
+/// The nav icons are rasterised once (Core Graphics, one scale) and every later draw blits that bitmap. A live Canvas re-rasterised
+/// its curves after the parity measurement hid and showed the icon again, with slightly different antialiasing (up to 48 levels on
+/// the search, series, movies and calendar icons: roundedRect and ellipse paths), which broke the PNG/layout bind.
+#if canImport(UIKit)
+@MainActor
+private enum TVNavIconBitmap {
+    private static var cache: [TVNavTab: UIImage] = [:]
+
+    static func image(for tab: TVNavTab, vector: TVNavIconVector) -> UIImage {
+        if let cached = cache[tab] { return cached }
+        let side = TVNavIconVector.renderedSize
+        let format = UIGraphicsImageRendererFormat.default()
+        let image = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).image { renderer in
+            let scale = side / TVNavIconVector.viewBoxSize
+            let transform = CGAffineTransform(scaleX: scale, y: scale)
+            let context = renderer.cgContext
+            context.setStrokeColor(UIColor.black.cgColor)
+            context.setFillColor(UIColor.black.cgColor)
+            context.setLineWidth(TVNavIconVector.strokeWidth * scale)
+            context.setLineCap(.round)
+            context.setLineJoin(.round)
+            for path in vector.strokes {
+                context.addPath(path.applying(transform).cgPath)
+                context.strokePath()
+            }
+            for path in vector.fills {
+                context.addPath(path.applying(transform).cgPath)
+                context.fillPath()
+            }
+        }.withRenderingMode(.alwaysTemplate)
+        cache[tab] = image
+        return image
+    }
+}
+#endif
+
 private struct TVNavVectorIcon: View {
     let tab: TVNavTab
 
     var body: some View {
         if let vector = TVNavIconVector.forTab(tab) {
-            Canvas { context, size in
-                let scale = min(size.width, size.height) / TVNavIconVector.viewBoxSize
-                let transform = CGAffineTransform(scaleX: scale, y: scale)
-                let style = StrokeStyle(lineWidth: TVNavIconVector.strokeWidth * scale, lineCap: .round, lineJoin: .round)
-                for path in vector.strokes {
-                    context.stroke(path.applying(transform), with: .foreground, style: style)
-                }
-                for path in vector.fills {
-                    context.fill(path.applying(transform), with: .foreground)
-                }
-            }
-            .drawingGroup() // one cached bitmap: a vector icon re-drawn after a hide and show antialiased differently
-            .frame(width: TVNavIconVector.renderedSize, height: TVNavIconVector.renderedSize)
-            .accessibilityHidden(true)
-            .parityBox("image")
+            icon(vector)
+                .frame(width: TVNavIconVector.renderedSize, height: TVNavIconVector.renderedSize)
+                .accessibilityHidden(true)
+                .parityBox("image")
         } else {
             Image(systemName: tab.systemImage)
                 .font(.system(size: 20, weight: .medium))
         }
+    }
+
+    @ViewBuilder
+    private func icon(_ vector: TVNavIconVector) -> some View {
+        #if canImport(UIKit)
+        Image(uiImage: TVNavIconBitmap.image(for: tab, vector: vector)).renderingMode(.template)
+        #else
+        Canvas { context, size in
+            let scale = min(size.width, size.height) / TVNavIconVector.viewBoxSize
+            let transform = CGAffineTransform(scaleX: scale, y: scale)
+            let style = StrokeStyle(lineWidth: TVNavIconVector.strokeWidth * scale, lineCap: .round, lineJoin: .round)
+            for path in vector.strokes { context.stroke(path.applying(transform), with: .foreground, style: style) }
+            for path in vector.fills { context.fill(path.applying(transform), with: .foreground) }
+        }
+        #endif
     }
 }
 

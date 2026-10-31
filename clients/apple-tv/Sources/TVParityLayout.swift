@@ -118,6 +118,7 @@ final class TVParityLayoutRegistry {
         let hide = TVParityHide.shared
         let settle: UInt64 = 160_000_000
         hide.hidden = []
+        let focus = TVParityFocusKeeper.save() // hiding the focused view makes the focus engine move on: put it back afterwards
         try? await Task.sleep(nanoseconds: settle)
         guard let base = TVParityStageRender.capture() else { return Visibility(rendered: false) }
         try? await Task.sleep(nanoseconds: settle)
@@ -156,6 +157,8 @@ final class TVParityLayoutRegistry {
             }
         }
         hide.hidden = []
+        try? await Task.sleep(nanoseconds: settle)
+        TVParityFocusKeeper.restore(focus)
         try? await Task.sleep(nanoseconds: settle)
         return result
     }
@@ -352,6 +355,34 @@ extension EnvironmentValues {
     }
 }
 
+
+/// The focused item before the visibility measurement, so the screen is left as it was found: a view hidden with opacity 0 cannot hold
+/// focus, and the focus engine moved to another item (the search field's highlight moved to the Device tile), which changed the frame
+/// between the capture and the layout bind.
+@MainActor
+enum TVParityFocusKeeper {
+    #if os(tvOS)
+    struct Saved { let item: UIFocusItem?; let system: UIFocusSystem? }
+    private static func window() -> UIWindow? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        return scenes.flatMap(\.windows).first(where: \.isKeyWindow) ?? scenes.first?.windows.first
+    }
+    static func save() -> Saved {
+        let system = window().flatMap { UIFocusSystem.focusSystem(for: $0) }
+        return Saved(item: system?.focusedItem, system: system)
+    }
+    static func restore(_ saved: Saved) {
+        guard let system = saved.system, let item = saved.item, system.focusedItem !== item else { return }
+        if let view = item as? UIView, view.window == nil { return }
+        system.requestFocusUpdate(to: item)
+        system.updateFocusIfNeeded()
+    }
+    #else
+    struct Saved {}
+    static func save() -> Saved { Saved() }
+    static func restore(_ saved: Saved) {}
+    #endif
+}
 
 /// The views the visibility pass hides: each reported view fades to nothing while it is in the set.
 @Observable
