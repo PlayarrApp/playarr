@@ -584,14 +584,14 @@ struct WMUnseenDot: View {
         #if DEBUG
         if ParityLaunch.zeroInsets, let image = WMUnseenDotBitmap.image(scheme) {
             Image(uiImage: image).resizable().frame(width: 33, height: 33).frame(width: 9, height: 9)
-                .parityBox("image", background: WM.pink, radius: 4.5)
+                .parityBox("img", background: WM.pink, radius: 4.5)
         } else {
             WMUnseenDotVector()
-                .parityBox("image", background: WM.pink, radius: 4.5)
+                .parityBox("img", background: WM.pink, radius: 4.5)
         }
         #else
         WMUnseenDotVector()
-            .parityBox("image", background: WM.pink, radius: 4.5)
+            .parityBox("img", background: WM.pink, radius: 4.5)
         #endif
     }
 }
