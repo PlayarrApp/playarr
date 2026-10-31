@@ -936,7 +936,7 @@ struct TVProfilesView: View {
                     // over the plate looked like a broken focus ornament.
                     profileRow(scale: s, avatarSize: size)
                         .padding(.top, 121.33 * s)
-                        .opacity(isLoading && profiles.isEmpty ? 0.92 : 1)
+                        .parityOpacity(isLoading && profiles.isEmpty ? 0.92 : 1)
 
                     if let loadError {
                         Text(loadError)
@@ -1072,7 +1072,7 @@ struct TVProfilesView: View {
                             presetName: profile.isCurrent ? environment.currentAvatarPreset : nil,
                             customImage: profile.isCurrent ? environment.currentAvatarImage : nil
                         )
-                        .parityBox("image", fill: palette.bg)
+                        .parityBox("image") // the avatar paints a gradient: no flat fill is declared for it
                         if busy {
                             ProgressView().tint(.white)
                         }
@@ -1087,7 +1087,7 @@ struct TVProfilesView: View {
                     }
                     .frame(width: size, height: size)
                     // Reported inside the scale, so the box is the one drawn.
-                    .parityBox("container", radius: 999, fill: palette.bg)
+                    .parityBox("container", radius: 999) // a gradient circle: no flat fill declared
                     // Web: the button scales 1.045 and lifts 8 (the button style), the avatar adds 1.035 (263.9 wide).
                     .scaleEffect(active ? 1.035 : 1)
                     .overlay(
@@ -1187,7 +1187,7 @@ struct TVProfilesView: View {
             .focusEffectDisabled(true)
             .focused($focusedTarget, equals: .settings)
             .accessibilityLabel("\(profile.displayName) settings")
-            .parityBox("button", text: "\(profile.displayName) settings", radius: 999, fill: palette.surface)
+            .parityBox("button", text: "\(profile.displayName) settings", radius: 999) // the pill paints a style-dependent material: no flat fill declared
             #if os(macOS)
             .environment(\.macFocusName, "profile-gear")
             .environment(\.macParityTag, MacParityTag(title: "Settings", id: "profile-settings", rail: 1, index: 0, gridPosition: nil))
@@ -1207,7 +1207,7 @@ struct TVProfilesView: View {
             .buttonStyle(TVProfileActionButtonStyle())
             .focusEffectDisabled(true)
             .accessibilityLabel("Sign out \(profile.displayName)")
-            .parityBox("button", text: "Sign out \(profile.displayName)", radius: 999, fill: palette.surface)
+            .parityBox("button", text: "Sign out \(profile.displayName)", radius: 999)
             #if os(macOS)
             .environment(\.macParityTag, MacParityTag(title: "Sign out", id: "profile-sign-out", rail: 1, index: 1, gridPosition: nil))
             #endif

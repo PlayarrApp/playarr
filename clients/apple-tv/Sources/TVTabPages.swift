@@ -33,7 +33,7 @@ struct TVEmptyStateBlock: View {
                 .lineLimit(1)
                 .parityLayout(text: title, size: 22.08, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.44)
                 .placed(x: left + 206, y: top + 45.7, w: textWidth, h: 33.1)
-            Text(detail)
+            Text.parityWrapped(detail)
                 .font(TVTheme.font(size: 10.75, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
                 .lineLimit(3)

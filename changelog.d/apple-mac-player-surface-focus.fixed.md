@@ -1,0 +1,1 @@
+- Mac player: opens focused on the "video playback surface" and follows the web D-pad order from it (Left Play, Right Subtitles, Up Seek); the seek bar is a focus target.

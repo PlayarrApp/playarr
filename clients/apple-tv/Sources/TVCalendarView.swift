@@ -287,6 +287,7 @@ struct TVCalendarView: View {
             ? (item.entries.count == 1 ? nil : "\(item.entries.count) episodes")
             : entry.flatMap { Self.episodeCode($0) }
         let subtitle = [code, item.entries.count > 1 ? nil : entry?.subtitle].compactMap { $0 }.joined(separator: " \u{00B7} ")
+        let cardName = [Self.title(of: item), subtitle, entry?.releaseAt.map { Self.format($0, "HH:mm") } ?? "All day", entry.map { Self.releaseLabel($0) } ?? "", entry.map { Self.kindLabel($0) } ?? "", TVStatusPill.label(Self.tone(of: item, today: today))].filter { !$0.isEmpty }.joined(separator: " ")
         let available = item.entries.allSatisfy(\.hasFile)
         return HStack(alignment: .center, spacing: 14.4) {
             posterView(entry)
@@ -329,7 +330,8 @@ struct TVCalendarView: View {
         .padding(.trailing, 12)
         // Web: the card is the poster (60) plus 9 pt above and below, or its three text lines plus the same padding when taller.
         .frame(width: width, height: subtitle.isEmpty ? 78 : 106.9)
-        .parityBox("button", text: [Self.title(of: item), subtitle, entry?.releaseAt.map { Self.format($0, "HH:mm") } ?? "All day", entry.map { Self.releaseLabel($0) } ?? "", entry.map { Self.kindLabel($0) } ?? "", TVStatusPill.label(Self.tone(of: item, today: today))].filter { !$0.isEmpty }.joined(separator: " "), radius: 12, fill: DesignTokens.Stage.surfaceStrong)
+        .accessibilityLabel(cardName)
+        .parityBox("button", text: cardName, radius: 12, fill: DesignTokens.Stage.surfaceStrong)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(DesignTokens.Stage.surfaceStrong))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DesignTokens.Stage.line.opacity(0.3), lineWidth: 1))
         // The left border shows availability: we have it (playable) or not (owner rule).
@@ -521,7 +523,7 @@ struct TVCalendarView: View {
     @ViewBuilder
     private func calendarLink(_ model: CalendarViewModel) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.")
+            Text.parityWrapped("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.")
                 .font(TVTheme.font(size: 12.48, css: 400))
                 .foregroundStyle(DesignTokens.Color.textSecondary)
                 .parityLayout(text: "Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.", size: 12.48, weight: Int(400), color: DesignTokens.Color.textSecondary)
@@ -534,7 +536,7 @@ struct TVCalendarView: View {
                 linkButton("Create subscription link") { Task { await model.createFeed() } }
             case .active:
                 Text("Subscription link active").font(TVTheme.font(size: 12.48, css: 640)).foregroundStyle(DesignTokens.Color.textPrimary).parityLayout(text: "Subscription link active", size: 12.48, weight: Int(640), color: DesignTokens.Color.textPrimary)
-                Text("For security the link is not shown again. Regenerate it to get a new one.")
+                Text.parityWrapped("For security the link is not shown again. Regenerate it to get a new one.")
                     .font(TVTheme.font(size: 12.48, css: 400)).foregroundStyle(DesignTokens.Color.textDisabled)
                     .parityLayout(text: "For security the link is not shown again. Regenerate it to get a new one.", size: 12.48, weight: Int(400), color: DesignTokens.Color.textDisabled)
                     .fixedSize(horizontal: false, vertical: true)
@@ -735,7 +737,7 @@ struct TVCalendarView: View {
         .buttonStyle(TVFocusableCardButtonStyle())
         .focusEffectDisabled()
         .accessibilityLabel(name)
-        .opacity(enabled ? 1 : 0.5)
+        .parityOpacity(enabled ? 1 : 0.5)
         .placed(x: x, y: y, w: width, h: 58)
     }
 

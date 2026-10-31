@@ -45,9 +45,17 @@ struct TVRailPanelGradient: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing)
+        let panel = LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing)
             .frame(width: width)
-            .frame(maxWidth: .infinity, alignment: .trailing)
+        return Group {
+            if bleed {
+                // the panel's own box (the web `.tv-rail-surface`); its paint is a gradient, so no flat fill is declared
+                panel.parityBox("container", bleed: true)
+            } else {
+                panel
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
     private var stops: [Gradient.Stop] {
@@ -132,7 +140,7 @@ struct TVPageHeader: View {
     #if os(macOS)
     private let headerSpacing: CGFloat = 22
     #else
-    private let headerSpacing: CGFloat = 24
+    private let headerSpacing: CGFloat = 23.04 // web `--page-header-gap`: clamp(14px, 1.2vw, 24px) at 1920 wide
     #endif
 
     var body: some View {
@@ -155,8 +163,9 @@ struct TVPageHeader: View {
                         .parityLayout(text: "\u{2190}", size: 17.3, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textSecondary)
                         .frame(width: 50, height: 50)
                 }
-                .placed(x: origin, y: backFocused ? 52.2 : 56.2, w: size, h: size)
-                .parityBox("container", radius: size / 2, fill: DesignTokens.Stage.surfaceStrong, alpha: 0.7)
+                .frame(width: size, height: size, alignment: .leading)
+                .parityBox(backRole, text: backName, radius: size / 2, fill: DesignTokens.Stage.surfaceStrong, alpha: 0.7) // the drawn disc is the web back link's box (same rect); before the offset
+                .offset(x: origin, y: backFocused ? 52.2 : 56.2)
             // Web `.page-header`: the title, a hairline divider and the subtitle in one row, centred on the title. Only when
             // the row would run into the clock (x 466) does the subtitle drop under the title.
             let titleText = Text(title)
@@ -387,17 +396,7 @@ struct TVKeyArt: View {
                 .clipped()
                 .parityBox("image", fill: DesignTokens.Stage.surface, opacity: scheme == .light ? 0.24 : DesignTokens.Shell.keyArtOpacity)
                 .modifier(TVKeyArtFilter())
-                .mask(
-                    LinearGradient(
-                        stops: [
-                            .init(color: .black, location: 0),
-                            .init(color: .black, location: DesignTokens.Shell.keyArtMaskSolidEnd),
-                            .init(color: .clear, location: 1),
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
+                .parityFadeMask(horizontal: true) { _ in [(0, 1), (DesignTokens.Shell.keyArtMaskSolidEnd, 1), (1, 0)] }
                 .offset(x: 133.03, y: -22.9) // web: the key art box starts 133 pt in and is 900 wide
             }
             keyArtAfter.frame(width: 1920, height: 1080)
@@ -1086,20 +1085,17 @@ private struct MacEdgeFade: ViewModifier {
     let size: CGFloat
 
     func body(content: Content) -> some View {
-        // The GeometryReader sits in the mask, so it takes the masked view's size and never changes the layout.
-        content.mask {
-            GeometryReader { proxy in
-                let length = axis == .horizontal ? proxy.size.width : proxy.size.height
-                let k = min(1, Double(size / max(length, 1)))
-                LinearGradient(stops: [
-                    .init(color: .black, location: 0),
-                    .init(color: .black, location: 1 - k),
-                    .init(color: .black.opacity(alpha(0.844)), location: 1 - k * 0.75),
-                    .init(color: .black.opacity(alpha(0.5)), location: 1 - k * 0.5),
-                    .init(color: .black.opacity(alpha(0.156)), location: 1 - k * 0.25),
-                    .init(color: .black.opacity(endFloor), location: 1),
-                ], startPoint: axis == .horizontal ? .leading : .top, endPoint: axis == .horizontal ? .trailing : .bottom)
-            }
+        // The mask measures the masked view's own length, so it never changes the layout; the items inside report what it leaves.
+        content.parityFadeMask(horizontal: axis == .horizontal) { length in
+            let k = min(1, Double(size / max(length, 1)))
+            return [
+                (0, 1),
+                (1 - k, 1),
+                (1 - k * 0.75, alpha(0.844)),
+                (1 - k * 0.5, alpha(0.5)),
+                (1 - k * 0.25, alpha(0.156)),
+                (1, endFloor),
+            ]
         }
     }
 

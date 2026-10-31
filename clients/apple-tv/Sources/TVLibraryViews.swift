@@ -382,7 +382,7 @@ struct TVHomeView: View {
                         TVHeroTitle(title: hero.title)
                             .padding(.top, 28)
                         if let overview = hero.overview, !overview.isEmpty {
-                            Text(overview)
+                            Text.parityWrapped(overview)
                                 .font(TVTheme.font(size: DesignTokens.Shell.featureOverviewSize, weight: .regular))
                                 .foregroundStyle(DesignTokens.Color.textDisabled)
                                 .lineLimit(5)
@@ -1032,7 +1032,7 @@ struct TVWebHomeCard: View {
                                     .parityBox("container", fill: DesignTokens.Color.brandPrimary)
                             }
                             .frame(height: 3)
-                            .parityBox("img", fill: DesignTokens.Stage.surfaceSoft)
+                            .parityBox("container", fill: Color.white, alpha: 0.2) // the track really paints white at 0.2 over the art
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 12.48, style: .continuous))
@@ -1150,7 +1150,7 @@ struct TVHomeHeroCopy: View {
                     .placed(x: 153.6, y: metaY, h: 18)
             }
             if let overview = work.overview, !overview.isEmpty {
-                Text(overview)
+                Text.parityWrapped(overview)
                     .font(TVTheme.font(size: 12.864, css: 600))
                     .foregroundStyle(DesignTokens.Color.textPrimary.opacity(0.86))
                     .lineLimit(5)
@@ -1365,7 +1365,7 @@ struct TVSearchView: View {
 
         switch model.state {
         case .idle:
-            Text("Find any available movie, series, artist or playlist.")
+            Text.parityWrapped("Find any available movie, series, artist or playlist.")
                 .font(TVTheme.font(size: 13.82, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
                 .parityLayout(text: "Find any available movie, series, artist or playlist.", size: 13.82, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
@@ -1433,15 +1433,23 @@ struct TVSearchView: View {
                     .placed(x: 62, y: 0, w: 480, h: 76)
             }
             // the real field is always laid out; a frozen (parity) page keeps it inert so it takes no focus and no keyboard
-            TextField("", text: query)
-                .font(TVTheme.font(size: 17.66, weight: .regular))
-                .foregroundStyle(DesignTokens.Color.textPrimary)
-                .accessibilityLabel("Search your libraries and playlists")
-                .focused($searchFieldFocused)
-                .onSubmit(onSubmit)
-                .disabled(frozen)
-                .placed(x: 62, y: 0, w: 480, h: 76)
-                .parityBox("textbox", text: "Search your libraries and playlists")
+            // A frozen (parity) page has no field at all: a disabled field still took the system focus and drew its platter in the saved
+            // frame, then lost it when the layout pass hid it (the platter is not on the web page). The textbox is still reported.
+            Group {
+                if frozen {
+                    Color.clear
+                } else {
+                    TextField("", text: query)
+                        .font(TVTheme.font(size: 17.66, weight: .regular))
+                        .foregroundStyle(DesignTokens.Color.textPrimary)
+                        .accessibilityLabel("Search your libraries and playlists")
+                        .focused($searchFieldFocused)
+                        .onSubmit(onSubmit)
+                }
+            }
+            .frame(width: 480, height: 76, alignment: .leading)
+            .parityBox("textbox", text: "Search your libraries and playlists") // before the offset: the box is the field's own frame
+            .offset(x: 62, y: 0)
             if hasQuery {
                 Text("Clear")
                     .font(TVTheme.font(size: 10.94, weight: .bold))
@@ -1469,7 +1477,7 @@ struct TVSearchView: View {
                 .foregroundStyle(DesignTokens.Stage.brandInk)
                 .parityLayout(text: [kind, year].compactMap { $0 }.joined(separator: " \u{00B7} ").uppercased(), size: 12.288, weight: Int(860), color: DesignTokens.Stage.brandInk, tracking: 0.98)
                 .placed(x: 153.6, y: 286.6, w: 544, h: 18.4)
-            Text(work.title)
+            Text.parityWrapped(work.title)
                 .font(TVTheme.font(size: 49.92, css: 560))
                 .tracking(-3)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
@@ -1485,7 +1493,7 @@ struct TVSearchView: View {
             .foregroundStyle(soft)
             .placed(x: 153.6, y: metaY, h: 19.6)
             if let overview = work.overview, !overview.isEmpty {
-                Text(overview)
+                Text.parityWrapped(overview)
                     .font(TVTheme.font(size: 13.824, css: 600))
                     .foregroundStyle(soft)
                     .lineLimit(4)
@@ -1936,7 +1944,7 @@ struct TVLibraryKindView: View {
                     previewRuntime = (work.id, TVWebFormat.runtime(ms: detail?.runtimeMs))
                 }
             if let overview = work.overview, !overview.isEmpty {
-                Text(overview)
+                Text.parityWrapped(overview)
                     // Web `.details-panel .tv-preview-overview`: 0.72vw (13.8 px) at weight 600, line-height 1.58 (21.8 px pitch),
                     // measured on the light refs of series and music (lines wrap at about 348 px).
                     .font(TVTheme.font(size: 13.8, css: 600))
@@ -2292,16 +2300,14 @@ struct TVLibraryKindView: View {
                         if active { Circle().fill(DesignTokens.Color.textSecondary).parityBox("container", radius: 12, fill: DesignTokens.Color.textSecondary) }
                     }
                     .frame(width: 44, height: 44)
+                    .parityBox("button", text: letter == "#" ? "Numbers and symbols" : letter) // the web letter button: the 44 pt cell
                     .frame(width: DesignTokens.Shell.libraryAlphabetWidth, height: 44)
             }
         }
         .offset(x: 3.03) // web: the buttons sit 3 pt further right
         .frame(height: 1080 - 277, alignment: .top)
         .clipped()
-        .mask(
-            LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.8),
-                                   .init(color: .black.opacity(0.2), location: 1)], startPoint: .top, endPoint: .bottom)
-        )
+        .parityFadeMask(horizontal: false) { _ in [(0, 1), (0.8, 1), (1, 0.2)] }
     }
 
     @ViewBuilder
@@ -2547,7 +2553,7 @@ struct TVActionsDrawer: View {
                     TVActionRow(glyph: "\u{25CB}", label: "Mark as Unwatched") { Task { await setWatched(false) } }
                 }
                 if let message {
-                    Text(message)
+                    Text.parityWrapped(message)
                         .font(TVTheme.font(size: 12.48, css: 400))
                         .foregroundStyle(DesignTokens.Color.textSecondary)
                         .parityLayout(text: message, size: 12.48, weight: Int(400), color: DesignTokens.Color.textSecondary)

@@ -21,6 +21,11 @@ struct TVPlayerView: View {
     let parity: (position: Double, duration: Double, menuOpen: Bool)?
     @State private var interaction = TVPlayerInteraction()
     @FocusState private var focusedControl: TVPlayerControl?
+    /// Set by the first remote move or back: the opening focus on Play is then no longer enforced.
+    @State private var remoteUsed = false
+    #if os(macOS)
+    @State private var macBackHandlerID = UUID()
+    #endif
     #if os(macOS)
     /// The Mac shows covers as a window layer, not a presentation (macOS/PlatformShims.swift).
     @Environment(\.macCoverDismiss) private var dismiss
@@ -58,12 +63,29 @@ struct TVPlayerView: View {
             .parityLayerScope() // the player covers the page: only its own items are visible
             .onAppear {
                 setShellChromeHidden(true)
+                #if os(macOS)
+                // Escape runs the same Back sequence whatever has focus: once the controls hide, their disabled buttons drop
+                // the focus and the view's onExitCommand would never see the second Back.
+                if parity == nil {
+                    MacKeyboard.shared.pushBackHandler(macBackHandlerID) {
+                        switch interaction.back() {
+                        case .closedMenu: focusedControl = interaction.focus
+                        case .hidControls: break
+                        case .exit: dismiss()
+                        }
+                        return true
+                    }
+                }
+                #endif
                 #if DEBUG && (os(tvOS) || os(macOS))
                 TVParityState.setPlayer(mediaFileID)
                 #endif
             }
             .onDisappear {
                 setShellChromeHidden(false)
+                #if os(macOS)
+                MacKeyboard.shared.popBackHandler(macBackHandlerID)
+                #endif
                 #if DEBUG && (os(tvOS) || os(macOS))
                 TVParityState.setPlayer(nil)
                 #endif
@@ -164,7 +186,9 @@ struct TVPlayerView: View {
                 // While the controls are hidden this catches SELECT and moves to reveal them again.
                 Color.clear
                     .ignoresSafeArea()
-                    .focusable(!interaction.controlsVisible)
+                    .modifier(TVPlayerSurfaceFocus(focus: $focusedControl))
+                    .accessibilityLabel("Video playback surface")
+                    .parityFocusTag("video playback surface")
                     .onTapGesture {
                         interaction.reveal()
                         focusedControl = interaction.focus
@@ -177,6 +201,7 @@ struct TVPlayerView: View {
                 }
                 .onPlayPauseCommand { viewModel.togglePlay(); interaction.reveal() }
                 .onExitCommand {
+                    remoteUsed = true
                     switch interaction.back() {
                     case .closedMenu: focusedControl = interaction.focus
                     case .hidControls: break
@@ -184,7 +209,19 @@ struct TVPlayerView: View {
                     }
                 }
                 .onMoveCommand { direction in
+                    remoteUsed = true
                     interaction.reveal()
+                    // Web: from the video, left reaches Play/Pause, right the first menu control, up the seek bar.
+                    if focusedControl == .surface {
+                        switch direction {
+                        case .left: focusedControl = .play
+                        case .right: focusedControl = .subtitles
+                        case .up: focusedControl = .scrubber
+                        default: break
+                        }
+                        if let next = focusedControl { interaction.focus = next }
+                        return
+                    }
                     switch direction {
                     case .left:
                         viewModel.seek(by: -10)
@@ -222,9 +259,21 @@ struct TVPlayerView: View {
         }
         .animation(.easeInOut(duration: 0.25), value: viewModel.endOfPlayback.phase)
         .task {
-            // Play/pause holds the focus when the player opens (web: the play control), not whichever control the system finds first.
-            try? await Task.sleep(for: .milliseconds(400))
-            if focusedControl == nil { focusedControl = interaction.focus }
+            // The video surface holds the focus when the player opens (web: "video playback surface"), not whichever control the system finds first.
+            // The system focuses the first focusable view it finds (the scrubber) and writes that into focusedControl, so a nil check
+            // never fires: set the opening control outright, three times, as the chrome may appear after the stream is negotiated.
+            for delay in [400, 800, 1500] {
+                try? await Task.sleep(for: .milliseconds(delay))
+                #if os(macOS) && DEBUG
+                NSLog("PlayarrMacTrace player open focus delay=%d remoteUsed=%d", delay, remoteUsed ? 1 : 0)
+                #endif
+                #if os(macOS)
+                // The Mac's focus is the engine's: the first control to register (the scrubber) takes it, so name the surface outright.
+                if !remoteUsed { MacFocusEngine.shared.focusNamed("surface"); interaction.focus = .surface }
+                #else
+                if !remoteUsed, focusedControl != .surface { focusedControl = .surface; interaction.focus = .surface }
+                #endif
+            }
         }
         .task {
             viewModel.onExit = { dismiss() }
@@ -267,5 +316,18 @@ struct TVPlayerView: View {
         case .close: dismiss()
         case nil: break
         }
+    }
+}
+
+/// tvOS: a SwiftUI focus target bound to the surface. Mac: an engine target with the routes of the web's D-pad order.
+private struct TVPlayerSurfaceFocus: ViewModifier {
+    let focus: FocusState<TVPlayerControl?>.Binding
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        content.macPlayerSurfaceTarget()
+        #else
+        content.focusable().focused(focus, equals: .surface)
+        #endif
     }
 }

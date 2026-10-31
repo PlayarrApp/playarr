@@ -226,7 +226,7 @@ export async function createDriver({ args = [], out } = {}) {
     if (delta.reset) macFocusKeyCollector.reset();
     else if (delta.oversized) macFocusKeyCollector.discardPartial();
     // Debug trace of who sets focus after Back (safe characters only, one line each).
-    for (const line of delta.text.split("\n")) { const m = /PlayarrMacTrace ([\w .:=,'-]{1,160})$/.exec(line); if (m) console.log(`    trace ${m[1]}`); }
+    for (const line of delta.text.split("\n")) { const m = /PlayarrMacTrace ([^\x00-\x1f\x7f]{1,1200})$/.exec(line); if (m) console.log(`    trace ${m[1]}`); }
     emitMacFocusRecords(macFocusKeyCollector.feed(delta.text, { final }));
   };
   const traceMacFocus = async () => {
@@ -429,28 +429,101 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       const base = mac ? dirname(macState) : join(run("xcrun", ["simctl", "get_app_container", udid, bundle, "data"]).trim(), "Documents");
       const captureID = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       rmSync(join(base, "parity-layout.json"), { force: true });
-      if (mac) {
-        rmSync(file, { force: true });
-        run(notify, [`snapshot:${file}`]);
-        for (let i = 0; i < 480 && !(existsSync(file) && statSync(file).size > 0); i++) await sleep(250); // a busy grid renders slowly
-      } else run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", file]);
+      const grab = async (to) => {
+        if (mac) {
+          rmSync(to, { force: true });
+          run(notify, [`snapshot:${to}`]);
+          for (let i = 0; i < 480 && !(existsSync(to) && statSync(to).size > 0); i++) await sleep(250); // a busy grid renders slowly
+        } else run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", to]);
+        return existsSync(to) && statSync(to).size > 0 ? readFileSync(to) : Buffer.alloc(0);
+      };
+      // Settled frame: the screen is captured only once two frames taken a second apart are byte-identical (artwork decoding, a
+      // focus animation or a scroll still moving made twin runs differ). Bounded at 30 tries; a screen that never settles is kept
+      // and reported, never faked.
+      const probe = file.replace(/\.png$/, ".settle.png");
+      let prev = await grab(probe), settled = false;
+      for (let i = 0; i < 30 && !settled; i += 1) {
+        await sleep(1000);
+        const next = await grab(probe);
+        settled = next.length > 0 && next.equals(prev);
+        prev = next;
+      }
+      rmSync(probe, { force: true });
+      if (!settled) console.log(`  frame never settled in 30 s (${basename(file)}), capturing anyway`);
+      const shotFirst = await grab(file);
       if (!existsSync(file) || statSync(file).size < 20000) throw new Error("empty frame");
       if ((state().route ?? "").startsWith("/login")) throw new Error("signed out");
       // The request goes out only now, with the screenshot taken: the app hides each item in turn to measure what is visible, which
       // must never be on screen while the frame is grabbed. The layout is stamped with this id, so it follows this frame.
-      writeFileSync(join(base, "parity-layout-request"), captureID);
       // Layout export (docs/parity/LAYOUT.md): the app's own style values and frames for this capture, written beside the screenshot.
       const themeDir = dirname(file), id = basename(file, ".png");
-      if (!/^(dark|light)$/.test(basename(themeDir))) return; // not a screen capture (a crop or a player case)
-      let layout = null;
-      for (let i = 0; i < 240 && !layout; i += 1) { // the app renders the screen once per batch of hidden items
-        await sleep(500);
-        try {
-          const doc = JSON.parse(readFileSync(join(base, "parity-layout.json"), "utf8"));
-          if (doc.captureID === captureID) layout = doc;
-        } catch { /* not written yet */ }
+      if (!/^(dark|light)$/.test(basename(themeDir))) return; // not a screen capture (a crop or a player case): no request is written
+      // Ask the app for a layout and wait for the answer stamped with this request's id.
+      const measure = async (requestID) => {
+        writeFileSync(join(base, "parity-layout-request"), requestID);
+        for (let i = 0; i < 240; i += 1) { // the app renders the screen once per batch of hidden items
+          await sleep(500);
+          try {
+            const doc = JSON.parse(readFileSync(join(base, "parity-layout.json"), "utf8"));
+            if (doc.captureID === requestID) return doc;
+          } catch { /* not written yet */ }
+        }
+        return null;
+      };
+      // tvOS: the visibility pass hides and shows every item, and SwiftUI rasterises layers it re-creates (shadows, blurs, circle
+      // edges, text over a gradient) with different low bits than the first render. So the frame saved is the settled frame AFTER one
+      // complete pass, and the layout comes from a second pass that starts from exactly that frame: PNG and layout then describe one
+      // render, and the check below stays a byte comparison. Both passes always run; nothing is retried until equal.
+      let shot = shotFirst;
+      if (!mac) {
+        const settleFrame = async () => {
+          rmSync(join(base, "parity-layout.json"), { force: true });
+          let prevS = await grab(probe);
+          for (let i = 0; i < 20; i += 1) {
+            await sleep(1000);
+            const next = await grab(probe);
+            const steady = next.equals(prevS);
+            prevS = next;
+            if (steady) break;
+          }
+          rmSync(probe, { force: true });
+          return prevS;
+        };
+        if (!(await measure(`${captureID}-a`))) throw new Error(`layout export missing (${id})`);
+        shot = await settleFrame();
+        writeFileSync(file, shot);
       }
+      const layout = await measure(captureID);
       if (!layout) throw new Error(`layout export missing or not for this capture (${id})`);
+      let after = await grab(probe);
+      for (let i = 0; i < 20; i += 1) {
+        if (after.equals(shot)) break;
+        await sleep(1000);
+        const next = await grab(probe);
+        const steady = next.equals(after);
+        after = next;
+        if (steady) break;
+      }
+      rmSync(probe, { force: true });
+      if (!after.equals(shot)) {
+        let where = "";
+        try { // diagnosis: where the two frames differ (count, bounds, largest channel step)
+          const a = PNG.sync.read(shot), b = PNG.sync.read(after);
+          let n = 0, mx = 0, x0 = 1e9, y0 = 1e9, x1 = 0, y1 = 0;
+          for (let i = 0; i < a.data.length; i += 4) {
+            let d = 0;
+            for (let c = 0; c < 3; c += 1) d = Math.max(d, Math.abs(a.data[i + c] - b.data[i + c]));
+            if (d) { n += 1; mx = Math.max(mx, d); const x = (i / 4) % a.width, y = Math.floor(i / 4 / a.width); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+          }
+          where = ` [${n} px differ, max ${mx}, box ${x0},${y0}-${x1},${y1}]`;
+        } catch { where = " [frames not comparable]"; }
+        try { // evidence for diagnosis: the saved frame and the one after the measurement, beside the capture
+          writeFileSync(join(dirname(themeDir), `${id}.bind-after.png`), after);
+          writeFileSync(join(dirname(themeDir), `${id}.bind-shot.png`), shot);
+        } catch { /* evidence only */ }
+        throw new Error(`the screen changed while the layout was measured (${id}): PNG and layout are not one render${where}`);
+      }
+      rmSync(join(base, "parity-layout-request"), { force: true });
       const dir = join(dirname(themeDir), "layout", basename(themeDir));
       mkdirSync(dir, { recursive: true });
       const rawDir = join(dirname(themeDir), "layout-raw", basename(themeDir)); // the unmapped tree, for local replay

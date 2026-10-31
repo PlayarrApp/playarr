@@ -1,0 +1,2 @@
+- Apple TV: the parity layout measurement leaves the screen as it found it. The focused item keeps no focus platter (a frozen search page has no text field), and the nav icons and profile avatar are rasterised once instead of re-drawn by a live Canvas, so the saved frame and the layout describe one render.
+- Apple TV parity driver: the saved frame is the settled frame after one complete visibility pass and the layout comes from a second pass starting at that frame, so the PNG/layout bind stays a byte comparison without re-rasterisation noise.
