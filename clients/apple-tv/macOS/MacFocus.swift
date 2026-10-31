@@ -102,6 +102,14 @@ final class MacFocusEngine {
     private var pendingStageFocus = false
     private var pendingHomeCardRestore: TargetIdentity?
 
+    /// Gives focus to the registered target of this name (the player's video surface when the player opens), if there is one.
+    @discardableResult
+    func focusNamed(_ name: String) -> Bool {
+        guard let target = targets.values.first(where: { $0.focusName == name }) else { return false }
+        target.focus()
+        return true
+    }
+
     func update(_ id: UUID, _ target: Target) {
         let previous = targets[id]
         let isNew = previous == nil

@@ -264,7 +264,12 @@ struct TVPlayerView: View {
             // never fires: set the opening control outright, three times, as the chrome may appear after the stream is negotiated.
             for delay in [400, 800, 1500] {
                 try? await Task.sleep(for: .milliseconds(delay))
+                #if os(macOS)
+                // The Mac's focus is the engine's: the first control to register (the scrubber) takes it, so name the surface outright.
+                if !remoteUsed { MacFocusEngine.shared.focusNamed("surface"); interaction.focus = .surface }
+                #else
                 if !remoteUsed, focusedControl != .surface { focusedControl = .surface; interaction.focus = .surface }
+                #endif
             }
         }
         .task {
