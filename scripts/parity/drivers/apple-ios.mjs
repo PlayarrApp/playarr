@@ -372,8 +372,9 @@ export async function createDriver() {
       };
       const layout = await captureStableScreen(async () => {
         await stillReady();
-        run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);
+        const shot = run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);
         await stillReady();
+        if (!existsSync(raw)) throw new Error(`simctl wrote no screenshot for ${id} (${raw}); simctl said: ${String(shot).trim().slice(0, 300)}; state: ${JSON.stringify({ ready: state().screenContentReady, probing: state().layoutProbing })}`);
         return readFileSync(raw);
       }, readLayout, { attempts: 8, intervalMs: 4000, wait: sleep });
       if (device === "ipad") { run("sips", ["-r", "90", raw, "--out", file]); rmSync(raw); } // the iPad frame is landscape

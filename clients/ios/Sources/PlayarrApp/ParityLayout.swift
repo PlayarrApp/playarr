@@ -388,6 +388,7 @@ final class ParityLayoutRegistry {
             }
             for batch in batches {
                 var counts: [ProbeKey: [Int]] = [:]
+                var batchLog: [[Int]] = []
                 for round in 0..<2 {
                     guard !Task.isCancelled else { return nil }
                     ParityHide.shared.apply(Set(batch.ids.flatMap { groups[$0] ?? [$0] }))
@@ -396,6 +397,13 @@ final class ParityLayoutRegistry {
                     ParityHide.shared.apply([])
                     try? await Task.sleep(nanoseconds: settle)
                     guard let after = capture(window) else { return nil }
+                    // Diagnostics for the probe log: pixels of the whole window that the hide changed, and that moved by themselves.
+                    var hideDelta = 0, selfMoved = 0
+                    hidden.bytes.withUnsafeBytes { ph in base.bytes.withUnsafeBytes { pb in after.bytes.withUnsafeBytes { pa in
+                        let wh = ph.bindMemory(to: UInt32.self), wb = pb.bindMemory(to: UInt32.self), wa = pa.bindMemory(to: UInt32.self)
+                        for i in 0..<min(wh.count, wb.count, wa.count) { if wh[i] != wb[i] { hideDelta += 1 }; if wb[i] != wa[i] { selfMoved += 1 } }
+                    } } }
+                    batchLog.append([hideDelta, selfMoved])
                     for id in batch.ids { for item in byID[id]! {
                         let key = ProbeKey(id: id, slot: item.slot)
                         var row = counts[key] ?? [0, 0]
@@ -407,7 +415,7 @@ final class ParityLayoutRegistry {
                 for id in batch.ids { for item in byID[id]! {
                     let c = counts[ProbeKey(id: id, slot: item.slot)] ?? []
                     if c.count == 2, c.allSatisfy({ $0 >= 6 }) { visible.insert(ProbeKey(id: id, slot: item.slot)) }
-                    log.append(["role": item.role, "text": item.text ?? "", "x": Int(item.rect.minX), "y": Int(item.rect.minY), "w": Int(item.rect.width), "h": Int(item.rect.height), "counts": c])
+                    log.append(["role": item.role, "text": item.text ?? "", "x": Int(item.rect.minX), "y": Int(item.rect.minY), "w": Int(item.rect.width), "h": Int(item.rect.height), "counts": c, "hide": batchLog.map { $0[0] }, "moved": batchLog.map { $0[1] }])
                 } }
             }
             ParityHide.shared.apply([])
