@@ -34,3 +34,9 @@ test("does not press Select while no profile holds focus", async () => {
   assert.equal((await intoHome(io)).route, "/");
   assert.deepEqual(presses, ["Return"]);
 });
+
+test("reports a hung app when it stops answering after Select", async () => {
+  const answers = ["/profiles"]; // the picker, then silence
+  const io = { state: async () => { const v = answers.shift(); if (!v) throw new Error("no answer"); return { route: v, focus: { label: "device test" } }; }, press: async () => {}, sleep: async () => {}, polls: 5, attempts: 3 };
+  await assert.rejects(intoHome(io), (error) => error.appHung === true && /stopped answering/.test(error.message));
+});

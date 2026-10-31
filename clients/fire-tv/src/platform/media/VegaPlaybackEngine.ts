@@ -255,6 +255,12 @@ export class VegaPlaybackEngine extends BasePlaybackEngine implements PlaybackEn
         bufferedSeconds: this.readBufferedEnd(player),
       });
     };
+    // Download progress moves the buffered edge while playback is paused (no timeupdate then); the web's buffered bar keeps growing too.
+    const handleProgress = () => {
+      if (!current()) return;
+      const bufferedSeconds = this.readBufferedEnd(player);
+      if (bufferedSeconds !== this.state.bufferedSeconds) this.setState({bufferedSeconds});
+    };
     const handleWaiting = () => {
       if (current()) this.setState({state: 'buffering'});
     };
@@ -288,6 +294,7 @@ export class VegaPlaybackEngine extends BasePlaybackEngine implements PlaybackEn
     player.addEventListener('loadedmetadata', handleLoadedMetadata);
     player.addEventListener('durationchange', handleLoadedMetadata);
     player.addEventListener('timeupdate', handleTimeUpdate);
+    player.addEventListener('progress', handleProgress);
     player.addEventListener('waiting', handleWaiting);
     player.addEventListener('seeking', handleSeeking);
     player.addEventListener('seeked', handleSeeked);
@@ -301,6 +308,7 @@ export class VegaPlaybackEngine extends BasePlaybackEngine implements PlaybackEn
       player.removeEventListener('loadedmetadata', handleLoadedMetadata);
       player.removeEventListener('durationchange', handleLoadedMetadata);
       player.removeEventListener('timeupdate', handleTimeUpdate);
+      player.removeEventListener('progress', handleProgress);
       player.removeEventListener('waiting', handleWaiting);
       player.removeEventListener('seeking', handleSeeking);
       player.removeEventListener('seeked', handleSeeked);

@@ -45,6 +45,8 @@ const TAIL_KEYS = {
   filters: ["right*12", "select"],
   actions: ["right", "select:long"],
 };
+// Where the engine is told to pause: its pause lands about 0.25 s later (a few frames), on the 2.000 s frame.
+const ARM_PAUSE_MS = Number(process.env.PLAYARR_FIRETV_ARM_PAUSE_MS ?? 1750);
 const KEYS = { up: "Up", down: "Down", left: "Left", right: "Right", select: "Return", back: "Escape" };
 
 const scratch = mkdtempSync(join(tmpdir(), "firetv-"));
@@ -178,11 +180,21 @@ export async function createDriver({ out } = {}) {
     await sleep(500);
   };
   // The profile picker opens first: Enter chooses the Device Test profile (the first, focused one).
-  const intoHome = () => pickProfile({ state, press: (k) => press(k), sleep }).catch(async (error) => {
+  const pickOnce = () => pickProfile({ state, press: (k) => press(k), sleep }).catch(async (error) => {
     // Keep what the display showed when the picker would not take Select, so a flake can be told apart (overlay, wrong window, blank).
     if (out) await execFileP("import", ["-window", "root", "-crop", "1920x1080+0+0", "+repage", join(out, `picker-stuck-${Date.now()}.png`)], { env }).catch(() => {});
     throw error;
   });
+  // A hung app (see firetv-profile-pick.mjs) is restarted from the launcher, which is what a person would do; each one is logged.
+  const intoHome = async () => {
+    for (let tries = 1; ; tries++) {
+      try { return await pickOnce(); } catch (error) {
+        if (!error.appHung || tries >= 4) throw error;
+        console.error(`firetv: app hung after the profile pick (restart ${tries})`);
+        await launch();
+      }
+    }
+  };
   const waitSettled = async () => {
     // a library or calendar page fills in after the route changes; wait until two frames agree
     await sleep(6000);
@@ -262,7 +274,7 @@ export async function createDriver({ out } = {}) {
         await settled(5000);
         const after = JSON.stringify((await state(8000).catch(() => ({}))).focus ?? null);
         // An answer without a focus is a late answer, not a move.
-        if (after !== before && after !== "null") return;
+        if (after !== before && after !== "null") { dbg("key", name, before, "->", after); return; }
         await sleep(1200);
       }
       await press(key);
@@ -272,22 +284,37 @@ export async function createDriver({ out } = {}) {
     async playerControls() {
       const film = JSON.parse(readFileSync(new URL("../suite.json", import.meta.url), "utf8")).screens.find((x) => x.id === "film-detail")?.open;
       if (!film) throw new Error("suite has no pinned film for player-controls");
-      // Play on the pinned film's page; if the clip has not started within 50 s (a dropped Select), open the page again and retry once.
+      // Play on the pinned film's page. The clip burns its timestamp into every frame and the engine pauses a few frames after the
+      // armed position, so a pause is kept only when it stopped on the web reference's frame (2.000 s, one frame = 66.7 ms at 15 fps);
+      // any other frame (or a dropped Select that never paused) opens the page again and plays again.
       let paused = false;
-      for (let attempt = 0; attempt < 2 && !paused; attempt++) {
+      for (let attempt = 0; attempt < 8 && !paused; attempt++) {
         await this.route(film);
         // Armed per attempt: the app disarms itself when it pauses, so a retry after a pause outside the window would otherwise never pause.
-        await command({ cmd: "armPause", ms: "1900" }, 500);
+        await command({ cmd: "armPause", ms: String(ARM_PAUSE_MS) }, 500);
         await sleep(2000);
         await press("Return");
         const t0 = Date.now();
         while (Date.now() - t0 < 50000) {
           const player = (await state(20000).catch(() => ({}))).player ?? {};
-          if (player.state === "paused" && Math.abs(player.positionSeconds - 2) <= 0.2) { paused = true; break; }
+          if (player.state === "paused") {
+            console.error(`firetv: player paused at ${player.positionSeconds} s (attempt ${attempt + 1})`);
+            paused = Math.abs(player.positionSeconds - 2) < 0.034;
+            break;
+          }
           await sleep(1500);
         }
       }
-      if (!paused) throw new Error("the Vega player did not pause at 2 s");
+      if (!paused) throw new Error("the Vega player did not pause on the 2.000 s frame");
+      // The buffered bar keeps growing while paused: wait until it stops, so the bar is the same in every run.
+      let lastBuffered = -1;
+      for (let i = 0; i < 40; i++) {
+        const b = (await state(20000).catch(() => ({}))).player?.bufferedSeconds;
+        if (b != null && b === lastBuffered) break;
+        lastBuffered = b ?? -1;
+        await sleep(3000);
+      }
+      console.error(`firetv: buffered to ${lastBuffered} s`);
       await sleep(7000); // the controls hide after 5 s without input
       await press("Right"); // the first input with the controls hidden only raises them
       await sleep(2500);

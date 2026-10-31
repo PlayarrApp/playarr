@@ -111,7 +111,7 @@ export interface ParityHooks {
   /** cmd=armPause&ms=<n>: pause the player itself the first time its position reaches n ms (ms empty disarms). */
   armPause(ms: number | null): void;
   setTheme(name: 'dark' | 'light'): void;
-  player(): {state: string; positionSeconds: number; durationSeconds: number; error?: string};
+  player(): {state: string; positionSeconds: number; durationSeconds: number; bufferedSeconds?: number; error?: string};
   theme(): string;
   /** The layout document of the screen as drawn now, as JSON text (cmd=layout). */
   layout?(debug: string): Promise<string>;
