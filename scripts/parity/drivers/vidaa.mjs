@@ -37,6 +37,18 @@ export function usableFrame(frame, since) {
   return !!frame && frame.hasImage === true && !frame.captureError && Number(frame.receivedAt) > since;
 }
 
+/** A frame that says the TV page is running out of memory or can no longer render in reasonable time: stop the run cleanly instead of
+ * driving the TV into a hang (a hung TV needs a power cycle). Null while healthy. Limits are overridable by the caller. */
+export function tvHealthProblem(frame, { maxHeapMb = 250, maxCaptureMs = 45000 } = {}) {
+  if (!frame) return null;
+  if (typeof frame.captureError === "string" && frame.captureError.startsWith("memory guard")) return frame.captureError;
+  const used = Number(frame.env?.mem?.usedMb);
+  if (Number.isFinite(used) && used > maxHeapMb) return `TV page heap is ${used} MB (limit ${maxHeapMb} MB)`;
+  const took = Number(frame.captureMs);
+  if (Number.isFinite(took) && took > maxCaptureMs) return `TV frame capture took ${Math.round(took / 1000)} s (limit ${Math.round(maxCaptureMs / 1000)} s)`;
+  return null;
+}
+
 /** Two frames show a settled page when route, focus and visible text agree. */
 export function sameState(a, b) {
   return !!a && !!b && suiteRoute(a.route) === suiteRoute(b.route) && JSON.stringify(a.focus ?? null) === JSON.stringify(b.focus ?? null) && a.text === b.text;
@@ -77,6 +89,8 @@ export async function createDriver({
   let theme = "dark";
   let fixedNow = env.PLAYARR_VIDAA_FIXED_NOW ?? null; // set when the suite runs unpinned (PARITY_STABLE=0) so calendar screens still use the reference clock
   let route = "/";
+  let halted = null;
+  const assertNotHalted = () => { if (halted) throw new Error(halted); };
 
   const guardFrame = (frame) => assertDeviceTestIdentity({ identity: frame.identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
   const latest = async () => json(url("latest.json"));
@@ -89,6 +103,12 @@ export async function createDriver({
     let previous = null;
     while (now() < end) {
       const frame = await latest();
+      const sick = Number(frame?.receivedAt) > since ? tvHealthProblem(frame) : null;
+      if (sick) {
+        // Latched: the suite carries on to its next screen after an error, so every later call refuses before it sends the TV anything.
+        halted = `VIDAA TV is unhealthy, stopping the run before it hangs: ${sick}; reload the debug page (open-debug) or restart the TV app`;
+        throw new Error(halted);
+      }
       if (usableFrame(frame, since)) {
         guardFrame(frame);
         if (previous && frame.receivedAt !== previous.receivedAt) {
@@ -101,6 +121,7 @@ export async function createDriver({
     throw new Error("VIDAA mirror produced no settled frame in time (is the TV on and the debug page open?)");
   }
   async function open(path) {
+    assertNotHalted();
     const since = now();
     runCli(["open-debug", "--path", launchPath(path, { theme, fixedNow }), "--wait", "8"]);
     route = path;
@@ -129,6 +150,7 @@ export async function createDriver({
     async home() { await open("/"); },
     async route(r) { await open(r); },
     async key(k) {
+      assertNotHalted();
       const code = KEY_CODES[k];
       if (!code) throw new Error(`VIDAA driver cannot send ${k}`);
       const since = now();
