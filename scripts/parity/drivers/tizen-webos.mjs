@@ -694,6 +694,9 @@ export async function createDriver() {
         await sleep(300);
       }
       if (tizen65) {
+        // A focused Search field blinks its text caret: the grab lands on either phase (twin f3/f4 differed in one 1x24 px column there), and the web refs show none. Hide the caret for the grab.
+        await ev(`(() => { if (!document.getElementById("parity-no-caret")) { const s = document.createElement("style"); s.id = "parity-no-caret"; s.textContent = "input, textarea { caret-color: transparent !important; }"; document.head.appendChild(s); } return true; })()`);
+        await sleep(100);
         // This Xvfb is larger than the page (a window the size of the screen loses a pixel row and column), and the XWD grab fails on it: ImageMagick grabs the root, the page is its top-left 1920x1080.
         execFileSync("magick", ["import", "-display", display, "-window", "root", "-crop", "1920x1080+0+0", "+repage", `png:${file}`]);
         await guard();
