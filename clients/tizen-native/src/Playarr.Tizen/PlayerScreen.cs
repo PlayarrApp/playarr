@@ -166,8 +166,10 @@ internal sealed class PlayerScreen : IPage
             case "previous": return ("Previous episode", CanStep);
             case "next": return ("Next episode", CanStep);
             case "audio":
+                // a direct stream is one muxed source the Tizen player cannot switch tracks on (web reaches the same state: its capture reads "Audio: Unavailable"); only an HLS session carries a selectable track
+                var switchable = _info?.Mode == PlaybackMode.Hls && audio.Count > 0;
                 var active = audio.FirstOrDefault(t => t.Id == _info?.SelectedAudioTrackId) ?? audio.FirstOrDefault();
-                return ("Audio: " + (active is null ? "Unavailable" : TrackName(active)), audio.Count > 0);
+                return ("Audio: " + (!switchable || active is null ? "Unavailable" : TrackName(active)), switchable);
             case "subtitles":
                 var sub = subs.FirstOrDefault(t => t.Id == _info?.SelectedSubtitleTrackId);
                 return ("Subtitles: " + (sub is null ? "Off" : TrackName(sub)), true);
@@ -216,7 +218,7 @@ internal sealed class PlayerScreen : IPage
             var start = _startMs;
             if (start == 0) try { start = PlaybackResume.FromProgress(await _env.Api.GetWatchProgressAsync(_file)) ?? 0; } catch (Exception) { /* no saved position */ }
             var info = await client.GetInfoAsync(_file, start);
-            Dbg.Log($"PLAY mode={info.Mode} dur={info.DurationMs} offset={info.SourceOffsetMs} start={start}");
+            Dbg.Log($"PLAY mode={info.Mode} audio={info.AudioTracks?.Count} subs={info.SubtitleTracks?.Count} dur={info.DurationMs} offset={info.SourceOffsetMs} start={start}");
             SynchronizationContextHolder.Post(() => Begin(info, start));
         }
         catch (PlaybackRefusedException e)
