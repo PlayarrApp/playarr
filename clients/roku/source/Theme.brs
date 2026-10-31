@@ -415,3 +415,49 @@ sub A11yStamp(node as Object, force = false as Boolean, baked = -1 as Integer)
     end for
     node.id = "a11y|" + parts[1] + "|" + radius + "@" + hex + suffix + "|" + name
 end sub
+
+' ---- Web card geometry at the Roku stage (1920 x 1080, zoom 1) ----
+' Source: clients/tv-web/web/src/styles/page-layout.css (:root card tokens) and global.css (.tv-home-rail).
+' Nothing here is fitted: each value is the CSS formula evaluated with --vw = 1920 / 100.
+
+' CSS clamp(lo, v, hi).
+function WebClamp(lo as Float, v as Float, hi as Float) as Float
+    if v < lo then return lo
+    if v > hi then return hi
+    return v
+end function
+
+' --vw on the 1920 px stage (tvStageScale.ts: viewport width / zoom / 100, zoom 1 at 1080 px high).
+function WebVw() as Float
+    return 1920.0 / 100.0
+end function
+
+' --card-radius: clamp(8px, calc(0.65 * var(--vw)), 13px) = 12.48.
+function WebCardRadius() as Float
+    return WebClamp(8.0, 0.65 * WebVw(), 13.0)
+end function
+
+' .tv-home-rail gap: clamp(14px, calc(1.3 * var(--vw)), 26px) = 24.96.
+function WebRailGap() as Float
+    return WebClamp(14.0, 1.3 * WebVw(), 26.0)
+end function
+
+' --card-w (page-layout.css): (--card-rail-vw * --vw - --card-pad-left - --card-pad-right - (--card-cols - 1) * --card-grid-gap) / --card-cols
+' with --card-rail-vw 62, --card-cols 3, --card-grid-gap clamp(14px, 1.35 * --vw, 28px),
+' --card-pad-left = --library-rail-left = clamp(28px, 2.8 * --vw, 54px) (no safe inset on the Roku stage),
+' --card-pad-right = --library-rail-right = --directory-controls-edge (clamp(5px, 0.65 * --vw, 14px))
+'   + max(--directory-controls-width (clamp(48px, 3.6 * --vw, 62px)), --directory-alphabet-width 56px)
+'   + --directory-controls-gap (clamp(18px, 1.5 * --vw, 30px)). Result 327.17.
+function WebCardGridGap() as Float
+    return WebClamp(14.0, 1.35 * WebVw(), 28.0)
+end function
+
+function WebCardWidth() as Float
+    vw = WebVw()
+    padLeft = WebClamp(28.0, 2.8 * vw, 54.0)
+    controlsWidth = WebClamp(48.0, 3.6 * vw, 62.0)
+    if controlsWidth < 56.0 then controlsWidth = 56.0
+    padRight = WebClamp(5.0, 0.65 * vw, 14.0) + controlsWidth + WebClamp(18.0, 1.5 * vw, 30.0)
+    cols = 3.0
+    return (62.0 * vw - padLeft - padRight - (cols - 1.0) * WebCardGridGap()) / cols
+end function

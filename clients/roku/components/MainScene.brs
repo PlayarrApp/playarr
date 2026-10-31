@@ -2945,7 +2945,7 @@ sub applyBrowseArtworkSize()
     else
         m.browseGrid.numColumns = 3
         m.browseGrid.numRows = 4
-        m.browseGrid.itemSize = [353.08, 240.41]
+        m.browseGrid.itemSize = [WebCardWidth() + WebCardGridGap(), 240.41]
         m.browseGrid.itemSpacing = [0, 0]
     end if
 end sub
@@ -2957,7 +2957,8 @@ end sub
 function browseCardScale() as Float
     if m.browseArtworkSize = "small" then return 240.0 / 220.0
     if m.browseArtworkSize = "large" then return 480.0 / 220.0
-    return 327.17 / 220.0
+    ' PosterCard is authored at 220 px wide; the web card is --card-w (WebCardWidth in Theme.brs).
+    return WebCardWidth() / 220.0
 end function
 
 ' Mirrors web Library.tsx aside.tv-library-preview + TvStageShell key art.
@@ -4022,7 +4023,8 @@ function createHomeRail(contentTarget as Object) as Object
     ' full shadow canvas below the art, so its blur fades before the RowList
     ' clip instead of ending at the old 262 px row boundary.
     row.rowItemSize = [[343, 320]]
-    row.rowItemSpacing = [[9.13, 0]]
+    ' Rail pitch = web card (--card-w) + .tv-home-rail gap (WebRailGap) = 352.13; the row item is 343 px (card plus glow canvas).
+    row.rowItemSpacing = [[WebCardWidth() + WebRailGap() - 343.0, 0]]
     row.rowHeights = [320]
     row.showRowLabel = false
     row.focusXOffset = [96]
@@ -4513,7 +4515,7 @@ sub finishHomeLoad()
             rail.row.itemSize = [1232, 320]
             rail.row.rowHeights = [320]
         end if
-        buildRailContent(rail.row, rail.works, isActiveRail, 1.48714, m.artActiveGeneration, "home", railIndex)
+        buildRailContent(rail.row, rail.works, isActiveRail, WebCardWidth() / 220.0, m.artActiveGeneration, "home", railIndex)
         m.visibleRails.Push({ row: rail.row, works: rail.works, first: 0, col: 0, last: 0, jumping: -1, rightAligned: false })
         ' Rails sit 366 px apart (web .tv-home-rail rhythm with the 327 px cards); 470 px with covers.
         y += homeRailPitch()
@@ -4785,7 +4787,7 @@ function moveHomeFocus(delta as Integer) as Boolean
     if oldIndex >= 0 and oldIndex < m.visibleRails.Count()
         oldRail = m.visibleRails[oldIndex]
         oldRail.row.SetFocus(false)
-        buildRailContent(oldRail.row, oldRail.works, false, 1.48714)
+        buildRailContent(oldRail.row, oldRail.works, false, WebCardWidth() / 220.0)
     end if
     m.homeFocusIndex = newIndex
     newRail = m.visibleRails[newIndex]
@@ -4802,7 +4804,7 @@ function moveHomeFocus(delta as Integer) as Boolean
         newRail.last = desired
         newRail.row.jumpToRowItem = [0, desired]
     end if
-    buildRailContent(newRail.row, newRail.works, true, 1.48714)
+    buildRailContent(newRail.row, newRail.works, true, WebCardWidth() / 220.0)
     newRail.row.SetFocus(true)
     if desired = 0 and m.homeLeftProxy <> invalid then m.homeLeftProxy.SetFocus(true)
     scrollHomeToFocusedRail()
@@ -5799,9 +5801,10 @@ end sub
 ' See buildDetailChaptersRail's comment for why moveDetailFocus (below)
 ' needs to rebuild this rail's content on every focus transition too.
 sub buildDetailSimilarRail(isActive as Boolean)
-    m.detailSimilar.rowItemSize = [[327.17, 270]]
-    m.detailSimilar.rowItemSpacing = [[24.83, 0]]
-    buildRailContent(m.detailSimilar, m.similarWorks, isActive, 327.17 / 220.0)
+    ' Web card --card-w and .tv-home-rail gap (Theme.brs WebCardWidth, WebRailGap).
+    m.detailSimilar.rowItemSize = [[WebCardWidth(), 270]]
+    m.detailSimilar.rowItemSpacing = [[WebRailGap(), 0]]
+    buildRailContent(m.detailSimilar, m.similarWorks, isActive, WebCardWidth() / 220.0)
     row = m.detailSimilar.content.GetChild(0)
     if row <> invalid
         row.title = "Similar Titles"

@@ -88,7 +88,7 @@ sub onContentChanged()
     end if
     m.cardRoot.translation = [m.cardContentInsetX, m.padTop + m.cardContentInsetY]
     ' Numbered cards (chapters, episodes) round their art a little more than the library cards (web 13.44 px against 12).
-    m.cornerR = 12.48
+    m.cornerR = WebCardRadius()
     if content.overlayNumber <> invalid and content.overlayNumber <> "" then m.cornerR = 13.44
     layoutCard(cardScale, artW, artH, listMode)
     ' A recycled grid card keeps its laid-out title position (layoutCard returns early for an unchanged scale).
@@ -373,7 +373,7 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     gy = artH / 124.0
     if m.homeCardFocusStyle and ovW = 0
         ' card-glow.png has a 220x124 mask centred in a 400x304 canvas with
-        ' 90px margins. Home artwork is laid out at the 1.48714 card scale, so
+        ' 90px margins. Home artwork is laid out at the web card scale (--card-w / 220), so
         ' scale the full glow bitmap and its margins together to keep that mask
         ' aligned to the artwork with the generated blur proportions intact.
         glowScale = cardScale
