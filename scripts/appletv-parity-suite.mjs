@@ -14,22 +14,19 @@
  *   PLAYARR_WEB_ORIGIN  (default http://127.0.0.1:18484, the fixture server)
  *   PARITY_USER / PARITY_PASSWORD  sign in before capturing (fixture user, e.g. fx-viewer;
  *                                  the password is in scripts/fixtures/catalog.mjs)
- *   PARITY_TOLERANCE_PCT (default 0.1)
  */
 import { chromium } from "playwright";
 import { PNG } from "pngjs";
-import pixelmatchImport from "pixelmatch";
+import { diffInto } from "./parity/exact-pixels.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-
-const pixelmatch = pixelmatchImport.default || pixelmatchImport;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 
 const WEB_ORIGIN = process.env.PLAYARR_WEB_ORIGIN || "http://127.0.0.1:18484";
-const TOLERANCE_PCT = Number(process.env.PARITY_TOLERANCE_PCT || "0.1");
+const TOLERANCE_PCT = 0; // exact RGBA bytes, zero tolerance (owner order, 31 Oct 2026)
 const VIEWPORT = { width: 1920, height: 1080 };
 
 /**
@@ -143,19 +140,12 @@ function diffPair(refPath, nativePath, diffPath) {
     // Count dimension mismatch as AE of the absolute pixel-count difference as a floor.
   }
   const diff = new PNG({ width, height });
-  const ae = pixelmatch(
-    crop(img1, width, height).data,
-    crop(img2, width, height).data,
-    diff.data,
-    width,
-    height,
-    { threshold: 0.1 }
-  );
+  const ae = diffInto(crop(img1, width, height).data, crop(img2, width, height).data, diff.data, width, height);
   writePng(diffPath, diff);
   const total = width * height;
   const pct = total > 0 ? (ae / total) * 100 : 100;
   const dimMismatch = img1.width !== img2.width || img1.height !== img2.height;
-  const ok = !dimMismatch && pct <= TOLERANCE_PCT;
+  const ok = !dimMismatch && ae === 0;
   return {
     ok,
     ae,
@@ -270,7 +260,7 @@ function runDiffs(runDir, nativeDir) {
     `Playarr Apple TV parity suite`,
     `generated: ${summary.generatedAt}`,
     `origin: ${WEB_ORIGIN}`,
-    `tolerance: ≤${TOLERANCE_PCT}% differing pixels`,
+    "tolerance: none, every RGBA byte must be identical",
     `viewport: ${VIEWPORT.width}x${VIEWPORT.height}`,
     `pass: ${summary.passCount}/${results.length}  allPass=${summary.allPass}`,
     ``,

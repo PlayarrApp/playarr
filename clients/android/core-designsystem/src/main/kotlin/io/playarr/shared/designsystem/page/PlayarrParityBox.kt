@@ -46,11 +46,18 @@ class ParityBox(val view: View, var kind: String, var radius: Float, var opacity
         return if (r.width > 0f && r.height > 0f) r else null
     }
 
-    /** The scale the layers put on the box (window width over layout width), for the radius it draws. */
+    /**
+     * The scale the layers put on the box, for the radius it draws: the geometric mean of the scale along its width and along its height (both layout axes, so an unequal
+     * scale or a rotation does not read one axis only). A uniform scale gives that scale itself.
+     */
     fun scale(): Float {
-        val c = coordinates?.takeIf { it.isAttached && it.size.width > 0 } ?: return 1f
-        val a = c.localToWindow(androidx.compose.ui.geometry.Offset.Zero); val b = c.localToWindow(androidx.compose.ui.geometry.Offset(c.size.width.toFloat(), 0f))
-        return Math.hypot((b.x - a.x).toDouble(), (b.y - a.y).toDouble()).toFloat() / c.size.width
+        val c = coordinates?.takeIf { it.isAttached && it.size.width > 0 && it.size.height > 0 } ?: return 1f
+        val w = c.size.width.toFloat(); val h = c.size.height.toFloat()
+        val o = c.localToWindow(androidx.compose.ui.geometry.Offset.Zero)
+        val x = c.localToWindow(androidx.compose.ui.geometry.Offset(w, 0f)); val y = c.localToWindow(androidx.compose.ui.geometry.Offset(0f, h))
+        val sx = Math.hypot((x.x - o.x).toDouble(), (x.y - o.y).toDouble()) / w
+        val sy = Math.hypot((y.x - o.x).toDouble(), (y.y - o.y).toDouble()) / h
+        return Math.sqrt(sx * sy).toFloat()
     }
 }
 

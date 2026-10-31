@@ -350,6 +350,8 @@ internal val webSymbolFamily: androidx.compose.ui.text.font.FontFamily by lazy {
 }
 /** A symbol drawn from [webSymbolFamily] inside a Nunito Sans text, as a browser falls back for one missing glyph (the line keeps Nunito's metrics). */
 internal fun webSymbol(glyph: String): androidx.compose.ui.text.AnnotatedString =
+    // Basic Latin (a plain "+") is in Nunito Sans: web draws it from the primary font, so it stays in the text's own family.
+    if (glyph.all { it.code < 0x80 }) androidx.compose.ui.text.AnnotatedString(glyph) else
     androidx.compose.ui.text.buildAnnotatedString { withStyle(androidx.compose.ui.text.SpanStyle(fontFamily = webSymbolFamily)) { append(glyph) } }
 
 internal var webMonoFamily: androidx.compose.ui.text.font.FontFamily? = null
@@ -3851,7 +3853,7 @@ internal fun ExperienceLandscapeCard(
                 )
             }
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) (if (LocalStageScale.current != 1f) (3f / LocalStageScale.current).dp else 3.08.dp) else 3.dp).parityBackground("img", Color.White.copy(alpha = 0.2f)).semantics { role = Role.Image }) {
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) (if (LocalStageScale.current != 1f) (3f / LocalStageScale.current).dp else 3.08.dp) else 3.dp).parityBackground("image", Color.White.copy(alpha = 0.2f)).semantics { role = Role.Image }) {
                     // Web `.tv-watch-progress` (white 20%) and its `i` fill: `--brand` (#cf3157) in both themes.
                     Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", Color(0xFFCF3157)))
                 }
@@ -4006,7 +4008,7 @@ private fun PlayarrUnwatchedDot(modifier: Modifier = Modifier, size: Dp = 12.dp,
                 .shadow(4.dp, CircleShape, clip = false, ambientColor = Color(0xFF1F0E14), spotColor = Color(0xFF1F0E14))
                 .drawBehind { drawCircle(UnwatchedDotColour.copy(alpha = 0.35f), radius = size.toPx() / 2f + 1.dp.toPx() * 0.5f, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx())) }
             else Modifier)
-            .parityBackground("img", UnwatchedDotColour, CircleShape, radius = 999f)
+            .parityBackground("image", UnwatchedDotColour, CircleShape, radius = 999f)
             .border(2.dp, Color.White.copy(alpha = 0.94f), CircleShape)
             .semantics { role = Role.Image; contentDescription = label },
     )
@@ -4363,8 +4365,8 @@ private fun TvLanguageMultiSelect(title: String, entries: List<LanguageFacetEntr
     Column(verticalArrangement = Arrangement.spacedBy(if (LocalTabletDrawerCssPx.current) 12.dp else 12.dp)) {
         PlayarrTvDrawerHeading(title)
         Column(
-            // Web `.ui-multiselect` is a group (role=group); the container is declared as one.
-            Modifier.fillMaxWidth().parityShape(12f).parityBackground("group", WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp), radius = 12f)
+            // The app has no group semantics for this container: it is exported as the painted container it is, not as web's role=group.
+            Modifier.fillMaxWidth().parityShape(12f).parityBackground("container", WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp), radius = 12f)
                 .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder, RoundedCornerShape(12.dp)).padding(7.4.dp),
         ) {
             Row(
@@ -5388,8 +5390,8 @@ private fun TelevisionSearchBody(
                 .parityShape(999f)
                 .webFocusRing(focused, radius = 38.dp, offset = 2.dp)
                 .clip(CircleShape)
-                // Web `.tv-search` is a search landmark (role=search); the pill is declared as one.
-                .parityBackground("search", WebSurfaceStrong.copy(alpha = 0.88f), CircleShape, radius = 999f)
+                // Android has no search landmark: the pill is exported as the painted container it is, not as web's role=search.
+                .parityBackground("container", WebSurfaceStrong.copy(alpha = 0.88f), CircleShape, radius = 999f)
                 .border(1.dp, WebInkMuted.copy(alpha = 0.3f), CircleShape)
                 .padding(start = 25.dp, end = 22.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -7878,7 +7880,7 @@ private fun WebEpisodeDetailCard(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 11.5.dp, bottom = 8.8.dp),
             )
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).parityBackground("img", Color.White.copy(alpha = 0.28f)).semantics { role = Role.Image }) {
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).parityBackground("image", Color.White.copy(alpha = 0.28f)).semantics { role = Role.Image }) {
                     Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", WebAccent))
                 }
             }
@@ -10713,13 +10715,15 @@ internal fun AuthenticatedMediaThumbnail(
     } else {
         // The label stands in while the picture loads or fails; a loaded (opaque) thumbnail covers it, so it is no longer composed.
         var loaded by remember(request) { mutableStateOf(false) }
+        // Capture readiness waits for the composition that has dropped the label: reporting at onSuccess let an export see the label still composed under the loaded picture.
+        androidx.compose.runtime.LaunchedEffect(loaded) { if (loaded) PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) }
         Box(modifier.background(WebSurfaceSoft), contentAlignment = Alignment.Center) {
             if (!loaded) ThumbnailFallbackLabel(fallbackLabel)
             AsyncImage(
                 model = request,
                 contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
-                onSuccess = { loaded = true; PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
+                onSuccess = { loaded = true },
                 onError = { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
                 modifier = Modifier.fillMaxSize().parityCaptureArtwork(captureToken, captureKey),
             )

@@ -95,6 +95,19 @@ def nine_patch(name: str, r: int, outline: float = 0) -> None:
     img.save(IMAGES / f"{name}.9.png")
 
 
+def square_outline(name: str) -> None:
+    """A square 1 px outline as a 9-patch: one pixel corners and edges, the transparent centre stretches (a bordered box with no corner)."""
+    img = Image.new("RGBA", (5, 5), (0, 0, 0, 0))
+    px = img.load()
+    for i in range(3):
+        for j in range(3):
+            if i != 1 or j != 1:
+                px[i + 1, j + 1] = (255, 255, 255, 255)
+    px[2, 0] = (0, 0, 0, 255)
+    px[0, 2] = (0, 0, 0, 255)
+    img.save(IMAGES / f"{name}.9.png")
+
+
 def card_glow() -> None:
     """Web --card-glow: a 20 px blur at 45% around the 4 px spread of a 220 x 124 card art, in a 400 x 304 bitmap (white mask)."""
     from PIL import ImageFilter
@@ -495,6 +508,7 @@ def main() -> None:
     for r in (6, 12, 25):
         nine_patch(f"round-r{r}", r)
         nine_patch(f"round-outline-r{r}", r, 1.2)
+    square_outline("square-outline")  # the calendar month's day cells: 1 px border, no corner
     nine_patch("round-r29", 29)  # the 58 px pills (calendar agenda actions): web's radius is half the height
     nine_patch("round-outline-r29", 29, 1.2)
     nine_patch("round-r38", 38)

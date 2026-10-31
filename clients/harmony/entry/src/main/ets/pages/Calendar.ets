@@ -182,11 +182,10 @@ const PHONE_LINE_META: number = 21;
 const PHONE_AGENDA_BLEED: number = 0; // the static-server web ref keeps the cards inside the page padding
 const PHONE_AGENDA_CARD_MIN_WIDTH: number = 328; // web (static refs): the card ends 16 vp from the right edge
 const PHONE_CONTROL_FONT: number = 11.2;
-// Web phone header controls: 0.6rem apart, the right edge on the 16.7 vp gutter, Today 72.7 wide with its ring 5.3 outside.
+// Web phone header controls: 0.6rem apart, the right edge on the 16.7 vp gutter, Today 72.7 wide (the static refs draw no focus ring on it).
 const PHONE_CONTROL_GAP: number = 8.76;
 const PHONE_CONTROL_RIGHT: number = 16;
 const PHONE_TODAY_WIDTH: number = 72.7;
-const PHONE_RING_OUTSET: number = 5.3;
 const ENTRY_META_GAP: number = 12;
 // Web `.status-pill`: 13.44/750, tone at 14% over the surface with a 60% tone border.
 const PILL_SIZE: number = 13.44;
@@ -1183,21 +1182,15 @@ export struct ReleaseCalendar {
         .textAlign(TextAlign.Center)
         .width(width)
         .height(44)
-        .borderRadius(22)
-        .backgroundColor(toResourceColor(activeColors().surface))
-        .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
-      if (label === t('pages.calendar.today', 'Today')) {
-        // web opens the page with Today focused (the Previewer reports no focus): the 3 vp ring sits outside the pill, 2.3 vp clear of it
-        Column()
-          .width(width + PHONE_RING_OUTSET * 2)
-          .height(44 + PHONE_RING_OUTSET * 2)
-          .borderRadius(22 + PHONE_RING_OUTSET)
-          .border({ width: 3, color: toResourceColor(activeColors().ink) })
-          .hitTestBehavior(HitTestMode.None)
-      }
+        // web: the round button owns the radius, fill and border; the arrow glyph's own box is a plain text (radius 0)
+        .borderRadius(label.length === 1 ? 0 : 22)
+        .backgroundColor(label.length === 1 ? Color.Transparent : toResourceColor(activeColors().surface))
+        .border({ width: label.length === 1 ? 0 : 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
     }
     .accessibilityText(label.length === 1 ? (label === '←' ? 'Previous' : 'Next') : '').accessibilityRole(label.length === 1 ? AccessibilityRoleType.BUTTON : AccessibilityRoleType.ROLE_NONE)
     .borderRadius(22)
+    .backgroundColor(label.length === 1 ? toResourceColor(activeColors().surface) : Color.Transparent)
+    .border({ width: label.length === 1 ? 1 : 0, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
     .width(width)
     .height(44)
     .onClick(() => {
@@ -1279,7 +1272,7 @@ export struct ReleaseCalendar {
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
-      .margin({ bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 0 : (fixedHeight > 0 ? 15.1 : 5) }) // web's text block sits 2.5 vp higher in the card than the centred one (a grown movie card has no spare height)
+      .margin({ bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 0 : (fixedHeight > 0 ? 15.1 : 0) }) // fixed agenda cards: web's text block sits above the centred one; a week card takes its height from this block (web 92.86 for a 70 vp block)
     }
     .width('100%')
     .constraintSize({
@@ -1317,18 +1310,22 @@ export struct ReleaseCalendar {
       Row({ space: PHONE_WEEK_GAP }) {
         ForEach(buildWeekDays(this.anchor, this.groups, this.today), (cell: CalendarCell) => {
           Column({ space: tv(WEEK_HEADING_GAP) - 1.8 }) {
-            Row({ space: 10 }) {
+            Row({ space: 9.6 }) { // web .calendar-day h3: gap 0.6rem
               Text(dayHeading(cell.day)).fontFamily(nunitoAt(640, PHONE_DAY_HEADING_SIZE))
                 .fontSize(PHONE_DAY_HEADING_SIZE).letterSpacing((!isTvMetrics() ? -0.071 : 0)).lineHeight(webLineHeight(PHONE_DAY_HEADING_SIZE)).halfLeading(true) // web phone: 14.4
                 .fontWeight(FontWeight.Medium)
-                .fontColor(cell.isToday ? toResourceColorWithAlpha(activeColors().ink, 0.9) : toResourceColor(activeColors().ink)) // web: today's heading is the dimmer one
+                .fontColor(cell.isToday ? toResourceColor(activeColors().accent) : toResourceColor(activeColors().ink)) // web: .calendar-day.is-today h3 is var(--accent)
               if (cell.isToday) {
                 Text(t('pages.calendar.today', 'Today')).fontFamily(nunitoAt(640, TODAY_TAG_SIZE))
                   .fontSize(TODAY_TAG_SIZE).lineHeight(webLineHeight(TODAY_TAG_SIZE)).halfLeading(true)
                   .fontWeight(FontWeight.Medium)
                   .letterSpacing((TODAY_TAG_LETTER_SPACING) + (!isTvMetrics() ? 0.338 : 0))
                   .textCase(TextCase.UpperCase)
-                  .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.9))
+                  .fontColor(toResourceColor(activeColors().accent))
+                  // web .calendar-today-tag: padding 0.1rem 0.5rem, 1px currentColor border, round
+                  .padding({ left: 8, right: 8, top: 1.6, bottom: 1.6 })
+                  .borderRadius(11)
+                  .border({ width: 1, color: toResourceColor(activeColors().accent) })
               }
             }
             .height(tv(WEEK_HEADING_HEIGHT))

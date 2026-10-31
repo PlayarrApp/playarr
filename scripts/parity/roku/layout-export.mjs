@@ -193,7 +193,8 @@ function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }
           const under = rgb(background({ x: px, y: py, w: 0, h: 0 }, it.order, false));
           return toHex(c.map((v, k) => v * al + under[k] * (1 - al))) === toHex(under);
         });
-        if (same && fills.length) { it.dropped = true; continue; }
+        // It is not exported, but it is still painted: it keeps hiding what lies beneath it (and the colour behind later elements is unchanged).
+        if (same && fills.length) it.dropped = true;
       }
       it.opaque = alphaOf(it.node.attrs.color) * it.op >= 0.99;
       fills.push(it);
@@ -284,12 +285,12 @@ function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }
   // A painted surface that another element already describes at the same box is not listed twice.
   const kept = elements.filter((e) => !(e._fill && elements.some((f) => f !== e && !f._fill && same(f.rect, e.rect))));
   // Content fully covered by a later opaque surface (a fill, or a bundled opaque picture) is not on screen (a drawer over the page).
-  // A surface never covers its own ancestors or descendants, and a rounded one is shrunk by its corner.
+  // A surface never covers its own ancestors or descendants (nor does an unexported duplicate cover the fill of its own colour it repeats), and a rounded one is shrunk by its corner.
   const covers = [...fills.filter((f) => f.opaque), ...items.filter((it) => (it.kind === "poster" || (it.kind === "a11y" && it.role === "image" && it.node.tag === "Poster")) && it.op >= 0.99 && opaquePicture(it))].map((f) => {
     const r = f.kind === "a11y" && f.node.tag === "Poster" && f.role !== "image" ? Math.min(f.radius * f.scaleX, f.rect.w / 2, f.rect.h / 2) : 0;
-    return { order: f.order, node: f.node, chain: f.chain, rect: { x: f.rect.x + r, y: f.rect.y + r, w: f.rect.w - 2 * r, h: f.rect.h - 2 * r } };
+    return { order: f.order, node: f.node, chain: f.chain, dropped: !!f.dropped, rect: { x: f.rect.x + r, y: f.rect.y + r, w: f.rect.w - 2 * r, h: f.rect.h - 2 * r } };
   });
-  const visible = kept.filter((e) => !covers.some((f) => f.order > e._order && !e._source.chain.includes(f.node) && !f.chain.includes(e._source.node) && f.rect.x <= e.rect.x + 0.01 && f.rect.y <= e.rect.y + 0.01 && f.rect.x + f.rect.w >= e.rect.x + e.rect.w - 0.01 && f.rect.y + f.rect.h >= e.rect.y + e.rect.h - 0.01));
+  const visible = kept.filter((e) => !covers.some((f) => f.order > e._order && !e._source.chain.includes(f.node) && !f.chain.includes(e._source.node) && !(f.dropped && e._source.node.tag === "Rectangle" && e._source.node.attrs.color === f.node.attrs.color) && f.rect.x <= e.rect.x + 0.01 && f.rect.y <= e.rect.y + 0.01 && f.rect.x + f.rect.w >= e.rect.x + e.rect.w - 0.01 && f.rect.y + f.rect.h >= e.rect.y + e.rect.h - 0.01));
   for (const e of visible) { delete e._source; delete e._fill; }
   for (const e of visible) delete e._order;
   return { screen, theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: !!clockPinned, occluded: kept.length - visible.length + hiddenByVideo, elements: visible };

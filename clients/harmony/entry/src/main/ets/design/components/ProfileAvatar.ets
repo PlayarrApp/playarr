@@ -236,10 +236,11 @@ export struct ProfileAvatar {
     .clip(true)
     // A circle clip: the rounded-rect clip left the drawing's sides flat in the Previewer.
     .clipShape(new CircleShape({ width: this.diameter, height: this.diameter }))
-    .border({
+    // web: the ring is a box-shadow spread outside the 244 box (.profile-avatar:hover), and the box keeps its 1px border inside it; an ArkTS border would eat the layout box, an outline does not
+    .outline({
       width: this.ringWidth,
       color: toResourceColorWithAlpha(this.ringColour(), this.ringOpacity()),
-      radius: this.diameter / 2,
+      radius: this.diameter / 2 + this.ringWidth,
     })
     .scale({ x: this.avatarScale(), y: this.avatarScale() })
     .focusable(true)

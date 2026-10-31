@@ -6,7 +6,7 @@
 # 2) Serves them on the Mac at :8765, launches PlayarrTV with
 #    -PlayarrParityScreen <id> -PlayarrParityWebRefBaseURL http://127.0.0.1:8765
 # 3) simctl screenshots → $OUT_DIR/native
-# 4) pixelmatch each pair; writes summary.json / summary.txt
+# 4) exact RGBA byte compare of each pair (zero tolerance); writes summary.json / summary.txt
 #
 # Usage:
 #   ./scripts/appletv-parity-ae0.sh <web-ref-dir> <out-dir>
@@ -61,10 +61,12 @@ REMOTE
 rsync -az -e "ssh ${ssh_opts[*]}" \
   "$MAC_USER@$MAC_HOST:~/streamarr-mac-build/parity-paint-run/" "$OUT_DIR/native/"
 
-# Diff with node pixelmatch if available
-if command -v node >/dev/null && node -e "require('pixelmatch')" 2>/dev/null; then
-  OUT_DIR="$OUT_DIR" node <<'JS'
-const pixelmatch = require('pixelmatch').default || require('pixelmatch');
+# Exact diff with node if pngjs is available
+EXACT_PIXELS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/parity/exact-pixels.mjs"
+if command -v node >/dev/null && node -e "require('pngjs')" 2>/dev/null; then
+  OUT_DIR="$OUT_DIR" EXACT_PIXELS="$EXACT_PIXELS" node <<'JS'
+(async () => {
+const { diffInto } = await import(require('url').pathToFileURL(process.env.EXACT_PIXELS).href);
 const { PNG } = require('pngjs');
 const fs = require('fs');
 const path = require('path');
@@ -75,16 +77,16 @@ for (const id of screens) {
   const a = PNG.sync.read(fs.readFileSync(path.join(out,'reference',id+'.png')));
   const b = PNG.sync.read(fs.readFileSync(path.join(out,'native',id+'.png')));
   const d = new PNG({ width: a.width, height: a.height });
-  const ae = pixelmatch(a.data, b.data, d.data, a.width, a.height, { threshold: 0.1 });
+  const ae = a.width === b.width && a.height === b.height ? diffInto(a.data, b.data, d.data, a.width, a.height) : a.width * a.height;
   fs.writeFileSync(path.join(out,'diff',id+'-diff.png'), PNG.sync.write(d));
   const pct = (ae / (a.width * a.height)) * 100;
-  results.push({ id, ae, pct, ok: pct <= 0.1 });
-  console.log((pct <= 0.1 ? 'PASS' : 'FAIL'), id, 'ae='+ae, 'pct='+pct.toFixed(4)+'%');
+  results.push({ id, ae, pct, ok: ae === 0 });
+  console.log((ae === 0 ? 'PASS' : 'FAIL'), id, 'ae='+ae, 'pct='+pct.toFixed(4)+'%');
 }
 const summary = {
   generatedAt: new Date().toISOString(),
   track: 'web-ref paint vs fixture web client',
-  tolerancePct: 0.1,
+  tolerancePct: 0,
   results,
   allPass: results.every((r) => r.ok),
 };
@@ -95,7 +97,8 @@ fs.writeFileSync(
   + '\nallPass='+summary.allPass+'\n'
 );
 process.exit(summary.allPass ? 0 : 2);
+})();
 JS
 else
-  echo "node/pixelmatch not available; native + reference PNGs written to $OUT_DIR" >&2
+  echo "node/pngjs not available; native + reference PNGs written to $OUT_DIR" >&2
 fi

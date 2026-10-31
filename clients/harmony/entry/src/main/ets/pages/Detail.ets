@@ -102,7 +102,7 @@
 
 import { t, tf } from '../core/Language';
 import { balanceTitle } from '../core/TitleBalance';
-import { nunito, nunitoAt, arrowFont, webLineHeight, webLineSpacing } from '../design/Typography';
+import { nunito, nunitoAt, arrowFont, glyphFamily, webLineHeight, webLineSpacing } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 import { LengthMetrics } from '@kit.ArkUI';
 
@@ -275,6 +275,7 @@ const CHAPTER_CARD_WIDTH: number = 268;
 const CHAPTER_CARD_HEIGHT: number = 150.75; // 16:9 of the 268 card
 /** Room under a landscape Similar card for its caption and the focus shadow. */
 const SIMILAR_LIST_EXTRA: number = 70;
+const SIMILAR_CARD_WIDTH: number = 327.17;
 const CAST_CIRCLE: number = 104;
 /** Web's first circle starts 24 vp in from the rail edge (the item is wider than ours); ours sat at 10. */
 const CAST_LEFT_INSET: number = 14;
@@ -1706,8 +1707,8 @@ struct Detail {
         variant: 'home',
         title: (item as DetailRow).title,
         subtitle: (item as DetailRow).subtitle,
-        cardWidth: tv(TvGeometry.homeRailCardWidthLandscape),
-        cardHeight: Math.round((tv(TvGeometry.homeRailCardWidthLandscape) * 9) / 16),
+        cardWidth: SIMILAR_CARD_WIDTH, // web DOM dump: 327.17 x 213.41 (the integer card width is 0.17 short)
+        cardHeight: (SIMILAR_CARD_WIDTH * 9) / 16,
         artworkRadius: Radii.homeCardArtworkTv,
         activeRailFactor: activeRailFactor,
         onCardFocus: this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration),
@@ -1739,7 +1740,7 @@ struct Detail {
   /** Phone play glyph: a drawn triangle, because the Previewer renders the text glyph as an emoji box. */
   @Builder
   private playTriangle(): void {
-    Text('\u25B6').fontFamily(nunito(400) + ',PlayarrGlyphs') // web draws the glyph (7.3 x 13 at 9.5 vp)
+    Text('\u25B6').fontFamily(glyphFamily('\u25B6', nunito(400))) // web draws the glyph (7.3 x 13 at 9.5 vp)
       .fontSize(9.5).lineHeight(webLineHeight(9.5)).halfLeading(true)
       .fontColor(this.playInk())
   }
@@ -1757,7 +1758,7 @@ struct Detail {
 
     Row({ space: Spacing.sm }) {
       if (isTvMetrics()) {
-        Text('\u25B6').fontFamily(nunitoAt(400, PLAY_BUTTON_ICON_SIZE) + ',PlayarrGlyphs')
+        Text('\u25B6').fontFamily(glyphFamily('\u25B6', nunitoAt(400, PLAY_BUTTON_ICON_SIZE)))
           .fontSize(PLAY_BUTTON_ICON_SIZE).lineHeight(webLineHeight(PLAY_BUTTON_ICON_SIZE)).halfLeading(true)
           .fontColor(this.playInk())
       } else {
@@ -1878,7 +1879,7 @@ struct Detail {
   @Builder
   private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
     Row({ space: tv(primary ? PILL_PRIMARY_GAP : PILL_SECONDARY_GAP) }) {
-      Text(glyph).fontFamily(nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)) + ',PlayarrGlyphs')
+      Text(glyph).fontFamily(glyphFamily(glyph, nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))).halfLeading(true)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : (resolvedThemeMode() === 'dark' ? PILL_GLYPH_DARK : PLAY_FOCUS_FILL))  // web: the secondary pills' glyph is pink
         .translate({ y: primary ? (this.isSeriesPage() ? -1.2 : 0) : (glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35) })
@@ -2640,12 +2641,20 @@ struct Detail {
           .grayscale(1)
           .brightness(resolvedThemeMode() === 'dark' ? 0.6 : 1.1)
           .contrast(resolvedThemeMode() === 'dark' ? 0.82 : 0.88)
-          .opacity(resolvedThemeMode() === 'dark' ? 0.72 : 0.24) // web `.tv-key-art img`
+          .opacity(resolvedThemeMode() === 'dark' ? 0.72 : 0.42) // web `.tv-key-art img`: the phone block sets 0.42, the dark rule 0.72
           .draggable(false)
           .focusable(false)
       } else {
         Skeleton({ blockWidth: TouchGeometry.homeRailCardWidthLandscape * 4, blockHeight: HERO_ART_HEIGHT, radius: 0 })
       }
+      // web `.tv-key-art::after` (phone): `linear-gradient(90deg, color-mix(surface 54%, transparent), transparent)` under the vertical one
+      Column()
+        .width('100%')
+        .height(HERO_TOUCH_HEIGHT)
+        .linearGradient({
+          direction: GradientDirection.Right,
+          colors: [[toResourceColorWithAlpha(activeColors().surface, 0.54), 0.0], [toResourceColorWithAlpha(activeColors().surface, 0), 1.0]],
+        })
       Column()
         .width('100%')
         .height(HERO_TOUCH_HEIGHT)
@@ -2771,13 +2780,43 @@ struct Detail {
       // web (#175): on phones the Back row stays pinned and the content fades out under it (solid to the row, then the edge fade)
       // the solid part is a real surface fill (the Back row and its title sit on it, as on web's pinned header), then the edge fade
       Column() {
-        Column()
-          .width('100%')
-          .height(atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP)
-          .backgroundColor(toResourceColor(activeColors().surface))
+        // the Back row is a child of the solid fill, so its text sits on the page surface as on web (the exporter reads the ancestor's fill)
+        Stack({ alignContent: Alignment.TopStart }) {
+          Row({ space: 10 }) {
+            Text('←').fontFamily(arrowFont(720))
+              .fontSize(12.8).lineHeight(webLineHeight(12.8)).halfLeading(true)
+              .fontWeight(FontWeight.Normal)
+              .fontColor(toResourceColor(activeColors().inkSoft))
+              .textAlign(TextAlign.Center)
+              .width(PHONE_BACK_SIZE)
+              .height(PHONE_BACK_SIZE)
+              .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
+              .borderRadius(PHONE_BACK_SIZE / 2)
+              .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+              .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+              .accessibilityText('Back to ' + this.phoneKindTitle()).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+              .onClick(() => {
+                popRoute(getNavStack());
+              })
+            Text(this.phoneKindTitle()).fontFamily(nunitoAt(580, 21.6))
+          
+              .fontSize(21.6).lineHeight(webLineHeight(21.6)).halfLeading(true)
+              .letterSpacing((-0.972) + (!isTvMetrics() ? -0.096 : 0))
+              .fontWeight(FontWeight.Medium)
+              .fontColor(toResourceColor(activeColors().ink))
+              .translate({ y: (-1.2) + (!isTvMetrics() ? 1.2 : 0) }) // web's title box sits 1.2 higher
+          }
+          .padding({ left: atLeast(16, this.safeLeft), top: atLeast(PHONE_HEADER_TOP, this.safeTop) })
+          .alignItems(VerticalAlign.Center)
+        }
+        .width('100%')
+        .height(atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP)
+        .backgroundColor(toResourceColor(activeColors().surface))
+        .hitTestBehavior(HitTestMode.Transparent)
         Column()
           .width('100%')
           .height(PHONE_HEADER_FADE)
+          .hitTestBehavior(HitTestMode.None)
           .linearGradient({
             direction: GradientDirection.Bottom,
             colors: [
@@ -2787,33 +2826,7 @@ struct Detail {
           })
       }
       .width('100%')
-      .hitTestBehavior(HitTestMode.None)
-      Row({ space: 10 }) {
-        Text('←').fontFamily(arrowFont(720))
-          .fontSize(12.8).lineHeight(webLineHeight(12.8)).halfLeading(true)
-          .fontWeight(FontWeight.Normal)
-          .fontColor(toResourceColor(activeColors().inkSoft))
-          .textAlign(TextAlign.Center)
-          .width(PHONE_BACK_SIZE)
-          .height(PHONE_BACK_SIZE)
-          .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
-          .borderRadius(PHONE_BACK_SIZE / 2)
-          .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
-          .accessibilityText('Back to ' + this.phoneKindTitle()).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
-          .onClick(() => {
-            popRoute(getNavStack());
-          })
-        Text(this.phoneKindTitle()).fontFamily(nunitoAt(580, 21.6))
-          
-          .fontSize(21.6).lineHeight(webLineHeight(21.6)).halfLeading(true)
-          .letterSpacing((-0.972) + (!isTvMetrics() ? -0.096 : 0))
-          .fontWeight(FontWeight.Medium)
-          .fontColor(toResourceColor(activeColors().ink))
-          .translate({ y: (-1.2) + (!isTvMetrics() ? 1.2 : 0) }) // web's title box sits 1.2 higher
-      }
-      .padding({ left: atLeast(16, this.safeLeft), top: atLeast(PHONE_HEADER_TOP, this.safeTop) })
-      .alignItems(VerticalAlign.Center)
+      .hitTestBehavior(HitTestMode.Transparent)
 
       // Keep the floating nav above page overlays and below title actions.
       TouchNavBar({ selectedId: this.detail !== null ? this.detail.work.kind : '' })

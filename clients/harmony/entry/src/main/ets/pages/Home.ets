@@ -197,7 +197,8 @@ const TOUCH_RAIL_GAP: number = 50;
 /** Where the first heading sits under the dimmed backdrop (web phone Home). */
 const TOUCH_RAILS_TOP: number = 94;
 /** The touch card's caption block under the art (name and kind line). */
-const TOUCH_CARD_CAPTION_HEIGHT: number = 63;
+// Web phone rail: the list below the art is 63.685 vp (web DOM dump: rail to rail 218.56 with the 88.875 vp art, caption 24.68)
+const TOUCH_CARD_CAPTION_HEIGHT: number = 63.685;
 /** Web phone poster card (`--card-w`, `--card-w-cover`): the page less a 16 vp gutter each side (Home has no letter rail), split into
  * 2 + artwork-size-step columns 12 vp apart. Landscape cards are 16:9, Covers 2:3; the Home screen artwork setting picks which. */
 const TOUCH_GUTTER: number = 16;
@@ -526,7 +527,7 @@ export struct Home {
   }
 
   private touchListHeight(): number {
-    return Math.round(this.touchCardHeight()) + TOUCH_CARD_CAPTION_HEIGHT;
+    return this.touchCardHeight() + TOUCH_CARD_CAPTION_HEIGHT;
   }
 
   /** The card every rail uses (web `--card-w` / `--card-w-cover`): landscape thumbnails or portrait covers. */
@@ -894,7 +895,7 @@ export struct Home {
       artwork: (item as HomeCardItem).artwork,
       unseen: this.unseenFor(item as HomeCardItem),
       cardWidth: this.touchCardWidth(),
-      cardHeight: Math.round(this.touchCardHeight()),
+      cardHeight: this.touchCardHeight(),
       artworkRadius: 8, // web dump: 8
       titleFontSize: TOUCH_CARD_TITLE_FONT_SIZE,
       softCaption: true,

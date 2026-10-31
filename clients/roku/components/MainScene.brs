@@ -426,7 +426,6 @@ sub init()
     m.avatarCustomUri = ""
     m.userAvatar = m.top.findNode("userAvatar")
     m.userAvatarBg = m.top.findNode("userAvatarBg")
-    m.userAvatarBg.id = "a11y|container|10|"
     m.userAvatarCustomMask = m.top.findNode("userAvatarCustomMask")
     m.userAvatarCustom = m.top.findNode("userAvatarCustom")
     applyShellAvatar()
@@ -2147,9 +2146,15 @@ sub applyShellAvatar()
         m.userAvatarCustom.uri = m.avatarCustomUri
         m.userAvatarCustomMask.visible = true
         m.userAvatar.uri = ""
+        m.userAvatarBg.uri = ""
+        m.userAvatarBg.id = "userAvatarBg"
     else
         m.userAvatarCustomMask.visible = false
-        m.userAvatar.uri = "pkg:/images/avatar-" + currentAvatarPresetId(m.profileId) + ".png"
+        preset = currentAvatarPresetId(m.profileId)
+        ' The disc is a painted bitmap of its own (the web's rounded avatar container); the mascot image sits on it.
+        m.userAvatarBg.uri = "pkg:/images/avatar-bg-" + preset + ".png"
+        m.userAvatarBg.id = "a11y|container|10|"
+        m.userAvatar.uri = "pkg:/images/avatar-" + preset + ".png"
     end if
 end sub
 

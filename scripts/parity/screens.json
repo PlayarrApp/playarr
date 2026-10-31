@@ -7,7 +7,7 @@
   "themes": ["light", "dark"],
   "themeStorage": { "localStorageKey": "playarr-theme", "values": ["light", "dark"], "note": "The web app resolves its theme from this key, else prefers-color-scheme. References set both, so a native client may use either the system appearance or its own setting." },
   "user": "fx-viewer",
-  "tolerance": { "pixelmatchThreshold": 0.1, "maxMismatchPercent": 1 },
+  "tolerance": { "maxMismatchPercent": 1 },
   "screens": [
     { "id": "home", "title": "Home", "route": "/", "state": "Signed in as fx-viewer; rails Start watching and Recently Added." },
     { "id": "movies", "title": "Movies library", "route": "/movies", "state": "Library grid of the three films." },
