@@ -696,6 +696,8 @@ export async function createDriver() {
       if (tizen65) {
         // A focused Search field blinks its text caret: the grab lands on either phase (twin f3/f4 differed in one 1x24 px column there), and the web refs show none. Hide the caret for the grab.
         await ev(`(() => { if (!document.getElementById("parity-no-caret")) { const s = document.createElement("style"); s.id = "parity-no-caret"; s.textContent = "input, textarea { caret-color: transparent !important; }"; document.head.appendChild(s); } return true; })()`);
+        // Finite CSS transitions still running at the grab leave a colour one level off at rounded corners (twin f3/f4: four pixels of the active nav item, 1/255): wait until they have finished.
+        if (!(await until(`document.getAnimations().every((a) => a.playState !== "running" || !Number.isFinite(a.effect.getComputedTiming().endTime))`, 10000))) throw new Error("finite animations still running before the grab");
         await sleep(100);
         // This Xvfb is larger than the page (a window the size of the screen loses a pixel row and column), and the XWD grab fails on it: ImageMagick grabs the root, the page is its top-left 1920x1080.
         execFileSync("magick", ["import", "-display", display, "-window", "root", "-crop", "1920x1080+0+0", "+repage", `png:${file}`]);
