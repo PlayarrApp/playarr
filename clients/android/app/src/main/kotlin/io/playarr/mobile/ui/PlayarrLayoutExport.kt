@@ -396,14 +396,12 @@ internal object PlayarrLayoutExport {
         val editable = config.contains(SemanticsProperties.EditableText) || config.contains(SemanticsActions.SetText)
         val slider = config.contains(SemanticsProperties.ProgressBarRangeInfo) && config.contains(SemanticsActions.SetProgress)
         val clickable = config.contains(SemanticsActions.OnClick)
-        val traversalGroup = config.getOrNull(SemanticsProperties.IsTraversalGroup) == true
         // A painted status dot or track the app marks with the image role is exported from its paint record (rect, colour, name); the semantics node is that same element.
         val paintedImage = role == Role.Image && ctx.ownBoxes(node).any { it.kind == "img" }
-        if (!paintedImage && (clickable || role != null || editable || slider || traversalGroup || config.contains(SemanticsProperties.PaneTitle)) && !(slider && insideSlider) && node.layoutInfo.isPlaced && !node.boundsInWindow.isEmpty) {
+        if (!paintedImage && (clickable || role != null || editable || slider || config.contains(SemanticsProperties.PaneTitle)) && !(slider && insideSlider) && node.layoutInfo.isPlaced && !node.boundsInWindow.isEmpty) {
             val kind = when {
                 config.contains(SemanticsProperties.PaneTitle) -> "dialog"
                 editable -> "textbox"
-                traversalGroup && !clickable && role == null -> "group"
                 slider -> "slider"
                 role == Role.Checkbox -> "checkbox"
                 role == Role.Switch -> "switch"
