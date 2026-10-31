@@ -178,7 +178,11 @@ export async function createDriver({ out } = {}) {
     await sleep(500);
   };
   // The profile picker opens first: Enter chooses the Device Test profile (the first, focused one).
-  const intoHome = () => pickProfile({ state, press: (k) => press(k), sleep });
+  const intoHome = () => pickProfile({ state, press: (k) => press(k), sleep }).catch(async (error) => {
+    // Keep what the display showed when the picker would not take Select, so a flake can be told apart (overlay, wrong window, blank).
+    if (out) await execFileP("import", ["-window", "root", "-crop", "1920x1080+0+0", "+repage", join(out, `picker-stuck-${Date.now()}.png`)], { env }).catch(() => {});
+    throw error;
+  });
   const waitSettled = async () => {
     // a library or calendar page fills in after the route changes; wait until two frames agree
     await sleep(6000);
