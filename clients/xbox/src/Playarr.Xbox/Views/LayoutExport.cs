@@ -330,9 +330,6 @@ namespace Playarr.Xbox.Views
             var (before, width, height) = await GrabAsync(root);
             var hidden = new HashSet<object>();
             var log = new List<string>();
-            // Candidates whose pixel boxes do not touch are tested together: each box is read only against its own element's
-            // paint, so one hide frame and one re-show frame serve the whole group. Nested or overlapping boxes go in later groups.
-            var work = new List<(Candidate C, int X0, int Y0, int X1, int Y1)>();
             foreach (var candidate in Candidates)
             {
                 var x0 = Math.Max(0, (int)Math.Floor(candidate.Box.X));
@@ -345,39 +342,13 @@ namespace Playarr.Xbox.Views
                     continue;
                 }
 
-                work.Add((candidate, x0, y0, x1, y1));
-            }
-
-            var groups = new List<List<int>>();
-            for (var i = 0; i < work.Count; i++)
-            {
-                var placed = false;
-                foreach (var group in groups)
-                {
-                    if (group.All(j => work[j].X1 <= work[i].X0 || work[i].X1 <= work[j].X0 || work[j].Y1 <= work[i].Y0 || work[i].Y1 <= work[j].Y0))
-                    {
-                        group.Add(i);
-                        placed = true;
-                        break;
-                    }
-                }
-
-                if (!placed)
-                {
-                    groups.Add(new List<int> { i });
-                }
-            }
-
-            var proof = new int[work.Count, 2];
-            foreach (var group in groups)
-            {
-                // Evidence, not a threshold: with the group hidden a pixel counts only if it differs from both the frame before
-                // and the frame after the group is shown again while those two agree exactly. Two rounds must both find paint.
-                var alive = group.ToList();
+                // Evidence, not a threshold: with the element hidden a pixel counts only if it differs from both the frame before
+                // and the frame after the element is shown again while those two agree exactly. Two rounds must both find paint.
+                var rounds = new int[2];
                 var baseline = before;
-                for (var round = 0; round < 2 && alive.Count > 0; round++)
+                for (var round = 0; round < 2; round++)
                 {
-                    var undos = alive.Select(i => Hide(work[i].C.Owner)).ToList();
+                    var undo = Hide(candidate.Owner);
                     byte[] hiddenFrame;
                     try
                     {
@@ -386,46 +357,35 @@ namespace Playarr.Xbox.Views
                     }
                     finally
                     {
-                        foreach (var undo in undos)
-                        {
-                            undo();
-                        }
+                        undo();
                     }
 
                     await Task.Delay(16);
                     var shown = (await GrabAsync(root)).Pixels;
-                    foreach (var i in alive.ToList())
+                    var proven = 0;
+                    for (var y = y0; y < y1; y++)
                     {
-                        var proven = 0;
-                        for (var y = work[i].Y0; y < work[i].Y1; y++)
+                        for (var x = x0; x < x1; x++)
                         {
-                            for (var x = work[i].X0; x < work[i].X1; x++)
+                            var i = (y * width + x) * 4;
+                            if (PixelEqual(baseline, shown, i) && !PixelEqual(hiddenFrame, baseline, i))
                             {
-                                var k = (y * width + x) * 4;
-                                if (PixelEqual(baseline, shown, k) && !PixelEqual(hiddenFrame, baseline, k))
-                                {
-                                    proven++;
-                                }
+                                proven++;
                             }
-                        }
-
-                        proof[i, round] = proven;
-                        if (proven == 0)
-                        {
-                            alive.Remove(i); // visible needs both rounds, so a round without paint settles it
                         }
                     }
 
+                    rounds[round] = proven;
                     baseline = shown;
+                    if (proven == 0)
+                    {
+                        break; // visible needs both rounds, so a first round without paint settles it
+                    }
                 }
-            }
 
-            for (var i = 0; i < work.Count; i++)
-            {
-                var candidate = work[i].C;
-                var changed = proof[i, 0] > 0 && proof[i, 1] > 0;
+                var changed = rounds[0] > 0 && rounds[1] > 0; // an unplayed second round stays 0
                 var focusable = !changed && IsFocusableAndOnTop(candidate.Owner, candidate.Box);
-                log.Add($"#{i} {Math.Round(candidate.Box.X)},{Math.Round(candidate.Box.Y)} {Math.Round(candidate.Box.Width)}x{Math.Round(candidate.Box.Height)} r1={proof[i, 0]} r2={proof[i, 1]} {(changed ? "visible" : focusable ? "focusable" : "covered")}");
+                log.Add($"#{log.Count} {Math.Round(candidate.Box.X)},{Math.Round(candidate.Box.Y)} {Math.Round(candidate.Box.Width)}x{Math.Round(candidate.Box.Height)} r1={rounds[0]} r2={rounds[1]} {(changed ? "visible" : focusable ? "focusable" : "covered")}");
                 if (!changed && !focusable)
                 {
                     hidden.Add(candidate.Item);
