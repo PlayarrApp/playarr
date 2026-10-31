@@ -4242,13 +4242,14 @@ private fun LibraryFiltersDialog(
         onClose = onDismiss,
     ) {
         run {
-            Column(verticalArrangement = if (playarrTvDrawer() && !LocalTabletDrawerCssPx.current) io.playarr.shared.designsystem.page.FractionalSpacedVertical(29.63.dp) else Arrangement.spacedBy(if (!playarrTvDrawer()) 23.1.dp else if (LocalTabletDrawerCssPx.current) webVu(22f, 2.8f, 34f) else 30.dp)) {
+            val filterBody: @Composable () -> Unit = {
                 LibraryFilterChoices(
                     playarrString(PlayarrString.LibraryView),
                     availableViewModes,
                     viewMode,
                     onViewMode,
                     icon = { mode, colour -> LibraryViewIcon(mode, colour) },
+                    originCss = PHONE_DRAWER_BODY_TOP_CSS,
                 ) {
                     playarrString(
                         when (it) {
@@ -4264,6 +4265,7 @@ private fun LibraryFiltersDialog(
                     listOf("title", "recent"),
                     sortMode,
                     onSortMode,
+                    originCss = PHONE_DRAWER_BODY_TOP_CSS + 94.22f,
                 ) {
                     playarrString(if (it == "title") PlayarrString.LibrarySortTitle else PlayarrString.LibrarySortDateAdded)
                 }
@@ -4272,6 +4274,7 @@ private fun LibraryFiltersDialog(
                     listOf(false, true),
                     descending,
                     onDescending,
+                    originCss = PHONE_DRAWER_BODY_TOP_CSS + 188.44f,
                 ) {
                     playarrString(
                         when {
@@ -4295,6 +4298,15 @@ private fun LibraryFiltersDialog(
                 if (!languageSelection.isEmpty) {
                     PlayarrChoice(playarrString(PlayarrString.LibraryClearLanguages), false) { onLanguageSelection(LanguageSelection()) }
                 }
+            }
+            if (playarrTvDrawer()) {
+                Column(verticalArrangement = if (playarrTvDrawer() && !LocalTabletDrawerCssPx.current) io.playarr.shared.designsystem.page.FractionalSpacedVertical(29.63.dp) else Arrangement.spacedBy(if (LocalTabletDrawerCssPx.current) webVu(22f, 2.8f, 34f) else 30.dp)) {
+                    filterBody()
+                }
+            } else {
+                // Web phone `.drawer-body`: sections 70.56 px tall (10.56 label, 12 gap, 48 choices) every 94.22 px (gap 2.8 vu = 23.66),
+                // the first at css y 95.02 (20 padding, 47.36 header, 23.66 gap, 4 body padding).
+                WebCssLayout(PHONE_DRAWER_BODY_TOP_CSS, listOf(0f, 94.22f, 188.44f), listOf(70.56f, 70.56f, 70.56f), 23.66f) { filterBody() }
             }
         }
     }
@@ -4527,6 +4539,7 @@ private fun <T> LibraryFilterChoices(
     selected: T,
     onSelected: (T) -> Unit,
     icon: (@Composable (T, Color) -> Unit)? = null,
+    originCss: Float? = null,
     label: @Composable (T) -> String,
 ) {
     val language = LocalPlayarrLanguage.current
@@ -4540,7 +4553,18 @@ private fun <T> LibraryFilterChoices(
         }
         return
     }
-    // Web phone drawer: the same equal-width segments as the television one.
+    // Web phone drawer: the same equal-width segments as the television one. A section 70.56 px tall: 10.56 label, 12 gap, 48 choices.
+    if (originCss != null) {
+        WebCssLayout(originCss, listOf(0f, 22.56f), listOf(10.56f, 48f), 12f) {
+            LibraryFilterLabel(title)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                values.forEach { value ->
+                    PlayarrChoice(label(value), value == selected, Modifier.weight(1f).fillMaxHeight(), icon = icon?.let { draw -> { colour -> draw(value, colour) } }) { onSelected(value) }
+                }
+            }
+        }
+        return
+    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LibraryFilterLabel(title)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -5173,7 +5197,7 @@ private fun PhoneSearchContent(
                         .parityShape(999f)
                         .background(WebSurfaceStrong.copy(alpha = 0.88f), pillShape)
                         .border(1.dp, WebSearchBorder, pillShape)
-                        .padding(horizontal = 17.dp), // the web box adds its 1 px border to the padding
+                        .padding(horizontal = rememberWebSpan(16f, 33f)), // the web box adds its 1 px border to the padding; the icon lands on css x=33
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(PlayarrWebIcons.Search, contentDescription = null, tint = PlayarrWebTheme.palette.phoneInkMuted, modifier = Modifier.size(18.dp).parityBox("image"))
