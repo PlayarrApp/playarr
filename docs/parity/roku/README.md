@@ -2,8 +2,8 @@
 
 Reference: the shared web TV captures in `docs/parity/web/tv/{light,dark}`. Candidate: the sideloaded channel on a
 physical Roku (fhd), screenshotted through the dev installer's `plugin_inspect` endpoint (JPEG, converted to PNG),
-signed in as `fx-viewer` against a fresh deterministic fixture server. Diff: `scripts/parity/diff.mjs`, pixelmatch
-threshold 0.1, with the shell clock rectangle (x 470-730, y 60-100) masked because a Roku has no way to freeze its clock.
+signed in as `fx-viewer` against a fresh deterministic fixture server. Diff: `scripts/parity/diff.mjs`, exact RGBA
+byte comparison (zero tolerance), with the shell clock rectangle (x 470-730, y 60-100) masked because a Roku has no way to freeze its clock.
 
 ```
 ROKU_DEV_TARGET=<ip> ROKU_DEV_PASSWORD=<dev password> node scripts/parity/roku/capture.mjs <out> dark
@@ -14,8 +14,8 @@ node scripts/parity/diff.mjs --ref docs/parity/web --cand <out> --layout tv --th
 
 Method: the Roku stays signed in as the device test account. `scripts/parity/roku/capture-web-live.mjs` captures the web TV
 client (1920x1080, Nunito Sans forced, hosted web client against the real server) as that same account in the same run, and
-`scripts/parity/roku/capture.mjs` captures the device (`ROKU_DOCK_HAS_MUSIC=1`). Diff: `scripts/parity/diff.mjs`, pixelmatch
-threshold 0.1, the clock rectangles (470,60,260,40 and 545,60,180,40) masked on both sides. Nothing is committed from these
+`scripts/parity/roku/capture.mjs` captures the device (`ROKU_DOCK_HAS_MUSIC=1`). Diff: `scripts/parity/diff.mjs`, exact RGBA
+byte comparison (zero tolerance), the clock rectangles (470,60,260,40 and 545,60,180,40) masked on both sides. Nothing is committed from these
 captures (they show real library artwork).
 
 | Screen | Dark | Light | Status |
