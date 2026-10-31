@@ -1,0 +1,1 @@
+- Android parity tooling: the phone calendar-link capture opens the Calendar link sheet by tapping the bell, a distinctness check rejects two screens captured identically, and the published build.json records the PR number.
