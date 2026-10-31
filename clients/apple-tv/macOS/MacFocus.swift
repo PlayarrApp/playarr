@@ -105,7 +105,10 @@ final class MacFocusEngine {
     /// Gives focus to the registered target of this name (the player's video surface when the player opens), if there is one.
     @discardableResult
     func focusNamed(_ name: String) -> Bool {
-        guard let target = targets.values.first(where: { $0.focusName == name }) else { return false }
+        #if DEBUG
+        NSLog("PlayarrMacTrace focusNamed %@ targets=%@ topLayer=%d", name, targets.values.map { "\($0.focusName ?? "-")@\($0.layer)" }.joined(separator: ","), topLayer)
+        #endif
+        guard let target = targets.values.first(where: { $0.focusName == name && $0.layer == topLayer }) else { return false }
         target.focus()
         return true
     }
