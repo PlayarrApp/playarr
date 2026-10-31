@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 // Deterministic layout score (docs/parity/LAYOUT.md).
 //   node layout-score.mjs --ref <web layout json> --device <device layout json> [--client <legend dir>] [--exclusions <json>] [--role-alias <webRole>=<deviceRole>]... [--json] [--max 40]
-// score = web elements that matched a device element with every field inside tolerance / scored web elements.
+// score = web elements that matched a device element with every field exactly equal (no tolerance) / scored web elements.
 // Self-contained on purpose: the legend service keeps a copy of this single file.
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const TOL = Object.freeze({ edge: 1, deltaE: 2, fontSize: 0.5, fontWeight: 50, radius: 1, opacity: 0.05 });
+// Exact scoring (owner 2026-10-31, zero tolerance): every tolerance is 0. Edges are compared on the whole device pixel (Math.round(css px * dpr)),
+// colours as the identical composited sRGB bytes, fontSize, fontWeight, radius and opacity by strict equality.
+export const TOL = Object.freeze({ edge: 0, deltaE: 0, fontSize: 0, fontWeight: 0, radius: 0, opacity: 0 });
 const FIXTURE_CLOCK = "2026-10-07T12:00:00Z";
 
 const normText = (s) => String(s ?? "").normalize("NFKC").replace(/\s+/g, " ").trim();
@@ -25,6 +27,14 @@ function lab([r, g, b]) {
   const f = (t) => (t > 216 / 24389 ? Math.cbrt(t) : (24389 / 27 * t + 16) / 116);
   const x = f((0.4124564 * R + 0.3575761 * G + 0.1804375 * B) / 0.95047), y = f(0.2126729 * R + 0.7151522 * G + 0.072175 * B), z = f((0.0193339 * R + 0.119192 * G + 0.9503041 * B) / 1.08883);
   return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
+/** Identical composited colour: both flattened over `under` (default white) and rounded to 8-bit sRGB, then compared byte for byte. Unparseable colours must be the same string. */
+export function sameColour(a, b, under = "#ffffff") {
+  const pa = parseHex(a), pb = parseHex(b), bg = parseHex(under) ?? [255, 255, 255, 1];
+  if (!pa || !pb) return a === b;
+  const flat = (c) => [0, 1, 2].map((i) => Math.round(c[i] * c[3] + bg[i] * (1 - c[3])));
+  const [p, q] = [flat(pa), flat(pb)];
+  return p[0] === q[0] && p[1] === q[1] && p[2] === q[2];
 }
 /** CIE76 distance between two hex colours; a translucent colour is composited over `under` first. */
 export function deltaE(a, b, under = "#ffffff") {
@@ -62,7 +72,7 @@ const iou = (a, b) => {
 const dist = (a, b) => { const [p, q] = [center(a), center(b)]; return Math.hypot(p[0] - q[0], p[1] - q[1]); };
 
 /** Field-by-field comparison of one matched pair; returns the list of differences. */
-function compare(w, d, { scoreText, edge = TOL.edge, sameRole = (a, b) => a === b, textCentreLine = false }) {
+function compare(w, d, { scoreText, dpr = 1, sameRole = (a, b) => a === b, textCentreLine = false }) {
   const out = [];
   const diff = (field, ref, dev, delta) => out.push({ field, ref, device: dev, delta: round(delta) });
   if (scoreText && normText(w.text) !== normText(d.text)) diff("text", w.text, d.text, 0);
@@ -74,31 +84,30 @@ function compare(w, d, { scoreText, edge = TOL.edge, sameRole = (a, b) => a === 
     ? [["left", w.rect.x, d.rect.x], ["right", w.rect.x + w.rect.w, d.rect.x + d.rect.w], ["centre", w.rect.y + w.rect.h / 2, d.rect.y + d.rect.h / 2]]
     : [["left", w.rect.x, d.rect.x], ["top", w.rect.y, d.rect.y], ["right", w.rect.x + w.rect.w, d.rect.x + d.rect.w], ["bottom", w.rect.y + w.rect.h, d.rect.y + d.rect.h]];
   for (const [name, a, b] of edges) {
-    if (Math.abs(a - b) > edge) diff(`rect.${name}`, round(a), round(b), b - a);
+    if (Math.round(a * dpr) !== Math.round(b * dpr)) diff(`rect.${name}`, round(a), round(b), b - a); // same whole device pixel
   }
   if (w.background != null) {
-    const e = deltaE(w.background, d.background ?? "");
-    if (e > TOL.deltaE) diff("background", w.background, d.background ?? null, e);
+    if (!sameColour(w.background, d.background ?? "")) diff("background", w.background, d.background ?? null, deltaE(w.background, d.background ?? ""));
   }
   if (w.color != null) {
-    const e = deltaE(w.color, d.color ?? "", w.background ?? "#ffffff");
-    if (e > TOL.deltaE) diff("color", w.color, d.color ?? null, e);
+    if (!sameColour(w.color, d.color ?? "", w.background ?? "#ffffff")) diff("color", w.color, d.color ?? null, deltaE(w.color, d.color ?? "", w.background ?? "#ffffff"));
   }
-  if (w.fontSize != null && !(Math.abs(w.fontSize - (d.fontSize ?? NaN)) <= TOL.fontSize)) diff("fontSize", w.fontSize, d.fontSize ?? null, (d.fontSize ?? 0) - w.fontSize);
-  if (w.fontWeight != null && !(Math.abs(w.fontWeight - (d.fontWeight ?? NaN)) <= TOL.fontWeight)) diff("fontWeight", w.fontWeight, d.fontWeight ?? null, (d.fontWeight ?? 0) - w.fontWeight);
+  if (w.fontSize != null && w.fontSize !== d.fontSize) diff("fontSize", w.fontSize, d.fontSize ?? null, (d.fontSize ?? 0) - w.fontSize);
+  if (w.fontWeight != null && w.fontWeight !== d.fontWeight) diff("fontWeight", w.fontWeight, d.fontWeight ?? null, (d.fontWeight ?? 0) - w.fontWeight);
   // a radius on an element that draws nothing (no fill, border, shadow) cannot be seen, so a native control cannot report it
   if (w.painted !== false && ((w.radius ?? 0) > 0 || (d.radius ?? 0) > 0)) {
-    if (Math.abs((w.radius ?? 0) - (d.radius ?? 0)) > TOL.radius) diff("radius", w.radius ?? 0, d.radius ?? 0, (d.radius ?? 0) - (w.radius ?? 0));
+    if ((w.radius ?? 0) !== (d.radius ?? 0)) diff("radius", w.radius ?? 0, d.radius ?? 0, (d.radius ?? 0) - (w.radius ?? 0));
   }
-  if (!w.opacityVolatile && Math.abs((w.opacity ?? 1) - (d.opacity ?? 1)) > TOL.opacity) diff("opacity", w.opacity ?? 1, d.opacity ?? 1, (d.opacity ?? 1) - (w.opacity ?? 1));
+  if (!w.opacityVolatile && (w.opacity ?? 1) !== (d.opacity ?? 1)) diff("opacity", w.opacity ?? 1, d.opacity ?? 1, (d.opacity ?? 1) - (w.opacity ?? 1));
   return out;
 }
 
 /** Score `device` against the web layout `ref`. Pure and deterministic: same inputs, same output. */
 /** textCentreLine: score text elements on left, right and vertical centre only (owner exception for Harmony). roleAliases: { <web role>: [<device roles accepted for it>] }, e.g. { link: ["button"] } for a platform without a link role. Default none. */
-export function scoreLayout(ref, device, { edge = TOL.edge, client, exclusions, roleAliases = {}, textCentreLine = false } = {}) {
+export function scoreLayout(ref, device, { client, exclusions, roleAliases = {}, textCentreLine = false } = {}) {
   const sameRole = (webRole, devRole) => webRole === devRole || (roleAliases[webRole] ?? []).includes(devRole);
   const clockPinned = device.clockPinned === true;
+  const dpr = ref.viewport?.dpr ?? device.viewport?.dpr ?? 1; // the web reference sets the device pixel grid
   // "system" elements are OS chrome (status bar, home indicator): never matched, never reported.
   const dev = device.elements.map((e, i) => ({ ...e, i })).filter((e) => e.role !== "system");
   const taken = new Set();
@@ -148,7 +157,7 @@ export function scoreLayout(ref, device, { edge = TOL.edge, client, exclusions, 
     if (!d) { failures.push({ ref: brief, device: null, problems: [{ field: "missing", ref: null, device: null, delta: 0 }] }); continue; }
     const scoreText = !isVolatileText(w);
     if (w.clock) clockSeen.push(normText(w.text) === normText(d.text));
-    const problems = compare(w, d, { scoreText, edge, sameRole, textCentreLine });
+    const problems = compare(w, d, { scoreText, dpr, sameRole, textCentreLine });
     if (problems.length) failures.push({ ref: brief, device: { text: d.text, role: d.role, rect: d.rect }, problems });
     else equal += 1;
   }

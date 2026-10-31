@@ -69,8 +69,9 @@ Layout refs: `<legend dir>/web/layout/<theme>/<screen>.json` for every ref group
 
 Matching (deterministic, in web order): 1. normalised text and role, nearest rect; 2. same text, other role (a `role` failure);
 3. textless and volatile elements: same role, best overlap; 4. remaining elements: same role, best overlap (a `text` failure).
-Score = web elements matched and equal / scored web elements. Tolerances: each rect edge 1 px, colour and background CIE76 deltaE 2
-(translucent colours composited first), font size 0.5 px, weight 50, radius 1 px, opacity 0.05. Every failure lists the field,
+Score = web elements matched and equal / scored web elements. Zero tolerance (owner order, 31 Oct 2026): each rect edge must
+equal on the whole device pixel (`Math.round(px * dpr)`), colour and background must be identical 8-bit sRGB bytes after compositing
+translucent colours (deltaE is only reported), and font size, weight, radius and opacity must be strictly equal. Every failure lists the field,
 the web and device values, and the delta. Extra device elements are counted, not penalised.
 
 ## Per-client exclusions
