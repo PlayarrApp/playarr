@@ -461,6 +461,8 @@ sub applyCaptionFocus()
     if m.global.cardFocusOff = true then effective = 0
     if effective > 1 then effective = 1
     if effective < 0 then effective = 0
+    ' The last 2 % of the focus transition is invisible; snapping it keeps the caption box from depending on when the capture lands.
+    if effective < 0.02 then effective = 0
     m.title.scale = [1, 1]
     m.kind.scale = [1, 1]
     if m.cardScaleValue > 1 and m.homeCardFocusStyle <> true and m.cardListMode <> true and m.cardArtW <> invalid and m.cardArtW > 0 and effective > 0
