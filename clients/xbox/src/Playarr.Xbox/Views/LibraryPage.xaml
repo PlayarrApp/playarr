@@ -59,7 +59,7 @@
             <Button x:Name="RetryButton" Content="Try again" Click="RetryButton_Click" />
         </StackPanel>
 
-        <GridView
+        <local:LinkGridView
             x:Name="WorksGridView"
             Width="1128"
             Margin="735,0,0,0"

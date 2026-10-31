@@ -78,9 +78,17 @@ namespace Playarr.Xbox.Views
             // A page that paints an opaque solid background (the player's black stage) hides the window ground behind it.
             _rootCovered = FindPage(root) is { Background: SolidColorBrush { Color.A: 255 } };
             Candidates.Clear();
+            // Images arrive and fade in on their own clock: read the layout only once the rendered frame has been identical
+            // for three looks in a row, so the walk, the visibility pass and the screenshot all describe the same screen.
+            for (var look = 0; look < 80 && !await SettledAsync(); look++)
+            {
+                await Task.Delay(400);
+            }
+
             Walk(root, root, scale, elements);
             var frame = await FrameHashAsync();
-            elements = await KeepVisibleAsync(root, elements);
+            var (kept, occluded) = await KeepVisibleAsync(root, elements);
+            elements = kept;
             return Newtonsoft.Json.JsonConvert.SerializeObject(new
             {
                 screen,
@@ -88,10 +96,27 @@ namespace Playarr.Xbox.Views
                 viewport = new { w = 1920, h = 1080, dpr = 1 },
                 probe = Probe(),
                 textProbe = TextProbe(root),
+                occluded,
+                visibility = VisibilityLog,
                 clockPinned = ParityClock.IsPinned && ParityClock.Today == new DateTime(2026, 10, 7),
                 frame,
                 elements,
             });
+        }
+
+        private static async Task<bool> SettledAsync()
+        {
+            var first = await FrameHashAsync();
+            for (var i = 0; i < 2; i++)
+            {
+                await Task.Delay(500);
+                if (await FrameHashAsync() != first)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>Measured widths that show whether the font weight and tracking requests take effect (not part of the schema; for diagnosis).</summary>
@@ -221,9 +246,11 @@ namespace Playarr.Xbox.Views
         {
             switch (owner)
             {
-                case Border { Background: { } fill } border:
+                case Border border:
+                    var (borderFill, borderStroke) = (border.Background, border.BorderBrush);
                     border.Background = null;
-                    return () => border.Background = fill;
+                    border.BorderBrush = null;
+                    return () => { border.Background = borderFill; border.BorderBrush = borderStroke; };
                 case Panel { Background: { } fill } panel:
                     panel.Background = null;
                     return () => panel.Background = fill;
@@ -243,10 +270,66 @@ namespace Playarr.Xbox.Views
         /// Visible on the rendered screen: the app renders itself with and without the element's own paint and compares the
         /// pixels inside its box. An element whose removal changes nothing is covered (or paints nothing) and is not exported.
         /// </summary>
-        private static async Task<List<object>> KeepVisibleAsync(FrameworkElement root, List<object> elements)
+        private static async Task<(List<object> Kept, int Occluded)> KeepVisibleAsync(FrameworkElement root, List<object> elements)
+        {
+            // The whole pass must start and end on the same rendered frame: a changed final frame means something animated
+            // or loaded mid-pass, so the pass runs again (and fails if the screen never settles).
+            var last = string.Empty;
+            for (var attempt = 0; attempt < 2; attempt++)
+            {
+                var (hidden, stable, diff) = await ToggleAllAsync(root);
+                if (stable)
+                {
+                    Candidates.Clear();
+                    return (elements.Where(e => !hidden.Contains(e)).ToList(), hidden.Count);
+                }
+
+                last = diff;
+                await Task.Delay(400);
+            }
+
+            Candidates.Clear();
+            throw new InvalidOperationException("The rendered frame did not settle during the visibility pass: " + last);
+        }
+
+        /// <summary>A control the user can focus is exported even when it paints nothing, unless something else is drawn over it.</summary>
+        private static bool IsFocusableAndOnTop(FrameworkElement owner, Rect box)
+        {
+            if (owner is not Control { IsTabStop: true, IsEnabled: true })
+            {
+                return false;
+            }
+
+            var point = new Windows.Foundation.Point(box.X + box.Width / 2, box.Y + box.Height / 2);
+            foreach (var hit in VisualTreeHelper.FindElementsInHostCoordinates(point, Window.Current.Content, false))
+            {
+                for (DependencyObject? n = hit; n != null; n = VisualTreeHelper.GetParent(n))
+                {
+                    if (ReferenceEquals(n, owner))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            return false;
+        }
+
+        /// <summary>Per-element evidence of the last visibility pass (diagnosis only, not part of the schema).</summary>
+        private static List<string> VisibilityLog = new();
+
+        private static bool PixelEqual(byte[] a, byte[] b, int i) => a[i] == b[i] && a[i + 1] == b[i + 1] && a[i + 2] == b[i + 2];
+
+        // Video needs no mask: a pixel that changes between the base and re-show frames (a playing picture) is never evidence,
+        // and the player's video surface spans the whole screen, so a box mask would blind every control on it.
+
+        private static async Task<(HashSet<object> Hidden, bool Stable, string Diff)> ToggleAllAsync(FrameworkElement root)
         {
             var (before, width, height) = await GrabAsync(root);
             var hidden = new HashSet<object>();
+            var log = new List<string>();
             foreach (var candidate in Candidates)
             {
                 var x0 = Math.Max(0, (int)Math.Floor(candidate.Box.X));
@@ -259,35 +342,76 @@ namespace Playarr.Xbox.Views
                     continue;
                 }
 
-                var undo = Hide(candidate.Owner);
-                byte[] after;
-                try
+                // Evidence, not a threshold: with the element hidden a pixel counts only if it differs from both the frame before
+                // and the frame after the element is shown again while those two agree exactly. Two rounds must both find paint.
+                var rounds = new int[2];
+                var baseline = before;
+                for (var round = 0; round < 2; round++)
                 {
-                    after = (await GrabAsync(root)).Pixels;
-                }
-                finally
-                {
-                    undo();
-                }
-
-                var changed = false;
-                for (var y = y0; y < y1 && !changed; y++)
-                {
-                    var from = (y * width + x0) * 4;
-                    for (var i = from; i < from + (x1 - x0) * 4 && !changed; i++)
+                    var undo = Hide(candidate.Owner);
+                    byte[] hiddenFrame;
+                    try
                     {
-                        changed = before[i] != after[i];
+                        await Task.Delay(16);
+                        hiddenFrame = (await GrabAsync(root)).Pixels;
+                    }
+                    finally
+                    {
+                        undo();
+                    }
+
+                    await Task.Delay(16);
+                    var shown = (await GrabAsync(root)).Pixels;
+                    var proven = 0;
+                    for (var y = y0; y < y1; y++)
+                    {
+                        for (var x = x0; x < x1; x++)
+                        {
+                            var i = (y * width + x) * 4;
+                            if (PixelEqual(baseline, shown, i) && !PixelEqual(hiddenFrame, baseline, i))
+                            {
+                                proven++;
+                            }
+                        }
+                    }
+
+                    rounds[round] = proven;
+                    baseline = shown;
+                    if (proven == 0)
+                    {
+                        break; // visible needs both rounds, so a first round without paint settles it
                     }
                 }
 
-                if (!changed)
+                var changed = rounds[0] > 0 && rounds[1] > 0; // an unplayed second round stays 0
+                var focusable = !changed && IsFocusableAndOnTop(candidate.Owner, candidate.Box);
+                log.Add($"#{log.Count} {Math.Round(candidate.Box.X)},{Math.Round(candidate.Box.Y)} {Math.Round(candidate.Box.Width)}x{Math.Round(candidate.Box.Height)} r1={rounds[0]} r2={rounds[1]} {(changed ? "visible" : focusable ? "focusable" : "covered")}");
+                if (!changed && !focusable)
                 {
                     hidden.Add(candidate.Item);
                 }
             }
 
-            Candidates.Clear();
-            return elements.Where(e => !hidden.Contains(e)).ToList();
+            VisibilityLog = log;
+            var final = (await GrabAsync(root)).Pixels;
+            if (final.SequenceEqual(before))
+            {
+                return (hidden, true, string.Empty);
+            }
+
+            int minX = width, minY = height, maxX = -1, maxY = -1, count = 0;
+            for (var i = 0; i < before.Length; i += 4)
+            {
+                if (before[i] != final[i] || before[i + 1] != final[i + 1] || before[i + 2] != final[i + 2])
+                {
+                    var px = (i / 4) % width;
+                    var py = (i / 4) / width;
+                    minX = Math.Min(minX, px); maxX = Math.Max(maxX, px); minY = Math.Min(minY, py); maxY = Math.Max(maxY, py); count++;
+                }
+            }
+
+            // The rasteriser leaves a few stray pixels after paint is restored; a settled screen drifts by far less than a thousandth of the frame.
+            return (hidden, count <= width * height / 1000, $"{count} pixels differ in x {minX}-{maxX}, y {minY}-{maxY}");
         }
 
         /// <summary>A hash of the app's own render of the screen: the same value before and after a screenshot shows the layout export belongs to the frame that was captured.</summary>
@@ -348,11 +472,6 @@ namespace Playarr.Xbox.Views
             var rect = Bounds(element, root, scale);
             FrameworkElement owner = element;
             var name = NameOf(element);
-            if (element is SelectorItem { ContentTemplateRoot: FrameworkElement tagged } && !string.IsNullOrEmpty(Windows.UI.Xaml.Automation.AutomationProperties.GetName(tagged)))
-            {
-                name = Windows.UI.Xaml.Automation.AutomationProperties.GetName(tagged);
-            }
-
             if (element is TextBlock block)
             {
                 if (string.IsNullOrWhiteSpace(block.Text))
@@ -371,11 +490,11 @@ namespace Playarr.Xbox.Views
             {
                 role = "container";
             }
-            else if (element is Border border && (Hex(border.Background) is not null || border.Background is ImageBrush || (border.BorderBrush != null && border.BorderThickness.Left > 0)))
+            else if (element is Border border && (Hex(border.Background) is not null || border.Background is ImageBrush || border.Background is GradientBrush || (border.BorderBrush != null && border.BorderThickness.Left > 0)))
             {
                 role = "container";
             }
-            else if (element is Panel panel && Hex(panel.Background) is not null)
+            else if (element is Panel panel && (Hex(panel.Background) is not null || panel.Background is GradientBrush))
             {
                 role = "container";
             }
@@ -473,17 +592,11 @@ namespace Playarr.Xbox.Views
                         continue;
                     }
 
-                    // A trimmed block draws its ellipsis over the characters that do not fit: only the ones inside the block are shown.
-                    if (block.IsTextTrimmed && rect.Right > block.ActualWidth + 0.5)
-                    {
-                        continue;
-                    }
-
-                    // The glyph's right edge is where the displayed layout starts the next character on the same line.
-                    // The caret rectangle looking back from the next offset sits on this character's trailing edge, also at a wrap or the end of the text.
-                    // A character rectangle has no width: the right edge of a glyph is where the next character starts, and for the last one where the text ends.
-                    var next = (i + 1 < block.Text.Length ? block.ContentStart.GetPositionAtOffset(i + shift + 1, LogicalDirection.Forward) : block.ContentEnd)?.GetCharacterRect(i + 1 < block.Text.Length ? LogicalDirection.Forward : LogicalDirection.Backward) ?? Rect.Empty;
-                    var edge = !next.IsEmpty && Math.Abs(next.Y - rect.Y) < 1 && next.X >= rect.X ? next.X : rect.Right;
+                    // A character rectangle has no width: a glyph's right edge is the trailing caret edge of that character,
+                    // read looking back from the position after it (the end of the text for the last one), also at a wrap.
+                    var after = i + 1 < block.Text.Length ? block.ContentStart.GetPositionAtOffset(i + shift + 1, LogicalDirection.Backward) : block.ContentEnd;
+                    var trailing = after?.GetCharacterRect(LogicalDirection.Backward) ?? Rect.Empty;
+                    var edge = !trailing.IsEmpty && Math.Abs(trailing.Y - rect.Y) < 1 && trailing.X >= rect.X ? trailing.X : rect.Right;
                     var at = lines.FindIndex(l => Math.Abs(l.Box.Y - rect.Y) < 1);
                     if (at < 0)
                     {
@@ -504,13 +617,14 @@ namespace Playarr.Xbox.Views
                 {
                     var from = k == 0 ? offset : lines[k].From;
                     var to = k + 1 < lines.Count ? lines[k + 1].From : offset + length;
-                    var trimmed = block.IsTextTrimmed && k == lines.Count - 1;
-                    if (trimmed)
+                    // The platform draws a trimmed block's last line with an ellipsis and exposes neither the cut nor the
+                    // ellipsis bounds. That line is left out (LAYOUT.md); the lines above it are untouched layout.
+                    if (block.IsTextTrimmed && k == lines.Count - 1)
                     {
-                        to = lines[k].To;
+                        continue;
                     }
 
-                    var text = block.Text.Substring(from, to - from).Trim() + (trimmed ? "\u2026" : string.Empty);
+                    var text = block.Text.Substring(from, to - from).Trim();
                     if (text.Length == 0)
                     {
                         continue;
@@ -518,7 +632,7 @@ namespace Playarr.Xbox.Views
 
                     // Left edge, line box height and right edge are all read from the displayed block's own character rectangles.
                     var first = lines[k].Box;
-                    var r = transform.TransformBounds(new Rect(first.X, first.Y, Math.Max(0, (trimmed ? block.ActualWidth : rights[k]) - first.X), first.Height));
+                    var r = transform.TransformBounds(new Rect(first.X, first.Y, Math.Max(0, rights[k] - first.X), first.Height));
                     if (r.Right * scale <= 0 || r.Bottom * scale <= 0 || r.X * scale >= 1920 || r.Y * scale >= 1080)
                     {
                         continue;

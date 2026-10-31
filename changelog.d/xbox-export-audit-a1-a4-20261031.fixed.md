@@ -1,0 +1,1 @@
+- Xbox layout export: trimmed text lines are left out instead of rebuilt, glyph right edges use the trailing caret edge (also at wraps), item names come from the item's own peer, paintless focusable controls are kept, hidden-paint checks cover strokes and gradients, the pass verifies a stable frame and reports the occluded count.

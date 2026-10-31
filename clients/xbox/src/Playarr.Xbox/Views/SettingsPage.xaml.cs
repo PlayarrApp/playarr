@@ -72,7 +72,7 @@ namespace Playarr.Xbox.Views
                 var arrow = new TextBlock { Text = "\u2192", FontSize = 20.8, LineHeight = 28, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrInkMuted"), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, CharacterSpacing = 135 };
                 row.Children.Add(arrow);
                 def.Arrow = arrow;
-                def.Tab = new Button
+                def.Tab = new LinkButton
                 {
                     Width = 470.4,
                     Height = 91.9,
