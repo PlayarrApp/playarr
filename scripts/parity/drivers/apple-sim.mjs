@@ -226,7 +226,7 @@ export async function createDriver({ args = [], out } = {}) {
     if (delta.reset) macFocusKeyCollector.reset();
     else if (delta.oversized) macFocusKeyCollector.discardPartial();
     // Debug trace of who sets focus after Back (safe characters only, one line each).
-    for (const line of delta.text.split("\n")) { const m = /PlayarrMacTrace ([\w .:=,'-]{1,160})$/.exec(line); if (m) console.log(`    trace ${m[1]}`); }
+    for (const line of delta.text.split("\n")) { const m = /PlayarrMacTrace ([\w .:=,@'-]{1,600})$/.exec(line); if (m) console.log(`    trace ${m[1]}`); }
     emitMacFocusRecords(macFocusKeyCollector.feed(delta.text, { final }));
   };
   const traceMacFocus = async () => {
