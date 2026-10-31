@@ -1,0 +1,1 @@
+- Samsung Tizen 6.5 parity: the Home synopsis, the series detail date ("Sept" for en-GB September on Chromium 85) and the player controls capture (paused state) now match the web screens; the capture waits for two identical frames.

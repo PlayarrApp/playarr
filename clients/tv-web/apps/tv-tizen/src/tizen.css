@@ -250,3 +250,14 @@ b {
     line-height: calc(1.58em + 0.5px);
   }
 }
+
+/* Legacy Tizen app layout adjustment to match web line boxes (not engine rounding). The Home feature synopsis is 12.864 px text on a 1.58 line (20.32 px) that Chromium 85
+   truncates to 20: each wrapped line then sits another 0.32 px higher than on the web, so the second line lands 1.03 px high while the first is 0.72 px high.
+   Half a pixel of top padding at the 1920 px TV width splits that error (0.22 and 0.53 px) without keying anything to the text. */
+@media (min-width: 1920px) and (max-width: 1920px) {
+  @supports not (aspect-ratio: 1) {
+    html .tv-home-feature .tv-preview-overview {
+      padding-top: 0.5px;
+    }
+  }
+}
