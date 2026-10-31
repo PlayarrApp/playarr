@@ -1,0 +1,1 @@
+- Android parity: the layout export adds the trailing letter-spacing to each text run (as Chrome's rect does), bounds an ellipsis-only run by its neighbouring glyphs, and lets a filled glass surface cover what lies under it; the TV rail groups draw the web CSS box-shadow, and the TV unwatched dot keeps the web img role.
