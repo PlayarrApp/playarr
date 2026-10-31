@@ -30,6 +30,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.drawLayer
@@ -66,7 +69,7 @@ import kotlin.math.roundToInt
 /** Web tokens recorded from `global.css` (dark / light), see DESIGN.md for the glass table. */
 internal object WebGlass {
     /** `.app-nav-group`: blur(24px) saturate(1.2), surface-strong @ .56, 22px radius, hairline border, shadow 0 14 42. */
-    val NavGroup = GlassSpec(saturation = 1.2f, tintAlpha = 0.56f, borderAlphaDark = 0.053f, borderAlphaLight = 0.068f, shadow = 14.dp)
+    val NavGroup = GlassSpec(saturation = 1.2f, tintAlpha = 0.56f, borderAlphaDark = 0.053f, borderAlphaLight = 0.068f, shadow = 14.dp, shadowBlur = 42.dp)
 
     /** Phone `.app-nav`: no blur, surface-strong @ .88, no border, shadow 0 14 40. */
     val PhoneNav = GlassSpec(saturation = 1.0f, tintAlpha = 0.88f, borderAlphaDark = 0f, borderAlphaLight = 0f, shadow = 0.dp)
@@ -102,6 +105,8 @@ internal class GlassSpec(
     val borderAlphaDark: Float,
     val borderAlphaLight: Float,
     val shadow: Dp,
+    /** CSS `box-shadow` blur radius; above zero the shadow is drawn as the web does (see [cssBoxShadow]) instead of the platform elevation. */
+    val shadowBlur: Dp = 0.dp,
 )
 
 /** Downscale factor of the cached backdrop snapshot; blur radius shrinks with it. */
@@ -240,6 +245,25 @@ private fun Modifier.glassBackdropSource(): Modifier {
         }
 }
 
+/**
+ * CSS `box-shadow: 0 <offsetY> <blur> <colour>`: the outline blurred with a Gaussian of sigma blur / 2, shifted down by
+ * [offsetY], and never painted inside the box itself (a translucent box shows the page, not its own shadow).
+ */
+internal fun Modifier.cssBoxShadow(shape: Shape, color: Color, offsetY: Dp, blur: Dp): Modifier = drawBehind {
+    val path = when (val outline = shape.createOutline(size, layoutDirection, this)) {
+        is androidx.compose.ui.graphics.Outline.Generic -> outline.path
+        is androidx.compose.ui.graphics.Outline.Rounded -> androidx.compose.ui.graphics.Path().apply { addRoundRect(outline.roundRect) }
+        is androidx.compose.ui.graphics.Outline.Rectangle -> androidx.compose.ui.graphics.Path().apply { addRect(outline.rect) }
+    }
+    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        this.color = android.graphics.Color.argb((color.alpha * 255f).roundToInt(), (color.red * 255f).roundToInt(), (color.green * 255f).roundToInt(), (color.blue * 255f).roundToInt())
+        maskFilter = android.graphics.BlurMaskFilter(blur.toPx() / 2f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+    }
+    clipPath(path, androidx.compose.ui.graphics.ClipOp.Difference) {
+        translate(0f, offsetY.toPx()) { drawContext.canvas.nativeCanvas.drawPath(path.asAndroidPath(), paint) }
+    }
+}
+
 private fun saturationFilter(saturation: Float): ColorFilter? =
     if (saturation == 1f) null else ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(saturation) })
 
@@ -260,7 +284,9 @@ internal fun Modifier.glass(shape: Shape, spec: GlassSpec, dark: Boolean = webIs
     return this
         .onGloballyPositioned { position = it.positionInRoot() }
         .then(
-            if (spec.shadow > 0.dp) {
+            if (spec.shadowBlur > 0.dp) {
+                Modifier.cssBoxShadow(shape, WebGlass.ShadowColor, spec.shadow, spec.shadowBlur)
+            } else if (spec.shadow > 0.dp) {
                 Modifier.shadow(spec.shadow, shape, clip = false, ambientColor = WebGlass.ShadowColor, spotColor = WebGlass.ShadowColor)
             } else {
                 Modifier

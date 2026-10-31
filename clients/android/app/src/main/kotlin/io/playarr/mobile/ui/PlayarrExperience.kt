@@ -4008,7 +4008,8 @@ private fun PlayarrUnwatchedDot(modifier: Modifier = Modifier, size: Dp = 12.dp,
                 .shadow(4.dp, CircleShape, clip = false, ambientColor = Color(0xFF1F0E14), spotColor = Color(0xFF1F0E14))
                 .drawBehind { drawCircle(UnwatchedDotColour.copy(alpha = 0.35f), radius = size.toPx() / 2f + 1.dp.toPx() * 0.5f, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx())) }
             else Modifier)
-            .parityBackground("image", UnwatchedDotColour, CircleShape, radius = 999f)
+            // Television web exports the dot as `img`; the phone (halo) export reads it as an image.
+            .parityBackground(if (halo) "image" else "img", UnwatchedDotColour, CircleShape, radius = 999f)
             .border(2.dp, Color.White.copy(alpha = 0.94f), CircleShape)
             .semantics { role = Role.Image; contentDescription = label },
     )
