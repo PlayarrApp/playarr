@@ -1114,11 +1114,15 @@ struct TVFloatingNav: View {
         } label: {
             VStack(spacing: 2.75) { // web: the label's top sits 22.75 pt below the icon's
                 TVNavVectorIcon(tab: tab)
+                // Web scales the whole link by 1.05 (transform); the label is drawn at that size directly and counter-scaled against the
+                // group's transform, so the glyphs are not re-rasterised through a fractional scale each time the layer is re-created.
+                let k: CGFloat = isActive || isFocused ? 1.05 : 1
                 Text(tab.title)
-                    .font(TVTheme.font(size: 8.832, css: 680))
-                    .tracking(0.31)
+                    .font(TVTheme.font(size: 8.832 * k, css: 680))
+                    .tracking(0.31 * k)
                     .lineLimit(1)
-                    .parityLayout(text: tab.title, size: 8.832, weight: 680, color: isActive || isFocused ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled, tracking: 0.31)
+                    .scaleEffect(1 / k)
+                    .parityLayout(text: tab.title, size: 8.832 * k, weight: 680, color: isActive || isFocused ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled, tracking: 0.31 * k)
             }
             // Web: the icon sits 15.2 pt below the link's top, 1 pt lower than the centred pair.
             .padding(.top, 2)
