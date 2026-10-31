@@ -1,0 +1,1 @@
+- The TV player lists the server's source audio tracks for a lone direct-play track too, so the audio label keeps its language, codec and channel layout instead of falling back to the player engine's track info.

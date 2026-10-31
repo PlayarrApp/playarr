@@ -9,9 +9,10 @@ import {
 const tracks = [{ id: "a1" }, { id: "a2" }];
 
 describe("audio list exposure", () => {
-  it("lists 2+ tracks in direct play", () => {
+  it("lists the source tracks in direct play, even a lone one", () => {
     expect(shouldExposeSourceAudioTracks({ kind: "ready", mode: "direct" }, 2)).toBe(true);
-    expect(shouldExposeSourceAudioTracks({ kind: "ready", mode: "direct" }, 1)).toBe(false);
+    expect(shouldExposeSourceAudioTracks({ kind: "ready", mode: "direct" }, 1)).toBe(true);
+    expect(shouldExposeSourceAudioTracks({ kind: "ready", mode: "direct" }, 0)).toBe(false);
   });
 
   it("lists tracks in any other mode and keeps the HLS behaviour", () => {

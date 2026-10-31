@@ -11,15 +11,16 @@ export interface NativeAudioTrackListLike {
 }
 
 /**
- * Whether the picker lists the negotiated source audio tracks. HLS keeps the single-track list it always had;
- * any other mode (direct play) needs 2+ tracks, because a lone track gives nothing to choose.
+ * Whether the picker lists the negotiated source audio tracks. Every ready mode lists them from the server's
+ * source media info, so a lone direct-play track still carries its language, codec and channel layout (the
+ * web client labels it the same way) instead of the player engine's own thinner track metadata.
  */
 export function shouldExposeSourceAudioTracks(
   negotiation: { kind: string; mode?: string },
   trackCount: number
 ): boolean {
   if (negotiation.kind !== "ready") return false;
-  return negotiation.mode === "hls" ? trackCount > 0 : trackCount >= 2;
+  return trackCount > 0;
 }
 
 /**
