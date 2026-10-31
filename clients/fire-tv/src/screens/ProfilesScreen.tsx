@@ -79,6 +79,7 @@ import {APP_SHELL_ROUTE} from '../navigation/AppShellNavigator';
 import {AvatarHighlight, ProfileAvatar} from '../components/ProfileAvatar';
 import {syncAvatar} from '../lib/profileAvatarPref';
 import {TvEmptyState} from '../components/TvEmptyState';
+import {reportFocus} from '../debug/parityControl';
 
 type LoadState = {status: 'loading'} | {status: 'ready'} | {status: 'error'; message: string};
 
@@ -175,7 +176,11 @@ function ProfileChoice({
     <Pressable
       ref={ref}
       hasTVPreferredFocus={profile.is_current}
-      onFocus={onFocus}
+      onFocus={() => {
+        // Parity control: the driver presses Select only once a profile really holds focus (a key sent earlier is spent claiming it).
+        reportFocus(profile.display_name || profile.username);
+        onFocus();
+      }}
       onPress={() => onSelect(profile)}
       accessibilityRole="button"
       accessibilityLabel={profile.display_name || profile.username}

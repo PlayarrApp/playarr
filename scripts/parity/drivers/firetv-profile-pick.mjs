@@ -7,12 +7,16 @@ export async function intoHome({ state, press, sleep, attempts = 5, polls = 8 })
     const here = await state(15000).catch(() => null);
     if (here?.route) seen = here.route;
     if (here?.route && here.route !== "/profiles") return here;
-    if (here?.route === "/profiles") await press("Return");
+    // Select is sent only once a profile holds focus; before that it would be spent claiming focus on a picker that has not drawn yet.
+    let pressed = false;
+    if (here?.route === "/profiles" && here.focus) { await press("Return"); pressed = true; }
     for (let i = 0; i < polls; i++) {
       await sleep(2500);
       const s = await state(7000).catch(() => null);
       if (s?.route) seen = s.route;
       if (s?.route && s.route !== "/profiles") return s;
+      // A late key goes out once per attempt, never twice, so it cannot land on Home.
+      if (!pressed && s?.route === "/profiles" && s.focus) { await press("Return"); pressed = true; }
     }
   }
   throw new Error(`the app did not reach Home after choosing the profile (signed out?); last state: ${seen}`);

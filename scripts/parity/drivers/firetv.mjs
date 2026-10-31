@@ -258,11 +258,12 @@ export async function createDriver({ out } = {}) {
     async playerControls() {
       const film = JSON.parse(readFileSync(new URL("../suite.json", import.meta.url), "utf8")).screens.find((x) => x.id === "film-detail")?.open;
       if (!film) throw new Error("suite has no pinned film for player-controls");
-      await command({ cmd: "armPause", ms: "1900" }, 500);
       // Play on the pinned film's page; if the clip has not started within 50 s (a dropped Select), open the page again and retry once.
       let paused = false;
       for (let attempt = 0; attempt < 2 && !paused; attempt++) {
         await this.route(film);
+        // Armed per attempt: the app disarms itself when it pauses, so a retry after a pause outside the window would otherwise never pause.
+        await command({ cmd: "armPause", ms: "1900" }, 500);
         await sleep(2000);
         await press("Return");
         const t0 = Date.now();
