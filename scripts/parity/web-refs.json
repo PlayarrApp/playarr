@@ -31,13 +31,13 @@
         "xbox": [
           "firetv",
           "apple",
-          "tizen-native",
           "macos",
           "vidaa",
           "xbox"
         ],
         "tv-webos": [
-          "tizen-webos"
+          "tizen-webos",
+          "tizen-native"
         ]
       }
     },
