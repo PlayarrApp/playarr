@@ -20,6 +20,7 @@ import {
 import { syncInstalledAppHint } from "./lib/signedInHint";
 import { installTvStageScale } from "./lib/tvStageScale";
 import { installVidaaLongPress } from "./lib/vidaaLongPress";
+import { androidTvNativeBridge, installAndroidTvShellReadyMarker } from "./lib/androidTvNativePlayer";
 import { installScrollEdgeFades } from "./lib/scrollEdgeFade";
 import {
   bootstrapParityMode,
@@ -94,6 +95,12 @@ if (!container) {
 }
 
 document.documentElement.dataset.platform = PLAYARR_CLIENT_PLATFORM;
+
+// Android TV web view shell: Media3 draws video on a surface behind the page (see lib/androidTvNativePlayer.ts).
+if (androidTvNativeBridge()) {
+  document.documentElement.dataset.nativeVideoPlane = "1";
+  installAndroidTvShellReadyMarker();
+}
 
 // One edge fade for every scroll container no component manages (drawers, dialogs, menus, panels).
 installScrollEdgeFades();

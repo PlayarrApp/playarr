@@ -11358,3 +11358,17 @@ body[data-input-mode="remote"] .circle-focus-host[data-remote-active] .circle-fo
     width: 22px;
   }
 }
+
+/* Android TV web view shell: Media3 draws the video on a surface behind the WebView, so the page must be see-through
+   while the full-screen player is up (the controls stay opaque). See lib/androidTvNativePlayer.ts. */
+html[data-native-video-plane="1"]:has(.player-shell:not(.player-shell-music):not(.player-shell-placeholder):not(.player-shell-minimised)),
+html[data-native-video-plane="1"]:has(.player-shell:not(.player-shell-music):not(.player-shell-placeholder):not(.player-shell-minimised)) body,
+html[data-native-video-plane="1"]:has(.player-shell:not(.player-shell-music):not(.player-shell-placeholder):not(.player-shell-minimised)) #root,
+html[data-native-video-plane="1"]:has(.player-shell:not(.player-shell-music):not(.player-shell-placeholder):not(.player-shell-minimised)) .app-shell,
+html[data-native-video-plane="1"] .player-shell:not(.player-shell-music):not(.player-shell-placeholder),
+html[data-native-video-plane="1"] .player-shell:not(.player-shell-music) .player-video {
+  background: transparent;
+}
+html[data-native-video-plane="1"] .player-shell:not(.player-shell-music) .player-video {
+  opacity: 0;
+}

@@ -2980,6 +2980,12 @@ private fun ExperienceHomeScreen(
                 return
             }
             val allWorks = current.value.flatMap(HomeRail::works)
+            // Marker for the device performance A/B (scripts/parity/android-tv/perf-ab.sh): Home content is on screen.
+            LaunchedEffect(Unit) {
+                withFrameNanos { }
+                withFrameNanos { }
+                android.util.Log.i("PlayarrPerf", "home_ready")
+            }
             val selectedId = savedSelectedId?.takeIf { id -> allWorks.any { it.id == id } } ?: allWorks.first().id
             val activeRailKey = savedRailKey?.takeIf { key -> current.value.any { it.key == key } } ?: current.value.first().key
             var contextWork by remember { mutableStateOf<Work?>(null) }

@@ -56,6 +56,12 @@ android {
         // an arbitrary operator-run instance.
     }
 
+    // Web view shell pilot (WebTvShellActivity): -PplayarrTvWebAssets=<dir of the built web client, base /tv/> packages it
+    // as assets. Without the property the APK carries no web bundle.
+    providers.gradleProperty("playarrTvWebAssets").orNull?.let { dir ->
+        sourceSets.getByName("main").assets.srcDir(dir)
+    }
+
     flavorDimensions += "distribution"
     productFlavors {
         create("play") {
@@ -173,6 +179,7 @@ dependencies {
     implementation(libs.coil.network.okhttp)
     implementation(libs.zxing.core)
     implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.webkit)
     implementation(libs.play.services.cast.framework)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

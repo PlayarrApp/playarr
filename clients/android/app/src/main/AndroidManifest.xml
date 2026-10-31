@@ -105,6 +105,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Web view shell pilot: launched by component name only (no launcher entry). -->
+        <activity
+            android:name=".webshell.WebTvShellActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|density|colorMode|layoutDirection|locale|fontScale|touchscreen|mcc|mnc"
+            android:launchMode="singleTop" />
+
     </application>
 
 </manifest>

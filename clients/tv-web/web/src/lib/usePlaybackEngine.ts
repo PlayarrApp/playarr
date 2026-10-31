@@ -22,6 +22,7 @@ import {
 } from "@playarr-tv/api-client";
 import { ShakaPlaybackEngine } from "@playarr-tv/player-shaka";
 import { TizenAvplayEngine } from "@playarr-tv/player-avplay";
+import { AndroidTvNativeEngine, androidTvNativeBridge } from "./androidTvNativePlayer";
 import type {
   PlaybackAudioTrack,
   PlaybackEngine,
@@ -1005,6 +1006,8 @@ export function usePlaybackEngine(
     try {
       if (IS_TIZEN) {
         engine = new TizenAvplayEngine();
+      } else if (androidTvNativeBridge()) {
+        engine = new AndroidTvNativeEngine();
       } else {
         const shaka = new ShakaPlaybackEngine();
         shaka.attach(videoRef.current);
