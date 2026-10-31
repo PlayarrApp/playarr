@@ -217,7 +217,22 @@ fn collect(
             clip,
             out,
         ),
-        T::InsetShadowNode | T::OutsetShadowNode => {}
+        // A ring (`box-shadow: 0 0 0 4px`, no blur) is an outline the widget paints round its own box, like a border.
+        T::OutsetShadowNode => {
+            let n = node.downcast_ref::<gsk::OutsetShadowNode>().unwrap();
+            if n.spread() > 0.0 && n.blur_radius() == 0.0 {
+                let o = n.outline();
+                out.fills.push(Fill {
+                    b: to_root(m, o.bounds()),
+                    rgba: [0.0; 4],
+                    radius: o.corner()[0].width(),
+                    gradient: None,
+                    border: true,
+                    opacity,
+                });
+            }
+        }
+        T::InsetShadowNode => {}
         _ => out.other = true,
     }
 }
@@ -503,6 +518,12 @@ impl Walk<'_> {
             // One record per shaped style run (a run holds one font and one colour); neighbours on a line with the same
             // colour are one record. Text is each run's own, the ellipsis run reading as the ellipsis.
             let mut recs: Vec<(Rect, String, [f32; 4], f32)> = Vec::new();
+            // A text box is the CSS content area of the element's own (first available) font: its ascent and descent
+            // around the baseline, whichever face draws a glyph. The web sizes the box of a glyph that comes from a
+            // fallback face (an arrow, a play triangle) this way; Pango's run rectangle carries the fallback face's smaller
+            // ascent and descent instead, which is the named font difference.
+            let ctx = layout.context();
+            let primary = ctx.metrics(ctx.font_description().as_ref(), None);
             let mut it = layout.iter();
             loop {
                 if let Some(run) = it.run_readonly() {
@@ -532,7 +553,13 @@ impl Walk<'_> {
                     }
                     // The label's real transform to the root (an ancestor's CSS scale is part of it), applied to the run's
                     // logical rectangle exactly as Pango laid it out (a fallback face keeps its own extents).
-                    let (top, height) = (lg.y(), lg.height());
+                    let (top, height) =
+                        if item.analysis().flags() & PANGO_FLAG_IS_ELLIPSIS != 0 || primary.height() <= 0 {
+                            (lg.y(), lg.height())
+                        } else {
+                            let base = it.baseline();
+                            (base - primary.ascent(), primary.ascent() + primary.descent())
+                        };
                     let local = graphene::Rect::new(
                         ox as f32 + x0 as f32 / s,
                         oy as f32 + top as f32 / s,

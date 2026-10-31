@@ -12,6 +12,7 @@ THEMES=${*:-dark light}
 : "${PARITY_ROOT:?}"
 export PLAYARR_CONTROL=${PLAYARR_CONTROL:-/tmp/pa-route} PLAYARR_CAPTURE_IDENTITY_GUARD=$H/guard.sh
 export PLAYARR_PARITY_CLOCK=${PLAYARR_PARITY_CLOCK:-2026-10-07T12:00:00Z}
+"$H/pmfresh.sh" "$H/../../.."
 FILM=ca309574-c0f4-4564-bb54-4512eab7e531 SERIES=7ab4ce97-d59e-43d6-8e03-31d4d29a5c90
 if [ -z "${SKIP_SIGNIN:-}" ]; then
   PLAYARR_NURA_EXPECTED_SUB=$("$H/signin.py" | sed -n 's/^sub //p')
@@ -31,6 +32,8 @@ for t in $THEMES; do
   # calendar-link goes last: the display can keep a remnant of the closed panel's close-button ring on the next screen.
   # One route per call, each retried: a display repaint glitch can outlast one stability window.
   for r in home movies series music calendar-month calendar-week calendar-agenda search "film:$FILM" "series-detail:$SERIES" settings filters profiles actions calendar-link; do
+    # The web ref opens a series from the Series list, so the detail page's back button reads "Back to Series".
+    case $r in series-detail:*) "$H/pmssh.sh" "printf %s series > $PLAYARR_CONTROL" </dev/null; sleep 8;; esac
     for try in 1 2 3; do WAIT=${WAIT:-45} "$H/pmcap3.sh" "$O/$t" "theme:$t" "$r" </dev/null && break; [ "$try" = 3 ] && exit 1; done
     case $r in film:*) n=film-detail;; series-detail:*) n=series-detail;; *) n=$r;; esac
     layout "$t" "$n"

@@ -6,7 +6,8 @@ The VM key is read from `$PLAYARR_NURA_KEY` (default `run/pmkey` next to the scr
 
 | Script | Use |
 |---|---|
-| `pmsync.sh <playarr dir>` | Copy `clients/linux-mobile` and the shared avatars to the VM, then build there with `cargo build --release`. |
+| `pmsync.sh <playarr dir>` | Copy `clients/linux-mobile` and the shared avatars to the VM, build there with `cargo build --release` and stamp the build with the checkout's tree id. |
+| `pmfresh.sh [<playarr dir>]` | Fail unless the VM build carries the checkout's tree id; `run.sh` runs it first, so a capture never comes from a stale binary. |
 | `pmrun.sh` | (Re)start the app on the VM. Honours `PLAYARR_ROUTE`, `PLAYARR_CONTROL`, `PLAYARR_KEEP_CONTROLS`, `PLAYARR_PARITY_PAUSE_MS`. |
 | `nudge.sh` | Click the display's left margin and wait. `pmcap3.sh` runs it once per route before the first screenshot: after the app has sat idle for tens of seconds the VM display keeps showing the frame from before a sheet or drawer opened until an input event reaches the app (a click does it; a pointer move or key press does not). |
 | `pmcap3.sh <outdir> <route>...` | Verify the signed-in device identity, send routes to an already-running app through its control file, and capture each screen only after it stabilises. Routes: see `PLAYARR_ROUTE` in the README, plus `rail-end:<n>` (focus the last card of Home rail n) and `theme:dark\|light`. |
@@ -48,7 +49,7 @@ and `PLAYARR_CAPTURE_STABILITY_DELAY`.
 
 ## Reproduce
 
-With the VM running headless and unlocked (`display.py key ret` then the PIN) and the app built (`pmsync.sh <worktree>`, then `cargo build --release` on the VM):
+With the VM running headless and unlocked (`display.py key ret` then the PIN) and the app built (`pmsync.sh <worktree>` copies, builds and stamps it):
 
 ```sh
 PLAYARR_NURA_SERVER=<static server URL as the VM sees it> PARITY_ROOT=<legend scratch root> \

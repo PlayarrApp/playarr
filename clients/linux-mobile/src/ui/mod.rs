@@ -531,10 +531,22 @@ impl App {
                 } else if text == "repaint" {
                     // Invalidates the whole surface so the next frame is drawn in full: a partial redraw can blur a
                     // shadow a few pixels differently from a full one, which makes captures depend on the redraw history.
-                    if let Some(surface) = me.window.surface() {
-                        surface.queue_render();
+                    // Drawn three times: the first draw of a blurred shadow differs by a level in a pixel or two from one
+                    // taken from the renderer's cache, so a capture waits for the cached form.
+                    let redraw = {
+                        let window = me.window.clone();
+                        move || {
+                            if let Some(surface) = window.surface() {
+                                surface.queue_render();
+                            }
+                            window.queue_draw();
+                        }
+                    };
+                    redraw();
+                    for ms in [300, 700] {
+                        let redraw = redraw.clone();
+                        gtk4::glib::timeout_add_local_once(std::time::Duration::from_millis(ms), redraw);
                     }
-                    me.window.queue_draw();
                 } else if let Some(spec) = text.strip_prefix("layout:") {
                     // layout:<screen>:<output file>; exports the widget tree without touching the screen.
                     if let Some((screen, file)) = spec.split_once(':') {

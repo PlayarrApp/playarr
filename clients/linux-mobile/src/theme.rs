@@ -106,7 +106,7 @@ pub fn css(dark: bool) -> String {
         };
     let hero = format!(
         ".pa-khero-fade {{ background: {edge}; }}\n{hard}.pa-key-art.pa-khero {{ opacity: {}; filter: {}; }}\n",
-        if dark { "0.5" } else { "0.32" },
+        if dark { "0.72" } else { "0.24" },
         if dark {
             "grayscale(1) contrast(0.82) brightness(0.6)"
         } else {
