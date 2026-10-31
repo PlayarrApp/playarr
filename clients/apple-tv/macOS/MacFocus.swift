@@ -117,6 +117,9 @@ final class MacFocusEngine {
         let previous = targets[id]
         let isNew = previous == nil
         targets[id] = target
+        #if DEBUG
+        if isNew, target.focusName == "surface" { NSLog("PlayarrMacTrace surface registered layer=%d top=%d preferred=%d frame=%@", target.layer, topLayer, target.preferred ? 1 : 0, NSStringFromRect(target.frame)) }
+        #endif
         if isNew || previous?.parityID != target.parityID || previous?.parityRail != target.parityRail
             || previous?.parityIndex != target.parityIndex || previous?.layer != target.layer {
             if let identity = Self.identity(of: target) {

@@ -412,6 +412,12 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
     async focused() {
       let s = state();
       if (mac) for (let i = 0; i < 16 && s.focused == null; i += 1) { await sleep(250); s = state(); }
+      if (mac && s.focused == null && /^\/player/.test(s.route ?? "")) { // diagnosis: why the player opened with no focus
+        await traceMacFocus();
+        run(notify, ["targets"]);
+        await sleep(300);
+        collectMacFocusKeyLog();
+      }
       return s.focused == null ? null : s.position ? { label: s.focused, position: s.position } : s.focused;
     },
     async screenshot(file) {

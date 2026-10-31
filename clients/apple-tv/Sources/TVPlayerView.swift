@@ -262,6 +262,9 @@ struct TVPlayerView: View {
             // The video surface holds the focus when the player opens (web: "video playback surface"), not whichever control the system finds first.
             // The system focuses the first focusable view it finds (the scrubber) and writes that into focusedControl, so a nil check
             // never fires: set the opening control outright, three times, as the chrome may appear after the stream is negotiated.
+            #if os(macOS) && DEBUG
+            NSLog("PlayarrMacTrace player open focus task started")
+            #endif
             for delay in [400, 800, 1500] {
                 try? await Task.sleep(for: .milliseconds(delay))
                 #if os(macOS) && DEBUG
