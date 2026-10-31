@@ -28,7 +28,7 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
         .hexpand(true)
         // The web's text block sits 1.5 px above the row's centre.
         .margin_bottom(3)
-        .margin_end(10)
+        .margin_end(12)
         .build();
     col.append(
         &gtk4::Label::builder()
@@ -37,14 +37,13 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
             .xalign(0.0)
             .build(),
     );
-    // The web keeps the description on one line and ends it with an ellipsis where the text column stops.
+    // The web keeps the description on one line and ends it with an ellipsis where the text column stops. Pango's own ellipsis is kept: cutting the text by hand and appending one shaped it with kerning against the last glyph, which moved the ellipsis half a pixel away from the web's.
     let desc_label = gtk4::Label::builder()
         .label(desc)
         .css_classes(["pa-pref-desc"])
         .xalign(0.0)
         .ellipsize(gtk4::pango::EllipsizeMode::End)
         .build();
-    fit_ellipsis(&desc_label, desc);
     col.append(&desc_label);
     row.append(&col);
     let arrow = gtk4::Label::builder()
@@ -370,32 +369,4 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
         .css_classes(["pa-page"])
         .build();
     scroller.upcast()
-}
-
-/// Cut `full` where the label's column stops and end it with the ellipsis directly after the last glyph. Pango's own
-/// ellipsis can leave the word break's blank in front of it ("screen \u{2026}"); the web's reads "screen\u{2026}".
-fn fit_ellipsis(label: &gtk4::Label, full: &str) {
-    let full = full.to_string();
-    label.add_tick_callback(move |l, _| {
-        let width = l.width();
-        if width <= 0 {
-            return gtk4::glib::ControlFlow::Continue;
-        }
-        let fits = |t: &str| l.create_pango_layout(Some(t)).pixel_size().0 <= width;
-        if !fits(&full) {
-            let cuts: Vec<usize> = full.char_indices().map(|(i, _)| i).collect();
-            let (mut lo, mut hi) = (0, cuts.len());
-            while lo < hi {
-                let mid = (lo + hi).div_ceil(2);
-                let t = format!("{}\u{2026}", full[..cuts[mid]].trim_end());
-                if fits(&t) {
-                    lo = mid;
-                } else {
-                    hi = mid - 1;
-                }
-            }
-            l.set_text(&format!("{}\u{2026}", full[..cuts[lo]].trim_end()));
-        }
-        gtk4::glib::ControlFlow::Break
-    });
 }
