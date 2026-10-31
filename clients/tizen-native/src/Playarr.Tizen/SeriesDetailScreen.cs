@@ -282,7 +282,7 @@ internal sealed class SeriesDetailScreen : IPage
 
     private void Pill(int slotIndex, View parent, string text, string glyph, float x, float y, float w, bool primary, string label, Action select, string name)
     {
-        var bg = primary ? _t.Ink : new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f);
+        var bg = primary ? _t.Ink : _t.SurfaceStrong.Mixed(0.78f);
         var box = Ui.Box(x, y, w, 64, bg, 32);
         if (!primary) { box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.075f); }
         var gw = GlyphWidth(glyph); var tsize = primary ? 11.904f : 11.136f; var textW = Ui.TextWidth(text, tsize, 700, 0); var startX = (w - (gw + 8.8f + textW)) / 2;
@@ -312,7 +312,7 @@ internal sealed class SeriesDetailScreen : IPage
 
     private void Toast(string text)
     {
-        var toast = Ui.Box(560, 960, 800, 56, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.96f), 28);
+        var toast = Ui.Box(560, 960, 800, 56, _t.SurfaceStrong.Mixed(0.96f), 28);
         toast.Add(Ui.Text(text, 0, 14, 14, 600, _t.Ink, 800, 28, HorizontalAlignment.Center));
         _root.Add(toast);
         var timer = new global::Tizen.NUI.Timer(2500);

@@ -118,7 +118,7 @@ internal sealed class SearchScreen : IPage
         BuildSide();
 
         // query pill
-        var form = Ui.Box(153.6f, 172.8f, 590, 76, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 38);
+        var form = Ui.Box(153.6f, 172.8f, 590, 76, _t.SurfaceStrong.Mixed(0.78f), 38);
         form.BorderlineWidth = 1; form.BorderlineColor = Ui.LineA(_t, 0.15f);
         Sem.Tag(form, "search");
         form.Add(Ui.Icon("search", 25, 26, 24, _t.InkMuted));
@@ -161,7 +161,7 @@ internal sealed class SearchScreen : IPage
     private void BuildEmpty()
     {
         Ui.Paragraph(_empty, "Find any available movie, series, artist or playlist.", 153.6f, 302.8f, 13.824f, 400, _t.InkMuted, 272, 21.43f, 0, 3);
-        var art = Ui.Box(1124.59f, 311.78f, 132, 132, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.5f), 66);
+        var art = Ui.Box(1124.59f, 311.78f, 132, 132, _t.SurfaceStrong.Mixed(0.54f), 66);
         art.BorderlineWidth = 1; art.BorderlineColor = Ui.LineA(_t, 0.15f);
         art.Add(Ui.Icon("search-empty", 39f, 48f, 54f, 36f, _t.Name == "dark" ? Rgba.Hex(0xd75a79) : Rgba.Hex(0xae2f4b))); // web TvEmptyState "search" graphic (zoom-out, 1.2x)
         Sem.Tag(art, "container");
@@ -171,7 +171,7 @@ internal sealed class SearchScreen : IPage
 
     private void BuildSide()
     {
-        var tile = Ui.Box(1845.5f, 151.2f, 62, 72, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 14);
+        var tile = Ui.Box(1845.5f, 151.2f, 62, 72, _t.SurfaceStrong.Mixed(0.78f), 14);
         _filterTile = tile;
         tile.Focusable = true;
         Sem.Tag(tile, "button", "Filters");
@@ -260,7 +260,7 @@ internal sealed class SearchScreen : IPage
 
     private void Toast(string text)
     {
-        var toast = Ui.Box(560, 960, 800, 56, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.96f), 28);
+        var toast = Ui.Box(560, 960, 800, 56, _t.SurfaceStrong.Mixed(0.96f), 28);
         toast.Add(Ui.Text(text, 0, 14, 14, 600, _t.Ink, 800, 28, HorizontalAlignment.Center));
         _root.Add(toast);
         var timer = new global::Tizen.NUI.Timer(2500);

@@ -73,7 +73,7 @@ internal sealed class BackControl
 
     public BackControl(AppEnv env, PlayarrTheme t, View parent, string role, string name)
     {
-        var box = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(t.SurfaceStrong.R, t.SurfaceStrong.G, t.SurfaceStrong.B, 0.7f), 25);
+        var box = Ui.Box(153.6f, 56.2f, 50, 50, t.SurfaceStrong.Mixed(0.7f), 25);
         box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(t, 0.153f);
         box.Add(Ui.Text("←", 0, 12, 17.28f, 720, t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
         Sem.Tag(box, role, name);
