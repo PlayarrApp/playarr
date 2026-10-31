@@ -125,6 +125,7 @@ struct RootView: View {
         .preferredColorScheme(preferredColourScheme)
         #if DEBUG
         .statusBarHidden(ParityLaunch.zeroInsets) // the web references have no system status bar
+        .persistentSystemOverlays(ParityLaunch.zeroInsets ? .hidden : .automatic) // nor a home indicator (it dims and fades with time, so it is never the same twice)
         #endif
         .updateGate(updateViewModel)
         #if DEBUG

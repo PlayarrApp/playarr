@@ -51,6 +51,7 @@ struct PlayarrLogo: View {
             .resizable()
             .scaledToFit()
         .frame(width: size, height: size)
+        .parityToggle()
         .accessibilityLabel("Playarr")
     }
 }

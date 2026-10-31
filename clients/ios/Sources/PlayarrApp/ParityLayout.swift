@@ -11,6 +11,13 @@ import UIKit
 final class ParityHide {
     static let shared = ParityHide()
     var ids: Set<UUID> = []
+    /// UIKit views that draw a reported element (a measured label) cannot read `ids` through SwiftUI; they hide themselves here.
+    @ObservationIgnored var hooks: [UUID: @MainActor () -> Void] = [:]
+
+    func apply(_ hidden: Set<UUID>) {
+        ids = hidden
+        for hook in hooks.values { hook() }
+    }
 }
 
 @MainActor
@@ -56,6 +63,10 @@ final class ParityLayoutRegistry {
     private var paintRegions: [UUID: ParityPaint] = [:]
     /// Frames of controls that can be hidden through `parityToggle` (buttons and links without a styled box of their own).
     private var toggleFrames: [UUID: CGRect] = [:]
+    /// A control that has no toggle of its own is judged through the views drawn inside its frame: the probe hides all of
+    /// them together under one group id. The ids are kept so the two snapshots of one probe agree on them.
+    private var groupIDs: [String: UUID] = [:]
+    private(set) var groups: [UUID: [UUID]] = [:]
     nonisolated static let paintIdentifierPrefix = "parity-paint-"
 
     func markAlive(_ id: UUID) { alive.insert(id) }
@@ -219,6 +230,7 @@ final class ParityLayoutRegistry {
         }
         func distance(_ a: CGRect, _ b: CGRect) -> CGFloat { abs(a.minX - b.minX) + abs(a.minY - b.minY) + abs(a.width - b.width) + abs(a.height - b.height) }
         var ownBoxes: [Item] = []
+        groups = [:]
         let backed = plain.map { entry -> Item in
             var entry = entry
             let candidates = boxes.filter { $0.role == entry.role && sameFrame($0.rect, entry.rect) && !ownBoxes.contains($0) }
@@ -231,6 +243,20 @@ final class ParityLayoutRegistry {
                 entry.toggle = target.key
                 // The control's own container carries the ancestors' opacity: an artwork image reports it from there.
                 if entry.opacity >= 0.995, let paint = paintRegions[target.key] { entry.opacity = paint.effective(entry.rect) ?? paint.opacity }
+            } else if entry.rect.width > 1, entry.rect.height > 1 {
+                // A control drawn by the views inside its frame (a menu, a card, a letter): hiding all of them is hiding it.
+                let box = entry.rect.insetBy(dx: -1.5, dy: -1.5)
+                var inside = Set<UUID>()
+                for (id, frame) in toggleFrames where frame.width > 0 && box.contains(frame) { inside.insert(id) }
+                for (id, item) in items where box.contains(item.rect) { inside.insert(id) }
+                for (id, runs) in textRuns where runs.contains(where: { box.contains($0.rect) }) { inside.insert(id) }
+                if !inside.isEmpty {
+                    let key = String(format: "%@|%@|%.1f|%.1f|%.1f|%.1f", entry.role, entry.text ?? "", entry.rect.minX, entry.rect.minY, entry.rect.width, entry.rect.height)
+                    let group = groupIDs[key] ?? UUID()
+                    groupIDs[key] = group
+                    groups[group] = inside.sorted { $0.uuidString < $1.uuidString }
+                    entry.toggle = group
+                }
             }
             return entry
         }
@@ -316,17 +342,21 @@ final class ParityLayoutRegistry {
         let x0 = max(0, Int((rect.minX * s).rounded(.down))), x1 = min(hidden.width, Int((rect.maxX * s).rounded(.up)))
         let y0 = max(0, Int((rect.minY * s).rounded(.down))), y1 = min(hidden.height, Int((rect.maxY * s).rounded(.up)))
         guard x1 > x0, y1 > y0 else { return 0 }
-        var count = 0
+        var strong = 0, faint = 0
         hidden.bytes.withUnsafeBytes { ph in base.bytes.withUnsafeBytes { pb in after.bytes.withUnsafeBytes { pa in
             let wh = ph.bindMemory(to: UInt32.self), wb = pb.bindMemory(to: UInt32.self), wa = pa.bindMemory(to: UInt32.self)
             for y in y0..<y1 {
                 let row = y * hidden.width
-                for x in x0..<x1 where wb[row + x] == wa[row + x] && wh[row + x] != wb[row + x] && Self.channelDelta(wh[row + x], wb[row + x]) >= 12 {
-                    count += 1
+                for x in x0..<x1 where wb[row + x] == wa[row + x] && wh[row + x] != wb[row + x] {
+                    faint += 1
+                    if Self.channelDelta(wh[row + x], wb[row + x]) >= 12 { strong += 1 }
                 }
             }
         } } }
-        return count
+        // Clear changes (12 levels) in 6 pixels, or a faint layer (a low-strength backdrop, a dot behind frosted glass) that
+        // shifts a quarter of its own pixels by any amount. A handful of 1-level pixels is render noise, not a layer.
+        if strong >= 6 { return strong }
+        return faint >= 6 && faint * 4 >= (x1 - x0) * (y1 - y0) ? faint : 0
     }
 
     /// Toggle-and-diff on the real screen: each element's view is hidden through the parity hook, the window is rendered
@@ -338,8 +368,8 @@ final class ParityLayoutRegistry {
         guard let window = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first else { return nil }
         let candidates = snapshot().candidates.filter { $0.toggle != nil }
         ParityLaunch.record("layoutProbing", true)
-        ParityHide.shared.ids = []
-        defer { ParityHide.shared.ids = []; ParityLaunch.record("layoutProbing", false) }
+        ParityHide.shared.apply([])
+        defer { ParityHide.shared.apply([]); ParityLaunch.record("layoutProbing", false) }
         var visible = Set<ProbeKey>()
         var log: [[String: Any]] = []
         let settle: UInt64 = 250_000_000
@@ -360,10 +390,10 @@ final class ParityLayoutRegistry {
                 var counts: [ProbeKey: [Int]] = [:]
                 for round in 0..<2 {
                     guard !Task.isCancelled else { return nil }
-                    ParityHide.shared.ids = Set(batch.ids)
+                    ParityHide.shared.apply(Set(batch.ids.flatMap { groups[$0] ?? [$0] }))
                     try? await Task.sleep(nanoseconds: settle)
                     guard let hidden = capture(window) else { return nil }
-                    ParityHide.shared.ids = []
+                    ParityHide.shared.apply([])
                     try? await Task.sleep(nanoseconds: settle)
                     guard let after = capture(window) else { return nil }
                     for id in batch.ids { for item in byID[id]! {
@@ -377,10 +407,14 @@ final class ParityLayoutRegistry {
                 for id in batch.ids { for item in byID[id]! {
                     let c = counts[ProbeKey(id: id, slot: item.slot)] ?? []
                     if c.count == 2, c.allSatisfy({ $0 >= 6 }) { visible.insert(ProbeKey(id: id, slot: item.slot)) }
-                    log.append(["role": item.role, "text": item.text ?? "", "w": Int(item.rect.width), "h": Int(item.rect.height), "counts": c])
+                    log.append(["role": item.role, "text": item.text ?? "", "x": Int(item.rect.minX), "y": Int(item.rect.minY), "w": Int(item.rect.width), "h": Int(item.rect.height), "counts": c])
                 } }
             }
-            ParityHide.shared.ids = []
+            ParityHide.shared.apply([])
+            // Elements nothing could hide are dropped from the export; list them (counts -1) so a missing toggle is visible.
+            for item in snapshot().candidates where item.toggle == nil {
+                log.append(["role": item.role, "text": item.text ?? "", "x": Int(item.rect.minX), "y": Int(item.rect.minY), "w": Int(item.rect.width), "h": Int(item.rect.height), "counts": [-1, -1]])
+            }
             ParityLaunch.record("layoutProbeCounts", log)
             // A probe in which nothing changed means the hook did not work, not that nothing is visible.
             if visible.isEmpty { return nil }
@@ -857,6 +891,15 @@ extension View {
         buttonStyle(style).modifier(ParityToggleModifier())
         #else
         buttonStyle(style)
+        #endif
+    }
+
+    /// Makes this view hideable by the visibility probe, for a control or image no styled box or button style reports.
+    func parityToggle() -> some View {
+        #if DEBUG
+        modifier(ParityToggleModifier())
+        #else
+        self
         #endif
     }
 

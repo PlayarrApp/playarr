@@ -1874,10 +1874,21 @@ final class ParityMeasuredLabel: UILabel {
     func configure(backdrop: ParityBackdrop, environment: EnvironmentValues, paint: ParityPaint, inCover: Bool) {
         self.backdrop = backdrop; self.environment = environment; self.paint = paint; self.inCover = inCover
         accessibilityTraits.insert(.header)
+        // The visibility probe hides this label's own view (its opacity is not a SwiftUI modifier it could read).
+        let hidingID = id
+        MainActor.assumeIsolated {
+            ParityHide.shared.hooks[hidingID] = { [weak self] in self?.alpha = ParityHide.shared.ids.contains(hidingID) ? 0 : 1 }
+        }
         setNeedsDisplay()
     }
 
-    func retire() { MainActor.assumeIsolated { ParityLayoutRegistry.shared.remove(id) } }
+    func retire() {
+        let hidingID = id
+        MainActor.assumeIsolated {
+            ParityHide.shared.hooks[hidingID] = nil
+            ParityLayoutRegistry.shared.remove(hidingID)
+        }
+    }
 
     override func drawText(in rect: CGRect) {
         guard let attributed = attributedText, rect.width > 0 else { super.drawText(in: rect); return }
