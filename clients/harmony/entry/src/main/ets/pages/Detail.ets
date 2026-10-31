@@ -2735,7 +2735,10 @@ struct Detail {
             .padding({ top: this.detail !== null && this.detail.work.kind === 'series' ? 25.2 : 25.74, left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight) })
           }
           .height(PHONE_RAIL_SURFACE_HEIGHT)
-          .linearGradient({
+          // Previewer limit (measured r24 on the dark series page, with the fill as the Stack's gradient, a sibling child or an opaque gradient):
+          // a translucent or gradient layer behind the season rails leaves the dark episode art unpainted. The dark series panel keeps its
+          // geometry (494.3 vp surface) but not its 5.8% white fill; every other panel is filled as on web.
+          .linearGradient(this.detail !== null && this.detail.work.kind === 'series' && resolvedThemeMode() === 'dark' ? undefined : {
             direction: GradientDirection.Right,
             colors: resolvedThemeMode() === 'dark' ?
               [['rgba(255, 244, 255, 0)', 0.0], ['rgba(255, 244, 255, 0.058)', 0.35], ['rgba(255, 244, 255, 0.058)', 1.0]] :
