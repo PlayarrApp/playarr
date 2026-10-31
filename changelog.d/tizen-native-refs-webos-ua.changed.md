@@ -1,0 +1,1 @@
+- Tizen native parity refs are now the tv-webos user-agent capture (identical across three captures); the nav-rail shadow differs from the earlier xbox-UA refs by about 1 level, and the app rail still uses the CSS box-shadow values unchanged.
