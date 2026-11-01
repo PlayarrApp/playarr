@@ -95,38 +95,44 @@ export function Stage({artUri, accessToken, children}: StageProps): React.ReactE
         </Box>
       ) : null}
       <View {...lx('container', '')} style={StyleSheet.absoluteFill} pointerEvents="none" />
-      <LinearGradient
-        style={StyleSheet.absoluteFill}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 0}}
-        colors={[surface, clear(surface), clear(surface)]}
-        locations={[0, 0.22, 1]}
-        pointerEvents="none"
-      />
-      <LinearGradient
-        style={StyleSheet.absoluteFill}
-        start={{x: 0, y: 0}}
-        end={{x: 0, y: 1}}
-        colors={[surface, clear(surface), clear(surface), surface]}
-        locations={[0, 0.22, 0.82, 1]}
-        pointerEvents="none"
-      />
-      <LinearGradient
-        style={StyleSheet.absoluteFill}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 0}}
-        colors={[mix(surface, 0.94), mix(surface, 0.9), clear(surface)]}
-        locations={[0, 0.36, 0.52]}
-        pointerEvents="none"
-      />
-      <LinearGradient
-        style={StyleSheet.absoluteFill}
-        start={{x: 1, y: 0}}
-        end={{x: 0, y: 0}}
-        colors={[mix(surface, 0.5), clear(surface)]}
-        locations={[0, 0.34]}
-        pointerEvents="none"
-      />
+      {/* Every layer below paints the surface colour at some alpha: over the bare surface (a screen with no key art) that changes
+          nothing, but the blend still rounded a blue level differently from run to run in one pixel column. Draw them only over art. */}
+      {artUri ? (
+        <>
+        <LinearGradient
+          style={StyleSheet.absoluteFill}
+          start={{x: 0, y: 0}}
+          end={{x: 1, y: 0}}
+          colors={[surface, clear(surface), clear(surface)]}
+          locations={[0, 0.22, 1]}
+          pointerEvents="none"
+        />
+        <LinearGradient
+          style={StyleSheet.absoluteFill}
+          start={{x: 0, y: 0}}
+          end={{x: 0, y: 1}}
+          colors={[surface, clear(surface), clear(surface), surface]}
+          locations={[0, 0.22, 0.82, 1]}
+          pointerEvents="none"
+        />
+        <LinearGradient
+          style={StyleSheet.absoluteFill}
+          start={{x: 0, y: 0}}
+          end={{x: 1, y: 0}}
+          colors={[mix(surface, 0.94), mix(surface, 0.9), clear(surface)]}
+          locations={[0, 0.36, 0.52]}
+          pointerEvents="none"
+        />
+        <LinearGradient
+          style={StyleSheet.absoluteFill}
+          start={{x: 1, y: 0}}
+          end={{x: 0, y: 0}}
+          colors={[mix(surface, 0.5), clear(surface)]}
+          locations={[0, 0.34]}
+          pointerEvents="none"
+        />
+        </>
+      ) : null}
       {children}
     </View>
   );

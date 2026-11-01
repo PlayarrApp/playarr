@@ -296,18 +296,17 @@ export async function createDriver({ out } = {}) {
       for (let attempt = 0; attempt < 2 && !paused; attempt++) {
         await this.route(film);
         // Armed per attempt: the app disarms itself when it pauses, so a retry after a pause outside the window would otherwise never pause.
-        await command({ cmd: "armPause", ms: String(ARM_PAUSE_MS) }, 500);
+        await command({ cmd: "armPause", ms: String(ARM_PAUSE_MS), at: "2000" }, 500);
         await sleep(2000);
         await press("Return");
         const t0 = Date.now();
         while (Date.now() - t0 < 50000) {
           const player = (await state(20000).catch(() => ({}))).player ?? {};
+          // The app pauses on its own clock and then puts the position on 2.000 s (at=2000): the answer that follows has it exactly.
           if (player.state === "paused") {
             console.error(`firetv: player paused at ${player.positionSeconds} s (attempt ${attempt + 1})`);
-            paused = Math.abs(player.positionSeconds - 2) <= 0.2;
+            paused = player.positionSeconds === 2;
             if (paused) break;
-            // not a retry on the frame: a second play resumes from the saved position, so a miss is only logged
-            break;
           }
           await sleep(1500);
         }
