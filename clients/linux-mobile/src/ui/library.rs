@@ -728,6 +728,12 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
     lib.reset();
     let root = gtk4::Overlay::builder().child(&backdrop).build();
     root.add_overlay(&wash);
+    // The web's rail surface under the grid.
+    let surface = gtk4::Box::builder()
+        .css_classes(["pa-rail-surface"])
+        .can_target(false)
+        .build();
+    root.add_overlay(&surface);
     root.add_overlay(&scroll);
     // The web fades the grid into the page colour over the last 66 px, down to 60% at the screen edge.
     let foot = gtk4::Box::builder()
