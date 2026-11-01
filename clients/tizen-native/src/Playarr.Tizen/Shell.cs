@@ -31,6 +31,8 @@ internal sealed class Shell : View
     private readonly Stack<string> _history = new();
     private readonly Dictionary<string, object> _saved = new();
     private readonly View _chrome = new() { Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight) };
+    private readonly View _actions = new() { Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight) };
+    private List<View> _pageViews = new();
     private TextLabel? _clockTime, _clockDate;
     private float _clockLeft = 481f;
 
@@ -75,6 +77,8 @@ internal sealed class Shell : View
     /// <summary>{ rail, index }: "nav" and the item number from the top on the nav rail, else the page's own position (Home).</summary>
     public (string Rail, int Index)? FocusPosition => _navFocus >= 0 ? ("nav", _navFocus) : _page?.FocusPosition is { } p ? (p.Rail.ToString(), p.Index) : null;
     public string? FocusedLabel => _navFocus >= 0 ? _nav[_navFocus].Item.Label.ToLowerInvariant() : _page?.FocusedLabel;
+    public bool? PlayerControlsVisible => (_page as PlayerScreen)?.ControlsVisible;
+    public bool? PlayerPanelOpen => (_page as PlayerScreen)?.PanelOpen;
 
     public Shell(AppEnv env, Action exit)
     {
@@ -86,8 +90,11 @@ internal sealed class Shell : View
         BackgroundColor = Ui.C(_theme.Bg);
         BuildRail();
         _chrome.Add(new ImageView(Ui.ResPath("logo.png")) { PositionX = 60.6f, PositionY = 60.2f, Size = new Size(42, 42) });
-        _clockTime = Ui.Text("", 481f, 68.2f, 17.28f, 760, _theme.Ink, 60, 25.92f, spacing: -0.5184f, block: true);
-        _clockDate = Ui.Text("", 535.4f, 72.5f, 11.136f, 640, _theme.Ink, 160, 12.25f, upper: true, spacing: 0.44544f, block: true);
+        // web .app-clock: a grid of --page-control-height (50 px) at --page-header-top (5.2 viewport units = 56.16 px), align-items: center, so both items centre on the same line;
+        // a block's text sits at the floored half-leading in its CSS line (CssLineBox.Top)
+        const float ClockMid = 5.2f * 10.8f + 50f / 2f;
+        _clockTime = Ui.Text("", 481f, ClockMid - 25.92f / 2f, 17.28f, 760, _theme.Ink, 60, 25.92f, spacing: -0.5184f);
+        _clockDate = Ui.Text("", 535.4f, ClockMid - 12.25f / 2f + CssLineBox.Top(12.25f, 11.136f), 11.136f, 640, _theme.Ink, 160, 12.25f, upper: true, spacing: 0.44544f, block: true);
         Sem.Tag(_clockTime, "text", null); Sem.Tag(_clockDate, "text", null);
         _chrome.Add(_clockTime); _chrome.Add(_clockDate);
         UpdateClock();
@@ -95,6 +102,7 @@ internal sealed class Shell : View
         tick.Tick += (_, _) => { UpdateClock(); return true; };
         tick.Start();
         Add(_chrome);
+        Add(_actions); env.ShellLayer = _actions;
     }
 
     private void BuildRail()
@@ -110,7 +118,7 @@ internal sealed class Shell : View
             nv.Item64.Size = new Size(64, 64); nv.Item64.CornerRadius = 16; nv.Item64.PositionX = Cx - 32 - RailX; nv.Item64.PositionY = nv.CentreY - 32 - groupY;
             nv.Tile = Ui.Box(0, 0, 64, 64, null, 16);
             nv.Icon = Ui.Icon(item.Icon, 22, 15.1f, 20, _theme.InkMuted);
-            nv.Label = Ui.Text(item.Label, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
+            nv.Label = Ui.Text(item.Label, -6.75f, 39.9f, 8.832f, 680, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
             nv.Item64.Add(nv.Tile); nv.Item64.Add(nv.Icon); nv.Item64.Add(nv.Label);
             var navIndex = _nav.Count; // this item's index once added just below
             Sem.Tag(nv.Item64, "link", item.Label);
@@ -121,27 +129,25 @@ internal sealed class Shell : View
         var pv = new NavView { Item = new NavItem("profile", "Profile", "/profiles", "", 3), CentreY = 992.1f };
         pv.Item64.Size = new Size(64, 64); pv.Item64.CornerRadius = 16; pv.Item64.PositionX = Cx - 32 - RailX; pv.Item64.PositionY = pv.CentreY - 32 - 952.4f;
         pv.Tile = Ui.Box(0, 0, 64, 64, null, 16);
-        _avatarIcon = new ImageView(Ui.ResPath("avatars/" + AvatarPresets.Default("")) + ".png") { PositionX = 22, PositionY = 15.1f, Size = new Size(20, 20), CornerRadius = 10 };
+        _avatarIcon = new ImageView(Ui.ResPath("avatars/" + AvatarPresets.Default("")) + ".png") { PositionX = 0, PositionY = 0, Size = new Size(20, 20) };
+        var avatarFrame = Ui.Box(22, 15.1f, 20, 20, _theme.Surface, 10); avatarFrame.ClippingMode = ClippingModeType.ClipChildren; avatarFrame.Add(_avatarIcon); // web: a rounded span holding the picture
         pv.Icon = null!;
-        pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
-        pv.Item64.Add(pv.Tile); pv.Item64.Add(_avatarIcon); pv.Item64.Add(pv.Label);
+        pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 680, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
+        pv.Item64.Add(pv.Tile); pv.Item64.Add(avatarFrame); pv.Item64.Add(pv.Label);
         Sem.Tag(pv.Item64, "link", $"Signed in as {_env.Profile}. Open profiles.");
         chip.Add(pv.Item64);
         _nav.Add(pv);
         _profileLabel = pv.Label;
-        _chrome.Add(Sem.Tag(Ui.Text("v0.1.0", RailX - 1.5f, 1035f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center, spacing: 0.32f, family: Ui.Mono, block: true), "text"));
+        _chrome.Add(Sem.Tag(Ui.Text("v0.1.0", RailX - 1.5f, 1036.45f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center, spacing: 0.32f, family: Ui.Mono, block: true), "text"));
     }
 
     private View AddGroup(float y, float h)
     {
-        // light: the fill is opaque (strong surface 56 % over the page surface) because the box shadow would show through a translucent fill; web clips it outside the border box
-        var fill = _theme.Name == "dark" ? new Rgba(_theme.SurfaceStrong.R, _theme.SurfaceStrong.G, _theme.SurfaceStrong.B, 0.56f)
-            : new Rgba(_theme.SurfaceStrong.R * 0.56f + _theme.Surface.R * 0.44f, _theme.SurfaceStrong.G * 0.56f + _theme.Surface.G * 0.44f, _theme.SurfaceStrong.B * 0.56f + _theme.Surface.B * 0.44f);
+        var fill = _theme.SurfaceStrong.Mixed(0.56f); // translucent as on the web: over the page layer it is painted on, over the window colour in the layout (the rail is a sibling of the page)
+        _chrome.Add(Ui.BoxShadowRing(RailX, y, RailW, h, 22, 42, 0, 14, new Rgba(56 / 255f, 38 / 255f, 33 / 255f, 0.1f))); // web: box-shadow 0 14px 42px rgba(56, 38, 33, 0.1), painted outside the border box only
         var box = Ui.Box(RailX, y, RailW, h, fill, 22);
         box.BorderlineWidth = 1;
         box.BorderlineColor = Ui.LineA(_theme, _theme.Line.A * 0.48f); // web: the line colour at 48 % of its own alpha
-        // light only: on the dark rail the web shadow (warm brown at 10 %) is not visible, and ours read as a pink halo
-        if (_theme.Name != "dark") box.BoxShadow = new Shadow(42, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.1f), new Vector2(0, 14), new Vector2(0, 0));
         _chrome.Add(box);
         return box;
     }
@@ -182,8 +188,10 @@ internal sealed class Shell : View
         var previousSearch = _page as SearchScreen;
         previousSearch?.OnRemoved();
         _env.SetClockX(0);
+        var oldViews = _pageViews; _pageViews = new(); _env.PageShellViews = _pageViews;
         var page = Pages.Create(_env, route);
-        if (page is null) { previousSearch?.OnAdded(); return; }
+        if (page is null) { _pageViews = oldViews; _env.PageShellViews = oldViews; previousSearch?.OnAdded(); return; }
+        foreach (var v in oldViews) { if (ReferenceEquals(v.GetParent(), _actions)) _actions.Remove(v); v.Dispose(); }
         if (push && _page is not null) { _history.Push(_page.Route); if (_page.SaveState() is { } st) _saved[_page.Route] = st; }
         if (_page is PlaylistsScreen previousPlaylists) previousPlaylists.OnRemoved();
         if (_page is PlayerScreen previousPlayer) previousPlayer.Stop(); // a route change (not Back) must stop the player and its timers before the views go: they otherwise run on disposed views and the native player crashes

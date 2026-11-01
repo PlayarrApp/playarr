@@ -38,6 +38,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -95,7 +96,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import io.playarr.shared.designsystem.page.Surface
-import androidx.compose.material3.Text
+import io.playarr.shared.designsystem.page.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -129,6 +130,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.focused
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -2139,10 +2141,9 @@ private fun MobileProfilesStage(
         PhoneProfilesHeading(playarrString(PlayarrString.ProfilesTitle), playarrString(PlayarrString.ProfilesHeading))
         // `.profiles-row`: from inset + 150 px down, scrolls sideways and clips what grows past its top edge.
         Box(Modifier.fillMaxSize().padding(top = topInset + 150.dp).clipToBounds()) {
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()).padding(start = 28.dp, end = 28.dp, top = 18.dp),
-                horizontalArrangement = Arrangement.spacedBy(22.dp),
-                verticalAlignment = Alignment.Top,
+            WebCssRow(
+                28f, 28f, listOf(156f), 22f,
+                Modifier.horizontalScroll(rememberScrollState()).padding(top = 18.dp),
             ) {
                 profiles.forEach { profile ->
                     PhoneProfileChoice(
@@ -2521,7 +2522,7 @@ private fun ProfileChoice(
             .onFocusChanged { if (it.isFocused) onFocus() },
     ) {
         // Web: the profile button is the avatar plus its name and status lines (the actions below are separate controls): one merged control with the avatar label.
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = avatarDescription; role = androidx.compose.ui.semantics.Role.Button; if (enabled) onClick { onClick(); true } }) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = avatarDescription; role = androidx.compose.ui.semantics.Role.Button; if (isTelevision) focused = avatarFocused; if (enabled) onClick { onClick(); true } }) {
         if (isTelevision) {
             WebShadowedBox(
                 shadows = avatarShadows,
@@ -2706,7 +2707,7 @@ private fun AddProfileChoice(
             .width(cardWidth)
             .then(if (isTelevision) Modifier.offset(y = 1.2.dp) else Modifier)
             .then(lift)
-            .semantics(mergeDescendants = true) { role = androidx.compose.ui.semantics.Role.Button; if (enabled) onClick { onClick(); true } }
+            .semantics(mergeDescendants = true) { role = androidx.compose.ui.semantics.Role.Button; if (isTelevision) focused = addFocused; if (enabled) onClick { onClick(); true } }
             .onFocusChanged { addFocused = it.hasFocus; if (it.hasFocus) onFocus() },
     ) {
         if (isTelevision) {
@@ -4294,10 +4295,9 @@ private fun TvSettingsBody(
             ),
         ),
     ) {
-        // Web (#1299): the section is the page header subtitle, wrapped under the title behind a 1 px rule as wide as the title,
-        // in the page ink (not pink). shortcut: the rule is the English "Preferences" title's width, measure the title when localised titles differ.
+        // Web (#1299): the section is the page header subtitle, wrapped under the title in the page ink (not pink). The 1 px rule web draws under the title is as wide
+        // as the title; its width would have to be measured from the localised title, so it is not drawn until that measurement exists (no English-title width is assumed).
         val ku = if (tablet) 1f / stage else 1f
-        Box(Modifier.offset(x = if (tablet) (178.31f * ku).dp else 226.6.dp, y = if (tablet) (92.2f * ku).dp else 112.dp).width(if (tablet) (108.77f * ku).dp else 163.4.dp).height(1.dp).background(TvSettingsPalette.inputBorder))
         Text(
             playarrString(section.label).uppercase(locale),
             color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.ink,
@@ -4361,8 +4361,10 @@ private fun TvSettingsBody(
             ),
         ) {
         androidx.compose.material3.ProvideTextStyle(outerTextStyle) {
+        // Web TV: the settings panel is its own box from x 672 to the screen edge; the section column sits 102 px inside it.
+        Box(if (tablet) Modifier else Modifier.offset(x = 672.dp).width(1248.dp).fillMaxHeight()) {
         Column(
-            Modifier.offset(x = if (tablet) 817.dp else 774.dp, y = if (tablet) 248.dp else 210.dp).width(if (tablet) 995.dp else 1042.3.dp),
+            if (tablet) Modifier.offset(x = 817.dp, y = 248.dp).width(995.dp) else Modifier.padding(start = 102.dp, top = 210.dp).width(1042.3.dp),
         ) {
             when (val current = state) {
                 ParityLoad.Loading -> CircularProgressIndicator(color = WebAccent)
@@ -4383,6 +4385,7 @@ private fun TvSettingsBody(
                     )
                 }
             }
+        }
         }
         }
         }
@@ -4606,8 +4609,9 @@ private fun TvAppearanceBody(display: PlayarrDisplayPreferences) {
         selected = display.theme,
     ) { display.setTheme(it) }
     Spacer(Modifier.height(29.5.dp))
+    // Web: each following section is a box that starts with its 1 px rule.
+    Column(Modifier.fillMaxWidth()) {
     Box(Modifier.fillMaxWidth().height(1.dp).background(TvSettingsPalette.divider))
-    Column(Modifier) {
     Spacer(Modifier.height(30.3.dp))
     Text(playarrString(PlayarrString.SettingsHomeViewTitle), color = WebInk, fontSize = 26.4.sp, fontWeight = FontWeight(560), lineHeight = 39.6.sp, letterSpacing = (-0.924).sp, modifier = Modifier.semantics { heading() })
     Spacer(Modifier.height(5.6.dp))
@@ -4623,8 +4627,8 @@ private fun TvAppearanceBody(display: PlayarrDisplayPreferences) {
     ) { display.setHomeView(it) }
     }
     Spacer(Modifier.height(28.5.dp))
+    Column(Modifier.fillMaxWidth()) {
     Box(Modifier.fillMaxWidth().height(1.dp).background(TvSettingsPalette.divider))
-    Column(Modifier) {
     Spacer(Modifier.height(30.3.dp))
     Text(playarrString(PlayarrString.LibraryArtworkSize), color = WebInk, fontSize = 26.4.sp, fontWeight = FontWeight(560), lineHeight = 39.6.sp, letterSpacing = (-0.924).sp, modifier = Modifier.semantics { heading() })
     Spacer(Modifier.height(5.6.dp))
@@ -4763,50 +4767,73 @@ private fun Throwable.playarrServerConnectionMessage(): PlayarrMessage = when (t
 internal fun phoneSettingsRowHeightPx(index: Int, density: Float): Float =
     (Math.round((index + 1) * 88f * density) - Math.round(index * 88f * density)).toFloat()
 
+private const val PHONE_SETTINGS_TITLE_CSS = 18.4f
+private const val PHONE_SETTINGS_SMALL_CSS = 15.776f
+private const val PHONE_SETTINGS_COPY_CSS = PHONE_SETTINGS_TITLE_CSS + 4f + PHONE_SETTINGS_SMALL_CSS
+
 /** Web mobile `.settings-options-list`: numbered rows 88 px tall, the first one drawn selected. */
 @Composable
 private fun PhoneSettingsIndex(isAdmin: Boolean, onOpen: (SettingsSection) -> Unit) {
-    Box(Modifier.fillMaxSize().background(WebSurface).parityBox("container")) {
+    Box(Modifier.fillMaxSize().background(WebSurface)) {
         androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 83.4.dp, bottom = 116.dp),
+            contentPadding = PaddingValues(start = rememberWebSpan(0f, 16f), end = rememberWebSpan(374f, 390f), top = rememberWebSpan(0f, 84f), bottom = 116.dp),
         ) {
             itemsIndexed(phoneSettingsIndex.filter { isAdmin || it.first != SettingsSection.RequestLatency }, key = { _, row -> row.first.name }) { index, (candidate, description) ->
                 val active = index == 0
                 // Web numbers the sections by their place in the full list (an admin-only row leaves a gap: 07, 09).
                 val number = settingsSectionNumber(phoneSettingsIndex.indexOfFirst { it.first == candidate })
                 val rowLabel = number + " " + playarrString(candidate.label) + " " + playarrString(description)
-                Row(
+                // The link is the whole 88 px row: the padding sits on an inner Row, so the exported link box is the row's border box.
+                Box(
                     Modifier.fillMaxWidth().height(with(androidx.compose.ui.platform.LocalDensity.current) { phoneSettingsRowHeightPx(index, density).toDp() })
                         .then(if (active) Modifier.background(WebSurfaceSoft) else Modifier)
-                        
-                        .clickable { onOpen(candidate) }
-                        .padding(horizontal = 12.dp, vertical = 16.dp),
+                        .clickable { onOpen(candidate) },
+                ) {
+                // Every x edge is a css position summed from the row's 16 px page inset and snapped once: 12 padding, 44 number, the copy track, a 12 gap, the 20.8 arrow, 12 padding.
+                WebCssRow(
+                    startCss = 12f, endCss = 12f, widthsCss = listOf(44f, 257.2f, 12f, 20.8f), gapCss = 0f, originCss = 16f,
+                    modifier = Modifier.fillMaxSize().padding(top = rememberWebSpan(84f + 88f * index, 84f + 88f * index + 16f), bottom = rememberWebSpan(84f + 88f * index + 72f, 84f + 88f * index + 88f)),
                 ) {
                     Text(
                         number, color = WebInk, fontSize = 8.96.sp, lineHeight = 13.44.sp,
-                        fontWeight = FontWeight(760), style = WebTextStyle, modifier = Modifier.width(44.dp),
+                        fontWeight = FontWeight(760), style = WebTextStyle,
                     )
-                    Column(Modifier.weight(1f).fillMaxHeight().padding(bottom = 1.4.dp), verticalArrangement = Arrangement.Center) {
-                        Text(
-                            playarrString(candidate.label), color = WebInk, fontSize = 16.sp, lineHeight = 18.4.sp,
-                            fontWeight = FontWeight(480), letterSpacing = (-0.56).sp, style = WebTextStyle, maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        )
-                        Spacer(Modifier.height(2.1.dp))
-                        Text(
-                            playarrString(description), color = WebInk, fontSize = 10.88.sp, lineHeight = 15.776.sp,
-                            style = WebTextStyle, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            modifier = Modifier.offset(y = (-1).dp),
-                        )
+                    // `.settings-option-copy { display: grid; gap: 4px }` centred in the 56 px content box (88 - 2 * 16 padding): strong line 1.15 * 16,
+                    // small line 1.45 * 0.68rem. The block is placed at its summed css position, each edge snapped once.
+                    val rowTopCss = 84f + 88f * index
+                    val copyTopCss = rowTopCss + 16f + (56f - PHONE_SETTINGS_COPY_CSS) / 2f
+                    Box(Modifier.fillMaxHeight()) {
+                        WebCssLayout(
+                            originCss = copyTopCss,
+                            topsCss = listOf(0f, PHONE_SETTINGS_TITLE_CSS + 4f),
+                            heightsCss = listOf(PHONE_SETTINGS_TITLE_CSS, PHONE_SETTINGS_SMALL_CSS),
+                            gapCss = 0f,
+                            modifier = Modifier.padding(top = rememberWebSpan(rowTopCss + 16f, copyTopCss)),
+                        ) {
+                            Box(Modifier.wrapContentHeight(Alignment.Top, unbounded = true)) {
+                            Text(
+                                playarrString(candidate.label), color = WebInk, fontSize = 16.sp, lineHeight = 18.4.sp,
+                                fontWeight = FontWeight(480), letterSpacing = (-0.56).sp, style = WebTextStyle, maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                            }
+                            Box(Modifier.wrapContentHeight(Alignment.Top, unbounded = true)) {
+                            Text(
+                                playarrString(description), color = WebInk, fontSize = 10.88.sp, lineHeight = 15.776.sp,
+                                style = WebTextStyle, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                            }
+                        }
                     }
-                    Spacer(Modifier.width(12.dp))
-                    Box(Modifier.width(20.8.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                    Spacer(Modifier)
+                    Box(Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
                         Text(
                             "→", color = if (active) WebInk else WebInkMuted, fontSize = 20.8.sp, lineHeight = 31.2.sp, style = WebTextStyle,
                             modifier = Modifier.offset(x = if (active) 5.dp else 0.dp),
                         )
                     }
+                }
                 }
             }
         }

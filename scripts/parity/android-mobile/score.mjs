@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// Score Android phone/tablet captures against the web refs the way the wall legend does (pixelmatch threshold 0.1, anti-aliased
-// pixels ignored, parity % = 100 - mismatch %).   score.mjs <ref-dir> <cand-dir> [--json out.json] [--heat <dir>]
+// Score Android phone/tablet captures against the web refs the way the wall legend does (exact RGBA bytes, zero tolerance, anti-aliased
+// pixels counted, parity % = 100 - mismatch %).   score.mjs <ref-dir> <cand-dir> [--json out.json] [--heat <dir>]
 // <cand-dir> holds dark/<screen>.png and light/<screen>.png. A size mismatch scores null.
 import { readFileSync, readdirSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import pngjs from "pngjs";
-import pixelmatch from "pixelmatch";
+import { countDiff, diffInto } from "../exact-pixels.mjs";
 const { PNG } = pngjs;
 const args = process.argv.slice(2);
 const opt = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : null; };
@@ -21,7 +21,7 @@ for (const theme of ["dark", "light"]) {
     try { a = PNG.sync.read(readFileSync(join(r, f))); b = PNG.sync.read(readFileSync(join(c, f))); } catch { (out[id] ??= {})[theme] = null; continue; }
     if (a.width !== b.width || a.height !== b.height) { (out[id] ??= {})[theme] = null; continue; }
     const diff = opt("heat") ? new PNG({ width: a.width, height: a.height }) : null;
-    const bad = pixelmatch(a.data, b.data, diff?.data ?? null, a.width, a.height, { threshold: 0.1 });
+    const bad = diff ? diffInto(a.data, b.data, diff.data, a.width, a.height) : countDiff(a.data, b.data, a.width, a.height);
     (out[id] ??= {})[theme] = +(100 - (100 * bad) / (a.width * a.height)).toFixed(3);
     if (diff) { mkdirSync(join(opt("heat"), theme), { recursive: true }); writeFileSync(join(opt("heat"), theme, f), PNG.sync.write(diff)); }
   }

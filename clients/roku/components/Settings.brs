@@ -64,7 +64,7 @@ sub renderSettings()
         end for
         numText = num.ToStr()
         if num < 10 then numText = "0" + numText
-        pgLabel(m.pageBody, 185.6, y + 27.3, 40, 14, numText, 9.92, 760, "ink", { fitWidth: 11.9 })
+        pgLabel(m.pageBody, 185.6, y + 27.3, 40, 14, numText, 9.92, 760, "ink")
         pgLabel(m.pageBody, 245.6, y + 25.8, 330, 40, sections[i].title, 29.6, 480, "ink", { tracking: -1.038 })
         arrowRole = "inkMuted"
         arrowX = 571.2
@@ -74,7 +74,7 @@ sub renderSettings()
         end if
         pgGlyph(m.pageBody, "→", arrowX, y + 31.3, 20.8, 400, arrowRole)
         pgMark(m.pageBody, "link", numText + " " + sections[i].title, 153.6, y, 470.4, 91.9, 0)
-        pgFocusable(153.6, y, 480.4, 91.9, 12, "section", sections[i].id, true)
+        pgFocusable(153.6, y, 470.4, 91.9, 12, "section", sections[i].id, true)
     end for
     id = m.settingsPanel
     if id = "appearance"
@@ -139,12 +139,16 @@ end sub
 sub panelAppearance()
     pgHeading(211, "Colour theme")
     pgSegmentedWide(773.8, 265.8, 56, ["System", "Light", "Dark"], PairingThemeIndex(m.themePreference), "theme")
+    ' A group of the panel is one node: its top rule, heading, hint and control. It reports the union of what it holds as its bounds.
+    page = m.pageBody
+    m.pageBody = pgContainer(page)
     pgRect(m.pageBody, 773.8, 352, 1042, 1, "line")
     pgHeading(384.3, "Home screen artwork")
     pgHint(429.5, "Show portrait covers instead of wide media thumbnails on the home screen.")
     coverIdx = 0
     if m.homeCover = true then coverIdx = 1
     pgSegmentedWide(773.8, 465, 56, ["Thumbnails", "Covers"], coverIdx, "artwork")
+    m.pageBody = pgContainer(page)
     pgRect(m.pageBody, 773.8, 551, 1042, 1, "line")
     pgHeading(583.5, "Artwork size")
     pgHint(628.7, "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.")
@@ -154,6 +158,7 @@ sub panelAppearance()
         if sizes[i] = m.artworkSizePref then active = i
     end for
     pgSegmentedWide(773.8, 664.2, 56, ["Small", "Medium", "Large"], active, "artSize")
+    m.pageBody = page
 end sub
 
 ' Web segmented control (.segmented-control): equal cells across the panel width, the chosen one filled with the ink colour.
@@ -173,30 +178,23 @@ sub pgSegmentedWide(x as Float, y as Float, h as Float, labels as Object, active
             by = y - h * 0.01245
             bw = w * 1.0249
             bh = h * 1.0249
-            pgRound(m.pageBody, bx, by, bw, bh, 14, "ink")
+            pgRound(m.pageBody, bx, by, bw, bh, 12, "ink")
         else
-            pgRound(m.pageBody, cx, y, w, h, 14, "surfaceSoft", 163)
-            pgRound(m.pageBody, cx, y, w, h, 14, "line", -1, true)
+            pgRound(m.pageBody, cx, y, w, h, 12, "surfaceSoft", 163)
+            pgRound(m.pageBody, cx, y, w, h, 12, "line", -1, true)
         end if
         role = "inkMuted"
         if i = activeIdx
             role = "bg"
         end if
         shown = labels[i]
-        fit = segmentedFit(LCase(labels[i]))
-        pgLabel(m.pageBody, bx + (bw - fit) / 2, by + 20.2 * bh / h, fit + 4, 15, shown, 10.56, 900, role, { fitWidth: fit })
+        ' Web .tv-filter-choice-grid button: 0.66rem, weight 900, no letter-spacing; the text is centred in the cell.
+        fit = PlayarrTextWidth(shown, 10.56, 900, 0)
+        pgLabel(m.pageBody, bx + (bw - fit) / 2, by + 20.2 * bh / h, fit + 4, 15, shown, 10.56, 900, role)
         pgMark(m.pageBody, "button", labels[i], bx, by, bw, bh, 12)
         pgFocusable(cx, y, w, h, 14, action, i, true)
     end for
 end sub
-
-' Measured width of each option label in the web segmented control (text-transform lowercase, letter-spacing .05em).
-function segmentedFit(text as String) as Float
-    table = { system: 37.4, light: 26.6, dark: 25.6, thumbnails: 61.3, covers: 34.3, small: 29.7, medium: 41.6, large: 29.1 }
-    w = table[text]
-    if w = invalid then w = PlayarrTextWidth(text, 10.56, 900, 0.5)
-    return w
-end function
 
 sub panelAvatar()
     presets = ["astronaut", "cat", "dinosaur", "robot", "pirate", "alien"]

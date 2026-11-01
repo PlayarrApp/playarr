@@ -62,7 +62,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import io.playarr.shared.designsystem.page.Surface
-import androidx.compose.material3.Text
+import io.playarr.shared.designsystem.page.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -91,7 +91,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -269,6 +271,7 @@ private fun PlayarrSheetFrame(
                 footer = currentFooter.value,
                 initialFocus = currentInitialFocus.value,
                 blurUnderlay = android.os.Build.VERSION.SDK_INT >= 31,
+                paneTitle = paneTitle,
                 content = { currentContent.value(this) },
             )
         }
@@ -306,7 +309,7 @@ private fun PlayarrSheetFrame(
                 if (parityNoInsets) androidx.core.view.WindowCompat.getInsetsController(w, view).hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
             }
         }
-        PhoneDrawerPanel(titleContent, kicker, closeLabel, onClose, dismissible, footer, initialFocus, blurUnderlay = false, content = content)
+        PhoneDrawerPanel(titleContent, kicker, closeLabel, onClose, dismissible, footer, initialFocus, blurUnderlay = false, paneTitle = paneTitle, content = content)
     }
 }
 
@@ -320,6 +323,7 @@ private fun PhoneDrawerPanel(
     footer: (@Composable RowScope.() -> Unit)?,
     initialFocus: FocusRequester?,
     blurUnderlay: Boolean,
+    paneTitle: String?,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val focus = remember { FocusRequester() }
@@ -331,12 +335,15 @@ private fun PhoneDrawerPanel(
     Box(
         Modifier.fillMaxSize()
             .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } }
+            // The pane title sits on the node that paints the drawer surface, so the dialog is exported with that fill.
+            .then(if (paneTitle != null) Modifier.semantics { this.paneTitle = paneTitle } else Modifier)
             .parityBackground("container", WebSurfaceStrong.copy(alpha = if (blurUnderlay) 0.94f else 0.985f))
     ) {
+        androidx.compose.material3.ProvideTextStyle(androidx.compose.material3.LocalTextStyle.current.copy(lineHeightStyle = io.playarr.shared.designsystem.page.WebLineBox)) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         ) {
-            Row(verticalAlignment = Alignment.Top) {
+            Row(Modifier.height(rememberWebSpan(20f, 20f + 47.36f)), verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f).padding(end = 12.dp)) {
                     if (kicker != null) {
                         Text(kicker.uppercase(), color = WebInkMuted, modifier = Modifier, fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.493.sp)
@@ -359,13 +366,14 @@ private fun PhoneDrawerPanel(
                     }
                 }
             }
-            Spacer(Modifier.height(26.6.dp))
+            Spacer(Modifier.height(with(androidx.compose.ui.platform.LocalDensity.current) { webSpan(20f + 47.36f, PHONE_DRAWER_BODY_TOP_CSS) }))
             Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 content()
                 if (footer != null) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = footer)
                 }
             }
+        }
         }
     }
     LaunchedEffect(initialFocus, focus, inputMode) {
@@ -436,6 +444,7 @@ private fun PlayarrTvDrawer(
                         )
                     }
                     .parityBackground("container", WebSurfaceStrong.copy(alpha = 0.94f))
+                    .semantics { paneTitle = kicker ?: closeLabel }
                     .clickable(interactionSource = null, indication = null, enabled = false) {},
             ) {
                 Column(
@@ -643,6 +652,9 @@ internal fun resetParityClockConsumptionMarker() {
 
 /** Debug builds: the route the app opens on (`parity_route` launch extra), for D-pad-only parity captures. */
 internal var parityRoute: String? = null
+
+/** Debug builds: the navigation route the app is on right now (query stripped); the layout export names it so the capture driver can check it describes the screen it asked for. */
+@Volatile internal var parityCurrentRoute: String = ""
 
 /** Debug builds with `parity_route`: state the device-parity suite driver reads back with `logcat -s PlayarrParity` (where the app is, in web terms). */
 internal fun parityLog(message: String) {

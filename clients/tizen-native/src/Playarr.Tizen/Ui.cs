@@ -80,10 +80,13 @@ internal static class Ui
     {
         var lines = WrapLines(text, size, weight, spacing, width, maxLines, balance: balance);
         if (lines.Count == 0) return 0;
-        // one multi-line label (the web has one element for a wrapped block); the app wraps, NUI lays the lines out
-        var label = Text(string.Join("\n", lines), x, y + (lh - ((float)Math.Round(1.011 * size) + (float)Math.Round(0.353 * size))) / 2f, size, weight, color, width, lh, multiline: true, spacing: spacing, maxLines: lines.Count, exactLines: true);
-        if (role != "text") Sem.Tag(label, role);
-        parent.Add(label);
+        // one single-line label per wrapped line: the web exports one glyph run per rendered line, each as tall as the font's content area
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var label = Text(lines[i], x, y + i * lh, size, weight, color, 0, lh, spacing: spacing);
+            if (role != "text") Sem.Tag(label, role);
+            parent.Add(label);
+        }
         return lines.Count;
     }
 
@@ -91,9 +94,35 @@ internal static class Ui
     /// <summary>Web .tv-filter-drawer: the strong surface at 94 % over the page, with a wide soft shadow falling to its left (box-shadow -32px 0 90px).</summary>
     public static View DrawerPanel(PlayarrTheme t)
     {
-        var p = Box(1560, 0, 360, 1080, new Rgba(t.SurfaceStrong.R, t.SurfaceStrong.G, t.SurfaceStrong.B, 0.94f));
+        var p = Box(1560, 0, 360, 1080, t.SurfaceStrong.Mixed(0.94f));
         p.BoxShadow = new Shadow(90, new Color(40 / 255f, 26 / 255f, 24 / 255f, 0.24f), new Vector2(-32, 0), new Vector2(0, 0));
         return p;
+    }
+
+    /// <summary>The layer a drawer draws its content in: a child of the dialog panel (web nests the content in the dialog), laid out in screen coordinates.</summary>
+    public static View DrawerLayer(View panel)
+    {
+        var layer = new View { PositionX = -panel.PositionX, Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight) };
+        Sem.Tag(layer, "none");
+        panel.Add(layer);
+        return layer;
+    }
+
+    /// <summary>
+    /// Turns a text label into the web's pill: the label itself draws the fill, border and rounded corners over a box of <paramref name="w"/> x <paramref name="h"/>
+    /// (the web span is that pill), and its line stays where it was drawn (the label's top becomes padding). The label's own radius and fill are what the exporter reads.
+    /// </summary>
+    public static TextLabel Pill(TextLabel label, float x, float y, float w, float h, Rgba fill, float radius, Color? border = null, float borderWidth = 0)
+    {
+        var top = label.PositionY;
+        label.PositionX = x; label.PositionY = y;
+        label.WidthResizePolicy = ResizePolicyType.Fixed; label.HeightResizePolicy = ResizePolicyType.Fixed;
+        label.Size = new Size(w * TextScale, h * TextScale);
+        label.Padding = new Extents(0, 0, (ushort)Math.Round(top * TextScale), 0);
+        if (fill.A > 0) label.BackgroundColor = C(fill);
+        label.CornerRadius = FullRadius(radius, w, h) * TextScale;
+        if (borderWidth > 0 && border is { } b) { label.BorderlineWidth = borderWidth * TextScale; label.BorderlineColor = b; }
+        return label;
     }
 
     public static Color LineA(PlayarrTheme t, float alpha) => new(t.Line.R, t.Line.G, t.Line.B, alpha);
@@ -140,7 +169,7 @@ internal static class Ui
     public static View Box(float x, float y, float w, float h, Rgba? bg = null, float radius = 0)
     {
         var v = new View { PositionX = x, PositionY = y, Size = new Size(w, h) };
-        if (bg is { } c) v.BackgroundColor = C(c);
+        if (bg is { } c) { v.BackgroundColor = C(c); }
         if (radius > 0) v.CornerRadius = FullRadius(radius, w, h);
         return v;
     }
@@ -154,19 +183,19 @@ internal static class Ui
     {
         var cssFamily = family; var reqWeight = weight;
         if (block) { multiline = true; exactLines = true; maxLines = 1; }
-        // fallback-font glyphs: the label is a box of the web's advance and the letter spacing makes the layout advance of the glyph that wide, so what follows starts where it does on web
-        if (GlyphAdvance(text) is { } adv && !multiline) { if (text is not ("←" or "→")) { w = adv * size; align = HorizontalAlignment.Center; } spacing += adv * size - TextWidth(text, size, weight, spacing, family); }
+        // web draws these glyphs from fallback fonts (Liberation Sans arrows, DejaVu Sans symbols) with the primary font's line metrics; the bundled subsets carry the same advances and Nunito's ascent and descent
+        if (family == Font && text is "←" or "→") { family = "Liberation Sans"; weight = weight >= 600 ? 700 : 400; }
+        else if (family == Font && text is "⇩" or "☷" or "⌄" or "✓" or "▶") { family = "Playarr Symbols"; weight = weight >= 600 ? 700 : 400; }
         if (!multiline && w <= 0) w = TextWidth(upper ? text.ToUpperInvariant() : text, size, weight, spacing, family); // an inline run is as wide as its text
         (family, weight) = Face(family, weight, size);
-        var cssWeight = family.StartsWith(Font + " W", StringComparison.Ordinal) ? int.Parse(family[(Font.Length + 2)..]) : weight;
+        var cssWeight = family.StartsWith(Font + " W", StringComparison.Ordinal) ? int.Parse(family[(Font.Length + 2)..]) : weight; // a fallback-font arrow reports the weight its face really draws (Liberation Sans Bold, 700)
         var cssY = y;
         var line = lh > 0 ? lh : size * 1.4f;
         // a single line is a label exactly as tall as the browser's content area (rounded ascent plus rounded descent), top-aligned and centred in the CSS line box
-        var content = (float)Math.Round(1.011 * size) + (float)Math.Round(0.353 * size);
+        var content = CssLineBox.Content(size);
         // a block-level text element (the clock) is as tall as its CSS line; an inline run is the browser's content area
         var boxH = multiline ? Math.Max(line, size * 1.45f) : content;
-        y += multiline ? (exactLines ? 0 : -(boxH - line) / 2f) : (line - boxH) / 2f;
-        if (family.StartsWith(Font, StringComparison.Ordinal) && !block) y -= BaselineShifts.Up(size); // NUI vs Chromium glyph placement, measured per size
+        y += multiline ? (exactLines ? 0 : -(boxH - line) / 2f) : CssLineBox.Top(line, size); // single line: Blink puts the content area at the floored half-leading below the line top (FontHeight::AddLeading)
         var t = new TextLabel(upper ? text.ToUpperInvariant() : text)
         {
             PositionX = x,
@@ -180,7 +209,6 @@ internal static class Ui
             MultiLine = multiline,
             Ellipsis = false, // an overflowing line is clipped by its parent, never elided, so every glyph has a laid-out position
         };
-        if (GlyphAdvance(text) is not null) t.Ellipsis = false;
         if (!multiline && w > 0) t.RelativeLineHeight = boxH / TextHeight(size, reqWeight, cssFamily); // the label's line is exactly the box, as the browser's
         if (spacing != 0) t.CharacterSpacing = spacing * TextScale;
         if (multiline && maxLines > 0) t.Ellipsis = false;
@@ -192,9 +220,6 @@ internal static class Ui
         TextMeta.Add(t, new TextMetaInfo(size, cssWeight, line, cssY - y, spacing, align, color, multiline) { Family = cssFamily, Block = block });
         return t;
     }
-
-    /// <summary>The web's advance (em) of glyphs that both clients draw from a fallback font: 0.838 em for the download, check and chevron glyphs, 0.769 em for the play triangle.</summary>
-    internal static float? GlyphAdvance(string text) => text switch { "⇩" or "✓" or "⌄" => 0.838f, "▶" => 0.769f, "←" or "→" => 1f, _ => null };
 
     /// <summary>Linear gradient box ("to right" when horizontal, else "to bottom"); stops are (offset 0..1, straight-alpha colour). Rendered once to a PNG and stretched.</summary>
     public static View Gradient(float x, float y, float w, float h, bool horizontal, params (float At, Rgba Color)[] stops)
@@ -233,13 +258,32 @@ internal static class Ui
     /// Web .tv-library-grid-panel / .tv-rail-surface: the right 1190 px carry a frost (soft surface over the strong one, 48 % in light and 44 % in dark)
     /// that fades in from nothing at the left edge to full at the right.
     /// </summary>
-    public static View PanelWash(PlayarrTheme t, float width = 1190)
+    public static View PanelWash(PlayarrTheme t, float width = 1190.39f)
     {
         var dark = t.Name == "dark"; var mix = dark ? 0.44f : 0.48f;
-        Rgba Frost(float a) => new(t.SurfaceSoft.R * mix + t.SurfaceStrong.R * (1 - mix), t.SurfaceSoft.G * mix + t.SurfaceStrong.G * (1 - mix), t.SurfaceSoft.B * mix + t.SurfaceStrong.B * (1 - mix), a);
-        var w = width;
-        return Gradient(TizenClient.DesignWidth - w, 0, w, TizenClient.DesignHeight, true,
-            (0, Frost(0)), (0.12f, Frost(dark ? 0.72f : 0.68f)), (0.34f, Frost(dark ? 0.9f : 0.88f)), (0.62f, Frost(dark ? 0.97f : 0.96f)), (1, Frost(1)));
+        float Ch(float soft, float strong) => soft * mix + strong * (1 - mix);
+        var frost = (Ch(t.SurfaceSoft.R, t.SurfaceStrong.R), Ch(t.SurfaceSoft.G, t.SurfaceStrong.G), Ch(t.SurfaceSoft.B, t.SurfaceStrong.B));
+        var alphas = new[] { (0f, 0f), (0.12f, dark ? 0.72f : 0.68f), (0.34f, dark ? 0.9f : 0.88f), (0.62f, dark ? 0.97f : 0.96f), (1f, 1f) };
+        var origin = TizenClient.DesignWidth - width;
+        // the panel is one painted box in the web (.tv-library-grid-panel): an image-less ImageView carries its box for the export and the visibility check; the frost pieces are its children
+        var root = Sem.Overlay(new ImageView { PositionX = origin, PositionY = 0, Size = new Size(width, TizenClient.DesignHeight) });
+        // Key art (and its stage wash) ends at 133 + 900 px; right of that the panel lies over the flat page colour only, so it is drawn as the
+        // browser's dithered result (see GradientPng.MakeDitheredPanel). Left of it the art shows through, so the translucent gradient stays.
+        const int artEnd = 1033;
+        var cut = (artEnd - origin) / width;
+        var a0 = alphas.Last(s => s.Item1 <= cut); var a1 = alphas.First(s => s.Item1 > cut);
+        var aCut = a0.Item2 + (a1.Item2 - a0.Item2) * (cut - a0.Item1) / (a1.Item1 - a0.Item1);
+        Rgba Frost(float a) => new(frost.Item1, frost.Item2, frost.Item3, a);
+        var left = alphas.Where(s => s.Item1 < cut).Select(s => (s.Item1 / cut, Frost(s.Item2))).Append((1f, Frost(aCut))).ToArray();
+        var leftWidth = artEnd - origin;
+        var g = Gradient(0, 0, leftWidth, TizenClient.DesignHeight, true, left);
+        root.Add(g);
+        var dir = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";
+        Directory.CreateDirectory(dir);
+        var path = dir + $"panel-{t.Name}-{origin:0.###}-{width:0.###}-v2.png";
+        if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.MakeDitheredPanel(alphas, frost, ((int)Math.Round(t.Surface.R * 255), (int)Math.Round(t.Surface.G * 255), (int)Math.Round(t.Surface.B * 255)), origin, width, artEnd, TizenClient.DesignHeight));
+        root.Add(Sem.Overlay(new ImageView(path) { PositionX = artEnd - origin, PositionY = 0, Size = new Size(TizenClient.DesignWidth - artEnd, TizenClient.DesignHeight), SynchronousLoading = true }));
+        return root;
     }
 
     /// <summary>Angled gradient rendered at the target aspect ratio so its direction is preserved when displayed.</summary>
@@ -253,6 +297,23 @@ internal static class Ui
         var path = dir + "grad-" + Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(key)))[..16] + ".png";
         if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.MakeDiagonal(stops, pixelWidth, pixelHeight, degrees));
         return Sem.Overlay(new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) });
+    }
+
+    /// <summary>
+    /// A CSS box-shadow ring around the rounded box at (x, y, w, h): the blurred, offset shadow outside the border box only (see <see cref="BoxShadowPng"/>),
+    /// so a translucent fill over it is not tinted by it. Add it before the box so the box paints over.
+    /// </summary>
+    public static View BoxShadowRing(float x, float y, float w, float h, float radius, float blur, float dx, float dy, Rgba color)
+    {
+        var dir = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";
+        Directory.CreateDirectory(dir);
+        float fx = x - (float)Math.Floor(x), fy = y - (float)Math.Floor(y);
+        var key = $"s{w:0.####}x{h:0.####}-{radius:0.###}-{blur:0.###}-{dx:0.###}-{dy:0.###}-{fx:0.####}-{fy:0.####}-{color.R:0.##}-{color.G:0.##}-{color.B:0.##}-{color.A:0.###}";
+        var path = dir + "shadow-" + Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(key)))[..16] + ".png";
+        var m = Playarr.Tizen.Logic.BoxShadowPng.Margin(blur, dx, dy);
+        int iw = (int)Math.Ceiling(w + fx) + 2 * m, ih = (int)Math.Ceiling(h + fy) + 2 * m;
+        if (!File.Exists(path)) File.WriteAllBytes(path, Playarr.Tizen.Logic.BoxShadowPng.Make(w, h, radius, blur, dx, dy, color, fx, fy).Png);
+        return Sem.Overlay(new ImageView(path) { PositionX = (float)Math.Floor(x) - m, PositionY = (float)Math.Floor(y) - m, Size = new Size(iw, ih) });
     }
 
     public static View RadialGradient(float x, float y, float w, float h, Rgba color, float centerX, float centerY, float radiusFraction)

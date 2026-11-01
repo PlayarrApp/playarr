@@ -2,8 +2,8 @@
 
 Reference: the shared web TV captures in `docs/parity/web/tv/{light,dark}`. Candidate: the sideloaded channel on a
 physical Roku (fhd), screenshotted through the dev installer's `plugin_inspect` endpoint (JPEG, converted to PNG),
-signed in as `fx-viewer` against a fresh deterministic fixture server. Diff: `scripts/parity/diff.mjs`, pixelmatch
-threshold 0.1, with the shell clock rectangle (x 470-730, y 60-100) masked because a Roku has no way to freeze its clock.
+signed in as `fx-viewer` against a fresh deterministic fixture server. Diff: `scripts/parity/diff.mjs`, exact RGBA
+byte comparison (zero tolerance), with the shell clock rectangle (x 470-730, y 60-100) masked because a Roku has no way to freeze its clock.
 
 ```
 ROKU_DEV_TARGET=<ip> ROKU_DEV_PASSWORD=<dev password> node scripts/parity/roku/capture.mjs <out> dark
@@ -14,8 +14,8 @@ node scripts/parity/diff.mjs --ref docs/parity/web --cand <out> --layout tv --th
 
 Method: the Roku stays signed in as the device test account. `scripts/parity/roku/capture-web-live.mjs` captures the web TV
 client (1920x1080, Nunito Sans forced, hosted web client against the real server) as that same account in the same run, and
-`scripts/parity/roku/capture.mjs` captures the device (`ROKU_DOCK_HAS_MUSIC=1`). Diff: `scripts/parity/diff.mjs`, pixelmatch
-threshold 0.1, the clock rectangles (470,60,260,40 and 545,60,180,40) masked on both sides. Nothing is committed from these
+`scripts/parity/roku/capture.mjs` captures the device (`ROKU_DOCK_HAS_MUSIC=1`). Diff: `scripts/parity/diff.mjs`, exact RGBA
+byte comparison (zero tolerance), the clock rectangles (470,60,260,40 and 545,60,180,40) masked on both sides. Nothing is committed from these
 captures (they show real library artwork).
 
 | Screen | Dark | Light | Status |
@@ -74,8 +74,21 @@ titles cannot be reproduced). None of the screens is at or below 1% except where
 - Home hero title line pitch matches web (`lineSpacing`), hero fade, clock, rail geometry and focus ring from the bugfix PR.
 - `scripts/parity/roku/capture.mjs` drives the device over ECP and writes the layout `diff.mjs` reads.
 
-Captures are not committed: the device only produces JPEG screenshots ,
+Captures are not committed: the device only produces JPEG screenshots,
 and the report is reproducible with the commands above.
+
+## Device exception: the screenshot is lossy JPEG (31 Oct 2026, exact scoring)
+
+Exact scoring (every RGBA byte equal) cannot be met on Roku by pixel content, because the only screenshot path is lossy. This is a documented device exception. No tolerance is added anywhere.
+
+Evidence:
+- `POST /plugin_inspect` with `mysubmit=Screenshot` returns `pkgs/dev.jpg`. The file is a baseline JPEG, 1920x1080, 4:2:0 chroma subsampling, quantisation tables 8,6,5,8,12,20 (luma) and 9,9,12,24,50 (chroma), roughly quality 75.
+- Requests for `pkgs/dev.png` and `pkgs/dev.bmp` return 404, and the ECP port has no screenshot or capture endpoint (`/query/screenshot`, `/capture` return 404). The debug console ports (8085, 8061) are closed. The packager page has no screenshot action. Adding a form field (`format=png`) still returns `dev.jpg`.
+- The app paints the page background as `0x1B181B` (the web token `#1b181b`). Where the web reference is exactly `#1b181b` (548474 px on settings, dark), the converted device capture is 26,23,26 on 88.0% of them, 23..25 on about 5% and exactly 27,24,27 on 0.9%.
+- The result depends on the decoder, so it is not a fixed offset: ffmpeg decodes a flat region of one frame as 26,23,26, libjpeg (Pillow) decodes the same file as 26,24,27. Quantisation and chroma subsampling make flat colours and every edge unrepresentable, so no decoder choice restores the app's bytes.
+- Pixel parity on Roku is therefore dominated by the capture codec (5.3 dark / 2.2 light under exact scoring), not by the UI colours. The UI colours are the web tokens.
+
+A lossless path would need an HDMI capture of the device output, which is not available on the test bench. Layout (exported from the SceneGraph tree, not from pixels) is unaffected and stays the Roku lever.
 
 
 ## Light theme (measured 8 October, live web, same account)
@@ -97,3 +110,9 @@ reveal its controls). Household blocked needs a restricted profile, which the re
   fast-forward keys control the player. Artwork in a system now-playing entry is not possible: the server's art needs the sign-in headers,
   which the system cannot send.
 
+
+## Text and grid geometry from the web CSS (1 Nov 2026)
+
+Every Roku text takes its size, weight and line box from the web CSS through one path: `PlayarrMakeFont` / `TrackedText`. The package carries Nunito Sans cut at the exact web weights per size band (`clients/roku/scripts/make_font_data.py`, `EXACT`), so no weight is rounded to a hundred. A Roku `Font` node takes a whole-pixel size, so the Label is scaled by web size / whole size (`PlayarrScaleFor`) and reports the web's fractional size. Browse grid pitch, row shift and column shift derive from the web card width, grid gap and card copy (`WebGridPitchX`, `WebGridPitchY`, `WebGridColumnShift`, `WebGridRowShift`, `WebRailCellWidth` in `Theme.brs`).
+
+Evidence (exact scorer, dark): fontSize plus fontWeight failures on home, movies and series fell from 54, 84 and 83 to 1, 3 and 3; screens still with a few fontSize/fontWeight misses are symbol glyphs (arrows, play, check), which fall back to DejaVu Sans, not Nunito Sans. Letter-spacing stays an exception: Roku has no tracking, so TrackedText sets words at web advances.

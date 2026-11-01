@@ -65,7 +65,7 @@ internal sealed class LibraryScreen : IPage
         _panel = new DetailsPanel(env, library: true);
         _root.Add(_keyArt.Root);
         _root.Add(_panel.Root);
-        _root.Add(Ui.PanelWash(_t, 1248));
+        _root.Add(Sem.Tag(Ui.PanelWash(_t, 1190.39f), "container"));
         var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
         _grid.PositionX = -ClipX;
         clip.Add(_grid);
@@ -88,13 +88,13 @@ internal sealed class LibraryScreen : IPage
     private void BuildSide()
     {
         // Filters tile (shell action column: 62x72 at 1845.5,151.2)
-        var tile = Ui.Box(1845.5f, 151.2f, 62, 72, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 14);
+        var tile = Ui.Box(1845.5f, 151.2f, 62, 72, _t.SurfaceStrong.Mixed(0.78f), 14);
         tile.BorderlineWidth = 1; tile.BorderlineColor = Ui.LineA(_t, 0.075f);
         tile.Add(Ui.Icon("filters", 19, 15, 24, _t.InkMuted)); // web: the sliders glyph
         _tile = tile; Sem.Tag(tile, "button", "Filters");
         tile.Add(Ui.Text("Filters", 0, 44.6f, 8.256f, 700, _t.InkMuted, 62, 12.384f, HorizontalAlignment.Center, spacing: 0.165f));
         var ring = Ring.Make(62, 72, 14, new Rgba(1, 1, 1)); ring.Show(false); tile.Add(ring);
-        _root.Add(tile);
+        _env.AddShellView(tile);
         _side.Add(new Focusable { Rect = () => new Box(1845.5f, 151.2f, 62, 72), Label = "filters", Style = f => ring.Show(f), Select = OpenFilters });
         // A-Z rail
         var y = 295.2f;
@@ -107,8 +107,8 @@ internal sealed class LibraryScreen : IPage
             var dot = Ui.Box(10, 10, 24, 24, _t.Ink, 12); dot.Show(false);
             hit.Add(dot); _letterDots[letter] = dot;
             var l = letter;
-            var lbl = Ui.Text(letter.ToString(), 1869, ly - 2, 9.216f, 400, _t.InkMuted, 21, 13, HorizontalAlignment.Center);
-            _root.Add(lbl); _letterLabels[letter] = lbl;
+            var lbl = Ui.Text(letter.ToString(), 1869, ly - 1, 9.216f, 400, _t.InkMuted, 21, 13, HorizontalAlignment.Center);
+            lbl.PositionX -= hit.PositionX; lbl.PositionY -= hit.PositionY; hit.Add(lbl); _letterLabels[letter] = lbl; // web: the button holds its letter
             var ringL = Ring.Make(24, 24, 12, new Rgba(1, 1, 1)); ringL.PositionX = -5; ringL.PositionY = -5; ringL.Show(false); dot.Add(ringL);
             _side.Add(new Focusable
             {
@@ -269,7 +269,7 @@ internal sealed class LibraryScreen : IPage
 
     private void Toast(string text)
     {
-        var toast = Ui.Box(560, 960, 800, 56, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.96f), 28);
+        var toast = Ui.Box(560, 960, 800, 56, _t.SurfaceStrong.Mixed(0.96f), 28);
         toast.Add(Ui.Text(text, 0, 14, 14, 600, _t.Ink, 800, 28, HorizontalAlignment.Center));
         _root.Add(toast);
         var timer = new global::Tizen.NUI.Timer(2500);

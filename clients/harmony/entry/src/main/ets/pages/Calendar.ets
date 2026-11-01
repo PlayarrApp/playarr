@@ -15,7 +15,7 @@ import { image } from '@kit.ImageKit';
 import { fetchWorkArtwork } from '../data/ArtworkRepository';
 import { t } from '../core/Language';
 import { nunito, arrowFont, nunitoAt, webLineHeight, webLineSpacing } from '../design/Typography';
-import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
+import { activeColors, toResourceColor, toResourceColorWithAlpha, resolvedThemeMode } from '../design/Theme';
 import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
 import { CalendarLinkPanel } from '../design/components/CalendarLinkPanel';
@@ -80,6 +80,57 @@ import { ROUTES } from '../navigation/Routes';
 import type { DetailRouteParams, PlayerRouteParams } from '../navigation/Routes';
 import { getNavStack, pushRoute } from '../navigation/NavStack';
 
+// Web `.calendar-day > h3`: the page colour under `--agenda-panel-frost`, a gradient fixed to the viewport (the panel is the right 65%,
+// x 672 to 1920) while the band spans x 783 to 1816. The band's stops are the panel's, re-based onto the band's own width.
+const AGENDA_PANEL_LEFT: number = 672;
+const AGENDA_PANEL_WIDTH: number = 1248;
+const AGENDA_LIST_LEFT: number = 783;
+
+function agendaHeadingFrost(): Array<[string, number]> {
+  const dark: boolean = resolvedThemeMode() === 'dark';
+  const rgb: string = dark ? '40, 35, 40' : '240, 238, 239';
+  const panel: number[][] = dark ? [[0, 0], [0.12, 0.72], [0.34, 0.9], [0.62, 0.97], [1, 1]] : [[0, 0], [0.12, 0.68], [0.34, 0.88], [0.62, 0.96], [1, 1]];
+  const alphaAt = (s: number): number => {
+    for (let i = 1; i < panel.length; i++) {
+      if (s <= panel[i][0]) {
+        const k: number = (s - panel[i - 1][0]) / (panel[i][0] - panel[i - 1][0]);
+        return panel[i - 1][1] + (panel[i][1] - panel[i - 1][1]) * k;
+      }
+    }
+    return 1;
+  };
+  const out: Array<[string, number]> = [];
+  const edge = (frac: number): void => {
+    out.push([`rgba(${rgb}, ${alphaAt((AGENDA_LIST_LEFT + frac * LIST_WIDTH - AGENDA_PANEL_LEFT) / AGENDA_PANEL_WIDTH).toFixed(4)})`, frac]);
+  };
+  edge(0);
+  for (const stop of panel) {
+    const frac: number = (AGENDA_PANEL_LEFT + stop[0] * AGENDA_PANEL_WIDTH - AGENDA_LIST_LEFT) / LIST_WIDTH;
+    if (frac > 0.0005 && frac < 0.9995) {
+      out.push([`rgba(${rgb}, ${stop[1]})`, frac]);
+    }
+  }
+  edge(1);
+  return out;
+}
+
+class AgendaHeadingModifier implements AttributeModifier<RowAttribute> {
+  private readonly tvBand: boolean;
+
+  constructor(tvBand: boolean) {
+    this.tvBand = tvBand;
+  }
+
+  applyNormalAttribute(instance: RowAttribute): void {
+    if (!this.tvBand) {
+      instance.backgroundColor(Color.Transparent);
+      return;
+    }
+    instance.backgroundColor(toResourceColor(resolvedThemeMode() === 'dark' ? activeColors().bg : activeColors().surface));
+    instance.linearGradient({ angle: 90, colors: agendaHeadingFrost() });
+  }
+}
+
 // Web `.calendar-days-agenda`: from x=783 (53 into the x=730 column), first day heading at y=162, 1033 wide.
 const LIST_INSET_LEFT: number = 53;
 const LIST_TOP: number = 162;
@@ -131,11 +182,10 @@ const PHONE_LINE_META: number = 21;
 const PHONE_AGENDA_BLEED: number = 0; // the static-server web ref keeps the cards inside the page padding
 const PHONE_AGENDA_CARD_MIN_WIDTH: number = 328; // web (static refs): the card ends 16 vp from the right edge
 const PHONE_CONTROL_FONT: number = 11.2;
-// Web phone header controls: 0.6rem apart, the right edge on the 16.7 vp gutter, Today 72.7 wide with its ring 5.3 outside.
+// Web phone header controls: 0.6rem apart, the right edge on the 16.7 vp gutter, Today 72.7 wide (the static refs draw no focus ring on it).
 const PHONE_CONTROL_GAP: number = 8.76;
 const PHONE_CONTROL_RIGHT: number = 16;
 const PHONE_TODAY_WIDTH: number = 72.7;
-const PHONE_RING_OUTSET: number = 5.3;
 const ENTRY_META_GAP: number = 12;
 // Web `.status-pill`: 13.44/750, tone at 14% over the surface with a 60% tone border.
 const PILL_SIZE: number = 13.44;
@@ -159,7 +209,7 @@ const OVERVIEW_WIDTH: number = 348;
 const PANEL_BUTTON_HEIGHT: number = 58;
 const PANEL_BUTTON_FONT: number = 14.72;
 const PANEL_BUTTON_PADDING: number = 21;
-const PANEL_BUTTON_GAP: number = 10;
+const PANEL_BUTTON_GAP: number = 9.6;
 
 // Web `.calendar-days-week` and `.calendar-month`: from (154, 174), 1663 wide, 787 high.
 const GRID_LEFT: number = 154;
@@ -216,6 +266,16 @@ function cellKey(cell: CalendarCell): string {
 }
 
 /** Web `.status-pill` / `.calendar-dot` tones. */
+/** CSS `color-mix(in srgb, top <alpha*100>%, base)` for an opaque base: the opaque colour web's pill fill resolves to. */
+function mixOver(top: RgbaColor, base: RgbaColor, alpha: number): RgbaColor {
+  return {
+    r: Math.round(top.r * alpha + base.r * (1 - alpha)),
+    g: Math.round(top.g * alpha + base.g * (1 - alpha)),
+    b: Math.round(top.b * alpha + base.b * (1 - alpha)),
+    a: 1,
+  };
+}
+
 function toneColor(tone: EntryPillTone): RgbaColor {
   if (tone === 'available') {
     return activeColors().success;
@@ -431,7 +491,7 @@ export struct ReleaseCalendar {
       .height(isTvMetrics() ? tv(PILL_HEIGHT) : PHONE_PILL_HEIGHT)
       .padding({ left: tv(PILL_PADDING_H), right: tv(PILL_PADDING_H) })
       .borderRadius(isTvMetrics() ? tv(PILL_HEIGHT / 2) : PHONE_PILL_HEIGHT / 2)
-      .backgroundColor(toResourceColorWithAlpha(toneColor(tone), 0.112))
+      .backgroundColor(isTvMetrics() ? toResourceColor(mixOver(toneColor(tone), activeColors().surface, 0.14)) : toResourceColorWithAlpha(toneColor(tone), 0.112)) // TV: web .status-pill color-mix(tone 14%, surface), opaque; the phone's measured translucent fill stays
       .border({ width: 1, color: toResourceColorWithAlpha(toneColor(tone), 0.6) })
       .margin({ top: offset })
   }
@@ -538,8 +598,11 @@ export struct ReleaseCalendar {
     .width(isTvMetrics() ? tv(LIST_WIDTH) : '100%')
     .height(tv(DAY_HEADING_HEIGHT))
     .alignItems(VerticalAlign.Center)
-    // The TV's agenda sits on an opaque list; the phone's headings sit straight on the page like web's.
-    .backgroundColor(isTvMetrics() ? toResourceColor(activeColors().bg) : Color.Transparent)
+    // web: the day is an h3 box. ArkUI's AccessibilityRoleType has no heading, so the band declares the nearest honest role, text; its words are the Texts inside
+    .accessibilityRole(isTvMetrics() ? AccessibilityRoleType.TEXT : AccessibilityRoleType.ROLE_NONE)
+    // TV: web's sticky h3 is the page colour (bg in dark, surface in light) under the panel's own right-65% frost, anchored to the viewport.
+    // It is painted here, on the band, so the band owns the colour web gives it. The phone's heading draws no fill.
+    .attributeModifier(new AgendaHeadingModifier(isTvMetrics()))
   }
 
   @Builder
@@ -576,7 +639,8 @@ export struct ReleaseCalendar {
       }
       .width(tv(LIST_WIDTH))
       .height('100%')
-      .padding({ top: tv(LIST_TOP), bottom: tv(LIST_BOTTOM) })
+      .padding({ top: tv(LIST_TOP) })
+      .contentEndOffset(tv(LIST_BOTTOM)) // not padding: padding clips the cards that web still draws in the last 40 px (web's fifth day starts at y 1080)
       .margin({ left: tv(LIST_INSET_LEFT) })
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.None)
@@ -672,6 +736,7 @@ export struct ReleaseCalendar {
         Text(String(dayOfMonth(cell.day))).fontFamily(nunito(640))
           .fontSize(tv(MONTH_DAY_SIZE)).lineHeight(webLineHeight(tv(MONTH_DAY_SIZE))).halfLeading(true)
           .fontWeight(FontWeight.Medium)
+          .letterSpacing(isTvMetrics() ? 0 : 0.26) // phone: web's two-digit run is 15.36 wide, Nunito at 12.8 draws it 14.84
           .margin({ top: isTvMetrics() ? -4.2 : 3.84 })
           .fontColor(toResourceColor(cell.inMonth ? activeColors().ink : activeColors().inkMuted))
         if (groupSeriesEpisodes(cell.entries).length > this.monthLinesFor(cellHeight)) {
@@ -682,7 +747,7 @@ export struct ReleaseCalendar {
       }
       .height(isTvMetrics() ? tv(MONTH_FOOT_HEIGHT) : TOUCH_MONTH_FOOT_HEIGHT)
       .width('100%')
-      .padding({ left: isTvMetrics() ? 2.2 : 6 })
+      .padding({ left: isTvMetrics() ? 2.2 : 6.8 })
     }
     .layoutWeight(1)
     .height(isTvMetrics() ? tv(cellHeight) : '100%')
@@ -831,12 +896,12 @@ export struct ReleaseCalendar {
     Text(label).fontFamily(nunitoAt(700, tv(PANEL_BUTTON_FONT)))
       .fontSize(tv(PANEL_BUTTON_FONT)).letterSpacing((isTvMetrics() ? -0.123 : 0)).lineHeight(webLineHeight(tv(PANEL_BUTTON_FONT))).halfLeading(true)
       .fontWeight(FontWeight.Bold)
-      .fontColor(toResourceColor(primary ? activeColors().bg : activeColors().ink))
+      .fontColor(toResourceColor(primary ? activeColors().onAccent : activeColors().ink))
       .accessibilityText(label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true) // web: the button owns its text
       .height(tv(PANEL_BUTTON_HEIGHT))
       .padding({ left: tv(PANEL_BUTTON_PADDING), right: tv(PANEL_BUTTON_PADDING) })
       .borderRadius(tv(PANEL_BUTTON_HEIGHT / 2))
-      .backgroundColor(primary ? toResourceColor(activeColors().ink) : Color.Transparent)
+      .backgroundColor(primary ? toResourceColor(activeColors().accent) : Color.Transparent) // web .btn-primary: accent on onAccent
       .border({ width: primary ? 0 : 1, color: toResourceColor(activeColors().lineStrong) })
       .focusable(true)
       .onClick(() => {
@@ -873,7 +938,7 @@ export struct ReleaseCalendar {
           }
           .accessibilityText((this.listed ? 'Remove from watchlist' : 'Add to watchlist')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .height(tv(PANEL_BUTTON_HEIGHT))
-          .padding({ left: tv(PANEL_BUTTON_PADDING), right: tv(PANEL_BUTTON_PADDING) })
+          .padding({ left: tv(PANEL_BUTTON_PADDING - 1), right: tv(PANEL_BUTTON_PADDING - 1) }) // web: 21 from the edge to the glyph, border included
           .borderRadius(tv(PANEL_BUTTON_HEIGHT / 2))
           .border({ width: 1, color: toResourceColor(activeColors().lineStrong) })
           .opacity(this.watchlistBusy ? 0.6 : 1)
@@ -883,7 +948,7 @@ export struct ReleaseCalendar {
           })
         }
       }
-      .margin({ top: tv(PANEL_GAP) - 10.7 }) // web: the actions sit 10.7 nearer than the shifted copy above would leave them
+      .margin({ top: tv(PANEL_GAP) - 9.61 }) // web: the actions sit 9.6 nearer than the shifted copy above would leave them
     }
   }
 
@@ -891,7 +956,7 @@ export struct ReleaseCalendar {
   private panelExtras(): void {
     if (this.selected !== undefined) {
       Column({ space: tv(PANEL_GAP) }) {
-        this.statusPill(entryPillTone(this.selected, this.today), 2.42)
+        this.statusPill(entryPillTone(this.selected, this.today), 1.09) // web: chip, copy and actions sit 1.3 / 2.6 / 1.5 higher than laid out
         if (this.selected.overview !== undefined && this.selected.overview !== null) {
           Text(this.selected.overview).fontFamily(nunito(600))
             .fontSize(13.82)
@@ -901,7 +966,7 @@ export struct ReleaseCalendar {
             .constraintSize({ maxWidth: tv(OVERVIEW_WIDTH) })
             .maxLines(OVERVIEW_MAX_LINES)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .margin({ top: 6.1 })
+            .margin({ top: 4.87 })
         }
         this.panelActions()
       }
@@ -962,6 +1027,7 @@ export struct ReleaseCalendar {
     } else {
     Stage({
       titleRole: 'text',
+      titleSpacingAdjust: -0.35, // web's agenda hero title is 1.6 / 5 narrower on Crimson / Ledger 5
       panelTopAdjust: 5.2, // web's agenda hero sits 3.6 lower than the library's
       keyArt: '',
       kicker: this.selected !== undefined ?
@@ -1116,21 +1182,15 @@ export struct ReleaseCalendar {
         .textAlign(TextAlign.Center)
         .width(width)
         .height(44)
-        .borderRadius(22)
-        .backgroundColor(toResourceColor(activeColors().surface))
-        .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
-      if (label === t('pages.calendar.today', 'Today')) {
-        // web opens the page with Today focused (the Previewer reports no focus): the 3 vp ring sits outside the pill, 2.3 vp clear of it
-        Column()
-          .width(width + PHONE_RING_OUTSET * 2)
-          .height(44 + PHONE_RING_OUTSET * 2)
-          .borderRadius(22 + PHONE_RING_OUTSET)
-          .border({ width: 3, color: toResourceColor(activeColors().ink) })
-          .hitTestBehavior(HitTestMode.None)
-      }
+        // web: the round button owns the radius, fill and border; the arrow glyph's own box is a plain text (radius 0)
+        .borderRadius(label.length === 1 ? 0 : 22)
+        .backgroundColor(label.length === 1 ? Color.Transparent : toResourceColor(activeColors().surface))
+        .border({ width: label.length === 1 ? 0 : 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
     }
     .accessibilityText(label.length === 1 ? (label === '←' ? 'Previous' : 'Next') : '').accessibilityRole(label.length === 1 ? AccessibilityRoleType.BUTTON : AccessibilityRoleType.ROLE_NONE)
     .borderRadius(22)
+    .backgroundColor(label.length === 1 ? toResourceColor(activeColors().surface) : Color.Transparent)
+    .border({ width: label.length === 1 ? 1 : 0, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
     .width(width)
     .height(44)
     .onClick(() => {
@@ -1212,7 +1272,7 @@ export struct ReleaseCalendar {
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
-      .margin({ bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 0 : (fixedHeight > 0 ? 15.1 : 5) }) // web's text block sits 2.5 vp higher in the card than the centred one (a grown movie card has no spare height)
+      .margin({ bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 0 : (fixedHeight > 0 ? 15.1 : 0) }) // fixed agenda cards: web's text block sits above the centred one; a week card takes its height from this block (web 92.86 for a 70 vp block)
     }
     .width('100%')
     .constraintSize({
@@ -1250,18 +1310,22 @@ export struct ReleaseCalendar {
       Row({ space: PHONE_WEEK_GAP }) {
         ForEach(buildWeekDays(this.anchor, this.groups, this.today), (cell: CalendarCell) => {
           Column({ space: tv(WEEK_HEADING_GAP) - 1.8 }) {
-            Row({ space: 10 }) {
+            Row({ space: 9.6 }) { // web .calendar-day h3: gap 0.6rem
               Text(dayHeading(cell.day)).fontFamily(nunitoAt(640, PHONE_DAY_HEADING_SIZE))
                 .fontSize(PHONE_DAY_HEADING_SIZE).letterSpacing((!isTvMetrics() ? -0.071 : 0)).lineHeight(webLineHeight(PHONE_DAY_HEADING_SIZE)).halfLeading(true) // web phone: 14.4
                 .fontWeight(FontWeight.Medium)
-                .fontColor(cell.isToday ? toResourceColorWithAlpha(activeColors().ink, 0.9) : toResourceColor(activeColors().ink)) // web: today's heading is the dimmer one
+                .fontColor(cell.isToday ? toResourceColor(activeColors().accent) : toResourceColor(activeColors().ink)) // web: .calendar-day.is-today h3 is var(--accent)
               if (cell.isToday) {
                 Text(t('pages.calendar.today', 'Today')).fontFamily(nunitoAt(640, TODAY_TAG_SIZE))
                   .fontSize(TODAY_TAG_SIZE).lineHeight(webLineHeight(TODAY_TAG_SIZE)).halfLeading(true)
                   .fontWeight(FontWeight.Medium)
                   .letterSpacing((TODAY_TAG_LETTER_SPACING) + (!isTvMetrics() ? 0.338 : 0))
                   .textCase(TextCase.UpperCase)
-                  .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.9))
+                  .fontColor(toResourceColor(activeColors().accent))
+                  // web .calendar-today-tag: padding 0.1rem 0.5rem, 1px currentColor border, round
+                  .padding({ left: 8, right: 8, top: 1.6, bottom: 1.6 })
+                  .borderRadius(11)
+                  .border({ width: 1, color: toResourceColor(activeColors().accent) })
               }
             }
             .height(tv(WEEK_HEADING_HEIGHT))

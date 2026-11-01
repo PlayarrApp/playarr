@@ -12,6 +12,7 @@ sub playerChromeInit()
     m.pcMenuIndex = 0
     m.pcBuilt = false
     m.pcFocus = "play"
+    m.pcKeyed = false
     m.pcPanel = ""
     m.pcSubChosen = invalid
     m.audioStreamIndex = invalid
@@ -50,6 +51,7 @@ sub playerChromeBuild()
     scrim.height = 518.4
     ThemeSetRole(scrim, "playerScrim")
     scrim.blendColor = ThemeColor("playerScrim")
+    pgTag(scrim, "container", 0)
     g.insertChild(scrim, 0)
     ' Parity captures only: the Roku screenshot omits the video plane, so the static clip's 2 s frame stands in behind the controls.
     if m.global.parityArtEnabled = true
@@ -64,12 +66,12 @@ sub playerChromeBuild()
     m.pcThumb = pgRound(g, 121.8, 928.5, 15, 15, 7, "brand")
     pgTag(m.pcThumb, "container", 7)
     m.pcPrev = pgIcon(g, 92, 980, 20, "player-prev.png", "playerInk")
-    m.pcPlayBg = pgRound(g, 147.6, 958, 64, 64, 32, "playerButton")
+    m.pcPlayBg = pcRound64(g, 147.6, 958, "playerButton")
     m.pcPlay = pgIcon(g, 169.6, 980, 20, "player-pause.png", "playerInk")
     m.pcNext = pgIcon(g, 247.2, 980, 20, "player-next.png", "playerInk")
-    m.pcTimeNow = pgLabel(g, 302.8, 981.8, 0, 16, "0:00", 11, 400, "playerInk")
-    m.pcTimeSep = pgLabel(g, 330.4, 981.8, 0, 16, "/", 11, 400, "playerSeparator")
-    m.pcTimeEnd = pgLabel(g, 339.1, 981.8, 0, 16, "0:00", 11, 400, "playerInk")
+    m.pcTimeNow = pgLabel(g, 302.8, 981.8, 0, 16, "0:00", 10.88, 400, "playerInk")
+    m.pcTimeSep = pgLabel(g, 330.4, 981.8, 0, 16, "/", 10.88, 400, "playerSeparator")
+    m.pcTimeEnd = pgLabel(g, 339.1, 981.8, 0, 16, "0:00", 10.88, 400, "playerInk")
 
     ' Quality pill (.player-quality-button): HD glyph and the current quality.
     ' Transparent at rest like web; the fill shows with focus (web hover and expanded).
@@ -90,16 +92,22 @@ sub playerChromeBuild()
     minPill.id = "a11y|button|999|Minimise player"
     A11yStamp(minPill, true)
     pcFullRound(g, 1678, 37.8, 124, 48, "playerInk", 71, true)
-    pgIcon(g, 1702, 51.8, 20, "player-minimise.png", "playerInk")
+    pgIcon(g, 1701.6, 51.8, 20, "player-minimise.png", "playerInk")
     pgLabel(g, 1730, 53.8, 66, 16, "Minimise", 11.2, 700, "playerInk")
     closePill = pcFullRound(g, 1814, 37.8, 48, 48, "playerPill", -1, false)
     closePill.id = "a11y|button|999|Close player"
     A11yStamp(closePill, true)
     pcFullRound(g, 1814, 37.8, 48, 48, "playerInk", 71, true)
-    pgIcon(g, 1829, 52.8, 18, "player-close.png", "playerInk")
+    closeIcon = CreateObject("roSGNode", "Poster")
+    closeIcon.uri = "pkg:/images/player-close-top.png"
+    closeIcon.translation = [1831, 50.8]
+    closeIcon.width = 14
+    closeIcon.height = 22
+    closeIcon.blendColor = ThemeColor("playerInk")
+    ThemeSetRole(closeIcon, "playerInk")
+    g.AppendChild(closeIcon)
 
-    ' Control semantics (web order); a control without a drawn box gets a transparent Rectangle at its box.
-    ' The seek bar is its track, as drawn (the slider role names the real 6 px track node).
+    ' Control semantics (web order). The seek slider is the real 6 px track (the node the fill and thumb ride on), not a larger box.
     m.playerProgressTrack.id = "a11y|slider|0|Seek"
     m.pcPlayBg.id = "a11y|button|50|Play"
     A11yStamp(m.pcPlayBg, true)
@@ -125,6 +133,21 @@ sub playerChromeBuild()
 end sub
 
 ' A fully rounded 48 px pill: pgRound drops to the 12 px corner under 49 px, which would square the top-right buttons off.
+' A 64 px circle drawn with the 32 px corner mask (pgRound has no mask above 25 px).
+function pcRound64(parent as Object, x as Float, y as Float, role as String) as Object
+    poster = CreateObject("roSGNode", "Poster")
+    poster.uri = "pkg:/images/round-r32.9.png"
+    poster.translation = [x, y]
+    poster.width = 64
+    poster.height = 64
+    poster.blendColor = ThemeColor(role)
+    ThemeSetRole(poster, role)
+    poster.id = "a11y|fill|32|"
+    A11yStamp(poster, true)
+    parent.AppendChild(poster)
+    return poster
+end function
+
 function pcFullRound(parent as Object, x as Float, y as Float, w as Float, h as Float, role as String, alpha as Integer, outline as Boolean) as Object
     poster = CreateObject("roSGNode", "Poster")
     name = "round"
@@ -145,9 +168,9 @@ sub playerChromeUpdate(position as Dynamic, duration as Dynamic, fraction as Flo
     m.pcThumb.translation = [70 + 1780 * fraction - 7.5, 928.5]
     m.pcTimeNow.text = formatPlaybackTime(position)
     m.pcTimeEnd.text = formatPlaybackTime(duration)
-    sepX = 302.8 + m.pcTimeNow.boundingRect().width + 5
+    sepX = 302.8 + m.pcTimeNow.boundingRect().width + 5.6
     m.pcTimeSep.translation = [sepX, 981.8]
-    m.pcTimeEnd.translation = [sepX + 8.7, 981.8]
+    m.pcTimeEnd.translation = [sepX + 8.67, 981.8]
     m.pcPlay.uri = "pkg:/images/player-pause.png"
     m.pcPlayBg.id = "a11y|button|50|Pause"
     ' A held pause shows Play even while the pipeline re-buffers on the held frame.
@@ -157,7 +180,7 @@ sub playerChromeUpdate(position as Dynamic, duration as Dynamic, fraction as Flo
     end if
     A11yStamp(m.pcPlayBg, true)
     m.pcQualityText.text = playerQualityButtonLabel()
-    m.pcQualityMark.id = "a11y|button|999|Quality: " + m.pcQualityText.text
+    m.pcQualityMark.id = "hit|button|999|Quality: " + m.pcQualityText.text
     glyph = "HD"
     if m.qualityPref <> invalid and Left(m.qualityPref, 2) = "SD" then glyph = "SD"
     m.pcQualityGlyph.text = glyph
@@ -218,6 +241,8 @@ sub playerChromeFocusDraw(fraction as Float)
     big = m.pcFocus = "seek"
     ring.visible = false
     m.pcQualityBg.visible = m.pcFocus = "quality"
+    ' Web: the seek thumb and the focus ring show only once the viewer drives the bar (hover or keyboard focus), not on a bar left idle.
+    m.pcThumb.visible = big
     m.pcThumb.width = 15
     m.pcThumb.height = 15
     m.pcThumb.translation = [70 + 1780 * fraction - 7.5, 928.5]
@@ -240,7 +265,7 @@ sub playerChromeFocusDraw(fraction as Float)
             ring.translation = [item.x - 4, item.y - 4]
             ring.width = item.w + 8
             ring.height = item.h + 8
-            ring.visible = not m.pcMenuOpen
+            ring.visible = not m.pcMenuOpen and m.pcKeyed = true
             return
         end if
     end for
@@ -262,6 +287,7 @@ function playerChromeKey(key as String) as Boolean
         if key = "OK" then togglePlayPause()
         return true
     end if
+    m.pcKeyed = true
     if m.pcFocus = "seek"
         if key = "left" then seekPlayback(-10)
         if key = "right" then seekPlayback(10)

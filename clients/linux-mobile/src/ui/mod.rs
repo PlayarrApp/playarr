@@ -1,6 +1,7 @@
 //! GTK/libadwaita user interface. Pages: link (sign-in), profiles, then the signed-in shell.
 mod actions;
 pub mod calendar;
+pub mod calendar_link;
 pub mod cards;
 pub mod detail;
 pub mod downloads;
@@ -157,7 +158,11 @@ impl App {
                 me.watch
                     .replace(progress.into_iter().map(|p| (p.work_id, p.state)).collect());
                 let (pages, nav_bar) = shell::build(me.clone(), client, imgs, preset);
-                let root = adw::NavigationPage::builder().title("Playarr").child(&pages).build();
+                let root = adw::NavigationPage::builder()
+                    .accessible_role(gtk4::AccessibleRole::Generic)
+                    .title("Playarr")
+                    .child(&pages)
+                    .build();
                 me.nav.replace(&[root]);
                 me.show("shell", &me.nav);
                 me.layer.add_overlay(&nav_bar);
@@ -202,18 +207,29 @@ impl App {
         let view = adw::ToolbarView::new();
         view.add_top_bar(&bar);
         view.set_content(Some(child));
-        self.nav
-            .push(&adw::NavigationPage::builder().title(title).child(&view).build());
+        self.nav.push(
+            &adw::NavigationPage::builder()
+                .accessible_role(gtk4::AccessibleRole::Generic)
+                .title(title)
+                .child(&view)
+                .build(),
+        );
     }
 
     /// Pushes a page that draws its own chrome (the player).
     pub fn push_bare(&self, title: &str, child: &impl IsA<gtk4::Widget>) {
-        self.nav
-            .push(&adw::NavigationPage::builder().title(title).child(child).build());
+        self.nav.push(
+            &adw::NavigationPage::builder()
+                .accessible_role(gtk4::AccessibleRole::Generic)
+                .title(title)
+                .child(child)
+                .build(),
+        );
     }
 
     pub fn push_profiles(self: &Rc<Self>, client: Client) {
         let page = adw::NavigationPage::builder()
+            .accessible_role(gtk4::AccessibleRole::Generic)
             .title("Profiles")
             .tag("profiles")
             .child(&profiles::build(self.clone(), client, true))
@@ -253,6 +269,7 @@ impl App {
             self.proxy.replace(crate::proxy::Proxy::start(client.clone()).ok());
         }
         let page = adw::NavigationPage::builder()
+            .accessible_role(gtk4::AccessibleRole::Generic)
             .title(&req.title)
             .tag("player")
             .child(&player::build(self.clone(), client, req))
@@ -326,7 +343,14 @@ impl App {
                 .build(),
         ));
         // The web's dialog carries no label of its own.
-        crate::layout::name(&close, if filters { "Close filters" } else { "Close" });
+        crate::layout::name(
+            &close,
+            if filters || title == "Calendar link" {
+                "Close filters"
+            } else {
+                "Close"
+            },
+        );
 
         let me = self.clone();
         close.connect_clicked(move |_| me.close_panel());
@@ -402,6 +426,10 @@ impl App {
             "calendar-agenda" | "calendar-week" | "calendar-month" => {
                 select("calendar");
                 self.hook("calendar-view", name.trim_start_matches("calendar-"));
+            }
+            "calendar-link" => {
+                select("calendar");
+                calendar_link::show(self, &client);
             }
             "filters" => {
                 select("movies");
@@ -500,6 +528,25 @@ impl App {
                 if let Some(iso) = text.strip_prefix("parityNow=") {
                     // Pins the app's own clock (calendar today, entry times) and stops it ticking.
                     PARITY_NOW.with(|n| *n.borrow_mut() = Some(iso.to_string()));
+                } else if text == "repaint" {
+                    // Invalidates the whole surface so the next frame is drawn in full: a partial redraw can blur a
+                    // shadow a few pixels differently from a full one, which makes captures depend on the redraw history.
+                    // Drawn three times: the first draw of a blurred shadow differs by a level in a pixel or two from one
+                    // taken from the renderer's cache, so a capture waits for the cached form.
+                    let redraw = {
+                        let window = me.window.clone();
+                        move || {
+                            if let Some(surface) = window.surface() {
+                                surface.queue_render();
+                            }
+                            window.queue_draw();
+                        }
+                    };
+                    redraw();
+                    for ms in [300, 700] {
+                        let redraw = redraw.clone();
+                        gtk4::glib::timeout_add_local_once(std::time::Duration::from_millis(ms), redraw);
+                    }
                 } else if let Some(spec) = text.strip_prefix("layout:") {
                     // layout:<screen>:<output file>; exports the widget tree without touching the screen.
                     if let Some((screen, file)) = spec.split_once(':') {
@@ -576,7 +623,10 @@ pub fn clock_pinned() -> bool {
 
 pub fn build_window(app: &adw::Application) {
     // The web draws the page body, the app container and the page as three nested fills; so do these widgets.
-    let stack = gtk4::Stack::builder().css_classes(["pa-app"]).build();
+    let stack = gtk4::Stack::builder()
+        .accessible_role(gtk4::AccessibleRole::Generic)
+        .css_classes(["pa-app"])
+        .build();
     let layer = gtk4::Overlay::builder().child(&stack).css_classes(["pa-body"]).build();
     let window = adw::ApplicationWindow::builder()
         .application(app)
@@ -588,7 +638,9 @@ pub fn build_window(app: &adw::Application) {
     let state = Rc::new(App {
         window: window.clone(),
         stack,
-        nav: adw::NavigationView::new(),
+        nav: adw::NavigationView::builder()
+            .accessible_role(gtk4::AccessibleRole::Generic)
+            .build(),
         client: RefCell::new(None),
         flow_generation: Arc::new(AtomicU64::new(0)),
         signout_pending: AtomicBool::new(false),

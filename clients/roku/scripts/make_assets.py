@@ -42,6 +42,7 @@ ICONS = {
     "player-audio": '<path d="M5 9.5v5h4l4.5 3.5V6L9 9.5z" fill="white" stroke="none"/><path d="M16.5 9a4.5 4.5 0 0 1 0 6"/><path d="M19 6.5a8 8 0 0 1 0 11"/>',
     "player-minimise": '<path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>',
     "player-close": '<path d="M6 6l12 12M18 6 6 18"/>',
+    "player-close-top": '<path d="M6 6l12 12M18 6 6 18"/>',
     "tile-filters": '<path d="M4 6h16M7 12h10m-7 6h4"/><circle cx="8" cy="6" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="12" cy="18" r="1.5"/>',
     "tile-bell": '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
     "arrow-left": '<path d="M19 12H5M11 6l-6 6 6 6"/>',
@@ -54,15 +55,16 @@ ICONS = {
 }
 
 
-def icon(name: str, size: int, stroke: float = 1.8) -> None:
+def icon(name: str, size: int, stroke: float = 1.8, height: int = 0) -> None:
+    height = height or size
     svg = (
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="{size}" height="{size}" fill="none" '
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="{size}" height="{height}" fill="none" '
         f'stroke="white" stroke-width="{stroke}" stroke-linecap="round" stroke-linejoin="round">{ICONS[name]}</svg>'
     )
     with tempfile.TemporaryDirectory() as tmp:
         src = Path(tmp) / "i.svg"
         src.write_text(svg)
-        subprocess.run(["rsvg-convert", "-w", str(size), "-h", str(size), "-o", str(IMAGES / f"{name}.png"), str(src)], check=True)
+        subprocess.run(["rsvg-convert", "-w", str(size), "-h", str(height), "-o", str(IMAGES / f"{name}.png"), str(src)], check=True)
 
 
 def rounded(w: int, h: int, r: float, alpha: int = 255, outline: float = 0) -> Image.Image:
@@ -90,6 +92,19 @@ def nine_patch(name: str, r: int, outline: float = 0) -> None:
     px = img.load()
     px[r + 1, 0] = (0, 0, 0, 255)  # stretch marker, top
     px[0, r + 1] = (0, 0, 0, 255)  # stretch marker, left
+    img.save(IMAGES / f"{name}.9.png")
+
+
+def square_outline(name: str) -> None:
+    """A square 1 px outline as a 9-patch: one pixel corners and edges, the transparent centre stretches (a bordered box with no corner)."""
+    img = Image.new("RGBA", (5, 5), (0, 0, 0, 0))
+    px = img.load()
+    for i in range(3):
+        for j in range(3):
+            if i != 1 or j != 1:
+                px[i + 1, j + 1] = (255, 255, 255, 255)
+    px[2, 0] = (0, 0, 0, 255)
+    px[0, 2] = (0, 0, 0, 255)
     img.save(IMAGES / f"{name}.9.png")
 
 
@@ -131,11 +146,39 @@ SHARED_AVATARS = Path(__file__).resolve().parents[2] / "shared" / "profile-avata
 AVATAR_PRESETS = ("astronaut", "cat", "dinosaur", "robot", "pirate", "alien")
 
 
+def avatar_plates() -> None:
+    """Web draws the avatar as a 264 px gradient circle (container) holding a separate artwork picture. avatar-bg-<id>.png is the
+    plate without the artwork (the shared renderer's 145deg gradient and 34%/26% sheen); avatar-glyph-<id>.png is the artwork alone."""
+    import json
+    import numpy as np
+    spec = json.loads((SHARED_AVATARS / "presets.json").read_text(encoding="utf-8"))
+    size = 240
+    ys, xs = np.mgrid[0:size, 0:size].astype(np.float64) + 0.5
+    rad = np.radians(145)
+    dx, dy = np.sin(rad), -np.cos(rad)
+    length = size * (abs(dx) + abs(dy))
+    t = np.clip(((xs - size / 2) * dx + (ys - size / 2) * dy) / length + 0.5, 0, 1)
+    sheen = np.clip(1 - np.hypot(xs - size * 0.34, ys - size * 0.26) / (size * 0.2677), 0, 1) * 0.28
+    big = Image.new("L", (size * SS, size * SS), 0)
+    ImageDraw.Draw(big).ellipse((0, 0, size * SS - 1, size * SS - 1), fill=255)
+    alpha = big.resize((size, size), Image.LANCZOS)
+    for preset in spec["presets"]:
+        a = np.array([int(preset["start"][i:i + 2], 16) for i in (1, 3, 5)], dtype=np.float64)
+        b = np.array([int(preset["end"][i:i + 2], 16) for i in (1, 3, 5)], dtype=np.float64)
+        rgb = a[None, None, :] * (1 - t[..., None]) + b[None, None, :] * t[..., None]
+        rgb = rgb * (1 - sheen[..., None]) + 255 * sheen[..., None]
+        img = Image.fromarray(np.clip(rgb + 0.5, 0, 255).astype(np.uint8), "RGB").convert("RGBA")
+        img.putalpha(alpha)
+        img.save(IMAGES / f"avatar-bg-{preset['id']}.png")
+        shutil.copyfile(SHARED_AVATARS / "art" / f"{preset['id']}.png", IMAGES / f"avatar-glyph-{preset['id']}.png")
+
+
 def avatars() -> None:
     """The six preset avatars are the shared plates (clients/shared/profile-avatars, rendered from the web client's art), and
     avatar-mask.png is the circle a custom photo is clipped to (a MaskGroup mask: only its alpha counts)."""
     for preset in AVATAR_PRESETS:
         shutil.copyfile(SHARED_AVATARS / "plates" / f"{preset}.png", IMAGES / f"avatar-{preset}.png")
+    avatar_plates()
     size = 240
     big = Image.new("L", (size * SS, size * SS), 0)
     ImageDraw.Draw(big).ellipse((0, 0, size * SS - 1, size * SS - 1), fill=255)
@@ -452,16 +495,39 @@ def clients_grid_assets() -> None:
     mask_circle("clients-focus-ring.png", 230, stroke=3)
 
 
+def episode_wash() -> None:
+    """.tv-episode-art::after: linear-gradient(135deg, rgba(0,0,0,0.05), rgba(0,0,0,0.48)) over the 16:9 art box.
+
+    At 135deg the gradient position of a pixel is (x + y) / (w + h); the card art is always 16:9, so one bitmap is scaled to fit.
+    """
+    width, height = 320, 180
+    pixels = bytearray()
+    for y in range(height):
+        for x in range(width):
+            t = (x + 0.5 + y + 0.5) / (width + height)
+            pixels += bytes((0, 0, 0, round((0.05 + (0.48 - 0.05) * t) * 255)))
+    Image.frombytes("RGBA", (width, height), bytes(pixels)).save(IMAGES / "episode-wash.png")
+
+
 def main() -> None:
+    episode_wash()
+    Image.new("RGBA", (4, 4), (0, 0, 0, 0)).save(IMAGES / "clear.png")  # the search field draws its own pill
     avatars()
     profile_visual_assets()
     profile_signout_buttons()
     clients_grid_assets()
     for name in ICONS:
         icon(name, 40 if name == "icon-empty" else 20)
+    # The top-right close button's glyph is the web's 14 x 22 box (the X centred in it).
+    icon("player-close-top", 14, height=22)
     for r in (6, 12, 25):
         nine_patch(f"round-r{r}", r)
         nine_patch(f"round-outline-r{r}", r, 1.2)
+    square_outline("square-outline")  # the calendar month's day cells: 1 px border, no corner
+    nine_patch("round-r14", 14)  # the 14 px buttons and tiles (web --radius 0.875rem)
+    nine_patch("round-outline-r14", 14, 1.2)
+    nine_patch("round-r29", 29)  # the 58 px pills (calendar agenda actions): web's radius is half the height
+    nine_patch("round-outline-r29", 29, 1.2)
     nine_patch("round-r38", 38)
     nine_patch("round-outline-r38", 38, 1.2)  # the search pill
     nine_patch("round-r82", 82)

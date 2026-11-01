@@ -153,13 +153,14 @@ struct WorkDetailView: View {
                         .background(PlayarrStyle.surfaceStrong.opacity(0.7), in: Circle())
                         .overlay { Circle().stroke(PlayarrStyle.lineStrong, lineWidth: 1) }
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 .padding(.leading, phone ? 16 : max(102, proxy.size.width * 0.08))
                 .padding(.top, phone ? max(56, WM.safeTop + 6) : min(76, max(38, proxy.size.height * 0.062)))
                 }
             }
         }
-        .background(PlayarrStyle.surface.ignoresSafeArea())
+        .background(WMPageFill())
+        .parityFill(WM.page)
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
     }
@@ -227,13 +228,14 @@ struct WorkDetailView: View {
                             .brightness(scheme == .dark ? -0.4 : 0.1)
                             .frame(width: 0.52 * proxy.size.width - clearance, height: 1.06 * proxy.size.height)
                             .scaleEffect(1.04, anchor: UnitPoint(x: 0, y: 0.5))
-                            .opacity(scheme == .dark ? 0.72 : 0.24)
+                            .parityOpacity(scheme == .dark ? 0.72 : 0.24)
                             .mask(LinearGradient(stops: [.init(color: .black, location: 0.72), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
+                            .parityFade(.horizontal) { _ -> [Gradient.Stop] in [Gradient.Stop(color: .black, location: 0.72), Gradient.Stop(color: .clear, location: 1)] }
                         LinearGradient(stops: [.init(color: PlayarrStyle.surface, location: 0), .init(color: .clear, location: 0.22)], startPoint: .leading, endPoint: .trailing)
                         LinearGradient(stops: [.init(color: PlayarrStyle.surface, location: 0), .init(color: .clear, location: 0.22), .init(color: .clear, location: 0.82), .init(color: PlayarrStyle.surface, location: 1)], startPoint: .bottom, endPoint: .top)
                     }
                     .frame(width: proxy.size.width - clearance, height: proxy.size.height, alignment: .topLeading)
-                    .clipped()
+                    .parityClipped()
                     .offset(x: clearance)
                     LinearGradient(
                         stops: [.init(color: PlayarrStyle.surface.opacity(0.94), location: 0), .init(color: PlayarrStyle.surface.opacity(0.9), location: 0.36), .init(color: .clear, location: 0.52)],
@@ -383,7 +385,7 @@ struct WorkDetailView: View {
                             } label: {
                                 PlayarrMediaCard(work: work, apiClient: apiClient, width: 126)
                             }
-                            .buttonStyle(.plain)
+                            .parityButtonStyle(.plain)
                         }
                     }
                 }
@@ -489,7 +491,7 @@ struct WorkDetailView: View {
                     } label: {
                         Label("Play", systemImage: "play.fill").frame(minWidth: 112)
                     }
-                    .buttonStyle(PlayarrPrimaryButtonStyle())
+                    .parityButtonStyle(PlayarrPrimaryButtonStyle())
 
                     DownloadTriggerButton(
                         candidates: [candidate(mediaFileID: mediaFileID, title: detail.work.title, subtitle: nil)],
@@ -579,11 +581,11 @@ struct WorkDetailView: View {
                         Button { showingTabletDownload = true } label: {
                             tabletSeriesActionLabel("Download", systemImage: "arrow.down", tabletScale: tabletScale)
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         Button { showingTabletPlayback = true } label: {
                             tabletSeriesActionLabel("Playback", systemImage: "slider.horizontal.3", tabletScale: tabletScale)
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         NavigationLink {
                             PlayerView(
                                 apiClient: apiClient,
@@ -600,7 +602,7 @@ struct WorkDetailView: View {
                                 .background(PlayarrStyle.ink, in: Capsule())
                                 .foregroundStyle(PlayarrStyle.background)
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         .focused($playFocused)
                         .onAppear { playFocused = true }
                     }
@@ -612,7 +614,7 @@ struct WorkDetailView: View {
                                 tabletScale: tabletScale
                             )
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         Menu {
                             let availablePlaylists = writablePlaylists(for: work)
                             if availablePlaylists.isEmpty { Text("No playlists yet") }
@@ -678,7 +680,7 @@ struct WorkDetailView: View {
                                         .frame(width: 229 * tabletScale, alignment: .leading)
                                 }
                             }
-                            .buttonStyle(.plain)
+                            .parityButtonStyle(.plain)
                         }
                     }
                     .padding(.top, 26 * tabletScale)
@@ -741,7 +743,7 @@ struct WorkDetailView: View {
                                     }
                                 }
                             }
-                            .buttonStyle(.plain)
+                            .parityButtonStyle(.plain)
                         }
                     }
                     .padding(.top, 37 * tabletScale)
@@ -958,7 +960,7 @@ struct WorkDetailView: View {
                             .background(PlayarrStyle.ink, in: Capsule())
                             .foregroundStyle(PlayarrStyle.background)
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                     .disabled(!tabletResumePlanLoaded)
                     .opacity(!tabletResumePlanLoaded ? 0.55 : 1)
 
@@ -972,7 +974,7 @@ struct WorkDetailView: View {
                                 tabletScale: tabletScale
                             )
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         .disabled(watchlistBusy)
                     } else {
                         Button {
@@ -984,7 +986,7 @@ struct WorkDetailView: View {
                                 tabletScale: tabletScale
                             )
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         .disabled(watchlistBusy || !watchlistLoadFailed)
                     }
 
@@ -1256,7 +1258,7 @@ struct WorkDetailView: View {
                             }
                             .frame(width: 174, alignment: .leading)
                             .foregroundStyle(PlayarrStyle.ink)
-                            .scaleEffect(selectedAlbumID == album.album.id ? 1.06 : 0.88)
+                            .parityScale(selectedAlbumID == album.album.id ? 1.06 : 0.88)
                             .rotation3DEffect(
                                 .degrees(selectedAlbumID == album.album.id ? 0 : (album.album.id == albums.first?.album.id ? 10 : -10)),
                                 axis: (x: 0, y: 1, z: 0)
@@ -1264,7 +1266,7 @@ struct WorkDetailView: View {
                             .zIndex(selectedAlbumID == album.album.id ? Double(albums.count + 1) : Double(albums.count - index))
                             .animation(.snappy, value: selectedAlbumID)
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -1295,7 +1297,7 @@ struct WorkDetailView: View {
                                 subtitle: selected.album.title
                             )
                         } label: { Label("Play", systemImage: "play.fill") }
-                            .buttonStyle(PlayarrPrimaryButtonStyle())
+                            .parityButtonStyle(PlayarrPrimaryButtonStyle())
                     }
                     DownloadTriggerButton(
                         candidates: selected.tracks.compactMap { track in
@@ -1353,6 +1355,7 @@ struct WorkDetailView: View {
                         .font(DesignFont.font(12.567 * tabletScale, 610))
                         .tracking(-0.377 * tabletScale)
                         .foregroundStyle(PlayarrStyle.ink)
+                        .parityRenderedText(season.season.title ?? "Season \(season.season.seasonNumber)", role: "text", size: 12.567 * tabletScale, weight: 610, color: PlayarrStyle.ink)
                     Text("\(railEpisodes.count) episodes")
                         .wm(7.36 * tabletScale, 400, color: PlayarrStyle.muted, text: "\(railEpisodes.count) episodes")
                         .foregroundStyle(PlayarrStyle.muted)
@@ -1470,7 +1473,7 @@ struct WorkDetailView: View {
                         tabletScale: tabletScale
                     )
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 .focused(focusedEpisodeID, equals: detail.id)
                 .contextMenu {
                     Button("Download", systemImage: "arrow.down.circle") {
@@ -1494,7 +1497,7 @@ struct WorkDetailView: View {
                         tabletScale: tabletScale
                     )
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 .focused(focusedEpisodeID, equals: detail.id)
             }
         }
@@ -1560,7 +1563,7 @@ struct WorkDetailView: View {
                         lineWidth: tabletScale == nil ? (selected ? 3 : 1) : (selected ? 3 * scale : 0)
                     )
             }
-            .scaleEffect(selected && tabletScale != nil ? 1.025 : 1)
+            .parityScale(selected && tabletScale != nil ? 1.025 : 1)
             .shadow(color: .clear, radius: 0)
             if let tabletScale {
                 HStack(alignment: .firstTextBaseline, spacing: 8.8 * tabletScale) {
@@ -1589,6 +1592,8 @@ struct WorkDetailView: View {
         .contentShape(Rectangle())
         .offset(y: selected && tabletScale != nil ? -7 * scale : 0)
         .animation(.easeOut(duration: 0.24), value: selected)
+        // The tablet card is named from what it shows (number, code, title) every time, not from whichever parts have drawn yet.
+        .tabletEpisodeName(tabletScale != nil ? "\(String(format: "%02d", detail.episode.episodeNumber)), \(label), \(title)" : nil)
     }
 
     private func episodeArtworkSources(_ episode: EpisodeDetail, workID: UUID) -> [WMRemoteImage.Source] {
@@ -1640,7 +1645,7 @@ struct WorkDetailView: View {
                 .frame(minHeight: 52)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .contextMenu {
                 Button("Download", systemImage: "arrow.down.circle") {
                     downloadRepository.enqueue(
@@ -1671,7 +1676,7 @@ struct WorkDetailView: View {
             } label: {
                 rowLabel(title: title, subtitle: subtitle, playable: true)
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .contextMenu {
                 Button("Download", systemImage: "arrow.down.circle") {
                     downloadRepository.enqueue(
@@ -1872,10 +1877,21 @@ final class ParityMeasuredLabel: UILabel {
     func configure(backdrop: ParityBackdrop, environment: EnvironmentValues, paint: ParityPaint, inCover: Bool) {
         self.backdrop = backdrop; self.environment = environment; self.paint = paint; self.inCover = inCover
         accessibilityTraits.insert(.header)
+        // The visibility probe hides this label's own view (its opacity is not a SwiftUI modifier it could read).
+        let hidingID = id
+        MainActor.assumeIsolated {
+            ParityHide.shared.hooks[hidingID] = { [weak self] in self?.alpha = ParityHide.shared.ids.contains(hidingID) ? 0 : 1 }
+        }
         setNeedsDisplay()
     }
 
-    func retire() { MainActor.assumeIsolated { ParityLayoutRegistry.shared.remove(id) } }
+    func retire() {
+        let hidingID = id
+        MainActor.assumeIsolated {
+            ParityHide.shared.hooks[hidingID] = nil
+            ParityLayoutRegistry.shared.remove(hidingID)
+        }
+    }
 
     override func drawText(in rect: CGRect) {
         guard let attributed = attributedText, rect.width > 0 else { super.drawText(in: rect); return }
@@ -1908,9 +1924,9 @@ final class ParityMeasuredLabel: UILabel {
             guard let font = attributes[.font] as? UIFont else { return }
             let raise = (attributes[.baselineOffset] as? CGFloat) ?? 0
             let used = manager.boundingRect(forGlyphRange: shown, in: container)
-            let baseline = origin.y + fragment.minY + manager.location(forGlyphAt: glyphs.location).y - raise
-            let local = CGRect(x: origin.x + used.minX, y: baseline - font.ascender, width: used.width, height: font.ascender - font.descender)
-            let rect = self.paint.drawn(self.convert(local, to: nil))
+            // The line's box as TextKit returns it for the glyphs drawn (its own vertical extent, not font metrics).
+            let local = CGRect(x: origin.x + used.minX, y: origin.y + used.minY - raise, width: used.width, height: used.height)
+            let rect = self.convert(local, to: nil)
             guard !line.isEmpty, let opacity = self.paint.effective(rect) else { return }
             let colour = ((attributes[.foregroundColor] as? UIColor) ?? .label).resolvedColor(with: self.traitCollection)
             var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
@@ -1930,3 +1946,14 @@ final class ParityMeasuredLabel: UILabel {
     }
 }
 #endif
+
+private extension View {
+    @ViewBuilder
+    func tabletEpisodeName(_ name: String?) -> some View {
+        if let name {
+            accessibilityElement(children: .ignore).accessibilityLabel(name)
+        } else {
+            self
+        }
+    }
+}

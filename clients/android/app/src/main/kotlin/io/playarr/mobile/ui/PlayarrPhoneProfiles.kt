@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,7 +25,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import io.playarr.shared.designsystem.page.Surface
-import androidx.compose.material3.Text
+import io.playarr.shared.designsystem.page.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,7 +67,7 @@ internal fun BoxScope.PhoneProfilesChrome() {
     ) {
         Icon(
             painter = painterResource(R.drawable.playarr_mark),
-            contentDescription = "Playarr",
+            contentDescription = null,
             tint = Color.Unspecified,
             modifier = Modifier.size(30.dp).parityBox("image"),
         )
@@ -100,8 +101,8 @@ internal fun PhoneProfilesHeading(kicker: String, title: String) {
             Text(
                 title,
                 color = WebInk, fontSize = 42.9.sp, lineHeight = 40.755.sp, fontWeight = FontWeight.Medium,
-                letterSpacing = (-3.0888).sp, textAlign = TextAlign.Center, style = WebTextStyle, maxLines = 1, softWrap = false,
-                modifier = Modifier.wrapContentHeight(align = Alignment.Top, unbounded = true).offset(y = (-10).dp).semantics { heading() },
+                letterSpacing = (-3.0888).sp, style = WebTextStyle, maxLines = 1, softWrap = false,
+                modifier = Modifier.wrapContentSize(align = Alignment.TopCenter, unbounded = true).semantics { heading() },
             )
         }
     }
@@ -109,6 +110,11 @@ internal fun PhoneProfilesHeading(kicker: String, title: String) {
 
 /** The web `--line-strong` at 66%: the 1 px ring of an avatar plate. */
 private val PlateBorder: Color get() = WebPillBorder
+
+/** Web phone `.profiles-row` top below the status inset: 150 px of heading block plus 18 px of padding. */
+internal const val PHONE_PROFILES_ROW_TOP_CSS = 168f
+/** `.profile-avatar-button`: 156 avatar, 8.8 gap, 19.68 name line, 8.8 gap, 10.08 status line. */
+internal const val PHONE_PROFILE_CHOICE_HEIGHT_CSS = 156f + 8.8f + 19.68f + 8.8f + 10.08f
 
 /** `.profile-choice` for a profile: avatar, name, status and, when selected, the settings and sign-out pills. */
 @Composable
@@ -128,10 +134,11 @@ internal fun PhoneProfileChoice(
         if (profile.isCurrent) PlayarrString.ProfilesAvatarLabelCurrent else PlayarrString.ProfilesAvatarLabel,
         "name" to profile.displayName,
     )
-    Column(Modifier.width(156.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Column(
+    val rowTop = webPhoneInsets().asPaddingValues().calculateTopPadding().value + PHONE_PROFILES_ROW_TOP_CSS
+    WebCssLayout(rowTop, listOf(0f, PHONE_PROFILE_CHOICE_HEIGHT_CSS + 20f), listOf(PHONE_PROFILE_CHOICE_HEIGHT_CSS, 44f), 0f) {
+        WebCssLayout(
+            rowTop, listOf(0f, 156f + 8.8f, 156f + 8.8f + 19.68f + 8.8f), listOf(156f, 19.68f, 10.08f), 0f,
             Modifier
-                .fillMaxWidth()
                 .graphicsLayer {
                     if (selected) {
                         translationY = -8.dp.toPx()
@@ -139,10 +146,7 @@ internal fun PhoneProfileChoice(
                         scaleY = 1.045f
                     }
                 }
-                
                 .clickable(enabled = enabled, onClick = onClick, role = androidx.compose.ui.semantics.Role.Button),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.8.dp),
         ) {
             PhoneProfileAvatarPlate(selected, Modifier.semantics { contentDescription = avatarDescription }) {
                 PlayarrProfileAvatar(userId = profile.id, preference = avatar, modifier = Modifier.fillMaxSize().parityBox("container", radius = 999f), artworkModifier = Modifier.parityBox("image"), artworkInset = 1.dp)
@@ -151,9 +155,9 @@ internal fun PhoneProfileChoice(
                 profile.displayName,
                 color = if (selected) WebInk else WebInkSoft, fontSize = 13.12.sp, lineHeight = 19.68.sp, fontWeight = FontWeight(680),
                 style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().offset(y = (-0.3).dp),
+                modifier = Modifier.fillMaxWidth(),
             )
-            Text(
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) { Text(
                 playarrString(
                     when {
                         switching -> PlayarrString.ProfilesStatusSwitching
@@ -163,13 +167,13 @@ internal fun PhoneProfileChoice(
                     },
                 ).uppercase(LocalPlayarrLanguage.current.locale),
                 color = WebInkMuted, fontSize = 6.72.sp, lineHeight = 10.08.sp, fontWeight = FontWeight(690),
-                letterSpacing = 0.3024.sp, style = WebTextStyle, maxLines = 1, modifier = Modifier.offset(y = (-0.33).dp),
-            )
+                letterSpacing = 0.3024.sp, style = WebTextStyle, maxLines = 1, modifier = Modifier,
+            ) }
         }
         if (selected) androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalMinimumInteractiveComponentSize provides androidx.compose.ui.unit.Dp.Unspecified) {
             Row(
-                Modifier.padding(top = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.8.dp),
+                Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(8.8.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 val settingsName = playarrString(PlayarrString.ProfilesSettingsFor, "name" to profile.displayName)
@@ -177,13 +181,13 @@ internal fun PhoneProfileChoice(
                 Surface(
                     onClick = onSettings, enabled = enabled, shape = CircleShape,
                     color = WebSurfaceStrong.copy(alpha = 0.64f), border = BorderStroke(1.dp, WebPillBorder),
-                    modifier = Modifier.size(44.dp).parityShape(999f),
+                    modifier = Modifier.size(44.dp).parityShape(999f).semantics { contentDescription = settingsName },
                 ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { ProfilesSettingsIcon(ProfilesBrandRose, Modifier.parityBox("image")) } }
                 onSignOut?.let { action ->
                     Surface(
                         onClick = action, enabled = enabled, shape = CircleShape,
                         color = WebSurfaceStrong.copy(alpha = 0.64f), border = BorderStroke(1.dp, WebPillBorder),
-                        modifier = Modifier.height(44.dp).parityShape(999f),
+                        modifier = Modifier.height(44.dp).parityShape(999f).semantics { contentDescription = signOutName },
                     ) {
                         Row(
                             Modifier.padding(horizontal = 17.dp),
@@ -207,10 +211,12 @@ internal fun PhoneProfileChoice(
 /** `.profile-add`: the dashed rose plate with a plus. */
 @Composable
 internal fun PhoneAddProfileChoice(selected: Boolean, enabled: Boolean, onFocus: () -> Unit, onClick: () -> Unit) {
-    Column(Modifier.width(156.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Column(
+    val rowTop = webPhoneInsets().asPaddingValues().calculateTopPadding().value + PHONE_PROFILES_ROW_TOP_CSS
+    val addName = playarrString(PlayarrString.ProfilesSignIn) + " " + playarrString(PlayarrString.ProfilesAddAnother)
+    WebCssLayout(rowTop, listOf(0f), listOf(PHONE_PROFILE_CHOICE_HEIGHT_CSS), 0f) {
+        WebCssLayout(
+            rowTop, listOf(0f, 156f + 8.8f, 156f + 8.8f + 19.68f + 8.8f), listOf(156f, 19.68f, 10.08f), 0f,
             Modifier
-                .fillMaxWidth()
                 .graphicsLayer {
                     if (selected) {
                         translationY = -8.dp.toPx()
@@ -218,26 +224,24 @@ internal fun PhoneAddProfileChoice(selected: Boolean, enabled: Boolean, onFocus:
                         scaleY = 1.045f
                     }
                 }
-                
-                .clickable(enabled = enabled, onClick = onClick, role = androidx.compose.ui.semantics.Role.Button),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.8.dp),
+                .clickable(enabled = enabled, onClick = onClick, role = androidx.compose.ui.semantics.Role.Button)
+                .semantics { contentDescription = addName },
         ) {
             PhoneProfileAvatarPlate(selected, Modifier, dashed = true) {
-                Box(Modifier.fillMaxSize().parityBox("container", radius = 999f), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("+", color = WebInkSoft, fontSize = 38.4.sp, lineHeight = 57.6.sp, fontWeight = FontWeight(300), style = WebTextStyle, modifier = Modifier)
                 }
             }
             Text(
                 playarrString(PlayarrString.ProfilesSignIn),
                 color = if (selected) WebInk else WebInkSoft, fontSize = 13.12.sp, lineHeight = 19.68.sp, fontWeight = FontWeight(680),
-                style = WebTextStyle, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().offset(y = (-0.3).dp),
+                style = WebTextStyle, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
             )
-            Text(
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) { Text(
                 playarrString(PlayarrString.ProfilesAddAnother).uppercase(LocalPlayarrLanguage.current.locale),
                 color = WebInkMuted, fontSize = 6.72.sp, lineHeight = 10.08.sp, fontWeight = FontWeight(690),
-                letterSpacing = 0.3024.sp, style = WebTextStyle, maxLines = 1, modifier = Modifier.offset(y = (-0.33).dp),
-            )
+                letterSpacing = 0.3024.sp, style = WebTextStyle, maxLines = 1, modifier = Modifier,
+            ) }
         }
     }
 }
@@ -266,8 +270,10 @@ private fun PhoneProfileAvatarPlate(
         innerModifier = Modifier
             .then(
                 if (dashed) {
+                    // The plate's own node paints the gradient, so it is the exported container.
                     Modifier
-                        .background(Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)))
+                        .parityBox("container", radius = 999f)
+                        .background(Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)), CircleShape)
                         .drawBehind {
                             val css = Math.toRadians(145.0)
                             val dx = Math.sin(css).toFloat()

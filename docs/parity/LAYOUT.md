@@ -41,7 +41,7 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
   subtree that paints (an image/video/canvas/svg, or a background of alpha 0.5 or more, a background image, or a backdrop filter,
   looking up to the common ancestor). Transparent click layers and `pointer-events: none` elements never occlude. A partly covered
   element stays. The document counts what it dropped as `occluded`; `layout-score.mjs` prints it, so a drawer screen shows a
-  non-zero count and a screen without an overlay shows 0. A native video plane that the platform composites above the browser (the Samsung emulator's AVPlay `<object>`, whose rect the app syncs to the player shell) is passed to the dumper as `opaquePlanes`: points inside its rect count as covered. Device documents carry `occluded` too.
+  non-zero count and a screen without an overlay shows 0. A native video plane that the platform composites above the browser (the Samsung emulator's AVPlay `<object>`, whose rect the app syncs to the player shell) is passed to the dumper as `opaquePlanes`: points inside its rect count as covered. Device documents carry `occluded` too. The iOS exporter decides visibility on the rendered screen: once its snapshot is stable it hides each element's own view (`parityLayout`, rendered text and `parityButtonStyle` controls honour a parity-only hide set), renders the window again and keeps the element only if pixels change inside its frame (pixels that change between two untouched renders are ignored). An element with no view to hide is left out of the export and counted in `occluded`.
 - Text colour: the exporter reads `-webkit-text-fill-color` (which defaults to `color`). Fully transparent text (loading skeleton
   lines use `color: transparent` over a painted bar) is not text: the element exports as a container with its background and no
   text, font or colour. Text clipped to a gradient (`background-clip: text`) reports the gradient's first stop colour and
@@ -53,6 +53,11 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
   the zoom product. A shell that scales with a `transform` (VIDAA) reports rects in stage px already, so font sizes stay unscaled
   there too. Native exporters report the CSS-px size the rendered glyphs have (for example Qt `pixelSize` divided by the window
   scale), never the raw device px. A heading of 15.23 px on web is 15.23, not 16: the web value is the truth.
+  A focus scale (a `scale` transform on a focused control, for example the TV Play or Start pill at 1.06) is a drawn-size effect, not a
+  font size: the exporter may report the unscaled size only when it reads it from the node's own `fontSize` property, and it never derives
+  a size from the transform or from a web value. The rect still carries the transform. A native client must not compensate for this with
+  per-text letter spacing or offsets: a spacing value is kept only when it equals a web computed `letter-spacing` or follows from a named
+  font or metric difference, stated in a comment next to it.
 - `clockPinned` (device documents): the app's own clock was pinned to the fixture instant (see Freezing).
 
 Layout refs: `<legend dir>/web/layout/<theme>/<screen>.json` for every ref group (`capture-refs.mjs` writes them with every capture;
@@ -64,8 +69,9 @@ Layout refs: `<legend dir>/web/layout/<theme>/<screen>.json` for every ref group
 
 Matching (deterministic, in web order): 1. normalised text and role, nearest rect; 2. same text, other role (a `role` failure);
 3. textless and volatile elements: same role, best overlap; 4. remaining elements: same role, best overlap (a `text` failure).
-Score = web elements matched and equal / scored web elements. Tolerances: each rect edge 1 px, colour and background CIE76 deltaE 2
-(translucent colours composited first), font size 0.5 px, weight 50, radius 1 px, opacity 0.05. Every failure lists the field,
+Score = web elements matched and equal / scored web elements. Zero tolerance (owner order, 31 Oct 2026): each rect edge must
+equal on the whole device pixel (`Math.round(px * dpr)`), colour and background must be identical 8-bit sRGB bytes after compositing
+translucent colours (deltaE is only reported), and font size, weight, radius and opacity must be strictly equal. Every failure lists the field,
 the web and device values, and the delta. Extra device elements are counted, not penalised.
 
 ## Per-client exclusions

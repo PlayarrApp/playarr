@@ -48,6 +48,8 @@ dark and light, no D-pad (dpadNA): `scripts/parity/harmony/run.sh <branch> <lege
 
 ### Android TV: the one-command run
 
+The layout export reads only the app's own paint and shaped text: the drawer fill is the app's `parityBackground`, the calendar pill is painted by its own Text node, run heights come from the paint `android.text.Layout` draws with (reflection on the internal compose text classes; the export fails when it is unavailable), and each layout request carries a fresh id that the export must echo.
+
 The Android TV emulator (`playarr_vnc_tv`) runs headless (`-no-window`, no X display, no VNC) as a user unit. Sign the app in to
 the static parity server once, then run everything (15 screens in both themes plus the 12 non-player D-pad checks, pinned clock
 `2026-10-07T12:00:00Z`) with:
@@ -68,7 +70,7 @@ Playing to about 2 s and pressing pause lands anywhere in a window, so the progr
 
 Harmony occlusion: no ArkUI, Inspector, `ComponentUtils` or UiTest API returns the topmost component at a screen point (UiTest finds by attribute, runs on a device, and the Previewer has no `hdc`), and `FrameNode.commonAttribute` does not re-render a declarative node. So the capture measures the rendered screen with an app-side hook: `patch_hide.py` (preview build only) gives every component a stable key (`.id('pvhN')`) and binds its visibility to an AppStorage string (`@StorageLink('pvHid')` per struct); `hide:<keys>` sets that string, so the declarative tree hides the nodes (layout kept) and re-renders. The exporter's geometry only flags elements that may be covered; `capture.py` hides each flagged key, checks the app reports the node `Visibility.Hidden`, takes a second screenshot and diffs the element's box exactly, minus the noise between two unchanged shots. Unchanged pixels mean the element is not drawn and it is dropped; any element that could not be measured (global builders have no key, hide not reported, screen unsettled) stays exported and is counted as `unmeasured`. A control text must change when hidden, or the probe is void. Results are saved as `layout-probe/<theme>/<screen>.json` and replayed by `layout_replay.py`. A screenshot is kept only if the screen is unchanged after the tree dump (a mismatch aborts the capture). `player-controls` is probed like every other screen; the preview build stops the buffering spinner (`enableLoading(false)`), the only moving pixels there, so its frame settles. A key is `pvhN.I`: the source call plus the struct instance (`pvNextInst`), repeated instances of one component are separate keys, and non-Text nodes repeat the key in `accessibilityDescription` because a later `.id()` (patch_state's `pcard`) replaces the id. The diff is strict: any R, G or B channel differing at all.
 
-Harmony limit: the Windows Previewer mocks AVPlayer, so the app never reaches a real paused 2.000 s. The preview build injects no position, pause state, quality label or surface swap; `player-controls` shows what the app itself lays out (position 0:00, no negotiated quality, the Previewer's own surface placeholder), and the capture log prints that state. Player-controls therefore stays below 100% on Harmony until a device or real player is available.
+Harmony limit: the Windows Previewer mocks AVPlayer, so the app never reaches a real paused 2.000 s. The preview build routes the player controller to a stand-in (`patch_player.py`, `PreviewPlayer.ets`) that lands on the pinned 2.000 s and stays paused, and replaces the surface XComponent by an empty Column so the app's black stage shows; position and pause state are the stand-in's, and the capture log prints what the page shows. The web ref for this screen is captured with the video picture hidden (`tv-harmony` group in `web-refs.json`), so only the chrome is compared. Player-controls therefore stays below 100% on Harmony until a device or real player is available. The deterministic web ref shows the fully buffered seek bar (grey 120 under the played part); the app does read and draw the platform player's buffered value (`AvPlayerController` `bufferingUpdate`, `Player.ets` `handleBufferingUpdate`, `PlayerChrome` `progressTrack` at alpha .34), but the stand-in raises no buffering event, so the Previewer draws the bare track (grey 51). That gap is a platform limit, not an app defect, and no fill is faked.
 
 ### Tizen native: the one-command run
 
@@ -77,7 +79,18 @@ parity server with the pinned clock (`2026-10-07T12:00:00Z`). Prerequisites: the
 (Xvfb, never a VNC server), the debug tpk (`clients/tizen-native/scripts/deploy.sh` with `PLAYARR_BUILD_ARGS=-p:PlayarrDebug=true`)
 installed and signed in as the static `parity` account (uninstall first for a fresh sign-in), `PARITY_LOCK_DIR` set to a scratch
 directory, and `PARITY_EMULATOR_LOCK` pointing at the flock file shared with the tizen-webos lane. Output is `<out>/dark`, `<out>/light`
-`<out>/dpad.json` (the screens run includes the ref-only `calendar-link` through `--extra-screens`) and the layout documents `<out>/layout/<theme>/<screen>.json` (docs/parity/LAYOUT.md; the debug mirror's `POST /layout` walks the NUI view tree, the driver writes it with every screenshot; `PARITY_NO_LAYOUT=1` skips it); point `<out>` at the legend's `tizen-native/dev`. Two back-to-back runs give byte-identical screens and layout documents. The layout export reads the live NUI tree only (view bounds with scale, clipping and occlusion, drawn colours, the labels' own text-layout line runs); it carries no web values.
+`<out>/dpad.json` (the screens run includes the ref-only `calendar-link` through `--extra-screens`) and the layout documents `<out>/layout/<theme>/<screen>.json` (docs/parity/LAYOUT.md; the debug mirror's `POST /layout` walks the NUI view tree, the driver writes it with every screenshot; `PARITY_NO_LAYOUT=1` skips it); point `<out>` at the legend's `tizen-native/dev`. Two back-to-back runs give byte-identical screens and layout documents. The layout export reads the live NUI tree only (view bounds with scale and clipping, drawn colours, the labels' own text-layout line runs); it carries no web values. Visibility is decided on the real emulator screen, never from geometry: the debug mirror lists the candidates (`POST /layout?cands=1`), the driver hides batches of non-touching candidates (`/hide`; a container that only paints loses just that paint, shown as opaque magenta; `/unhide` restores), grabs the screen again and keeps a candidate only when pixels inside its own box move by 16 levels or more, ignoring pixels that differ between two grabs of the unchanged screen (`scripts/parity/tizen-native/occlusion.mjs`). A second pass hides whole subtrees for painted containers that failed the first, so a card whose own fill sits under its poster still counts through the poster. Text run boxes add the label's letter spacing to each glyph's laid-out size (`TextGeometry` reports the size without it; the next glyph is placed at x + size + spacing), as the web's run boxes include it.
+
+**Tizen native: what is staged or approximate (disclosed, not hidden).**
+
+- Web refs swapped on 31 Oct 2026. The Tizen native refs are now the tv-webos user-agent packaged-bundle capture (`web-refs.json`), repeatable across three captures on one web build, Chromium and static server; they replace the earlier xbox-UA capture. The two differ only in the nav-rail shadow, by at most 6 levels per channel and about 1 level in green and blue, over roughly 28,000 pixels per light screen. The `.app-nav-group` rule is `box-shadow: 0 14px 42px #3826211a` in both bundles and the native rail uses those values, so nothing was tuned to the capture. Scored on the new refs, the previously published captures and the r10 captures are equal on every screen except player-controls, which rises.
+
+- Player stand-in frame. The player-controls capture does not carry the video plane, so the driver supplies the clip's paused frame and `PlayerScreen.ShowStandInFrame` puts it behind the controls as a plain image; the player does not decode it (the live root stays transparent for the video plane, so no black root is added for capture). The seek bar's buffered layer (web `.player-seek-buffered`, drawn from the video element's buffered ranges) is drawn from the Tizen player's `BufferingProgressChanged`, not a fixed segment; the web capture plays the whole clip first, so what it shows is full buffering and the native bar is only as wide as the player reports. The audio, subtitle and playlist buttons take their name, dimming and focusability from the playback info (audio and subtitle tracks, the selected ones) and the queue (the file being played); previous and next need a queue of more than one. The position shown is the decoder's, read back after the hold to exactly 2.000 s.
+- Player tools not wired. The quality button (the web shows it on Samsung) and the playlist button have no action yet: the native quality menu and queue panel are not built. They are drawn and focusable but their callbacks do nothing. Audio, subtitle, previous and next take their names, opacity and focus from the real PlaybackInfo tracks and queue. The audio button is enabled only for an HLS session with a track: a direct stream is one muxed source the Tizen player cannot switch tracks on, so it reads "Audio: Unavailable" and is dimmed, as the web capture does for the same clip.
+- Visibility is measured, but with limits. A candidate counts as visible only when pixels inside its own box change by 16 levels or more (`VISIBLE_DELTA`) when it is hidden, so a change below 16 levels (a very faint fill or shadow) reads as invisible. Candidates hidden together keep 3 px of clear space (`PAD`); a shadow or antialiased edge wider than that can bleed into a neighbour's box. Pixels that differ between two grabs of the unchanged screen are ignored, so a real change confined to such pixels is missed. A painted container that fails the first pass gets a second pass that hides its whole subtree, so a container whose fill sits entirely under its children counts as visible through them.
+- Transform limit. The exporter folds a view's `Scale` (about its centre unless `PositionUsesPivotPoint`) into the rect; it does not model rotation or any other transform, and a focus scale is left out of `fontSize` while the rect carries it (docs/parity/LAYOUT.md).
+- Background limit. Fills come from `BackgroundColor`, composited over the real backgrounds above them. A `BackgroundImage`, a gradient or a scrim image is not exported as a fill (generated gradients are treated as translucent and never hide what is under them), and an `ImageView` never reports a fill, so a native element that gets its look from an image has no `background` value.
+- An empty search `TextField` has no paint of its own, so the probe paints it opaque magenta while hidden; the colour is a probe marker and never reaches the export.
 
 ### Tizen and webOS: how the shared runs work
 
@@ -114,6 +127,32 @@ WEBOS_OUT=<legend dir>/webos scripts/parity/tizen-webos/run-webos.sh
 `WEBOS_DISPLAY` (default `:26`) and `WEBOS_CDP` (default `9226`) name the simulator's display and inspector port.
 Extra arguments go to `suite-run.mjs` (`--screens home,movies`, `--themes dark`).
 
+### Tizen 6.5 engine (Chromium 85)
+
+The Tizen web package's oldest supported engine is Tizen 6.5 (Chromium 85), which the Tizen 10 emulator above cannot exercise: it runs
+`:has()`, `aspect-ratio`, `:is()` and `inset` natively, so the legacy rewrites (`clients/tv-web/tooling/legacy-tv-css.mjs`,
+`legacy-aspect-ratio.mjs`, the `mirror.ts` translate fallback and the Vite target) never run there. The Tizen Studio repository has no TV 6.5
+emulator image (only Mobile, Wearable and IoT 6.5, and the TV 10 extension), and no real Tizen 6.5 TV is available, so the stand-in is a pinned
+Chromium 85 build (Chromium snapshot r782790, 85.0.4183.0) on its own Xvfb display with the Tizen 6.5 user agent, loading the built
+`apps/tv-tizen/dist`. `drivers/tizen-webos.mjs` runs it as `DEVICE=tizen65` (inspector keys and page evaluation like webOS, ImageMagick root grab,
+layout read from the real page). Software rasterising (no GPU) with one raster thread keeps twin runs identical.
+Run it with `scripts/parity/tizen-webos/run-tizen65.sh` (setup in its header); the legend row is "Samsung Tizen 6.5" (dir `tizen65`, cand `dev`).
+Player controls: stock Chromium has no H.264 and no AVPlay, so the driver injects `scripts/parity/tizen-webos/avplay-shim.js` (the AVPlay state
+machine over the clip's 60 s, no decoding) and the screen is scored with the video hidden on both sides: the web refs of the dir come from the
+group `tv-tizen65` of `web-refs.json` (`hideVideo`, the `tv-webos` platform bundle, `capture-refs.mjs --groups tv-tizen65 --screens player-controls --bak <name>`).
+Player D-pad: `playerReady` in the driver reads the AVPlay shim state (PLAYING past 0.5 s, controls up, focus on play/pause) before the first key, so the 12
+player checks run (`--player`) and are scored against `expected.static.json`. The shim decodes nothing and draws no native plane: this D-pad proves the
+focus and controls logic only, never decoding or playback. Status for the 2026-10-31 publish: player 11/12, player-right blocked on stale `expected.static.json` (it holds the Device Test truehd data, the static clip is aac; #637 regenerates it), so the published `dpad.json` keeps only the 12 non-player rows. The lane's `build.json` records that as `"player": "avplay-shim", "decoding": false`.
+The capture waits for the Downloads item of the nav rail, which the app adds once its capability probe resolves.
+Legacy Tizen app layout adjustment to match web line boxes (not engine rounding): Chromium 85 truncates fractional line heights to whole pixels
+(21.84 px lays out 21), so wrapped text and every block below it sit 1 to 2 px higher than on the web. `apps/tv-tizen/src/tizen.css` therefore carries
+app CSS behind `@supports not (aspect-ratio: 1)` (Chromium below 88) for the filter drawer, the detail meta row and kicker and the media rail count
+line: a half pixel more on the line height, or the dropped fraction put back as padding or margin at 1920 px. The same gate also rounds the line height
+(`1.58em + 0.5px`) of the clamped Home synopsis and the preview overview, which lays the wrapped lines and the buttons below them 1.26 px higher on Chromium 85 than on the web. The package, not the engine, draws the web line
+boxes; the engine still truncates. Without it filters, actions and both detail pages score 72 to 88, with it 98 to 100. The old `legacy-tv-css.mjs` line-height rewrite is removed.
+Webos and Tizen 7 fail the gate, so their layouts are unchanged.
+Chromium 94 (snapshot 94.0.4606.0) keeps the fraction (21.83 px for 21.84), so webOS and Tizen 7 need no rounding.
+
 ### Tizen web package: debug build on the emulator
 
 The Tizen web run has its own emulator instance (a qcow2 overlay on the clean TV image, own VM name, own Xvfb display, own
@@ -126,6 +165,23 @@ python3 scripts/parity/tizen-webos/logserver.py <netlog dir>/log.txt &      # ho
 PARITY_NETLOG=<netlog dir> node scripts/parity/tizen-webos/signin-tizen.mjs   # once per install
 TIZEN_OUT=<legend dir>/tizen PARITY_NETLOG=<netlog dir> scripts/parity/tizen-webos/run-tizen.sh
 ```
+
+### Chromium stand-in raster mode
+
+The Tizen 6.5 row (Chromium 85, cand `tizen65`) runs the emulated web bundle in a Chromium 85 build started by
+`scripts/parity/tizen-webos/launch-chromium.sh` (`CHROME_BIN`, `PROFILE_DIR`, `URL`, `DISPLAY`, optional `UA`; the webOS
+stand-in can reuse it with its own UA). The default is CPU raster (`--disable-gpu --num-raster-threads=1`), which is what
+the web references use (Chromium 151, software raster) and is byte-deterministic between twin runs.
+
+GPU raster over SwiftShader (`RASTER=gpu`: `--use-gl=swiftshader --ignore-gpu-blocklist --enable-gpu-rasterization`) was
+evaluated on 1 Nov 2026 and is not adopted. It changes the harness engine, not the app. Measured on Chromium 85 against the
+software-raster web refs: the `.tv-stage-wash` overlay renders the token colour exactly (the CPU path loses one level to
+the 8 bit quantisation of a premultiplied alpha gradient), and the Tizen 6.5 row rose from 73.65 to 78.57 (overall 43.86 to
+44.12); calendar-week (dark, light) and calendar-month (light) dipped. Two runs with this helper were byte-identical; a run
+made with an earlier hand-written launch line differed in 52 px of one screen. It stays opt-in because the adoption
+condition "real Tizen 6.5 TVs rasterise on the GPU" has no evidence: no Samsung or Chromium document states it for the
+web engine and no `chrome://gpu` output from a Tizen device exists. On webOS (Chromium 94) the same flags only cut the
+differing pixels from 65.9 % to 39.9 %. Revisit when device evidence exists.
 
 ### webOS documented exceptions (not chased)
 
@@ -161,9 +217,11 @@ this note.
 
 ### Roku player chrome: what is native and what is a platform limit
 
-The Roku bar follows the web order: previous, play, next, audio, subtitles, queue, quality, info. Subtitles use the Video node's caption tracks (the server's WebVTT sidecars), the queue lists the episodes or tracks of the title, and info shows the playback facts the Video node reports.
+The Roku bar follows the web order: previous, play, next, mute, audio, subtitles, queue, quality, info. Subtitles use the Video node's caption tracks (the server's WebVTT sidecars), the queue lists the episodes or tracks of the title, and info shows the playback facts the Video node reports.
 
-- **Volume.** Real platform limit: a channel cannot change or read the system volume; the remote's own volume keys drive the TV or receiver. No volume control is drawn.
+- **Mute.** Built: it toggles the Video node's own mute and names itself Mute or Unmute.
+- **Volume.** Real platform limit: a channel cannot change or read the system volume; the remote's own volume keys drive the TV or receiver. No volume slider is drawn.
+- **Fullscreen.** Real platform limit: a channel's video plane is always full screen, so there is nothing to enter or leave. No fullscreen button is drawn.
 - **Picture-in-picture.** Real platform limit: Roku has no PiP for a third-party video plane.
 - **Cast.** Real platform limit: a channel cannot start a cast session to another device; Roku is itself a cast target. No cast button is drawn.
 - **Audio track picker.** Built: it starts a replacement session at the same position that maps the chosen stream (`audio_stream_index`), as web does.
@@ -213,6 +271,20 @@ scripts/parity/sailfish/capture-legend.sh
 Set `PLAYARR_SF_SCRATCH` to an existing canonical directory outside and disjoint from the legend root, within the archive script's configured source roots, and outside any image-cleanup roots. The wrapper prepares the already-running VM, captures all 16 screens in both themes with the pinned clock, validates the committed capture source and guest QML/native executable before and after, then publishes the PNGs, the 32 layout documents and the capture metadata. It validates all 32 PNGs (dimensions, image integrity) and all 32 layout documents (one per screen and theme, no development fields) before changing the legend candidate, and preserves JSON history. `build.json` carries `layout_status: EXPORTER_AUDIT_PENDING`: the layout counts only after a CLEAN independent audit of the exporter. After a capture attempt, the wrapper archives first and runs cleanup only if archive succeeds. It removes only the 32 unchanged raw PNGs after publication and both maintenance steps succeed, retaining the run directory and all JSON. Failures retain raw captures and report whether publication happened. It records the guest native executable SHA separately; the capture-source commit does not identify the native binary build. `PLAYARR_SF_SSH_CONFIG` is passed to SSH-based helpers. Player-controls captures passed in both themes with the exact paused-position gate and completed busy-indicator fade. Calendar-link passed in both themes after its route telemetry fix. The focused NavBar home/movies run passed in both themes; its crop comparisons showed mixed pixel changes and do not establish parity.
 
 The layout exporter (`clients/sailfish/qml/components/LayoutDump.js`) reads only the laid-out app: each item's four transformed corners clipped by the viewport and clip ancestors, drawn colours (a gradient counts as a visible fill; a Rectangle border counts only when its pen differs from the default pen read from a fresh Rectangle), z order, the radius of the mask a masked layer is clipped to, and the content box of every Text item. The app lays out each displayed line as a Text item of its own (`FitText` breaks the text at spaces into the web's lines and puts the real ellipsis into the last line), and every line item is a natural-height label (`lineHeight` 1; the caller's line pitch only spaces the items, so a proportional or fixed line height never stands in for glyph height), so an item's box is Qt's `contentWidth` by `contentHeight` at its alignment: there is no font-metrics reconstruction and no second word wrapper in the exporter, which stops with an error on any Text that Qt wrapped (`lineCount` above 1) or elided (`truncated`) itself. Visibility is read from the rendered screen: the geometry only flags an element that a later painter may cover, then a parity hook (`ParityScreen`, C++, reached only from the layout step) hides that element's item (opacity 0, no binding touched), renders the window again and compares the element's visible box byte for byte; no change means covered (a second pair of renders with the covering painters hidden separates a covered element from one that is the colour of its backdrop, which stays). The count of covered elements is the document's `occluded`. Names and roles are the items' real `Accessible.name` and `Accessible.role` (read through the QML `Accessible` attached object and translated to the web's role words); there are no custom hint properties. Rounded pictures are clipped by a masked layer (the holder in `Artwork`, the card in the episode row), so the picture itself exports without a radius, as on the web. There are no per-screen tables. See [the Sailfish measurement audit](SAILFISH-AUDIT.md). `scripts/parity/sailfish/build-fonts.sh` builds the embedded Nunito Sans weights. There are no D-pad checks on this touch phone. Detail pages are scrolled to the top before capture.
+
+## Nura layout exception: whole logical pixels at scale 2
+
+The web reference is 360 x 673 CSS px at a device pixel ratio of 2, laid out with fractional sizes (a 113.56 px card, a 351.56 px top).
+The layout score rounds every edge to a whole device pixel (`Math.round(css * 2)`). Nura is a GTK 4 client on a scale 2 display, and
+GTK4 allocates widgets in whole logical pixels, so every Nura edge lands on an even device pixel. Of the web's 999 dark layout
+elements across the Nura screens, only 38.6 % have all four edges on an even device pixel (screens range from 20 % on Actions to
+60.6 % on Search; Player 89 %). That is the hard ceiling of the scale 2 layout for those elements. It is a property of the toolkit at this
+display scale, not a defect in a screen.
+
+The only structural way past it is a GTK scale of 1 with every length in device pixels. That changes real app layout, text rendering,
+icon sizes and the density on real phones, and still needs the web's fractional flow reproduced edge by edge, so it is not adopted.
+Not adopted is a decision, not a proof of impossibility. Elements whose web edges are all on even device pixels remain in scope and are fixed
+in the app. Do not add a tolerance and do not move edges in the exporter.
 
 ## Downloads: which platforms support them
 

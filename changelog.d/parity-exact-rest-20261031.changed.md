@@ -1,0 +1,1 @@
+- The remaining parity scorers (Roku header band, Nura, Android phone score and clusters, Apple scrolled diff, tv-web layout-parity) now use the exact RGBA byte compare from `scripts/parity/exact-pixels.mjs` with zero tolerance, and the `pixelmatch` dependency is removed from `scripts/parity/package.json`.

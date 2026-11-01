@@ -64,8 +64,6 @@ internal sealed class ProfilesScreen : IPage
             }
         }
         AddAdd(left + profiles.Count * Pitch);
-        AddPill(48, 1003.6f, 123, "Check for updates", null, "check for updates", () => { });
-        AddPill(1784.5f, 1003.6f, 87.5f, "Clients  →", null, "clients", () => { });
         _focus.Set(Math.Max(0, currentIndex));
     }
 
@@ -86,18 +84,19 @@ internal sealed class ProfilesScreen : IPage
     private void AddAvatar(float x, string name, string sub, string preset, string label, Action select)
     {
         var holder = new View { PositionX = x, PositionY = CircleY, Size = new Size(Circle, 301.63f) }; // web: the card is the circle and its two caption lines
-        var art = new ImageView(Ui.ResPath($"avatars/{preset}.png")) { Size = new Size(Circle, Circle), CornerRadius = Circle / 2 };
+        // web .profile-avatar: the circle carries the gradient plate and the border, the artwork sits inside it at 86 %
+        var artSize = Circle * 0.853f;
+        var art = new ImageView(Ui.ResPath($"avatars/art-{preset}.png")) { PositionX = (Circle - artSize) / 2, PositionY = (Circle - artSize) / 2, Size = new Size(artSize, artSize) };
         var cardFocused = false;
         float nameBase = 0, subBase = 0;
-        art.BorderlineWidth = 1; art.BorderlineColor = Ui.LineA(_t, 0.15f);
         var (ring, glow) = Widgets.RailRing(_t, Circle, Circle, Circle / 2);
         var nameL = Ui.Text(name, 0, Circle + 8.4f, 17.28f, 700, _t.Ink, Circle, 25.92f, HorizontalAlignment.Center);
         var subL = Ui.Text(sub, 0, Circle + 42.3f, 9.408f, 690, _t.InkMuted, Circle, 14.112f, HorizontalAlignment.Center, upper: true, spacing: 0.42f);
-        var disc = new View { Size = new Size(Circle, Circle) };
+        var disc = new View { Size = new Size(Circle, Circle), CornerRadius = Circle / 2, BorderlineWidth = 1, BorderlineColor = Ui.LineA(_t, 0.15f), BackgroundImage = Ui.ResPath($"avatars/plate-{preset}.png") };
         Sem.Tag(disc, "container");
-        disc.Add(glow); disc.Add(art); disc.Add(ring);
+        disc.Add(art); disc.Add(ring);
         nameBase = nameL.PositionY; subBase = subL.PositionY;
-        holder.Add(disc); holder.Add(nameL); holder.Add(subL);
+        holder.Add(glow); holder.Add(disc); holder.Add(nameL); holder.Add(subL);
         Sem.Tag(holder, "button", label);
         _body.Add(holder);
         _focus.Items.Add(new Focusable
@@ -108,7 +107,7 @@ internal sealed class ProfilesScreen : IPage
                 cardFocused = f;
                 // web: the whole card scales 1.045 about its centre and lifts 8 px; the circle grows a further 3.5 % inside it
                 holder.Scale = f ? new Vector3(1.045f, 1.045f, 1) : new Vector3(1, 1, 1); holder.PositionY = CircleY + (f ? -8 : 0);
-                disc.Scale = f ? new Vector3(1.035f, 1.035f, 1) : new Vector3(1, 1, 1);
+                disc.Scale = glow.Scale = f ? new Vector3(1.035f, 1.035f, 1) : new Vector3(1, 1, 1);
                 ring.Show(f); glow.Show(f); },
         });
     }
@@ -120,15 +119,12 @@ internal sealed class ProfilesScreen : IPage
         var wash = _t.Name == "dark"
             ? Ui.Gradient(0, 0, Circle, Circle, false, (0f, Rgba.Of(84, 36, 52, 1f)), (1f, Rgba.Of(145, 40, 76, 1f)))
             : Ui.Gradient(0, 0, Circle, Circle, false, (0f, Rgba.Of(234, 188, 198, 1f)), (1f, Rgba.Of(188, 82, 113, 1f)));
-        wash.CornerRadius = Circle / 2;
-        wash.BorderlineWidth = 1; wash.BorderlineColor = Ui.LineA(_t, 0.15f);
-        var disc = new View { Size = new Size(Circle, Circle) };
+        var disc = new View { Size = new Size(Circle, Circle), CornerRadius = Circle / 2, BorderlineWidth = 1, BorderlineColor = Ui.LineA(_t, 0.15f), BackgroundImage = ((ImageView)wash).ResourceUrl }; // web: a painted circle, the wash is its background
         Sem.Tag(disc, "container");
-        disc.Add(wash);
         disc.Add(Ui.Text("+", 0, 64.4f, 76.8f, 300, _t.InkSoft, Circle, 115.2f, HorizontalAlignment.Center));
         var (ring, glow) = Widgets.RailRing(_t, Circle, Circle, Circle / 2);
-        disc.Add(glow); disc.Add(ring);
-        holder.Add(disc);
+        disc.Add(ring);
+        holder.Add(glow); holder.Add(disc); // the glow sits behind the painted circle (the circle is opaque, so it only shows outside)
         Sem.Tag(holder, "button", "Sign in Add another profile");
         holder.Add(Ui.Text("Sign in", 0, Circle + 8.4f, 17.28f, 700, _t.InkSoft, Circle, 25.92f, HorizontalAlignment.Center));
         holder.Add(Ui.Text("Add another profile", 0, Circle + 42.3f, 9.408f, 690, _t.InkMuted, Circle, 14.112f, HorizontalAlignment.Center, upper: true, spacing: 0.42f));
@@ -137,13 +133,13 @@ internal sealed class ProfilesScreen : IPage
         {
             Rect = () => new Box(x, CircleY, Circle, Circle), Label = "sign in, add another profile",
             Select = () => _env.SignOut(),
-            Style = f => { holder.Scale = f ? new Vector3(1.045f, 1.045f, 1) : new Vector3(1, 1, 1); holder.PositionY = CircleY + (f ? -8 : 0); disc.Scale = f ? new Vector3(1.035f, 1.035f, 1) : new Vector3(1, 1, 1); ring.Show(f); glow.Show(f); },
+            Style = f => { holder.Scale = f ? new Vector3(1.045f, 1.045f, 1) : new Vector3(1, 1, 1); holder.PositionY = CircleY + (f ? -8 : 0); disc.Scale = glow.Scale = f ? new Vector3(1.035f, 1.035f, 1) : new Vector3(1, 1, 1); ring.Show(f); glow.Show(f); },
         });
     }
 
     private void AddPill(float x, float y, float w, string text, string? icon, string label, Action select, bool round = false)
     {
-        var box = Ui.Box(x, y, w, 44, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 22);
+        var box = Ui.Box(x, y, w, 44, _t.SurfaceStrong.Mixed(0.78f), 22);
         box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.075f);
         if (y < 900) Sem.Tag(box, "button", icon == "signout" ? "Sign out " + label[..^" sign out".Length] : label);
         if (icon == "signout")

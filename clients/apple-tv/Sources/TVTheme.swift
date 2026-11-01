@@ -276,7 +276,7 @@ struct TVProfileAddLabel: View {
     }
 
     var body: some View {
-        VStack(spacing: 9 * scale) {
+        VStack(spacing: 8.9 * scale) {
             ZStack {
                 // Soft plate (web linear 145deg + highlight radial).
                 Circle()
@@ -311,7 +311,7 @@ struct TVProfileAddLabel: View {
                     .font(TVTheme.font(size: 76.8 * scale, css: 300))
                     .foregroundStyle(active ? palette.ink : palette.inkSoft)
                     .parityLayout(text: "+", size: 76.8 * scale, weight: 300, color: active ? palette.ink : palette.inkSoft)
-                    .offset(y: 1.2 * scale)
+                    .offset(y: -0.7 * scale)
             }
             .frame(width: avatarSize, height: avatarSize)
             .parityBox("container", radius: 999, fill: palette.bg)
@@ -346,7 +346,6 @@ struct TVProfileAddLabel: View {
                 .foregroundStyle(active ? palette.ink : palette.inkSoft)
                 .lineLimit(1)
                 .parityLayout(text: "Sign in", size: 17.28 * scale, weight: 680, color: active ? palette.ink : palette.inkSoft)
-                .padding(.top, 2 * scale)
 
             Text("Add another profile")
                 .font(TVTheme.font(size: 9.41 * scale, css: 690))
@@ -354,8 +353,9 @@ struct TVProfileAddLabel: View {
                 .textCase(.uppercase)
                 .foregroundStyle(palette.inkMuted)
                 .parityLayout(text: "ADD ANOTHER PROFILE", size: 9.41 * scale, weight: 690, color: palette.inkMuted, tracking: 0.42 * scale)
-                .padding(.top, 0.8 * scale)
+                .padding(.top, 1.46 * scale)
                 .frame(minHeight: 12 * scale)
+                .padding(.bottom, 2.13 * scale)
         }
         .frame(width: avatarSize)
     }
@@ -429,7 +429,7 @@ struct TVProfileActionLabel: View {
                         )
                     )
             case .signOut:
-                HStack(spacing: 7 * scale) {
+                HStack(spacing: 7.2 * scale) {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
                         .font(.system(size: 14 * scale, weight: .regular))
                         .frame(width: 18 * scale, height: 18 * scale)
@@ -439,7 +439,7 @@ struct TVProfileActionLabel: View {
                         .parityLayout(text: "Sign out", size: 10.75 * scale, weight: 720, color: active ? Color.white : palette.inkSoft)
                 }
                 .foregroundStyle(active ? Color.white : palette.inkSoft)
-                .padding(.horizontal, 16 * scale)
+                .padding(.horizontal, 17 * scale)
                 .frame(height: 44 * scale)
                 .background(
                     Capsule().fill(
@@ -1014,12 +1014,13 @@ struct TVFloatingNav: View {
                         .parityLayout(text: profile.name.split(separator: " ").first.map(String.init) ?? profile.name, size: 8.832, weight: 680, color: DesignTokens.Color.textDisabled, tracking: 0.31)
                 }
                 .frame(width: DesignTokens.Shell.navItemSize, height: DesignTokens.Shell.navItemSize)
-                .parityBox("link", text: "Signed in as \(profile.name). Open profiles.", radius: 16)
+                .parityBox("link", text: "Profile \(profile.name)", radius: 16)
                 .modifier(TVNavItemFocusFill())
             }
             .buttonStyle(TVFocusableCardButtonStyle())
             .focused(externalFocus, equals: .navProfile)
             .accessibilityLabel("Profile \(profile.name)")
+            .accessibilityAddTraits(.isLink) // it opens the profiles page
             .padding(.vertical, DesignTokens.Shell.navGroupPaddingV)
             .padding(.horizontal, DesignTokens.Shell.navGroupPaddingH)
             .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.surface, alpha: 0.56)
@@ -1105,6 +1106,7 @@ struct TVFloatingNav: View {
         // Card-like style stays focusable; .plain can drop remote hand-off.
         .buttonStyle(TVFocusableCardButtonStyle())
         .accessibilityLabel(tab.title)
+        .accessibilityAddTraits(.isLink) // it opens the tab's page
         .focused(externalFocus, equals: .nav(tab))
         .background {
             GeometryReader { proxy in

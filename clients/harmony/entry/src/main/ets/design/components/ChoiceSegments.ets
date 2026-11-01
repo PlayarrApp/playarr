@@ -13,6 +13,8 @@ export interface Choice {
   label: string;
   /** A glyph drawn above the label (web's View buttons); empty for none. */
   icon?: string;
+  /** The accessible name when it is not the drawn label (web names the Colour theme and Artwork size buttons by their lower-case word). */
+  name?: string;
 }
 
 const SECTION_WIDTH: number = 268;
@@ -59,6 +61,8 @@ export struct ChoiceSegments {
   /** Settings > Colour theme: web's buttons carry the lower-case value, the other settings their label. */
   @Prop lowerLabels: boolean = false;
   @Prop sectionWidth: number = SECTION_WIDTH;
+  /** Settings panels: false when the caller's own box draws the gap below (web: the gap lies between two setting boxes, not inside them). */
+  @Prop trailingGap: boolean = true;
   onChoose: (value: string) => void = () => {};
 
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
@@ -107,7 +111,7 @@ export struct ChoiceSegments {
   }
 
   build() {
-    Column({ space: tv(this.large ? LARGE_HEADING_GAP : HEADING_GAP + (isTvMetrics() ? 1.8 : 0)) }) {
+    Column({ space: tv(this.large ? LARGE_HEADING_GAP : HEADING_GAP + (isTvMetrics() ? 1.46 : 0)) }) {
       if (this.large) {
         Text(this.heading).fontFamily(nunitoAt(500, tv(LARGE_HEADING_SIZE)))
           .fontSize(tv(LARGE_HEADING_SIZE)).lineHeight(webLineHeight(tv(LARGE_HEADING_SIZE))).halfLeading(true)
@@ -120,7 +124,7 @@ export struct ChoiceSegments {
           Text(this.description).fontFamily(nunitoAt(400, tv(DESCRIPTION_SIZE)))
             .fontSize(tv(DESCRIPTION_SIZE)).letterSpacing((isTvMetrics() ? -0.093 : 0)).lineHeight(webLineHeight(tv(DESCRIPTION_SIZE))).halfLeading(true)
             .fontColor(toResourceColor(activeColors().inkMuted))
-            .margin({ top: tv(-5), bottom: tv(1) })
+            .margin({ top: tv(isTvMetrics() ? -4.8 : -5), bottom: tv(isTvMetrics() ? 2.53 : 1) }) // TV: web's choices sit 1 lower under the copy
         }
       } else {
         Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))
@@ -136,14 +140,17 @@ export struct ChoiceSegments {
          if (choice.icon !== undefined && choice.icon.length > 0) {
           // phone View buttons: web draws three outlined bars (list, screen, cover) over a lower-case 900-weight word
           Column({ space: isTvMetrics() ? 7.4 : 6.85 }) {
-            this.viewShapes(choice.value)
+            Column() {
+              this.viewShapes(choice.value)
+            }
+            .translate({ y: isTvMetrics() ? 1 : 0 })
             Text(capitalWords(choice.label)).fontFamily(nunito(900))
               .letterSpacing(((0.4) + (isTvMetrics() ? -0.465 : 0)) + (!isTvMetrics() ? -0.468 : 0)) // web's label run is wider than ArkUI lays it out
-              .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE).translate({ y: (isTvMetrics() ? -4.19 : 0) }).lineHeight(webLineHeight(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)).halfLeading(true)
+              .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE).translate({ y: (isTvMetrics() ? -0.44 : 0) }).lineHeight(webLineHeight(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)).halfLeading(true)
               .fontWeight(FontWeight.Bolder)
               .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
           }
-          .accessibilityText(choice.label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+          .accessibilityText(choice.value).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true) // the View buttons are named by their value
           .width(tv(this.choiceWidth()))
           .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
           .justifyContent(FlexAlign.Center)
@@ -166,7 +173,7 @@ export struct ChoiceSegments {
               .letterSpacing(((this.large && isTvMetrics() ? 0.43 : 0) + (isTvMetrics() ? -0.247 : 0)) + (!isTvMetrics() ? -0.075 : 0)) // web's run is about 3 wider than ArkUI lays it out
               .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
           }
-          .accessibilityText(choice.label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+          .accessibilityText(choice.name !== undefined ? choice.name : capitalWords(choice.label)).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .width(tv(this.choiceWidth()))
           .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
           .justifyContent(FlexAlign.Center)
@@ -174,7 +181,7 @@ export struct ChoiceSegments {
             toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
           .borderRadius(tv(CHOICE_RADIUS))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
-          .scale((this.large || !isTvMetrics()) && choice.value === this.selected ? { x: 1.025, y: 1.025 } : { x: 1, y: 1 })
+          .scale(choice.value === this.selected ? { x: 1.025, y: 1.025 } : { x: 1, y: 1 })
           .focusable(true)
           .onClick(() => {
             this.onChoose(choice.value);
@@ -184,6 +191,6 @@ export struct ChoiceSegments {
       }
     }
     .alignItems(HorizontalAlign.Start)
-    .margin({ bottom: this.large ? tv(SECTION_GAP) : (isTvMetrics() ? tv(SECTION_GAP + 3) : TOUCH_SECTION_GAP) })
+    .margin({ bottom: !this.trailingGap ? 0 : this.large ? tv(SECTION_GAP + (isTvMetrics() && this.description !== '' ? 0.23 : 0)) : (isTvMetrics() ? tv(SECTION_GAP - 0.4) : TOUCH_SECTION_GAP) })
   }
 }

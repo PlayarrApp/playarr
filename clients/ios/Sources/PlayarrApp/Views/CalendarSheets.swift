@@ -144,11 +144,11 @@ struct CalendarSubscriptionSheet: View {
         case .failed(let message):
             Text(message).foregroundStyle(PlayarrStyle.danger)
             Button("Try again") { Task { await viewModel.loadFeedStatus() } }
-                .buttonStyle(PlayarrPrimaryButtonStyle())
+                .parityButtonStyle(PlayarrPrimaryButtonStyle())
         case .inactive:
             Text("You have no calendar link yet.").foregroundStyle(PlayarrStyle.inkSoft)
             Button("Create calendar link") { Task { await viewModel.createFeed() } }
-                .buttonStyle(PlayarrPrimaryButtonStyle())
+                .parityButtonStyle(PlayarrPrimaryButtonStyle())
         case .active(let since):
             Text(activeText(since))
                 .foregroundStyle(PlayarrStyle.inkSoft)
@@ -156,7 +156,7 @@ struct CalendarSubscriptionSheet: View {
                 .font(.custom("Avenir Next", fixedSize: 12))
                 .foregroundStyle(PlayarrStyle.muted)
             Button("Create a new link") { Task { await viewModel.createFeed() } }
-                .buttonStyle(PlayarrPrimaryButtonStyle())
+                .parityButtonStyle(PlayarrPrimaryButtonStyle())
             Button("Revoke link", role: .destructive) { Task { await viewModel.revokeFeed() } }
         case .created(let url):
             if let image = Self.qrImage(for: url) {
@@ -176,7 +176,7 @@ struct CalendarSubscriptionSheet: View {
                 UIPasteboard.general.string = url
                 copied = true
             }
-            .buttonStyle(PlayarrPrimaryButtonStyle())
+            .parityButtonStyle(PlayarrPrimaryButtonStyle())
             Button("Revoke link", role: .destructive) { Task { await viewModel.revokeFeed() } }
         }
     }

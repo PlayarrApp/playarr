@@ -22,13 +22,9 @@ function allText(renderer: ReactTestRenderer): string {
     .join(' | ');
 }
 
-function pad(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
+// The pinned clock's day (see PinnedDate below).
 function todayIso(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  return '2026-10-15';
 }
 
 const response = {
@@ -49,13 +45,31 @@ const response = {
   sources: [{source_instance_id: 's2', name: 'Sonarr', kind: 'sonarr', status: 'unreachable', entry_count: 0, error: 'timed out'}],
 };
 
+// The wall clock is shifted to mid-October 2026 but keeps ticking, so animations and the screen's own delays still run.
+const RealDate = Date;
+const CLOCK_OFFSET = new RealDate(2026, 9, 15, 12, 0, 0).getTime() - RealDate.now();
+const shiftedNow = (): number => RealDate.now() + CLOCK_OFFSET;
+class PinnedDate extends RealDate {
+  constructor(...args: unknown[]) {
+    super(...((args.length ? args : [shiftedNow()]) as [number]));
+  }
+  static now(): number {
+    return shiftedNow();
+  }
+}
+
 describe('CalendarScreen', () => {
+  beforeEach(() => {
+    globalThis.Date = PinnedDate as unknown as DateConstructor;
+  });
+
   // The Today pill takes focus again 400 ms after the first load; let that timer fire here, not in the next test file's worker.
   afterEach(async () => {
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 450));
     });
     jest.restoreAllMocks();
+    globalThis.Date = RealDate;
   });
 
   it('lists a release with its state and shows no source banner or source names', async () => {

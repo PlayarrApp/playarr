@@ -84,7 +84,7 @@ internal sealed class DetailScreen : IPage
 
     private void BuildCopy(Work w, WorkDetail d)
     {
-        _content.Add(Ui.Text(w.Genres.FirstOrDefault() ?? "Movie", 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
+        _content.Add(Ui.Text(w.Genres.FirstOrDefault() ?? "Movie", 153.6f, 259.2f, 12.288f, 820, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
         var lines = Ui.Paragraph(_content, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5, balance: true, role: "heading");
         var bas = 303.5f + 62.208f * lines;
         var meta = new List<string> { "Movie" };
@@ -110,7 +110,7 @@ internal sealed class DetailScreen : IPage
 
     private void AddButton(string text, string glyph, float x, float y, float w, bool primary, string label, Action select, string? name = null, string role = "button")
     {
-        var bg = primary ? _t.Ink : new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f);
+        var bg = primary ? _t.Ink : _t.SurfaceStrong.Mixed(0.78f);
         var box = Ui.Box(x, y, w, 64, bg, 32);
         if (!primary) { box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.075f); }
         else box.BoxShadow = new Shadow(46, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.18f), new Vector2(0, 18), new Vector2(0, 0)); // web .tv-detail-play
@@ -120,7 +120,7 @@ internal sealed class DetailScreen : IPage
         var textW = Ui.TextWidth(text, tsize, 700, 0);
         var startX = (w - (gw + 8.8f + textW)) / 2;
         var glyphLabel = Ui.Text(glyph, startX, 22.4f, primary ? 10.12f : 12.8f, 400, primary ? _t.Bg : _t.BrandInk, gw + 4, 19.2f);
-        var textLabel = Ui.Text(text, startX + gw + 8.8f, 23.7f, tsize, 700, fg, textW + 20, 16.7f);
+        var textLabel = Ui.Text(text, startX + gw + 8.8f, 22.83f, tsize, 700, fg, textW + 20, 16.7f);
         box.Add(glyphLabel); box.Add(textLabel);
         if (name is not null) Sem.Tag(box, role, name);
         var ring = Ring.Make(w, 64, 32, new Rgba(1, 1, 1));
@@ -303,7 +303,7 @@ internal sealed class DetailScreen : IPage
 
     private void Toast(string text)
     {
-        var toast = Ui.Box(560, 960, 800, 56, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.96f), 28);
+        var toast = Ui.Box(560, 960, 800, 56, _t.SurfaceStrong.Mixed(0.96f), 28);
         toast.Add(Ui.Text(text, 0, 14, 14, 600, _t.Ink, 800, 28, HorizontalAlignment.Center));
         _root.Add(toast);
         var timer = new global::Tizen.NUI.Timer(2500);

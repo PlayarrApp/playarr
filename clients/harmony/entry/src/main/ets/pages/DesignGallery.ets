@@ -586,6 +586,7 @@ struct DesignGallery {
         // `windowWidthVp / 1920` scale factor lines back up with this
         // container's own actual rendered width.
         .aspectRatio(16 / 9)
+        .backgroundColor(toResourceColor(activeColors().surface)) // Stage paints no page colour of its own (PageShell's wrapper does)
         .clip(true)
         .border({ width: 1, color: toResourceColor(activeColors().line) })
 

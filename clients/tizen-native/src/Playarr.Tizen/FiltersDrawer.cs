@@ -49,14 +49,18 @@ internal sealed class FiltersDrawer
 
     private static void AddViewGlyph(View b, int i, float w, Rgba c)
     {
-        // web: List is three 20x2.9 bars, Screen three 5.5x13.1 blocks, Cover three 4x13 slats
-        if (i == 0) { for (var k = 0; k < 3; k++) b.Add(Sem.Tag(Ui.Box(w / 2 - 10, 11.4f + k * 4.95f, 20, 2.9f, c, 1f), "container")); return; }
+        // web .tv-view-icon: every shape is a 1 px currentColor outline with 1 px corners and no fill; List is three 20x2.9 bars, Screen three 5.5x13.1 blocks, Cover three 4x13 slats
+        View Outline(float x, float y, float bw, float bh)
+        {
+            var r = Sem.Tag(Ui.Box(x, y, bw, bh, null, 1f), "container");
+            r.BorderlineWidth = 1; r.BorderlineColor = Ui.C(c); r.BorderlineOffset = -1;
+            return r;
+        }
+        if (i == 0) { for (var k = 0; k < 3; k++) b.Add(Outline(w / 2 - 10, 11.4f + k * 4.95f, 20, 2.9f)); return; }
         for (var k = 0; k < 3; k++)
         {
             var bw = i == 1 ? 5.5f : 4f; var pitch = i == 1 ? 7.5f : 6f; var x0 = i == 1 ? w / 2 - 10.2f : w / 2 - 8f;
-            var r = Sem.Tag(Ui.Box(x0 + k * pitch, 11.3f, bw, 13.05f, i == 1 ? c : null, 1f), "container");
-            if (i != 1) { r.BorderlineWidth = 1.5f; r.BorderlineColor = Ui.C(c); }
-            b.Add(r);
+            b.Add(Outline(x0 + k * pitch, 11.3f, bw, 13.05f));
         }
     }
     public View Root { get; } = new();
@@ -71,7 +75,7 @@ internal sealed class FiltersDrawer
     }
 
     /// <summary>The drawer panel over the page: --surface-strong at 94 %.</summary>
-    internal static Rgba DrawerBackdrop(PlayarrTheme t) => new(t.SurfaceStrong.R * 0.94f + t.Surface.R * 0.06f, t.SurfaceStrong.G * 0.94f + t.Surface.G * 0.06f, t.SurfaceStrong.B * 0.94f + t.Surface.B * 0.06f);
+    internal static Rgba DrawerBackdrop(PlayarrTheme t) => new(t.SurfaceStrong.R * 0.94f + t.Bg.R * 0.06f, t.SurfaceStrong.G * 0.94f + t.Bg.G * 0.06f, t.SurfaceStrong.B * 0.94f + t.Bg.B * 0.06f);
 
     private void Build()
     {
@@ -84,19 +88,20 @@ internal sealed class FiltersDrawer
         panel.BorderlineWidth = 1; panel.BorderlineColor = Ui.C(t.Line);
         Sem.Tag(panel, "dialog", "");
         Root.Add(panel);
+        var L = Ui.DrawerLayer(panel); // everything the drawer draws sits inside its dialog panel, as in web, so backgrounds composite over the panel
         var clip = new View { PositionY = 130, Size = new Size(1920, 950), ClippingMode = ClippingModeType.ClipChildren };
         _c = new View { PositionY = -130 - _scroll };
         clip.Add(_c);
-        Root.Add(Ui.Text(kicker, 1606, 54, 9.6f, 720, t.InkMuted, 250, 14.4f, upper: true, spacing: 0.67f));
-        Root.Add(Sem.Tag(Ui.Text("Filters", 1606, 71.6f, 38.4f, 590, t.Ink, 200, 57.6f, spacing: -2.1f), "heading"));
+        L.Add(Ui.Text(kicker, 1606, 54, 9.6f, 720, t.InkMuted, 250, 14.4f, upper: true, spacing: 0.67f));
+        L.Add(Sem.Tag(Ui.Text("Filters", 1606, 71.6f, 38.4f, 590, t.Ink, 200, 57.6f, spacing: -2.1f), "heading"));
         var x = Ui.Box(1826, 54, 48, 50, t.SurfaceSoft, 25);
         Sem.Tag(x, "button", "Close filters");
         x.Add(Ui.Text("×", 0, 4.5f, 26.88f, 720, t.Ink, 48, 40, HorizontalAlignment.Center));
         var xr = Ring.Make(48, 50, 25, new Rgba(1, 1, 1)); xr.Show(false); x.Add(xr);
-        Root.Add(x);
+        L.Add(x);
         _focus.Items.Add(new Focusable { Rect = () => new Box(1826, 54, 48, 50), Label = "close", Select = _close, Style = f => xr.Show(f) });
 
-        Root.Add(clip);
+        L.Add(clip);
         var y = 163.4f;
         foreach (var s in sections)
         {

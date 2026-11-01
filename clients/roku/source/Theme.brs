@@ -84,7 +84,7 @@ function ThemeTokens(mode as String) as Object
             playerPill: &h0C0A0B94
             playerTrack: &hFFFFFF33
             playerBuffered: &hFFFFFF57
-            playerSeparator: &h776B71FF
+            playerSeparator: &hA5969EFF
             playerScrim: &h000000EB
         }
     end if
@@ -139,7 +139,7 @@ function ThemeTokens(mode as String) as Object
         playerPill: &h0C0A0B94
         playerTrack: &hFFFFFF33
         playerBuffered: &hFFFFFF57
-        playerSeparator: &h776B71FF
+        playerSeparator: &hA5969EFF
         playerScrim: &h000000EB
     }
 end function
@@ -415,3 +415,144 @@ sub A11yStamp(node as Object, force = false as Boolean, baked = -1 as Integer)
     end for
     node.id = "a11y|" + parts[1] + "|" + radius + "@" + hex + suffix + "|" + name
 end sub
+
+' ---- Web card geometry at the Roku stage (1920 x 1080, zoom 1) ----
+' Source: clients/tv-web/web/src/styles/page-layout.css (:root card tokens) and global.css (.tv-home-rail).
+' Nothing here is fitted: each value is the CSS formula evaluated with --vw = 1920 / 100.
+
+' CSS clamp(lo, v, hi).
+function WebClamp(lo as Float, v as Float, hi as Float) as Float
+    if v < lo then return lo
+    if v > hi then return hi
+    return v
+end function
+
+' Blink lays boxes out in LayoutUnit, 1/64 px, rounded down (layout/layout_unit.h), so a laid-out width or gap is the CSS
+' value floored to 1/64 px. Radii are computed style values and stay unsnapped.
+function WebLayoutUnit(v as Float) as Float
+    return Int(v * 64.0) / 64.0
+end function
+
+' --vw on the 1920 px stage (tvStageScale.ts: viewport width / zoom / 100, zoom 1 at 1080 px high).
+function WebVw() as Float
+    return 1920.0 / 100.0
+end function
+
+' --card-radius: clamp(8px, calc(0.65 * var(--vw)), 13px) = 12.48.
+function WebCardRadius() as Float
+    return WebClamp(8.0, 0.65 * WebVw(), 13.0)
+end function
+
+' .tv-home-rail gap: clamp(14px, calc(1.3 * var(--vw)), 26px) = 24.953125 (LayoutUnit).
+function WebRailGap() as Float
+    return WebLayoutUnit(WebClamp(14.0, 1.3 * WebVw(), 26.0))
+end function
+
+' --card-w (page-layout.css): (--card-rail-vw * --vw - --card-pad-left - --card-pad-right - (--card-cols - 1) * --card-grid-gap) / --card-cols
+' with --card-rail-vw 62, --card-cols 3, --card-grid-gap clamp(14px, 1.35 * --vw, 28px),
+' --card-pad-left = --library-rail-left = clamp(28px, 2.8 * --vw, 54px) (no safe inset on the Roku stage),
+' --card-pad-right = --library-rail-right = --directory-controls-edge (clamp(5px, 0.65 * --vw, 14px))
+'   + max(--directory-controls-width (clamp(48px, 3.6 * --vw, 62px)), --directory-alphabet-width 56px)
+'   + --directory-controls-gap (clamp(18px, 1.5 * --vw, 30px)). Result 327.17.
+function WebCardGridGapCss() as Float
+    return WebClamp(14.0, 1.35 * WebVw(), 28.0)
+end function
+
+' The laid-out grid gap (LayoutUnit floor of the CSS value).
+function WebCardGridGap() as Float
+    return WebLayoutUnit(WebCardGridGapCss())
+end function
+
+function WebCardWidth() as Float
+    vw = WebVw()
+    padLeft = WebClamp(28.0, 2.8 * vw, 54.0)
+    controlsWidth = WebClamp(48.0, 3.6 * vw, 62.0)
+    if controlsWidth < 56.0 then controlsWidth = 56.0
+    padRight = WebClamp(5.0, 0.65 * vw, 14.0) + controlsWidth + WebClamp(18.0, 1.5 * vw, 30.0)
+    cols = 3.0
+    return WebLayoutUnit((62.0 * vw - padLeft - padRight - (cols - 1.0) * WebCardGridGapCss()) / cols)
+end function
+
+' Left edge of the first grid card minus the 8 px grid inset: the stage rail starts at (100 - --card-rail-vw 62) vw = 38 vw
+' (page-layout.css) and the card column starts --card-pad-left (--library-rail-left, clamp(28px, 2.8 * --vw, 54px)) inside it.
+function WebGridLeft() as Float
+    return 38.0 * WebVw() + WebClamp(28.0, 2.8 * WebVw(), 54.0) - 8.0
+end function
+
+' ---- Browse grid pitch (page-layout.css .tv-title-grid-content) ----
+' Column pitch: card + --card-grid-gap (laid-out values).
+function WebGridPitchX() as Float
+    return WebCardWidth() + WebCardGridGap()
+end function
+
+' Row pitch: the card (16:9 art, --card-copy-gap 0.72rem, then the title line: --card-title-size clamp(0.55rem, 0.62 * --vw, 0.78rem) at the
+' inherited line-height 1.5) plus the grid row gap clamp(22px, 2.5 * --viewport-unit, 36px) (--viewport-unit is 1vh = 10.8 px).
+function WebGridPitchY() as Float
+    titleSize = WebClamp(8.8, 0.62 * WebVw(), 12.48)
+    return WebCardWidth() * 9.0 / 16.0 + 0.72 * 16.0 + 1.5 * titleSize + WebClamp(22.0, 2.5 * 10.8, 36.0)
+end function
+
+' MarkupGrid advances its columns by a whole-pixel pitch (a 353.08 px itemSize lays out at 353), so column `col` lands short of its web
+' x by col * (pitch - whole pitch). The card is moved inside its cell by that amount.
+function WebGridColumnShift(col as Integer) as Float
+    pitch = WebGridPitchX()
+    return col * (pitch - Int(pitch))
+end function
+
+' The grid advances each row by the whole-pixel pitch (itemSize is laid out at Int(pitch): row 3 of a 240.41 pitch sits at 720, not 721), while the web
+' places row `row` at round(row * pitch). The card moves down by the difference (the grid's own y is a whole pixel).
+function WebGridRowShift(row as Integer) as Float
+    y = row * WebGridPitchY()
+    return Int(y + 0.5) - row * Int(WebGridPitchY())
+end function
+
+' Home rail cell: the card plus the 8 px focus-ring inset PosterCard keeps on each side (cardContentInsetX) = 343. Pitch stays web card + rail gap.
+function WebRailCellWidth() as Float
+    return Int(WebCardWidth() + 0.5) + 16.0
+end function
+
+' The nav link is a 64 px box centred in its 67.2 px dock item (.app-nav item box minus the link box, halved), the same inset on both axes.
+function WebNavHitInset() as Float
+    return (67.2 - 64.0) / 2.0
+end function
+
+' .tv-directory .tv-alphabet: top clamp(214px, calc(25 * var(--viewport-unit)), 286px) + padding-top 8px (the column is unscrolled, margin-top auto
+' is 0 when the letters overflow), --viewport-unit is 1vh = 10.8 px on the 1080 px stage.
+function WebAlphabetTop() as Float
+    return WebClamp(214.0, 25.0 * 10.8, 286.0) + 8.0
+end function
+
+' ---- Left details panel (DetailsPanel: .tv-library-preview / .tv-title-panel, global.css) ----
+' The panel box starts at top: 24% of the 1080 px stage; every size below is the CSS clamp evaluated at --vw 19.2 and
+' --viewport-unit 10.8, laid out in LayoutUnits (1/64 px, floored). line-height is inherited as 1.5 unless the rule sets one.
+function WebPanelTop() as Float
+    return WebLayoutUnit(0.24 * 1080.0)
+end function
+
+' .tv-provider font-size clamp(0.58rem, 0.64 * --vw, 0.78rem) = 12.288.
+function WebPanelKickerSize() as Float
+    return WebClamp(9.28, 0.64 * WebVw(), 12.48)
+end function
+
+function WebPanelKickerLineHeight() as Float
+    return WebLayoutUnit(1.5 * WebPanelKickerSize())
+end function
+
+' Top of the title's first line box: the kicker line plus its margin-bottom clamp(18px, 2.4 * --viewport-unit, 34px).
+function WebPanelTitleLineTop() as Float
+    return WebPanelTop() + WebPanelKickerLineHeight() + WebLayoutUnit(WebClamp(18.0, 2.4 * 10.8, 34.0))
+end function
+
+' h2 line-height 0.9 of the 69.12 px title (font-size clamp(2.2rem, 3.6 * --vw, 5rem)).
+function WebPanelTitleLineHeight() as Float
+    return WebLayoutUnit(0.9 * WebClamp(35.2, 3.6 * WebVw(), 80.0))
+end function
+
+' .tv-preview-overview font-size clamp(0.64rem, 0.72 * --vw, 0.92rem) = 13.824, line-height 1.58, margin-top clamp(16px, 2 * --viewport-unit, 28px).
+function WebPanelOverviewSize() as Float
+    return WebClamp(10.24, 0.72 * WebVw(), 14.72)
+end function
+
+function WebPanelOverviewLineHeight() as Float
+    return WebLayoutUnit(1.58 * WebPanelOverviewSize())
+end function

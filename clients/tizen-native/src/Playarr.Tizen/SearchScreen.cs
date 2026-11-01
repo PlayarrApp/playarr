@@ -98,7 +98,7 @@ internal sealed class SearchScreen : IPage
         _root.BackgroundColor = Ui.C(_t.Surface);
         _root.Add(Ui.Box(0, 0, TizenClient.DesignWidth, TizenClient.DesignHeight, _t.Surface)); // web: the page section and its stage are two full-viewport layers
         
-        _root.Add(Ui.PanelWash(_t, 1248));
+        _root.Add(Sem.Tag(Ui.PanelWash(_t, 1190.39f), "container"));
         _keyArt = new KeyArt(env);
         _panel = new DetailsPanel(env, library: true, flow: true);
         _root.Add(_keyArt.Root);
@@ -118,14 +118,14 @@ internal sealed class SearchScreen : IPage
         BuildSide();
 
         // query pill
-        var form = Ui.Box(153.6f, 172.8f, 590, 76, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 38);
+        var form = Ui.Box(153.6f, 172.8f, 590, 76, _t.SurfaceStrong.Mixed(0.78f), 38);
         form.BorderlineWidth = 1; form.BorderlineColor = Ui.LineA(_t, 0.15f);
         Sem.Tag(form, "search");
         form.Add(Ui.Icon("search", 25, 26, 24, _t.InkMuted));
         _field = new TextField { PositionX = 62, PositionY = 8, Size = new Size(506, 60), Padding = new Extents(4, 0, 10, 10), PixelSize = 17f, TextColor = Ui.C(_t.Ink), FontFamily = Ui.Font,
             EnableCursorBlink = true };
         // web: the placeholder is its own text row; a real label (not the field's internal placeholder) so it is laid out and measured like every other text
-        var placeholder = Ui.Text("Search your libraries and playlists", 62, 25.7f, 17f, 400, _t.InkMuted, 506, 24);
+        var placeholder = Ui.Text("Search your libraries and playlists", 62, 26.2f, 17.664f, 400, _t.InkMuted, 506, 24);
         _field.TextChanged += (_, e) => { placeholder.Show(string.IsNullOrEmpty(_field.Text)); OnText(_field.Text); };
         Sem.Tag(_field, "textbox", "Search your libraries and playlists");
         form.Add(_field);
@@ -160,18 +160,18 @@ internal sealed class SearchScreen : IPage
 
     private void BuildEmpty()
     {
-        _empty.Add(Ui.Text("Find any available movie, series, artist or playlist.", 153.6f, 302.8f, 13.824f, 400, _t.InkMuted, 272, 21.43f, multiline: true, maxLines: 3));
-        var art = Ui.Box(1125f, 311.8f, 132, 132, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 66);
+        Ui.Paragraph(_empty, "Find any available movie, series, artist or playlist.", 153.6f, 302.8f, 13.824f, 400, _t.InkMuted, 272, 21.43f, 0, 3);
+        var art = Ui.Box(1124.59f, 311.78f, 132, 132, _t.SurfaceStrong.Mixed(0.54f), 66);
         art.BorderlineWidth = 1; art.BorderlineColor = Ui.LineA(_t, 0.15f);
-        art.Add(Ui.Icon("search-empty", 37.6f, 47f, 57.6f, 38.4f, _t.Name == "dark" ? Rgba.Hex(0xd75a79) : Rgba.Hex(0xae2f4b))); // web TvEmptyState "search" graphic (zoom-out, 1.2x)
+        art.Add(Ui.Icon("search-empty", 39f, 48f, 54f, 36f, _t.Name == "dark" ? Rgba.Hex(0xd75a79) : Rgba.Hex(0xae2f4b))); // web TvEmptyState "search" graphic (zoom-out, 1.2x)
         Sem.Tag(art, "container");
         _empty.Add(art);
-        _empty.Add(Ui.Text("Start typing to search.", 1298.6f, 365.1f, 16.896f, 700, _t.Ink, 400, 25.344f, spacing: -0.44f));
+        _empty.Add(Ui.Text("Start typing to search.", 1298.6f, 365.1f, 16.896f, 650, _t.Ink, 400, 25.344f, spacing: -0.44f));
     }
 
     private void BuildSide()
     {
-        var tile = Ui.Box(1845.5f, 151.2f, 62, 72, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 14);
+        var tile = Ui.Box(1845.5f, 151.2f, 62, 72, _t.SurfaceStrong.Mixed(0.78f), 14);
         _filterTile = tile;
         tile.Focusable = true;
         Sem.Tag(tile, "button", "Filters");
@@ -184,7 +184,7 @@ internal sealed class SearchScreen : IPage
         _filterCount = count;
         tile.Add(count);
         var ring = Ring.Make(62, 72, 14, new Rgba(1, 1, 1)); ring.Show(false); tile.Add(ring);
-        _root.Add(tile);
+        _env.AddShellView(tile);
         _side.Add(new Focusable { Rect = () => new Box(1845.5f, 151.2f, 62, 72), Label = "filters", Style = f => ring.Show(f), Select = OpenFilters });
     }
 
@@ -260,7 +260,7 @@ internal sealed class SearchScreen : IPage
 
     private void Toast(string text)
     {
-        var toast = Ui.Box(560, 960, 800, 56, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.96f), 28);
+        var toast = Ui.Box(560, 960, 800, 56, _t.SurfaceStrong.Mixed(0.96f), 28);
         toast.Add(Ui.Text(text, 0, 14, 14, 600, _t.Ink, 800, 28, HorizontalAlignment.Center));
         _root.Add(toast);
         var timer = new global::Tizen.NUI.Timer(2500);

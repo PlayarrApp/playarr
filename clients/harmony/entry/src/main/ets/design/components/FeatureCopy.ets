@@ -107,6 +107,8 @@ export struct FeatureCopy {
    * ellipsis. Empty string hides it entirely -- the home Stage hero
    * renders no synopsis in the source design (only Detail supplies one). */
   @Prop synopsis: string = '';
+  /** TV detail: web wraps the film synopsis before the 316 px run that the default 324 px column would still hold. */
+  @Prop synopsisMaxWidth: number = SYNOPSIS_MAX_WIDTH;
   /** Home only: web's Home hero sits its meta 4 vp higher and its synopsis 3 vp further from it than the Library/Detail panel. Added to
    * the gaps above the meta lines and the synopsis (vp, may be negative). */
   @Prop metaGapAdjust: number = 0;
@@ -117,6 +119,10 @@ export struct FeatureCopy {
   @Prop synopsisGapAdjust: number = 0;
   /** Library hero: web sets its meta lighter and its synopsis at 14.4 / 21.6 in a wider column than Home and Detail. */
   @Prop libraryCopy: boolean = false;
+  /** Added to the hero title's tracking (vp per character): the agenda's titles run 1.6 to 5 wider than web's at the shared tracking. */
+  @Prop titleSpacingAdjust: number = 0;
+  /** Letter-spacing correction for the kicker (the series detail's "S01 · E01" runs 2.3 wider than web's). */
+  @Prop kickerSpacingAdjust: number = 0;
 
   // Tracked purely to force a re-render on theme / TV-scale change; the
   // actual values always go through design/Theme.ets's resolvers and
@@ -166,7 +172,7 @@ export struct FeatureCopy {
         Text(this.kicker).fontFamily(nunitoAt(KICKER_FONT_WEIGHT, tv(KICKER_FONT_SIZE)))
           .fontSize(tv(KICKER_FONT_SIZE)).lineHeight(webLineHeight(tv(KICKER_FONT_SIZE))).halfLeading(true)
           .fontWeight(KICKER_FONT_WEIGHT)
-          .letterSpacing((tv(KICKER_LETTER_SPACING)) + -0.078)
+          .letterSpacing((tv(KICKER_LETTER_SPACING)) + -0.078 + this.kickerSpacingAdjust)
           .fontColor(this.kickerColor())
           .textCase(TextCase.UpperCase)
           .margin({ bottom: tv(GAP_KICKER_TITLE) })
@@ -180,7 +186,7 @@ export struct FeatureCopy {
             Text(line).fontFamily(nunitoAt(HERO_TITLE_FONT_WEIGHT, tv(HERO_TITLE_FONT_SIZE)))
               .fontSize(tv(HERO_TITLE_FONT_SIZE))
               .fontWeight(HERO_TITLE_FONT_WEIGHT)
-              .letterSpacing((tv(HERO_TITLE_LETTER_SPACING)) + 0.387)
+              .letterSpacing((tv(HERO_TITLE_LETTER_SPACING)) + 0.387 + this.titleSpacingAdjust)
               .lineHeight(webLineHeight(tv(HERO_TITLE_FONT_SIZE))).halfLeading(true)
               .fontColor(toResourceColor(activeColors().ink))
               .margin({ top: index > 0 ? tv(HERO_TITLE_LINE_HEIGHT) - webLineHeight(tv(HERO_TITLE_FONT_SIZE)) : 0 })
@@ -223,11 +229,11 @@ export struct FeatureCopy {
         Row({ space: tv(12.8) }) {
           ForEach(
             this.metaRuns,
-            (run: string) => {
+            (run: string, runIndex: number) => {
               Text(run).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(COPY_TEXT_FONT_SIZE)))
                 .fontSize(tv(COPY_TEXT_FONT_SIZE)).lineHeight(webLineHeight(tv(COPY_TEXT_FONT_SIZE))).halfLeading(true)
                 .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
-                .letterSpacing((this.libraryCopy ? -0.14 : 0) + 0.236) // web's run is narrower than ArkUI lays it out
+                .letterSpacing((this.libraryCopy ? -0.14 : -0.3) + 0.236 + (!this.libraryCopy && runIndex === 0 ? -0.104 : 0) + (!this.libraryCopy && runIndex === 1 ? 0.045 : 0)) // agenda's first run (18 characters) is 1.9 wider than web's; web's run is narrower than ArkUI lays it out (agenda: 7-8 px over on 18 and 34 characters at +0.236)
                 .fontColor(this.copyTextColor())
             },
             (run: string, index: number) => `${index}-${run}`
@@ -257,9 +263,9 @@ export struct FeatureCopy {
           .fontSize(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))
           .fontWeight((this.libraryCopy || this.strongSynopsis) ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT)
           .lineHeight(webLineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))).lineSpacing(webLineSpacing(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT), tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))).halfLeading(true)
-          .letterSpacing((tv((this.libraryCopy || this.strongSynopsis) ? SYNOPSIS_LETTER_SPACING : -0.24)) + -0.181)
+          .letterSpacing((tv((this.libraryCopy || this.strongSynopsis) ? SYNOPSIS_LETTER_SPACING : 0.1)) + -0.181)
           .fontColor((this.libraryCopy || this.strongSynopsis) ? this.copyTextColor() : toResourceColor(activeColors().inkMuted))
-          .constraintSize({ maxWidth: tv(this.libraryCopy ? LIBRARY_SYNOPSIS_MAX_WIDTH : SYNOPSIS_MAX_WIDTH) })
+          .constraintSize({ maxWidth: tv(this.libraryCopy ? LIBRARY_SYNOPSIS_MAX_WIDTH : this.synopsisMaxWidth) })
           .maxLines(SYNOPSIS_MAX_LINES)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .margin({ top: tv(GAP_META_SYNOPSIS + this.synopsisGapAdjust + (this.libraryCopy ? 5.76 : (this.strongSynopsis ? 1.42 : 5.58))) })

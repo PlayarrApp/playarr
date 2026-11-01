@@ -41,6 +41,8 @@ for (const [name, g] of Object.entries(manifest.groups)) {
 }
 const PLATFORM_UA = {
   xbox: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; Xbox; Xbox One) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edge/44.18363.8131",
+  // Roku keeps the xbox UA's platform identity (no hosted Clients link) and adds the first-party token that hides in-app volume and fullscreen.
+  roku: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; Xbox; Xbox One) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edge/44.18363.8131 PlayarrRoku/1.0",
   "android-mobile": "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36 PlayarrAndroidMobile/1.0",
 };
 const suite = JSON.parse(readFileSync(join(here, "suite.json"), "utf8"));
@@ -151,7 +153,7 @@ for (const name of groups) {
           // a poster still loading after the readiness wait.
           for (let attempt = 1; ; attempt++) {
             await driver.home();
-            if (s.id === "player-controls") await driver.playerControls(film.media_file_id);
+            if (s.id === "player-controls") { await driver.playerControls(film.media_file_id); if (g.hideVideo) await driver.hideVideo(); }
             else if (s.id === "actions" && g.mobile) { await driver.route("/movies"); await driver.openActions(); }
             else if (s.open) await driver.route(s.open, { requireHeroAction: /^\/(?:movies|series)\/[^/]+\/?$/.test(s.open) });
             else if (!g.mobile && s.keys) for (const { key, long } of expandKeys(s.keys)) { await driver.key(key, { long }); await sleep(250); } // let the route or panel the key opened settle before the next key

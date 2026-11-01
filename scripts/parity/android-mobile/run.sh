@@ -17,7 +17,7 @@ case $dev in
 esac
 legend=${PARITY_LEGEND_ROOT:?legend evidence root required}/android-$dev
 out=${PARITY_OUT:?scratch output dir required}/$dev
-screens=("$@"); [ ${#screens[@]} -gt 0 ] || screens=(home movies series music calendar-month calendar-week calendar-agenda search film-detail series-detail settings filters profiles player-controls actions)
+screens=("$@"); [ ${#screens[@]} -gt 0 ] || screens=(home movies series music calendar-month calendar-week calendar-agenda search film-detail series-detail settings filters profiles player-controls actions calendar-link)
 adb -s "$ANDROID_SERIAL" shell pm list packages io.playarr.mobile 2>/dev/null | grep -q 'package:io.playarr.mobile$' || { echo "io.playarr.mobile is not installed on $ANDROID_SERIAL: install the sideload debug APK and run signin.sh" >&2; exit 2; }
 eval "$(node "$here/../parity-config.mjs" --shell)"
 export PARITY_CLOCK
@@ -30,20 +30,23 @@ for t in Dark Light; do
   done
 done
 mkdir -p "$out"
+python3 -I "$here/distinct.py" "$out" || { echo "two screens captured identically (wrong scene): fix the capture route" >&2; exit 3; }
 node "$here/score.mjs" "$legend/web" "$out" --json "$out/scores.json"
 # Layout score (docs/parity/LAYOUT.md) per screen and theme, from the layout JSON captured with each screenshot.
 for t in dark light; do for f in "$out/$t/layout/"*.json; do
   [ -f "$f" ] || continue; id=$(basename "$f" .json)
-  node "$here/../layout-score.mjs" --ref "$legend/web/layout/$t/$id.json" --device "$f" --role-alias link=button --json | python3 -I -c "import json,sys; d=json.load(sys.stdin); print('$t', '$id', d['score'], d['equal'], '/', d['total'])" || true
+  node "$here/../layout-score.mjs" --ref "$legend/web/layout/$t/$id.json" --device "$f" --role-alias link=button --role-alias img=image --json | python3 -I -c "import json,sys; d=json.load(sys.stdin); print('$t', '$id', d['score'], d['equal'], '/', d['total'])" || true
 done; done | tee "$out/layout-scores.txt"
 [ "${PARITY_PUBLISH:-1}" = 1 ] || exit 0
 sha=$(git -C "$here" rev-parse HEAD); branch=$(git -C "$here" rev-parse --abbrev-ref HEAD)
+pr=${PARITY_PR:-$(gh pr list --repo PlayarrApp/playarr --head "$branch" --state all --json number --jq '.[0].number' 2>/dev/null)}
+case "$pr" in ''|*[!0-9]*) pr=null;; esac
 mkdir -p "$legend/dev/light"
 rm -f "$legend/dev/"*.png "$legend/dev/light/"*.png
 cp "$out/dark/"*.png "$legend/dev/"; cp "$out/light/"*.png "$legend/dev/light/"
 rm -rf "$legend/dev/layout"; for t in dark light; do mkdir -p "$legend/dev/layout/$t"; cp "$out/$t/layout/"*.json "$legend/dev/layout/$t/" 2>/dev/null || true; done
 cp "$out/scores.json" "$legend/dev/scores.json"; cp "$out/layout-scores.txt" "$legend/dev/layout-scores.txt" 2>/dev/null || true
 for d in "$legend/dev" "$legend/dev/light"; do
-  printf '{"branch":"%s","sha":"%s","pr":%s,"captured_at":"%s","server":"static server"}\n' "$branch" "$sha" "${PARITY_PR:-null}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$d/build.json"
+  printf '{"branch":"%s","sha":"%s","pr":%s,"captured_at":"%s","server":"static server"}\n' "$branch" "$sha" "$pr" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$d/build.json"
 done
 echo "published to the legend dir ($dev)"

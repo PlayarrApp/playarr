@@ -4,7 +4,7 @@ Reference: web TV layout at 1920x1080, signed in as `fx-viewer` against the fixt
 `PlayarrAndroidTV/` user agent so web behaves as it does on the television (no mute or fullscreen control in the player,
 the "Check for updates" and "Clients" chips on the profile screen). Candidate: the sideload debug build on a 1080p Android TV
 emulator (API 36, density forced to 160 dp so 1 dp = 1 CSS px), once in dark and once in light system appearance.
-Diff: pixelmatch threshold 0.1 through `scripts/parity/diff.mjs`. Native captures are in `dark/` and `light/`
+Diff: exact RGBA byte comparison through `scripts/parity/diff.mjs`. Native captures are in `dark/` and `light/`
 (palette-quantised to keep the repository small; the figures below were measured on the full-colour captures).
 
 ## How the captures were made
@@ -272,7 +272,7 @@ TV layout (Playwright, 1920x1080, Android TV user agent, dark, the same account 
 Captures are kept outside the repository (they show real library artwork). Navigation on the emulator is D-pad only where
 possible: a single `input tap` puts the emulator in touch mode, and Compose then shows no keyboard focus at all.
 
-Parity per screen, as the device wall computes it (100 minus the pixelmatch mismatch at threshold 0.1, live data, so artwork,
+Parity per screen, as the device wall computes it (100 minus the exact RGBA byte mismatch, live data, so artwork,
 clock and focus position differ between the two sides even where the layout matches):
 
 | Screen | Parity | Notes |

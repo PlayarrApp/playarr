@@ -76,6 +76,7 @@ STATS = {}
 LAST_FRAME_DIAGNOSTIC = {}
 HEARTBEAT = {}
 LAST_KEYS = []
+LAST_IMAGE = None  # bytes of the newest stored picture: a frame that says imageUnchanged reuses it without the page uploading it again
 RECOVERY_CODE = ""
 RECOVERY_CODE_AT = 0
 IDENTITY_STATUS = {}
@@ -334,7 +335,7 @@ class H(BaseHTTPRequestHandler):
             "captureMs": capture_ms if isinstance(capture_ms, (int, float)) else None,
             "requestDurationMs": d.get("requestDurationMs") if isinstance(d, dict) and isinstance(d.get("requestDurationMs"), (int, float)) else None,
         }
-        global LAST_FRAME_DIAGNOSTIC
+        global LAST_FRAME_DIAGNOSTIC, LAST_IMAGE
         with STATS_LOCK:
             LAST_FRAME_DIAGNOSTIC = diagnostic
         secrets = load_secrets()
@@ -343,14 +344,21 @@ class H(BaseHTTPRequestHandler):
             count_stat("frame_post_rejected_" + reason)
             return self._ok(403, b'{"error":"device_test_account_guard"}')
         img = d.pop("image", None)
+        unchanged = d.pop("imageUnchanged", None) is True
+        need_image = False
         stem = "frame-%013d" % int(time.time() * 1000)
         with lock:
             if isinstance(img, str) and (img.startswith("data:image/jpeg;base64,") or img.startswith("data:image/png;base64,")):
                 # PNG frames are stored under the .jpg name too (the consumers read latest.jpg); the content type is sniffed on read
-                (FRAMES / (stem + ".jpg")).write_bytes(base64.b64decode(img.split(",", 1)[1]))
+                LAST_IMAGE = base64.b64decode(img.split(",", 1)[1])
+                (FRAMES / (stem + ".jpg")).write_bytes(LAST_IMAGE)
+                d["hasImage"] = True
+            elif unchanged and LAST_IMAGE is not None:
+                (FRAMES / (stem + ".jpg")).write_bytes(LAST_IMAGE)
                 d["hasImage"] = True
             else:
                 d["hasImage"] = False
+                need_image = unchanged
             ks = (d.get("env") or {}).get("keys") or []
             global LAST_KEYS
             if ks != LAST_KEYS:  # append key events the page saw since the previous frame (kept across page reloads)
@@ -362,7 +370,7 @@ class H(BaseHTTPRequestHandler):
             d["receivedAt"] = time.time()
             (FRAMES / (stem + ".json")).write_text(json.dumps(d))
         count_stat("frame_post_accepted")
-        self._ok(200, b'{"ok":true}')
+        self._ok(200, b'{"ok":true,"needImage":true}' if need_image else b'{"ok":true}')
 
     def do_GET(self):
         global RECOVERY_CODE, RECOVERY_CODE_AT

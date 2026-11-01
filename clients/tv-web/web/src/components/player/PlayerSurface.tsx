@@ -94,9 +94,9 @@ interface WebKitFullscreenVideo extends HTMLVideoElement {
   webkitDisplayingFullscreen?: boolean;
 }
 
-/** TVs whose remote owns the volume (Tizen, webOS, VIDAA, Android TV) hide the volume slider and fullscreen button. */
+/** TVs whose remote owns the volume (Tizen, webOS, VIDAA, Android TV, Roku) hide the volume slider and fullscreen button. */
 export function usesSystemVolumeOnly(isSystemVolumeTv: boolean, userAgent: string): boolean {
-  return isSystemVolumeTv || userAgent.includes("PlayarrAndroidTV/");
+  return isSystemVolumeTv || userAgent.includes("PlayarrAndroidTV/") || userAgent.includes("PlayarrRoku/");
 }
 
 export function playerVideoAccessibilityProps(

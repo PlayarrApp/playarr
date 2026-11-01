@@ -266,8 +266,10 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
 
 
 def player_held_at_2s(folder):
-    """Record what the app itself reports on the player page; nothing is injected and nothing is refused. The Previewer mocks AVPlayer, so the
-    position stays 0:00 and the quality label empty: that is a platform limit, reported here and in the PR, never faked."""
+    """Record what the player page reports. The Previewer mocks AVPlayer and raises no events, so the preview build routes the controller to a
+    stand-in player (patch_player.py, overlay util/PreviewPlayer.ets) that lands on the pinned 2.000 s and stays paused, and replaces the
+    XComponent by an empty Column. The position and pause state are therefore the stand-in's, not a decoded stream; the quality label is
+    whatever the app derives from it. This prints what the page shows so the log states it plainly."""
     raw = os.path.join(out, "layout-raw", "light" if THEME == "light" else "dark", "player-controls.json")
     if not os.path.exists(raw):
         raise SystemExit("player did not report its state: no layout tree")

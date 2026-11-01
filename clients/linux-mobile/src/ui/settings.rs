@@ -37,15 +37,14 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
             .xalign(0.0)
             .build(),
     );
-    // The web keeps the description on one line and ends it with an ellipsis where the text column stops.
-    col.append(
-        &gtk4::Label::builder()
-            .label(desc)
-            .css_classes(["pa-pref-desc"])
-            .xalign(0.0)
-            .ellipsize(gtk4::pango::EllipsizeMode::End)
-            .build(),
-    );
+    // The web keeps the description on one line and ends it with an ellipsis where the text column stops. Pango's own ellipsis is kept: cutting the text by hand and appending one shaped it with kerning against the last glyph, which moved the ellipsis half a pixel away from the web's.
+    let desc_label = gtk4::Label::builder()
+        .label(desc)
+        .css_classes(["pa-pref-desc"])
+        .xalign(0.0)
+        .ellipsize(gtk4::pango::EllipsizeMode::End)
+        .build();
+    col.append(&desc_label);
     row.append(&col);
     let arrow = gtk4::Label::builder()
         .label("→")
@@ -53,6 +52,7 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
         .valign(gtk4::Align::Center)
         .build();
     // The web nudges the first (hovered) row's arrow 5 px right.
+    crate::layout::decorative(&arrow);
     arrow.set_margin_end(if n == 1 { -10 } else { 0 });
     row.append(&arrow);
 

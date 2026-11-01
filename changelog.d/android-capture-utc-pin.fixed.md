@@ -1,0 +1,1 @@
+- Android phone and tablet parity capture pins the emulator timezone to UTC on every run, so a restarted emulator can no longer put the pinned clock and agenda times out by the host offset.

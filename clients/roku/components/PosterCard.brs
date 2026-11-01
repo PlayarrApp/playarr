@@ -13,7 +13,7 @@ sub init()
     m.focusRingInset = 0
     m.cardContentInsetX = 0
     m.cardContentInsetY = 0
-    m.cardLink = m.top.findNode("cardLink")
+    m.cardBody = m.top.findNode("cardBody")
     m.focusRing = m.top.findNode("focusRing")
     m.focusGlow = m.top.findNode("focusGlow")
     m.poster = m.top.findNode("poster")
@@ -86,9 +86,10 @@ sub onContentChanged()
         m.cardContentInsetX = 8
         m.cardContentInsetY = 15
     end if
+    if content.colShift <> invalid then m.cardContentInsetX = m.cardContentInsetX + content.colShift
     m.cardRoot.translation = [m.cardContentInsetX, m.padTop + m.cardContentInsetY]
     ' Numbered cards (chapters, episodes) round their art a little more than the library cards (web 13.44 px against 12).
-    m.cornerR = 12.0
+    m.cornerR = WebCardRadius()
     if content.overlayNumber <> invalid and content.overlayNumber <> "" then m.cornerR = 13.44
     layoutCard(cardScale, artW, artH, listMode)
     ' A recycled grid card keeps its laid-out title position (layoutCard returns early for an unchanged scale).
@@ -118,7 +119,7 @@ sub onContentChanged()
     m.captionPrefix.visible = hasPrefix
     if hasPrefix
         m.title.setFields({ size: 11.52, tracking: -0.177 })
-        m.captionPrefix.tracking = EpisodeCodeTracking(content.captionPrefix, -0.433)
+        m.captionPrefix.tracking = 0
         m.captionPrefix.text = content.captionPrefix
         m.title.translation = [m.captionPrefix.textWidth + 8.8, m.titleY]
     else
@@ -251,14 +252,6 @@ sub onFocusChanged()
     m.focusRing.visible = ringOn
     m.focusGlow.opacity = 0
     if ringOn then m.focusGlow.opacity = shadowOpacity
-    ' Web grid card: the card (link box) scales 1.015 on focus, the art a further 1.025.
-    linkScale = 1.0
-    if not m.homeCardFocusStyle and m.cardScaleValue > 1 then linkScale = 1 + 0.015 * effective
-    m.cardLink.scale = [linkScale, linkScale]
-    ' The card's link box lifts with its art and caption (the same 5 px).
-    linkLift = 0
-    if not m.homeCardFocusStyle and m.cardScaleValue > 1 then linkLift = -5 * effective
-    m.cardLink.translation = [0, linkLift]
     liftY = -cardFocusLift() * effective
     artScale = 1 + (effective * cardFocusScale())
     m.liftInterp.key = [0, 1]
@@ -342,7 +335,7 @@ end sub
 ' card has a 330 px art but still 12 px text and a 13 px dot), so nothing is scaled as a whole.
 sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listMode = false as Boolean)
     artW = 220 * cardScale
-    artH = 124 * cardScale
+    artH = artW * 9 / 16
     if ovW > 0
         artW = ovW
         artH = ovH
@@ -381,7 +374,7 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     gy = artH / 124.0
     if m.homeCardFocusStyle and ovW = 0
         ' card-glow.png has a 220x124 mask centred in a 400x304 canvas with
-        ' 90px margins. Home artwork is laid out at the 1.4864 card scale, so
+        ' 90px margins. Home artwork is laid out at the web card scale (--card-w / 220), so
         ' scale the full glow bitmap and its margins together to keep that mask
         ' aligned to the artwork with the generated blur proportions intact.
         glowScale = cardScale
@@ -469,9 +462,19 @@ sub applyCaptionFocus()
     if m.global.cardFocusOff = true then effective = 0
     if effective > 1 then effective = 1
     if effective < 0 then effective = 0
+    ' The first and last 10 % of the focus transition (0.5 px of lift) are invisible; snapping it keeps the caption box from depending on when the capture lands.
+    if effective < 0.1 then effective = 0
+    if effective > 0.9 then effective = 1
     m.title.scale = [1, 1]
     m.kind.scale = [1, 1]
+    ' A caption that was lifted returns to its rest position when focus ends (the lifted translation must not outlive the focus).
+    if m.captionLifted = true and effective = 0
+        m.title.translation = [m.cardTitleX, m.titleY]
+        m.kind.translation = [m.cardTitleX, m.titleY + 19.5]
+        m.captionLifted = false
+    end if
     if m.cardScaleValue > 1 and m.homeCardFocusStyle <> true and m.cardListMode <> true and m.cardArtW <> invalid and m.cardArtW > 0 and effective > 0
+        m.captionLifted = true
         k = 1 + 0.015 * effective
         cx = m.cardArtW / 2
         cy = (m.posterBg.height + 29.38) / 2
@@ -495,16 +498,9 @@ sub nameCard(content as Object, circle as Boolean, hasNumber as Boolean)
     else
         linkName = "Open " + content.title
     end if
-    m.cardLink.width = m.cardArtW
-    ' The web link spans the art and the title line; the meta line below it sits outside the link.
-    last = m.title
-    ' The web's title line box runs 1.5 px below the glyph box (line-height over content area).
-    m.cardLink.height = PlayarrTextBottom(last) + 1.5
-    if m.cardLink.height < m.posterBg.height then m.cardLink.height = m.posterBg.height
-    m.cardLink.scaleRotateCenter = [m.cardArtW / 2, m.cardLink.height / 2]
+    ' The link is a Group around the art and caption: it paints no corner of its own, so it declares none (the art container carries the mask).
     linkRadius = 0
-    if content.gridCard = true then linkRadius = 12
-    m.cardLink.id = "a11y|link|" + linkRadius.ToStr() + "|" + linkName
+    m.cardBody.id = "a11y|link|" + linkRadius.ToStr() + "|" + linkName
     m.posterBg.id = "a11y|container|" + m.top.findNode("cornerTL").width.ToStr() + "|"
     m.unwatchedBadge.id = "a11y|img|6.5|"
     A11yStamp(m.unwatchedBadge, true)

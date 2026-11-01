@@ -180,29 +180,22 @@ const UI_TICK_INTERVAL_MS: number = 500;
 /** brief 9 Slice 7 / player/PlayerInput.ets: "Seek amount is +/-10 s." */
 /** The negotiated quality's name for the control bar ('' when the server offers no choice). */
 function qualityLabelOf(info: PlaybackInfoResponse): string {
-  if (isTvMetrics()) {
-    // web `qualityDisplayLabel`: the original reads "Original · 0.3 Mbps" (one decimal, none under 0.05), or "Original"
-    let chosen: QualityOption | undefined = undefined;
-    for (const option of info.quality_options) {
-      if (option.id === info.selected_quality_id || chosen === undefined) {
-        chosen = option;
-      }
-    }
-    if (chosen === undefined || chosen.id === 'original') {
-      const bps: number = chosen !== undefined && chosen.video_bitrate_bps !== null ? chosen.video_bitrate_bps : 0;
-      return bps >= 50000 ? 'Original \u00b7 ' + (bps / 1000000).toFixed(1) + ' Mbps' : 'Original';
-    }
-    return chosen.label;
-  }
-  if (info.quality_options.length < 2) {
+  if (!isTvMetrics() && info.quality_options.length < 2) {
     return '';
   }
+  // web `qualityDisplayLabel` on every client (the phone's control bar shows the same text): the original reads "Original · 0.3 Mbps"
+  // (one decimal, none under 0.05), or "Original"
+  let chosen: QualityOption | undefined = undefined;
   for (const option of info.quality_options) {
-    if (option.id === info.selected_quality_id) {
-      return option.label;
+    if (option.id === info.selected_quality_id || chosen === undefined) {
+      chosen = option;
     }
   }
-  return '';
+  if (chosen === undefined || chosen.id === 'original') {
+    const bps: number = chosen !== undefined && chosen.video_bitrate_bps !== null ? chosen.video_bitrate_bps : 0;
+    return bps >= 50000 ? 'Original \u00b7 ' + (bps / 1000000).toFixed(1) + ' Mbps' : 'Original';
+  }
+  return chosen.label;
 }
 
 /** Plain facts about how the negotiated stream reaches this device, for the info drawer. */
@@ -1454,6 +1447,7 @@ struct Player {
         })
           .width('100%')
           .height('100%')
+          .accessibilityText('Video playback surface').accessibilityRole(AccessibilityRoleType.VIDEO) // web: the video element carries this name
 
         if (this.phase !== 'ready') {
           this.loadingOrErrorOverlay()

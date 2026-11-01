@@ -1,0 +1,1 @@
+- Roku: the in-app Mute control is removed and the player transport row follows the web layout without volume. The web player now hides volume and fullscreen for the first-party `PlayarrRoku/` user agent, as it does for the other system-volume TVs, and the Roku web references are recaptured with that user agent.

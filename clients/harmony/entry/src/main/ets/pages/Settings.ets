@@ -89,9 +89,9 @@ function upperFirst(text: string): string {
 }
 function ARTWORK_SIZE_CHOICES(): Choice[] {
   return [
-    { value: 'small', label: upperFirst(t('pages.library.sizeSmall', 'small')) },
-    { value: 'medium', label: t('quality.level.medium', 'Medium') },
-    { value: 'large', label: upperFirst(t('pages.library.sizeLarge', 'large')) },
+    { value: 'small', label: upperFirst(t('pages.library.sizeSmall', 'small')), name: t('pages.library.sizeSmall', 'small') },
+    { value: 'medium', label: t('quality.level.medium', 'Medium'), name: t('quality.level.medium', 'Medium').toLowerCase() },
+    { value: 'large', label: upperFirst(t('pages.library.sizeLarge', 'large')), name: t('pages.library.sizeLarge', 'large') },
   ];
 }
 function SUBTITLE_MODE_CHOICES(): Choice[] {
@@ -120,6 +120,7 @@ const PANEL_LEFT: number = 774;
 const PANEL_TOP: number = 216;
 const PANEL_WIDTH: number = 1042;
 const PANEL_TEXT_SIZE: number = 13.824;
+const SETTING_CARD_TOP: number = 1 + 34 + 1.77 + 1.27 - 1.3; // web: from a setting's top rule to its heading (the rule's own px included)
 /** Phone: the panel is the page width less 16 each side (the 360 vp web phone width). */
 const TOUCH_PANEL_WIDTH: number = 328;
 
@@ -135,7 +136,7 @@ export struct SettingsScreen {
 
   /** A phone row's description on one line: the web row clips it at 228.5 vp with a real "…". */
   private rowCopy(id: string): string {
-    return fitLineText(this.getUIContext(), sectionCopyOf(id), 10.88, 400, 228.5);
+    return fitLineText(this.getUIContext(), sectionCopyOf(id), 10.88, 400, 228.5, isTvMetrics() ? 0 : -0.084); // the tracking the row's Text is drawn with
   }
   @State private audioLanguage: string = 'en';
   /** Web's player preference status: loading, ready, saving or an error message. */
@@ -332,7 +333,7 @@ export struct SettingsScreen {
   private appearancePanel(): void {
     ChoiceSegments({
       heading: t('settings.appearance.colourThemeLabel', 'Colour theme'),
-      choices: themeChoices(),
+      choices: themeChoices().map((c: Choice): Choice => ({ value: c.value, label: c.label, name: c.label.toLowerCase() })),
       selected: this.themeSetting,
       large: true,
       lowerLabels: true,
@@ -342,7 +343,7 @@ export struct SettingsScreen {
         saveThemeChoice(value as ThemeModeSetting);
       },
     })
-    this.settingDivider()
+    Column() {
     ChoiceSegments({
       heading: t('settings.appearance.homeViewTitle', 'Home screen artwork'),
       description: t('settings.appearance.homeViewDescription', 'Show portrait covers instead of wide media thumbnails on the home screen.'),
@@ -350,12 +351,18 @@ export struct SettingsScreen {
       selected: this.homeView,
       large: true,
       sectionWidth: this.panelWidth(),
+      trailingGap: false,
       onChoose: (value: string) => {
         this.homeView = value;
         saveAppearance('homeView', value);
       },
     })
-    this.settingDivider()
+    }
+    .width(tv(this.panelWidth()))
+    .padding({ top: tv(SETTING_CARD_TOP) })
+    .margin({ bottom: tv(30.23) }) // web: the 30.2 px gap lies between the setting boxes, outside their rules
+    .border({ width: { top: 1 }, color: toResourceColorWithAlpha(activeColors().ink, 0.083) }) // web: the setting's own box, a 1 px rule on its top edge
+    Column() {
     ChoiceSegments({
       heading: t('settings.appearance.artworkSizeTitle', 'Artwork size'),
       description: t('settings.appearance.artworkSizeDescription', 'Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.'),
@@ -363,21 +370,17 @@ export struct SettingsScreen {
       selected: this.artworkSize,
       large: true,
       sectionWidth: this.panelWidth(),
+      trailingGap: false,
       onChoose: (value: string) => {
         this.artworkSize = value;
         saveAppearance('artworkSize', value);
       },
     })
-  }
-
-  /** Web `.appearance-setting + .appearance-setting`: a 1 px rule between settings. */
-  @Builder
-  private settingDivider(): void {
-    Divider()
-      .width(tv(this.panelWidth()))
-      .strokeWidth(1)
-      .color(toResourceColorWithAlpha(activeColors().ink, 0.083))
-      .margin({ bottom: tv(34 + 1.77) }) // web: 41 px from the rule to the next heading
+    }
+    .width(tv(this.panelWidth()))
+    .padding({ top: tv(SETTING_CARD_TOP) })
+    .margin({ bottom: tv(30.23) }) // web: the 30.2 px gap lies between the setting boxes, outside their rules
+    .border({ width: { top: 1 }, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
   }
 
   @Builder
@@ -691,7 +694,8 @@ export struct SettingsScreen {
     NavDestination() {
       PageShell({
         railFrostWidthPct: 65,
-        railFrostFullBox: isTvMetrics(), // web TV draws the frost as a full-width box
+        railFrostFullBox: false, // web: the detail panel is its own 65% wide box
+        stageWash: isTvMetrics(), // web: the page's `.tv-stage-wash` is a full-page box under the panel
         title: t('settings.index.title', 'Preferences'),
         backLabel: 'Settings',
         backRole: 'button',

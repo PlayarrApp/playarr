@@ -157,7 +157,17 @@ internal sealed class DebugMirror
                             { var rss = File.ReadLines("/proc/self/status").FirstOrDefault(l => l.StartsWith("VmRSS")) ?? ""; var fds = Directory.GetFiles("/proc/self/fd").Length; custom = new { rss, managed = GC.GetTotalMemory(false), fds, gen2 = GC.CollectionCount(2) }; }
                             break;
                         case "/fm": custom = new { fm = Ui.FontMetricsProbe() }; break;
-                        case "/layout": custom = new { json = LayoutExport.Json(q["screen"] ?? "", q["theme"] ?? "", _env().ClockPinned, global::Tizen.NUI.Window.Instance.GetDefaultLayer()) }; break;
+                        case "/layout":
+                            {
+                                // keep=<csv of candidate indices>: the candidates whose own pixels changed in the driver's toggle-and-compare on the real screen; cands=1 also lists the candidates
+                                var layer = global::Tizen.NUI.Window.Instance.GetDefaultLayer();
+                                var keep = q["keep"] is { } k ? k.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToHashSet() : null;
+                                custom = new { json = LayoutExport.Json(q["screen"] ?? "", q["theme"] ?? "", _env().ClockPinned, layer, keep), cands = q["cands"] == "1" ? JsonConvert.DeserializeObject(LayoutExport.Candidates(layer)) : null };
+                            }
+                            break;
+                        // parity tooling: hide the own pixels of the candidate indices (/hide?idx=1,2) for a screen grab, and restore them (/unhide)
+                        case "/hide": LayoutExport.Hide(global::Tizen.NUI.Window.Instance.GetDefaultLayer(), (q["idx"] ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse), q["whole"] == "1"); break;
+                        case "/unhide": LayoutExport.Unhide(); break;
                         // parity tooling: natural single-line width of /measure?text=&size=&weight=&spacing= as the app would lay it out
                         case "/measure": measured = Ui.TextWidth(q["text"] ?? "", float.Parse(q["size"] ?? "16", System.Globalization.CultureInfo.InvariantCulture), int.Parse(q["weight"] ?? "400"), float.Parse(q["spacing"] ?? "0", System.Globalization.CultureInfo.InvariantCulture)); break;
                         case "/key":
@@ -176,7 +186,7 @@ internal sealed class DebugMirror
                             break;
                     }
                     var st = (_shell().Page as PlayerScreen)?.Status ?? (false, 0L);
-                    done.SetResult(custom ?? new { playing = st.Item1, positionMs = st.Item2, route = _shell().Route, focused = _shell().FocusedLabel, nav = _shell().NavFocused, ready = _shell().Ready, pending = _env().VisualWork.Pending, position = _shell().FocusPosition is { } fp ? new { rail = fp.Rail, index = fp.Index } : null, theme = _env().Theme.Name, animationMode = "none", measured });
+                    done.SetResult(custom ?? new { playing = st.Item1, positionMs = st.Item2, route = _shell().Route, focused = _shell().FocusedLabel, controls = _shell().PlayerControlsVisible, panel = _shell().PlayerPanelOpen, nav = _shell().NavFocused, ready = _shell().Ready, pending = _env().VisualWork.Pending, position = _shell().FocusPosition is { } fp ? new { rail = fp.Rail, index = fp.Index } : null, theme = _env().Theme.Name, animationMode = "none", measured });
                 }
                 catch (Exception e) { done.SetException(e); }
             });

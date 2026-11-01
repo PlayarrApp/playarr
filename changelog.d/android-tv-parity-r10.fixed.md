@@ -1,0 +1,1 @@
+- Android TV parity round 10: a plain '+' glyph on the detail pills stays in the Nunito text family (as web), so its box and width are the real Nunito ones.

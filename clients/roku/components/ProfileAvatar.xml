@@ -19,7 +19,7 @@
     -->
     <!-- The web scales the whole profile button 1.045 and lifts it 8 px when focused, the circle a further 1.035. Item box is 368 x 392. -->
     <Group id="itemGroup" scaleRotateCenter="[184,203.8]">
-      <!-- The profile button's own box (avatar, name, status): the web's link-like button named for the profile. -->
+      <!-- The profile button's hit box (avatar, name, status): the extent of the focused item, named for the profile. -->
       <Rectangle id="profileButton" translation="[62,53]" width="244" height="301.6" color="0x00000000" />
       <Group id="circleGroup" translation="[62,53]" scaleRotateCenter="[122,122]">
         <!-- The add profile's plus is text over its disc bitmap. -->
@@ -27,6 +27,8 @@
         <!-- Thin outline and the 20 px, 45% card glow, centred on the avatar. -->
         <Poster id="focusRing" translation="[-29,-29]" width="304" height="304" uri="pkg:/images/avatar-ring.png" opacity="0" loadDisplayMode="scaleToFit" />
         <Poster id="avatarImage" translation="[0,0]" width="244" height="244" loadDisplayMode="scaleToFit" />
+        <!-- The preset mascot is its own picture inside the gradient circle (web: 225 px in a 264 px circle). -->
+        <Poster id="avatarGlyph" translation="[17.95,17.95]" width="208.1" height="208.1" loadDisplayMode="scaleToFit" visible="false" />
         <!-- A custom photo: the account's JPEG, clipped to the circle by the mask (only the mask's alpha counts). -->
         <MaskGroup id="customMask" maskUri="pkg:/images/avatar-mask.png" maskSize="[244,244]" visible="false">
           <Poster id="customImage" translation="[0,0]" width="244" height="244" loadDisplayMode="scaleToZoom" />

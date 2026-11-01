@@ -433,7 +433,7 @@ impl Lib {
                     .build();
                 if glyphs {
                     view_tile_child(&t, i, n);
-                    crate::layout::name(&t, n);
+                    crate::layout::name(&t, &n.to_lowercase());
                 } else {
                     t.set_label(n);
                     // The web sets capitalised tile text a touch wider than GTK; the lowercase quirk text matches already.
@@ -492,7 +492,6 @@ impl Lib {
                 .model(&gtk4::StringList::new(&["Any language"]))
                 .accessible_role(gtk4::AccessibleRole::Group)
                 .build();
-            crate::layout::mark_group(&dd);
             dd.add_css_class("pa-dropdown");
             dd.add_css_class("pa-filter");
             // The web's select is a bordered group holding a button with the value and a caret glyph.
@@ -505,13 +504,15 @@ impl Lib {
                 if let Some(arrow) = inner.last_child() {
                     arrow.set_visible(false);
                 }
-                inner.append(
-                    &gtk4::Label::builder()
-                        .label("\u{2304}")
-                        .css_classes(["pa-dd-caret"])
-                        .build(),
-                );
+                let caret = gtk4::Label::builder()
+                    .label("\u{2304}")
+                    .css_classes(["pa-dd-caret"])
+                    .margin_start(1)
+                    .build();
+                crate::layout::decorative(&caret);
+                inner.append(&caret);
             }
+            dd.set_margin_top(-1);
             col.append(&dd);
             drops.push(dd);
             let _ = i;
@@ -727,6 +728,12 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
     lib.reset();
     let root = gtk4::Overlay::builder().child(&backdrop).build();
     root.add_overlay(&wash);
+    // The web's rail surface under the grid.
+    let surface = gtk4::Box::builder()
+        .css_classes(["pa-rail-surface"])
+        .can_target(false)
+        .build();
+    root.add_overlay(&surface);
     root.add_overlay(&scroll);
     // The web fades the grid into the page colour over the last 66 px, down to 60% at the screen edge.
     let foot = gtk4::Box::builder()

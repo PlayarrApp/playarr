@@ -102,7 +102,7 @@
 
 import { t, tf } from '../core/Language';
 import { balanceTitle } from '../core/TitleBalance';
-import { nunito, nunitoAt, arrowFont, webLineHeight, webLineSpacing } from '../design/Typography';
+import { nunito, nunitoAt, arrowFont, glyphFamily, webLineHeight, webLineSpacing } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 import { LengthMetrics } from '@kit.ArkUI';
 
@@ -209,8 +209,19 @@ const HERO_WASH_HEIGHT: number = 562; // web stage wash: 72 vh
 // Web phone season rows (measured on the 360 vp reference): 187 vp cards, heading to cards 23, season to season 237.
 const PHONE_EPISODE_CARD_WIDTH: number = 187;
 const PHONE_EPISODE_RAIL_GAP: number = 11;
-const PHONE_SEASON_LIST_HEIGHT: number = 165;
-const PHONE_SEASON_HEADER_CARD_GAP: number = 21.18;
+// The rail's layout height is the list height minus its 24 vp bottom clip inset: 159.5 leaves exactly the 135.5 vp card (web: 136.5 incl. the 98 px scroll padding that its negative margins cancel).
+const PHONE_SEASON_LIST_HEIGHT: number = 159.5;
+/** Web phone Similar Titles: landscape 158 vp cards, 88.9 art, 113.6 in all (the tv-title-card at the phone width). */
+const PHONE_SIMILAR_CARD_WIDTH: number = 158;
+const PHONE_SIMILAR_CARD_ART_HEIGHT: number = 88.9;
+const PHONE_SIMILAR_CARD_HEIGHT: number = 113.6;
+const PHONE_SIMILAR_CARD_GAP: number = 12;
+/** Web phone rail surface: a 494.3 vp panel (24 vp above its first heading), 82 vp of page under it. */
+const PHONE_RAIL_SURFACE_HEIGHT: number = 494.3;
+const PHONE_PAGE_BOTTOM: number = 82;
+/** Web phone: the gap between two tracks (card bottom to the next heading). */
+const PHONE_TRACK_GAP: number = 65.5;
+const PHONE_SEASON_HEADER_CARD_GAP: number = 18.5; // web: cards start 61.8 under the heading's top (heading block 43.3)
 // 24 > the card's 20 vp ring glow, so the glow is not cut at the rail's left edge
 const PHONE_DETAIL_RAIL_CLIP_START: number = 24;
 const PHONE_DETAIL_RAIL_CLIP_TOP: number = 36;
@@ -219,8 +230,8 @@ const PHONE_BACK_SIZE: number = 44;
 const PHONE_HEADER_TOP: number = 16;
 const PHONE_HEADER_GAP: number = 8;
 const PHONE_HEADER_FADE: number = 28;
-// Season to season is 237 on web; the phone capture measured 14.3 vp short with 21, so the gap is 35.3.
-const PHONE_SEASON_ROW_GAP: number = 35.65;
+// Season to season on the static refs: track heading to heading 262.9 (web: 65.5 between a card row and the next heading).
+const PHONE_SEASON_ROW_GAP: number = 65.5; // web: 65.5 from a track's card bottom to the next heading (the earlier 35.65 was fitted to a scrolled ref)
 /** Web `--brand-strong`, the phone Play button's focused fill. */
 const PLAY_FOCUS_FILL: string = '#a52745';
 
@@ -261,9 +272,10 @@ const SERIES_COLUMN_TOP: number = 543; // static-server refs: the first season h
 const SERIES_COLUMN_BLEED: number = 12;
 const SERIES_COLUMN_HEIGHT: number = 537;
 const CHAPTER_CARD_WIDTH: number = 268;
-const CHAPTER_CARD_HEIGHT: number = 150;
+const CHAPTER_CARD_HEIGHT: number = 150.75; // 16:9 of the 268 card
 /** Room under a landscape Similar card for its caption and the focus shadow. */
 const SIMILAR_LIST_EXTRA: number = 70;
+const SIMILAR_CARD_WIDTH: number = 327.17;
 const CAST_CIRCLE: number = 104;
 /** Web's first circle starts 24 vp in from the rail edge (the item is wider than ours); ours sat at 10. */
 const CAST_LEFT_INSET: number = 14;
@@ -378,6 +390,8 @@ struct DetailRowArtworkCard {
   @Prop activeRailFactor: number = 1;
   @Prop episodeCaption: string = '';
   @Prop episodeNumberOverlay: string = '';
+  /** A name the card is announced by when its text is not the name (web's movie chapters: "Play <title> from <chapter>"). */
+  @Prop nameOverride: string = '';
   @Prop artWash: number = 0;
   @Prop focusId: string = '';
   @Prop ringOn: boolean = false;
@@ -393,8 +407,8 @@ struct DetailRowArtworkCard {
   private posterCard(): void {
     PosterCard({
       variant: this.variant,
-      linkRadius: 12,
-      accessibleName: this.episodeCaption.length === 0 && this.episodeNumberOverlay.length === 0 ? 'Open ' + this.title : '',
+      linkRadius: 0, // web: the detail cards' links carry no radius (the library cards' carry 12)
+      accessibleName: this.nameOverride.length > 0 ? this.nameOverride : (this.episodeCaption.length === 0 && this.episodeNumberOverlay.length === 0 ? 'Open ' + this.title : ''),
       title: this.title,
       subtitle: this.subtitle,
       artwork: this.artworkStore.getArtwork(this.rowId),
@@ -1142,7 +1156,7 @@ struct Detail {
       if (item.similarWorkId === null) {
         continue;
       }
-      const result = await fetchWorkArtworkByPriority(item.similarWorkId, isTvMetrics() ? LANDSCAPE_ARTWORK_PRIORITY : COVER_ARTWORK_PRIORITY);
+      const result = await fetchWorkArtworkByPriority(item.similarWorkId, LANDSCAPE_ARTWORK_PRIORITY);
       if (!this.artworkStore.isCurrentGeneration(generation)) {
         return;
       }
@@ -1693,8 +1707,8 @@ struct Detail {
         variant: 'home',
         title: (item as DetailRow).title,
         subtitle: (item as DetailRow).subtitle,
-        cardWidth: tv(TvGeometry.homeRailCardWidthLandscape),
-        cardHeight: Math.round((tv(TvGeometry.homeRailCardWidthLandscape) * 9) / 16),
+        cardWidth: SIMILAR_CARD_WIDTH, // web DOM dump: 327.17 x 213.41 (the integer card width is 0.17 short)
+        cardHeight: (SIMILAR_CARD_WIDTH * 9) / 16,
         artworkRadius: Radii.homeCardArtworkTv,
         activeRailFactor: activeRailFactor,
         onCardFocus: this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration),
@@ -1707,11 +1721,11 @@ struct Detail {
         variant: 'home',
         title: (item as DetailRow).title,
         subtitle: (item as DetailRow).subtitle,
-        cardWidth: TouchGeometry.homeRailCardWidthCover,
-        cardHeight: Math.round((TouchGeometry.homeRailCardWidthCover * 3) / 2),
-        artworkRadius: Radii.homeCardArtworkTouch,
-        titleFontSize: 12,
-        subtitleFontSize: 10,
+        cardWidth: PHONE_SIMILAR_CARD_WIDTH,
+        cardHeight: PHONE_SIMILAR_CARD_ART_HEIGHT,
+        artworkRadius: Radii.homeCardArtworkTv,
+        titleFontSize: 8.8, // web: the tv-title-card caption at the phone width
+        subtitleFontSize: 6.88,
         activeRailFactor: activeRailFactor,
         onCardFocus: this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration),
         onSelect: () => { this.selectRow((item as DetailRow)); },
@@ -1726,7 +1740,7 @@ struct Detail {
   /** Phone play glyph: a drawn triangle, because the Previewer renders the text glyph as an emoji box. */
   @Builder
   private playTriangle(): void {
-    Text('\u25B6').fontFamily(nunito(400) + ',PlayarrGlyphs') // web draws the glyph (7.3 x 13 at 9.5 vp)
+    Text('\u25B6').fontFamily(glyphFamily('\u25B6', nunito(400))) // web draws the glyph (7.3 x 13 at 9.5 vp)
       .fontSize(9.5).lineHeight(webLineHeight(9.5)).halfLeading(true)
       .fontColor(this.playInk())
   }
@@ -1744,7 +1758,7 @@ struct Detail {
 
     Row({ space: Spacing.sm }) {
       if (isTvMetrics()) {
-        Text('\u25B6').fontFamily(nunitoAt(400, PLAY_BUTTON_ICON_SIZE) + ',PlayarrGlyphs')
+        Text('\u25B6').fontFamily(glyphFamily('\u25B6', nunitoAt(400, PLAY_BUTTON_ICON_SIZE)))
           .fontSize(PLAY_BUTTON_ICON_SIZE).lineHeight(webLineHeight(PLAY_BUTTON_ICON_SIZE)).halfLeading(true)
           .fontColor(this.playInk())
       } else {
@@ -1865,15 +1879,15 @@ struct Detail {
   @Builder
   private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
     Row({ space: tv(primary ? PILL_PRIMARY_GAP : PILL_SECONDARY_GAP) }) {
-      Text(glyph).fontFamily(nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)) + ',PlayarrGlyphs')
+      Text(glyph).fontFamily(glyphFamily(glyph, nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))).halfLeading(true)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : (resolvedThemeMode() === 'dark' ? PILL_GLYPH_DARK : PLAY_FOCUS_FILL))  // web: the secondary pills' glyph is pink
-        .translate({ y: primary ? 1.6 : (glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35) })
+        .translate({ y: primary ? (this.isSeriesPage() ? -1.2 : 0) : (glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35) })
       Text(label).fontFamily(nunitoAt(700, tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)).letterSpacing((isTvMetrics() ? -0.053 : 0)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : toResourceColor(activeColors().ink))
-        .translate({ y: primary ? 1.5 : (glyph === '+' || glyph === '\u2713' ? -1.25 : 0) })
+        .translate(primary ? { x: this.isSeriesPage() ? -2.5 : -3.43, y: this.isSeriesPage() ? -1.55 : -0.3 } : { y: (glyph === '+' || glyph === '\u2713' ? -1.25 : 0) }) // primary label: web's sits left of and above ArkUI's centred one (measured on the TV refs; the film pill is scaled 1.06)
         .maxLines(1)
     }
     .accessibilityText(this.pillName(label, primary ? '' : glyph, primary)).accessibilityRole(this.pillRole(primary)).accessibilityGroup(true)
@@ -2082,7 +2096,7 @@ struct Detail {
   /** The right-hand column on web: the Chapters rail, then the Cast rail, straight on the page (no glass panel). */
   @Builder
   private tvRightColumn(): void {
-    Column({ space: tv(RIGHT_COLUMN_GAP) }) {
+    Column({ space: isTvMetrics() ? tv(RIGHT_COLUMN_GAP) : PHONE_TRACK_GAP }) {
       if (this.detail !== null && this.detail.work.kind === 'series') {
         this.tvSeriesSeasonRows()
       } else {
@@ -2123,7 +2137,7 @@ struct Detail {
         .alignItems(HorizontalAlign.Start)
       }
       if (this.cast.length > 0) {
-        Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
+        Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP) : PHONE_SEASON_HEADER_CARD_GAP }) {
           this.railHeading(t('pages.workDetail.cast', 'Cast'), this.cast.length.toString() + ' people')
           MediaRail({
             railId: 'cast',
@@ -2140,13 +2154,15 @@ struct Detail {
       }
       if (this.similarRail !== null) {
         // web: landscape cards (the Library's size) under a heading with the title count
-        Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
+        Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP) : PHONE_SEASON_HEADER_CARD_GAP }) {
           this.railHeading(this.similarRail.heading, tf(this.similarRail.items.length === 1 ? 'pages.workDetail.titlesCountOne' : 'pages.workDetail.titlesCountOther', this.similarRail.items.length === 1 ? '{{count}} title' : '{{count}} titles', { count: this.similarRail.items.length.toString() }))
           MediaRail({
             railId: this.similarRail.id,
             headingGap: 0,
-            listHeight: tv(Math.round(TvGeometry.homeRailCardWidthLandscape * 9 / 16) + SIMILAR_LIST_EXTRA),
-            itemGap: tv(TvGeometry.railItemGapHome),
+            listHeight: isTvMetrics() ? tv(Math.round(TvGeometry.homeRailCardWidthLandscape * 9 / 16) + SIMILAR_LIST_EXTRA) : PHONE_SIMILAR_CARD_HEIGHT + 24, // phone: the card row plus the list's 24 vp bottom clip inset
+            itemGap: isTvMetrics() ? tv(TvGeometry.railItemGapHome) : PHONE_SIMILAR_CARD_GAP,
+            clipInsetStart: isTvMetrics() ? 8 : PHONE_DETAIL_RAIL_CLIP_START,
+            bleedEnd: isTvMetrics() ? 0 : atLeast(16, this.safeRight),
             items: this.similarRail.items,
             itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
               this.similarItem(item, index, activeRailFactor);
@@ -2154,6 +2170,7 @@ struct Detail {
           })
         }
         .alignItems(HorizontalAlign.Start)
+        .margin({ top: isTvMetrics() && this.isSeriesPage() ? 1.8 : 0 }) // web (series): the heading, count and cards sit 1.4 to 2.5 px lower
       }
     }
     .alignItems(HorizontalAlign.Start)
@@ -2208,7 +2225,6 @@ struct Detail {
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .margin({ top: isTvMetrics() ? 0 : 35.2 })
   }
 
   @Builder
@@ -2221,6 +2237,7 @@ struct Detail {
       subtitle: (item as DetailRow).subtitle,
       episodeCaption: (item as DetailRow).episodeCaption ?? '',
       episodeNumberOverlay: ((item as DetailRow).episodeNumberOverlay ?? ''), // parenthesised: the capture patch anchors on the series card's line
+      nameOverride: this.detail !== null && this.detail.work.kind === 'movie' ? 'Play ' + this.detail.work.title + ' from ' + (item as DetailRow).title : '',
       artWash: 0.32,
       titleFontSize: isTvMetrics() ? 11.904 : 12.4,
       subtitleFontSize: isTvMetrics() ? 8.832 : 9.5,
@@ -2235,7 +2252,7 @@ struct Detail {
   @Builder
   private tvContent(): void {
     Stack() {
-      KeyArtBackdrop({ keyArt: this.heroArtwork, railFrostWidthPct: 65 })
+      KeyArtBackdrop({ keyArt: this.heroArtwork, railFrostWidthPct: 62 })
 
       Column({ space: tv(COPY_GAP - (this.isSeriesPage() ? 23.8 : 0)) }) {
         FeatureCopy({
@@ -2244,7 +2261,9 @@ struct Detail {
           subtitle: this.tvCopySubtitle(),
           metaChips: this.detail !== null ? metaChips(this.detail, this.hasResumeTarget() ? this.resumePlan : null) : [],
           synopsis: this.tvCopySynopsis(),
+          synopsisMaxWidth: 310,
           strongSynopsis: false,
+          kickerSpacingAdjust: this.isSeriesPage() ? -0.26 : 0,
         })
         this.tvActions()
       }
@@ -2295,7 +2314,6 @@ struct Detail {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(toResourceColor(activeColors().surface))
   }
 
   /** Web's pink line over the title: the first genre when there is one, else the kind. */
@@ -2461,7 +2479,7 @@ struct Detail {
   /** Phone: the meta chips (web `.work-meta`): the first bold, the rest muted, 12 vp apart, wrapping. */
   @Builder
   private touchMetaChips(): void {
-    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 9 : 10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
+    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
         Text(chip).fontFamily(nunitoAt(index === 0 ? 700 : 400, 10.24))
           .fontSize(10.24).lineHeight(webLineHeight(10.24)).halfLeading(true)
@@ -2476,7 +2494,7 @@ struct Detail {
   /** Phone: web's action rows. Download, Playback and Add to Playlist open the title actions drawer; Play is the primary pill. */
   @Builder
   private touchActionButton(label: string, onTap: () => void, size: number = 8, glyph: string = '', share: boolean = false): void {
-    Row({ space: 6 }) {
+    Row({ space: 8.8 }) {
       if (glyph.length > 0) {
         // web: the pill glyphs are the brand pink (accent in light)
         Text(glyph).fontFamily(nunito(400))
@@ -2494,7 +2512,8 @@ struct Detail {
       .accessibilityText(this.pillName(label, glyph, false)).accessibilityRole(this.pillRole(false)).accessibilityGroup(true)
       .height(44)
       .justifyContent(FlexAlign.Center)
-      .padding({ left: 16, right: 16 })
+      .padding({ left: 15, right: 15 }) // plus the 1 vp transparent border: web's 16 vp
+      .constraintSize({ minWidth: 104 })
       .borderRadius(22)
       .layoutWeight(share ? 1 : 0)
       .backgroundColor(toResourceColor(activeColors().surfaceStrong)) // opaque so the soft web shadow below draws (ArkUI draws none for a translucent box)
@@ -2520,7 +2539,8 @@ struct Detail {
         .maxLines(1)
     }
     .accessibilityText(this.pillName(label, '+', false)).accessibilityRole(this.pillRole(false)).accessibilityGroup(true)
-    .padding({ left: 16, right: 16 })
+    .padding({ left: 15, right: 15 }) // plus the 1 vp transparent border: web's 16 vp
+    .constraintSize({ minWidth: 104 })
     .height(44)
     .justifyContent(FlexAlign.Center)
     .borderRadius(22)
@@ -2621,12 +2641,20 @@ struct Detail {
           .grayscale(1)
           .brightness(resolvedThemeMode() === 'dark' ? 0.6 : 1.1)
           .contrast(resolvedThemeMode() === 'dark' ? 0.82 : 0.88)
-          .opacity(resolvedThemeMode() === 'dark' ? 0.72 : 0.24) // web `.tv-key-art img`
+          .opacity(resolvedThemeMode() === 'dark' ? 0.72 : 0.42) // web `.tv-key-art img`: the phone block sets 0.42, the dark rule 0.72
           .draggable(false)
           .focusable(false)
       } else {
         Skeleton({ blockWidth: TouchGeometry.homeRailCardWidthLandscape * 4, blockHeight: HERO_ART_HEIGHT, radius: 0 })
       }
+      // web `.tv-key-art::after` (phone): `linear-gradient(90deg, color-mix(surface 54%, transparent), transparent)` under the vertical one
+      Column()
+        .width('100%')
+        .height(HERO_TOUCH_HEIGHT)
+        .linearGradient({
+          direction: GradientDirection.Right,
+          colors: [[toResourceColorWithAlpha(activeColors().surface, 0.54), 0.0], [toResourceColorWithAlpha(activeColors().surface, 0), 1.0]],
+        })
       Column()
         .width('100%')
         .height(HERO_TOUCH_HEIGHT)
@@ -2675,7 +2703,7 @@ struct Detail {
                 .fontColor(toResourceColor(activeColors().inkSoft))
                 
                 .maxLines(1)
-                .translate({ y: -1.85 })
+                .translate({ y: 1.37 }) // web's episode line sits 3.2 lower than the old offset put it
                 .margin({ top: 2 })
             }
             this.touchMetaChips()
@@ -2705,34 +2733,32 @@ struct Detail {
 
           // the TV page's rails, Chapters and Cast column, one copy: its sizes are web CSS px, which are vp here
           // web phone: the rails of a film sit on a glass panel that fades in from the left edge, bleeding to both sides.
-          // Series keep the unpanelled rails: a panel layer behind the season rails left the dark episode art unpainted in the Previewer.
-          if (this.detail !== null && this.detail.work.kind === 'series') {
-            this.tvRightColumn()
-          } else {
-            Stack({ alignContent: Alignment.TopStart }) {
-              Column()
-                .width('100%')
-                .height('100%')
-                .linearGradient({
-                  direction: GradientDirection.Right,
-                  colors: resolvedThemeMode() === 'dark' ?
-                    [['rgba(255, 244, 255, 0)', 0.0], ['rgba(255, 244, 255, 0.058)', 0.35], ['rgba(255, 244, 255, 0.058)', 1.0]] :
-                    [['rgba(255, 255, 255, 0.71)', 0.0], ['rgba(255, 255, 255, 0.71)', 1.0]],
-                })
-              Column() {
-                this.tvRightColumn()
-              }
-              .width('100%')
-              .alignItems(HorizontalAlign.Start)
-              .padding({ top: 36, left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight) })
+          // The glass is the panel's own background (a child sized by '100%' resolved against the Stack before its content, 325 of 535 vp).
+          // Both kinds sit on the web `.tv-rail-surface`: 494.3 vp tall, 24 vp above the first heading.
+          Stack({ alignContent: Alignment.TopStart }) {
+            Column() {
+              this.tvRightColumn()
             }
-            .width(`calc(100% + ${atLeast(16, this.safeLeft) + atLeast(16, this.safeRight)}vp)`)
-            .margin({ left: -atLeast(16, this.safeLeft) })
+            .width('100%')
+            .alignItems(HorizontalAlign.Start)
+            .padding({ top: this.detail !== null && this.detail.work.kind === 'series' ? 25.2 : 25.74, left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight) })
           }
+          .height(PHONE_RAIL_SURFACE_HEIGHT)
+          // Previewer limit (measured r24 on the dark series page, with the fill as the Stack's gradient, a sibling child or an opaque gradient):
+          // a translucent or gradient layer behind the season rails leaves the dark episode art unpainted. The dark series panel keeps its
+          // geometry (494.3 vp surface) but not its 5.8% white fill; every other panel is filled as on web.
+          .linearGradient(this.detail !== null && this.detail.work.kind === 'series' && resolvedThemeMode() === 'dark' ? undefined : {
+            direction: GradientDirection.Right,
+            colors: resolvedThemeMode() === 'dark' ?
+              [['rgba(255, 244, 255, 0)', 0.0], ['rgba(255, 244, 255, 0.058)', 0.35], ['rgba(255, 244, 255, 0.058)', 1.0]] :
+              [['rgba(255, 255, 255, 0.71)', 0.0], ['rgba(255, 255, 255, 0.71)', 1.0]],
+          })
+          .width(`calc(100% + ${atLeast(16, this.safeLeft) + atLeast(16, this.safeRight)}vp)`)
+          .margin({ left: -atLeast(16, this.safeLeft), top: this.detail !== null && this.detail.work.kind === 'series' ? 10 : 10.26 }) // web: the panel starts 10 lower than the list spacing alone puts it
         }
         .padding({
           top: TOUCH_TEXT_TOP,
-          bottom: TouchGeometry.detailListBottom,
+          bottom: PHONE_PAGE_BOTTOM,
           left: atLeast(16, this.safeLeft),
           right: atLeast(16, this.safeRight),
         })
@@ -2752,44 +2778,55 @@ struct Detail {
       .onAppear(() => { this.settleTouchEpisode(0); })
 
       // web (#175): on phones the Back row stays pinned and the content fades out under it (solid to the row, then the edge fade)
-      Column()
-        .width('100%')
-        .height(atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP + PHONE_HEADER_FADE)
-        .linearGradient({
-          direction: GradientDirection.Bottom,
-          colors: [
-            [toResourceColor(activeColors().surface), 0.0],
-            [toResourceColor(activeColors().surface), (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP) / (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP + PHONE_HEADER_FADE)],
-            [toResourceColorWithAlpha(activeColors().surface, 0), 1.0],
-          ],
-        })
-        .hitTestBehavior(HitTestMode.None)
-      Row({ space: 10 }) {
-        Text('←').fontFamily(arrowFont(720))
-          .fontSize(12.8).lineHeight(webLineHeight(12.8)).halfLeading(true)
-          .fontWeight(FontWeight.Normal)
-          .fontColor(toResourceColor(activeColors().inkSoft))
-          .textAlign(TextAlign.Center)
-          .width(PHONE_BACK_SIZE)
-          .height(PHONE_BACK_SIZE)
-          .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
-          .borderRadius(PHONE_BACK_SIZE / 2)
-          .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
-          .accessibilityText('Back to ' + this.phoneKindTitle()).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
-          .onClick(() => {
-            popRoute(getNavStack());
-          })
-        Text(this.phoneKindTitle()).fontFamily(nunitoAt(580, 21.6))
+      // the solid part is a real surface fill (the Back row and its title sit on it, as on web's pinned header), then the edge fade
+      Column() {
+        // the Back row is a child of the solid fill, so its text sits on the page surface as on web (the exporter reads the ancestor's fill)
+        Stack({ alignContent: Alignment.TopStart }) {
+          Row({ space: 10 }) {
+            Text('←').fontFamily(arrowFont(720))
+              .fontSize(12.8).lineHeight(webLineHeight(12.8)).halfLeading(true)
+              .fontWeight(FontWeight.Normal)
+              .fontColor(toResourceColor(activeColors().inkSoft))
+              .textAlign(TextAlign.Center)
+              .width(PHONE_BACK_SIZE)
+              .height(PHONE_BACK_SIZE)
+              .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
+              .borderRadius(PHONE_BACK_SIZE / 2)
+              .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+              .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+              .accessibilityText('Back to ' + this.phoneKindTitle()).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+              .onClick(() => {
+                popRoute(getNavStack());
+              })
+            Text(this.phoneKindTitle()).fontFamily(nunitoAt(580, 21.6))
           
-          .fontSize(21.6).lineHeight(webLineHeight(21.6)).halfLeading(true)
-          .letterSpacing((-0.972) + (!isTvMetrics() ? -0.096 : 0))
-          .fontWeight(FontWeight.Medium)
-          .fontColor(toResourceColor(activeColors().ink))
-          .translate({ y: (-1.2) + (!isTvMetrics() ? 1.2 : 0) }) // web's title box sits 1.2 higher
+              .fontSize(21.6).lineHeight(webLineHeight(21.6)).halfLeading(true)
+              .letterSpacing((-0.972) + (!isTvMetrics() ? -0.096 : 0))
+              .fontWeight(FontWeight.Medium)
+              .fontColor(toResourceColor(activeColors().ink))
+              .translate({ y: (-1.2) + (!isTvMetrics() ? 1.2 : 0) }) // web's title box sits 1.2 higher
+          }
+          .padding({ left: atLeast(16, this.safeLeft), top: atLeast(PHONE_HEADER_TOP, this.safeTop) })
+          .alignItems(VerticalAlign.Center)
+        }
+        .width('100%')
+        .height(atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP)
+        .backgroundColor(toResourceColor(activeColors().surface))
+        .hitTestBehavior(HitTestMode.Transparent)
+        Column()
+          .width('100%')
+          .height(PHONE_HEADER_FADE)
+          .hitTestBehavior(HitTestMode.None)
+          .linearGradient({
+            direction: GradientDirection.Bottom,
+            colors: [
+              [toResourceColor(activeColors().surface), 0.0],
+              [toResourceColorWithAlpha(activeColors().surface, 0), 1.0],
+            ],
+          })
       }
-      .padding({ left: atLeast(16, this.safeLeft), top: atLeast(PHONE_HEADER_TOP, this.safeTop) })
-      .alignItems(VerticalAlign.Center)
+      .width('100%')
+      .hitTestBehavior(HitTestMode.Transparent)
 
       // Keep the floating nav above page overlays and below title actions.
       TouchNavBar({ selectedId: this.detail !== null ? this.detail.work.kind : '' })

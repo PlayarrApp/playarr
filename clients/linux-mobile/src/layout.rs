@@ -23,6 +23,19 @@ pub fn name(w: &impl IsA<gtk4::Widget>, text: &str) {
     unsafe { w.set_data("pa-a11y-name", text.to_string()) };
 }
 
+/// Marks a glyph label as decoration: screen readers skip it and the control's name leaves it out.
+pub fn decorative(w: &impl IsA<gtk4::Widget>) {
+    w.upcast_ref::<gtk4::Widget>()
+        .update_state(&[gtk4::accessible::State::Hidden(true)]);
+    // SAFETY: the key is private to this module and always holds a `bool`.
+    unsafe { w.set_data("pa-a11y-deco", true) };
+}
+
+fn is_decorative(w: &gtk4::Widget) -> bool {
+    // SAFETY: see `decorative`.
+    unsafe { w.data::<bool>("pa-a11y-deco").is_some() }
+}
+
 fn a11y_name(w: &gtk4::Widget) -> Option<String> {
     // SAFETY: see `name`.
     unsafe { w.data::<String>("pa-a11y-name").map(|p| p.as_ref().clone()) }
@@ -76,6 +89,11 @@ fn clip_rect(a: Rect, b: Rect) -> Rect {
     let (x0, y0) = (a[0].max(b[0]), a[1].max(b[1]));
     let (x1, y1) = ((a[0] + a[2]).min(b[0] + b[2]), (a[1] + a[3]).min(b[1] + b[3]));
     [x0, y0, (x1 - x0).max(0.0), (y1 - y0).max(0.0)]
+}
+
+/// A clip nested in another is the overlap of the two.
+fn intersect(outer: Option<Rect>, inner: Rect) -> Rect {
+    outer.map_or(inner, |o| clip_rect(o, inner))
 }
 
 /// The corner radius of the rounded clip a fill is painted under, when the clip is the fill's own box.
@@ -162,7 +180,7 @@ fn collect(
                 m,
                 opacity,
                 Some((to_root(m, n.clip().bounds()), r)),
-                clip,
+                Some(intersect(clip, to_root(m, n.clip().bounds()))),
                 out,
             );
         }
@@ -174,7 +192,14 @@ fn collect(
         }
         T::ClipNode => {
             let n = node.downcast_ref::<gsk::ClipNode>().unwrap();
-            collect(&n.child(), m, opacity, rclip, Some(to_root(m, &n.clip())), out);
+            collect(
+                &n.child(),
+                m,
+                opacity,
+                rclip,
+                Some(intersect(clip, to_root(m, &n.clip()))),
+                out,
+            );
         }
         T::ColorMatrixNode => collect(
             &node.downcast_ref::<gsk::ColorMatrixNode>().unwrap().child(),
@@ -192,7 +217,22 @@ fn collect(
             clip,
             out,
         ),
-        T::InsetShadowNode | T::OutsetShadowNode => {}
+        // A ring (`box-shadow: 0 0 0 4px`, no blur) is an outline the widget paints round its own box, like a border.
+        T::OutsetShadowNode => {
+            let n = node.downcast_ref::<gsk::OutsetShadowNode>().unwrap();
+            if n.spread() > 0.0 && n.blur_radius() == 0.0 {
+                let o = n.outline();
+                out.fills.push(Fill {
+                    b: to_root(m, o.bounds()),
+                    rgba: [0.0; 4],
+                    radius: o.corner()[0].width(),
+                    gradient: None,
+                    border: true,
+                    opacity,
+                });
+            }
+        }
+        T::InsetShadowNode => {}
         _ => out.other = true,
     }
 }
@@ -210,13 +250,30 @@ fn rgba(c: &gdk::RGBA) -> [f32; 4] {
     [c.red(), c.green(), c.blue(), c.alpha()]
 }
 
-fn over(top: [f32; 4], under: [f32; 3]) -> [f32; 3] {
-    let a = top[3];
-    [
-        top[0] * a + under[0] * (1.0 - a),
-        top[1] * a + under[1] * (1.0 - a),
-        top[2] * a + under[2] * (1.0 - a),
-    ]
+/// A background colour as the layout document defines it: sRGB channels in 0..255, every ancestor fill composited over white.
+type Bg = [f64; 3];
+
+/// One composite step over the colour behind (every ancestor fill composited over white, in 0..255). The fill's channels are
+/// the 8-bit values it was declared with and its alpha is the declared one.
+fn over(top: [f32; 4], under: Bg) -> Bg {
+    let a = (f64::from(top[3]) * 1000.0).round() / 1000.0;
+    let ch = |v: f32| {
+        let t = f64::from(v) * 255.0;
+        if (t - t.round()).abs() < 0.01 {
+            t.round()
+        } else {
+            t
+        }
+    };
+    let mix = |i: usize| ch(top[i]) * a + under[i] * (1.0 - a);
+    [mix(0), mix(1), mix(2)]
+}
+
+/// The `#rrggbb` of a background, rounded once to 8 bits. A channel exactly between two values reads as the lower one, which
+/// is what GTK's renderer draws for it (surface #211d21 at 70 % over #1b181b is drawn #1f1b1f, its green 27.5 drawing as 27).
+fn hex_bg(c: Bg) -> String {
+    let b = |v: f64| (v - 0.5 - 1.0e-6).ceil().clamp(0.0, 255.0) as u8;
+    format!("#{:02x}{:02x}{:02x}", b(c[0]), b(c[1]), b(c[2]))
 }
 
 impl Fill {
@@ -268,17 +325,6 @@ fn font_px(w: &impl IsA<gtk4::Widget>) -> (f64, i32) {
     (px, fd.weight().into_glib())
 }
 
-/// Marks a control the app gave the `group` role itself (`accessible_role(Group)`), as opposed to a toolkit default.
-pub fn mark_group(w: &impl IsA<gtk4::Widget>) {
-    // SAFETY: the key is private to this module and always holds a `bool`.
-    unsafe { w.set_data("pa-group", true) };
-}
-
-fn marked_group(w: &gtk4::Widget) -> bool {
-    // SAFETY: see `mark_group`.
-    unsafe { w.data::<bool>("pa-group").is_some() }
-}
-
 fn role_of(w: &gtk4::Widget) -> &'static str {
     use gtk4::AccessibleRole as R;
     match w.accessible_role() {
@@ -296,13 +342,15 @@ fn role_of(w: &gtk4::Widget) -> &'static str {
         R::ProgressBar => "progressbar",
         R::List => "list",
         R::Search => "search",
-        // Toolkit containers (libadwaita) default to Group; only a control the app marks `group` is a group.
-        R::Group if marked_group(w) => "group",
+        // The measured native role, unchanged. A widget that should read as a plain container gets the Generic role in the app.
+        R::Group => "group",
         _ => "container",
     }
 }
 
 struct Item {
+    /// The widget that paints this record.
+    widget: gtk4::Widget,
     json: Value,
     rect: Rect,
     /// Paints a box with alpha of 0.5 or more (or an image): it covers what is painted before it.
@@ -363,7 +411,7 @@ impl Walk<'_> {
         c[2] > 0.0 && c[3] > 0.0
     }
 
-    fn visit(&mut self, w: &gtk4::Widget, clip: Rect, inherited: f32, parent_bg: [f32; 3]) {
+    fn visit(&mut self, w: &gtk4::Widget, clip: Rect, inherited: f32, parent_bg: Bg) {
         if !w.is_mapped() || !w.is_visible() {
             return;
         }
@@ -427,9 +475,9 @@ impl Walk<'_> {
         clip: Rect,
         inherited: f32,
         factor: f32,
-        parent_bg: [f32; 3],
+        parent_bg: Bg,
         lp: &Paints,
-    ) -> (bool, [f32; 3]) {
+    ) -> (bool, Bg) {
         let own = lp
             .fills
             .iter()
@@ -456,11 +504,11 @@ impl Walk<'_> {
                 .find(|(cb, r)| *r > 0.0 && near(*cb, b, 0.55))
                 .map(|(_, r)| *r);
         }
-        let base = |role: &str, text: &str, rect: Rect, opacity: f32, bgc: [f32; 3]| {
+        let base = |role: &str, text: &str, rect: Rect, opacity: f32, bgc: Bg| {
             let mut el = json!({
                 "text": text, "role": role,
                 "rect": {"x": rect[0], "y": rect[1], "w": rect[2], "h": rect[3]},
-                "color": Value::Null, "background": hex([bgc[0], bgc[1], bgc[2], 1.0], false),
+                "color": Value::Null, "background": hex_bg(bgc),
                 "fontSize": Value::Null, "fontWeight": Value::Null,
             });
             if (opacity - 1.0).abs() > 0.004 {
@@ -472,7 +520,8 @@ impl Walk<'_> {
             el
         };
         let own_op = own.map_or(inherited * factor, |f| inherited * f.opacity);
-        let opaque_fill = own.is_some_and(|f| f.gradient.is_none() && f.rgba[3] * f.opacity * inherited >= 0.5);
+        // A candidate cover is any box that paints at all (gradient, translucent fill); the rendered screen decides.
+        let opaque_fill = own.is_some() && w.can_target();
         let end = self.items.len() + 1;
         if let Some(l) = w.downcast_ref::<gtk4::Label>() {
             let layout = l.layout();
@@ -513,7 +562,8 @@ impl Walk<'_> {
                             }
                         }
                     }
-                    // The label's real transform to the root (an ancestor's CSS scale is part of it), applied to the run box.
+                    // The label's real transform to the root (an ancestor's CSS scale is part of it), applied to the run's
+                    // logical rectangle exactly as Pango measured it; the run's own vertical extent is exported as it is.
                     let local = graphene::Rect::new(
                         ox as f32 + x0 as f32 / s,
                         oy as f32 + lg.y() as f32 / s,
@@ -545,7 +595,7 @@ impl Walk<'_> {
             let mut any = false;
             for (r, shown, col, op) in recs {
                 let shown = shown.split_whitespace().collect::<Vec<_>>().join(" ");
-                if shown.is_empty() || !self.shown(r, clip) {
+                if shown.is_empty() || !self.shown(r, clip) || inherited * op * col[3] <= 0.004 {
                     continue;
                 }
                 let mut el = base(role_of(w), &shown, r, inherited * op, bg);
@@ -553,6 +603,7 @@ impl Walk<'_> {
                 el["fontSize"] = json!((px * 100.0).round() / 100.0);
                 el["fontWeight"] = json!(weight);
                 self.items.push(Item {
+                    widget: w.clone(),
                     json: el,
                     rect: r,
                     opaque: false,
@@ -573,14 +624,18 @@ impl Walk<'_> {
             let mut u: Option<Rect> = None;
             let mut op = factor;
             for t in &lp.textures {
-                u = Some(union(u, t.b));
+                let tb = t.clip.map_or(t.b, |c| clip_rect(t.b, c));
+                if tb[2] <= 0.0 || tb[3] <= 0.0 {
+                    continue;
+                }
+                u = Some(union(u, tb));
                 op = t.opacity;
             }
             if u.is_some() || (pic && lp.other) {
                 rect = if pic { b } else { u.unwrap_or(b) };
                 role = if w.has_css_class("pa-video") { "video" } else { "image" };
                 opacity = inherited * op;
-                opaque = pic && opacity >= 0.5;
+                opaque = opacity > 0.004 && w.can_target();
                 emit = true;
             } else {
                 emit = false;
@@ -623,11 +678,12 @@ impl Walk<'_> {
         } else {
             emit = false;
         }
-        if !emit {
+        if !emit || opacity <= 0.004 {
             return (false, bg);
         }
         let el = base(role, &text, rect, opacity, bg);
         self.items.push(Item {
+            widget: w.clone(),
             json: el,
             rect,
             opaque,
@@ -647,6 +703,7 @@ impl Walk<'_> {
                     }
                     let at = self.items.len() + 1;
                     self.items.push(Item {
+                        widget: w.clone(),
                         json: j,
                         rect: f.b,
                         opaque: false,
@@ -659,6 +716,33 @@ impl Walk<'_> {
     }
 }
 
+/// The text a label displays: the laid-out runs in order, the ellipsis run reading as the ellipsis. A label that is not
+/// ellipsized shows its whole text; the web names a control by what it displays (innerText), ellipsis included.
+fn shown_text(l: &gtk4::Label) -> String {
+    let layout = l.layout();
+    if !layout.is_ellipsized() {
+        return l.text().to_string();
+    }
+    let text = layout.text().to_string();
+    let mut out = String::new();
+    let mut it = layout.iter();
+    loop {
+        if let Some(run) = it.run_readonly() {
+            let item = run.item();
+            if item.analysis().flags() & PANGO_FLAG_IS_ELLIPSIS != 0 {
+                out.push('\u{2026}');
+            } else {
+                let o = item.offset() as usize;
+                out.push_str(text.get(o..o + item.length() as usize).unwrap_or(""));
+            }
+        }
+        if !it.next_run() {
+            break;
+        }
+    }
+    out
+}
+
 /// The text of the labels inside a control, the name a screen reader falls back to.
 fn child_text(w: &gtk4::Widget) -> String {
     let mut parts = Vec::new();
@@ -668,8 +752,8 @@ fn child_text(w: &gtk4::Widget) -> String {
             continue;
         }
         if let Some(l) = n.downcast_ref::<gtk4::Label>() {
-            if !l.text().is_empty() {
-                parts.push(l.text().to_string());
+            if !l.text().is_empty() && !is_decorative(&n) {
+                parts.push(shown_text(l));
             }
             continue;
         }
@@ -682,6 +766,132 @@ fn child_text(w: &gtk4::Widget) -> String {
     parts.join(" ")
 }
 
+/// The screen as the renderer draws it: width, height and premultiplied BGRA pixels.
+fn render(root: &gtk4::Widget) -> Result<(usize, usize, Vec<u8>), String> {
+    let (w, h) = (root.width(), root.height());
+    if w <= 0 || h <= 0 {
+        return Err(format!("the screen has no size ({w}x{h})"));
+    }
+    let paintable = gtk4::WidgetPaintable::new(Some(root));
+    let snap = gtk4::Snapshot::new();
+    paintable.snapshot(&snap, f64::from(w), f64::from(h));
+    let node = snap.to_node().ok_or_else(|| {
+        format!(
+            "the screen drew nothing (mapped {}, visible {}, opacity {})",
+            root.is_mapped(),
+            root.is_visible(),
+            root.opacity()
+        )
+    })?;
+    let renderer = root
+        .native()
+        .and_then(|n| n.renderer())
+        .ok_or("the screen has no renderer")?;
+    let tex = renderer.render_texture(&node, Some(&graphene::Rect::new(0.0, 0.0, w as f32, h as f32)));
+    let (tw, th) = (tex.width() as usize, tex.height() as usize);
+    let mut buf = vec![0u8; tw * th * 4];
+    tex.download(&mut buf, tw * 4);
+    Ok((tw, th, buf))
+}
+
+type Frame = (usize, usize, Vec<u8>);
+
+/// The largest channel difference between two renders inside `r`.
+fn peak_diff(a: &Frame, b: &Frame, r: Rect, viewport: Rect) -> u8 {
+    let sx = a.0 as f32 / viewport[2].max(1.0);
+    let sy = a.1 as f32 / viewport[3].max(1.0);
+    let c = clip_rect(r, viewport);
+    let (x0, x1) = (
+        (c[0] * sx).floor() as usize,
+        (((c[0] + c[2]) * sx).ceil() as usize).min(a.0),
+    );
+    let (y0, y1) = (
+        (c[1] * sy).floor() as usize,
+        (((c[1] + c[3]) * sy).ceil() as usize).min(a.1),
+    );
+    let mut peak = 0;
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let o = (y * a.0 + x) * 4;
+            for k in 0..4 {
+                peak = peak.max(a.2[o + k].abs_diff(b.2[o + k]));
+            }
+        }
+    }
+    peak
+}
+
+/// Lets the main loop draw a frame after a change, so the next render reads the tree as the renderer has it.
+fn settle() {
+    let ctx = gtk4::glib::MainContext::default();
+    for _ in 0..2 {
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        while ctx.iteration(false) {}
+    }
+}
+
+/// A render with `hide` widgets at opacity 0 (and the widgets restored afterwards). A failed render is an error, never a
+/// blank frame.
+fn render_hiding(root: &gtk4::Widget, hide: &[gtk4::Widget]) -> Result<Frame, String> {
+    let saved: Vec<f64> = hide.iter().map(|w| w.opacity()).collect();
+    for w in hide {
+        w.set_opacity(0.0);
+    }
+    settle();
+    let f = render(root);
+    for (w, o) in hide.iter().zip(saved) {
+        w.set_opacity(o);
+    }
+    f.map_err(|e| format!("a probe render failed: {e}"))
+}
+
+/// Of the records the geometry calls covered, those the rendered screen shows no more than half of. A record is
+/// measured by hiding it: its widget goes to opacity 0 and the screen is drawn again. What that changes inside its box is
+/// what the screen shows of it (`seen`); the same measure with the covering widgets hidden as well is what it would show
+/// unobstructed (`open`). A cover that paints at alpha 0.5 or more leaves at most half of `open`, which is how the web
+/// scorer defines occluded, so a record is hidden when `seen` is no more than half of `open`. Screens that do not repeat
+/// exactly between two draws (video, animation) keep their records.
+fn confirm_hidden(
+    root: &gtk4::Widget,
+    items: &[Item],
+    candidates: &[(usize, Vec<usize>)],
+    viewport: Rect,
+) -> Result<Vec<usize>, String> {
+    if candidates.is_empty() {
+        return Ok(Vec::new());
+    }
+    let (base, again) = (render(root)?, render(root)?);
+    let mut hidden = Vec::new();
+    let mut by_cover: std::collections::BTreeMap<Vec<usize>, Vec<usize>> = Default::default();
+    for (i, cover) in candidates {
+        by_cover.entry(cover.clone()).or_default().push(*i);
+    }
+    for (cover, group) in by_cover {
+        let cover_w: Vec<gtk4::Widget> = cover.iter().map(|&c| items[c].widget.clone()).collect();
+        let open_base = render_hiding(root, &cover_w)?;
+        for i in group {
+            let r = items[i].rect;
+            if peak_diff(&base, &again, r, viewport) > 0 {
+                continue;
+            }
+            let mut both = cover_w.clone();
+            both.push(items[i].widget.clone());
+            let open = peak_diff(&open_base, &render_hiding(root, &both)?, r, viewport);
+            let one = [items[i].widget.clone()];
+            let seen = peak_diff(&base, &render_hiding(root, &one)?, r, viewport);
+            if u32::from(seen) * 2 <= u32::from(open) + 8 {
+                hidden.push(i);
+            }
+        }
+    }
+    // The scene must still be the one measured: a record whose box differs between the first render and one taken after
+    // the probes is moving, so it is kept, not hidden.
+    settle();
+    let last = render(root).map_err(|e| format!("after the visibility check: {e}"))?;
+    hidden.retain(|&i| peak_diff(&base, &last, items[i].rect, viewport) == 0);
+    Ok(hidden)
+}
+
 /// Writes the layout of `root` to `path`; `screen` and `theme` label the document.
 pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Result<(), String> {
     let viewport = [0.0, 0.0, root.width() as f32, root.height() as f32];
@@ -690,12 +900,13 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
         viewport,
         items: Vec::new(),
     };
-    walk.visit(root, [-1.0e6, -1.0e6, 2.0e6, 2.0e6], 1.0, [1.0, 1.0, 1.0]);
+    walk.visit(root, [-1.0e6, -1.0e6, 2.0e6, 2.0e6], 1.0, [255.0, 255.0, 255.0]);
     // Occlusion as the web scorer samples it: nine points of the visible box; hidden when each lies under a later box
     // that paints (alpha of 0.5 or more) and is not part of the element.
     let n = walk.items.len();
     let mut keep = vec![true; n];
     let mut occluded = 0;
+    let mut candidates: Vec<(usize, Vec<usize>)> = Vec::new();
     #[allow(clippy::needless_range_loop)]
     // `keep` and the items are indexed together and the cover search runs ahead of `i`
     for i in 0..n {
@@ -705,22 +916,36 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
             continue;
         }
         let end = walk.items[i].end.max(i + 1);
+        let mut cover: Vec<usize> = Vec::new();
         let covered = [0.2_f32, 0.5, 0.8].iter().all(|fy| {
             [0.2_f32, 0.5, 0.8].iter().all(|fx| {
                 let (px, py) = (r[0] + r[2] * fx, r[1] + r[3] * fy);
-                walk.items[end..].iter().any(|o| {
+                let hit = (end..n).find(|&j| {
+                    let o = &walk.items[j];
                     o.opaque
                         && px >= o.rect[0]
                         && px <= o.rect[0] + o.rect[2]
                         && py >= o.rect[1]
                         && py <= o.rect[1] + o.rect[3]
-                })
+                });
+                if let Some(j) = hit {
+                    if !cover.contains(&j) {
+                        cover.push(j);
+                    }
+                }
+                hit.is_some()
             })
         });
         if covered {
-            keep[i] = false;
-            occluded += 1;
+            cover.sort_unstable();
+            candidates.push((i, cover));
         }
+    }
+    // The cover is a candidate only: the rendered screen decides. Hiding the record's widget and drawing the screen again
+    // must leave its box unchanged, or it is visible and stays.
+    for i in confirm_hidden(root, &walk.items, &candidates, viewport)? {
+        keep[i] = false;
+        occluded += 1;
     }
     let elements: Vec<Value> = walk
         .items
@@ -735,5 +960,105 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
         "occluded": occluded,
         "elements": elements,
     });
-    std::fs::write(path, serde_json::to_vec(&doc).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+    // Written beside the target and renamed into place, so a reader polling for the file never sees half of it.
+    let tmp = format!("{path}.part");
+    std::fs::write(&tmp, serde_json::to_vec(&doc).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, path).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gtk4::AccessibleRole as R;
+
+    #[test]
+    fn a_translucent_fill_composites_as_the_renderer_draws_it() {
+        // Surface #211d21 at 70 % over the page #1b181b: the green channel is exactly 27.5, which GTK draws as 27 (#1f1b1f).
+        let under = [27.0, 24.0, 27.0];
+        let fill = [33.0 / 255.0, 29.0 / 255.0, 33.0 / 255.0, 0.7];
+        assert_eq!(hex_bg(over(fill, under)), "#1f1b1f");
+        // An opaque fill replaces what is under it.
+        assert_eq!(hex_bg(over([1.0, 1.0, 1.0, 1.0], under)), "#ffffff");
+    }
+
+    // GTK must only be used from the thread that initialised it, and the test harness runs each test on its own thread, so the
+    // two GTK checks run in sequence inside `gtk_checks` (two tests initialising GTK on two threads crashed with SIGSEGV).
+    fn same_native_role_exports_same_role() {
+        let a = gtk4::Box::builder().accessible_role(R::Group).build();
+        let b = gtk4::Frame::builder().accessible_role(R::Group).build();
+        let c = gtk4::Box::builder().accessible_role(R::Generic).build();
+        assert_eq!(role_of(a.upcast_ref()), "group");
+        assert_eq!(role_of(a.upcast_ref()), role_of(b.upcast_ref()));
+        assert_eq!(role_of(c.upcast_ref()), "container");
+    }
+
+    #[test]
+    fn nested_clips_intersect() {
+        assert_eq!(intersect(None, [0.0, 0.0, 10.0, 10.0]), [0.0, 0.0, 10.0, 10.0]);
+        assert_eq!(
+            intersect(Some([0.0, 0.0, 10.0, 10.0]), [5.0, 5.0, 10.0, 10.0]),
+            [5.0, 5.0, 5.0, 5.0]
+        );
+        let apart = intersect(Some([0.0, 0.0, 4.0, 4.0]), [8.0, 8.0, 2.0, 2.0]);
+        assert!(
+            apart[2] == 0.0 && apart[3] == 0.0,
+            "disjoint clips leave nothing: {apart:?}"
+        );
+    }
+
+    fn frame(px: u8) -> Frame {
+        (4, 4, vec![px; 4 * 4 * 4])
+    }
+
+    #[test]
+    fn peak_diff_reads_only_inside_the_box() {
+        let (mut a, b) = (frame(0), frame(0));
+        a.2[(3 * 4 + 3) * 4] = 90;
+        let view = [0.0, 0.0, 4.0, 4.0];
+        assert_eq!(peak_diff(&a, &b, [0.0, 0.0, 2.0, 2.0], view), 0);
+        assert_eq!(peak_diff(&a, &b, [2.0, 2.0, 2.0, 2.0], view), 90);
+        // A box outside the viewport is cut to it, so it never reads past the frame.
+        assert_eq!(peak_diff(&a, &b, [3.0, 3.0, 50.0, 50.0], view), 90);
+    }
+
+    #[test]
+    fn gtk_checks() {
+        if gtk4::init().is_err() {
+            return;
+        }
+        same_native_role_exports_same_role();
+        a_failed_probe_render_is_an_error_not_a_blank_frame();
+    }
+
+    fn a_failed_probe_render_is_an_error_not_a_blank_frame() {
+        // Never shown, so it has no size and no renderer: a render must fail, and the visibility check with it.
+        let root = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        assert!(render(root.upcast_ref()).is_err());
+        let hidden = gtk4::Label::new(Some("x"));
+        let items = vec![Item {
+            widget: hidden.upcast(),
+            json: json!({}),
+            rect: [0.0, 0.0, 1.0, 1.0],
+            opaque: false,
+            end: 1,
+        }];
+        let r = confirm_hidden(root.upcast_ref(), &items, &[(0, vec![0])], [0.0, 0.0, 1.0, 1.0]);
+        assert!(r.is_err(), "a probe that cannot render must not hide anything");
+        // With nothing to confirm there is nothing to render.
+        assert_eq!(
+            confirm_hidden(root.upcast_ref(), &items, &[], [0.0, 0.0, 1.0, 1.0]),
+            Ok(vec![])
+        );
+    }
+
+    #[test]
+    fn a_moving_scene_keeps_its_records() {
+        // The re-check after the probes compares the first render with the last: a box that changed is not hidden.
+        let (base, last) = (frame(0), frame(7));
+        let view = [0.0, 0.0, 4.0, 4.0];
+        let mut hidden = vec![0usize];
+        let rects = [[0.0, 0.0, 2.0, 2.0]];
+        hidden.retain(|&i| peak_diff(&base, &last, rects[i], view) == 0);
+        assert!(hidden.is_empty());
+    }
 }

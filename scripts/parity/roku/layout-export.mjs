@@ -4,7 +4,8 @@
 // match the web. Beyond node type the tree carries what the app declares on its own nodes in the node name: the font a glyph Label is
 // drawn with (the bundled instance's weight and the integer pixel size of its Font node), and for a control its role, accessible
 // name and the tint of its bitmap (`a11y|role|radius[@tint]|name`). A radius is the corner radius of the 9-patch mask actually used. Nothing is read from the screenshot.
-// Unpainted markers exist only where they sit on a real control (a hit box the app also uses for focus or action).
+// An unpainted Rectangle is exported only when it is the hit rectangle of a control (`hit|role|radius|name`, a control role): the box the
+// app focuses or acts on. A transparent Rectangle that only carries an `a11y|` stamp paints nothing and drives nothing: it is not a row.
 // Content fully covered by a later opaque fill is not exported.
 
 import { PNG } from "pngjs";
@@ -42,6 +43,8 @@ const intersect = (r, q) => {
 const compose = (M, ax, ay, b) => ({ sx: M.sx * ax, sy: M.sy * ay, tx: M.sx * b[0] + M.tx, ty: M.sy * b[1] + M.ty });
 const mapRect = (M, [x, y, w, h]) => ({ x: M.sx * x + M.tx, y: M.sy * y + M.ty, w: M.sx * w, h: M.sy * h });
 
+const CONTROL_ROLES = new Set(["button", "link", "slider", "tab", "textbox", "search", "checkbox", "switch"]);
+
 /** Walks the tree and returns raw measured items in tree order (paint order). */
 export function measureTree(root) {
   const items = [];
@@ -62,10 +65,16 @@ export function measureTree(root) {
     if (clip && (clip.w <= 0 || clip.h <= 0)) return;
     const bounds = nums(a.bounds);
     let rect = bounds && bounds[2] > 0 && bounds[3] > 0 ? mapRect(M, bounds) : null;
+    // The device reports a Rectangle that has children over the union of its children (the page body fill holds every screen): its own
+    // painted area cannot exceed the screen, which is where the fill is read.
+    if (rect && node.tag === "Rectangle" && node.children.length) { rect = intersect(rect, { x: 0, y: 0, w: 1920, h: 1080 }); if (rect.w <= 0 || rect.h <= 0) rect = null; }
     if (rect && clip) { rect = intersect(rect, clip); if (rect.w <= 0 || rect.h <= 0) rect = null; }
     const base = { chain, parent, scaleX: M.sx * (nums(a.scale)?.[0] ?? 1), scaleY: M.sy * (nums(a.scale)?.[1] ?? 1) };
-    const sem = /^a11y\|(\w+)\|([\d.]+)(?:@([0-9a-f]{8})(~\d+)?)?\|(.*)$/s.exec(a.name ?? "");
-    if (sem && rect) items.push({ ...base, kind: "a11y", node, rect, op, role: sem[1], radius: Number(sem[2]), declared: sem[3], baked: sem[4], text: sem[5] });
+    const sem = /^(a11y|hit)\|(\w+)\|([\d.]+)(?:@([0-9a-f]{8})(~\d+)?)?\|(.*)$/s.exec(a.name ?? "");
+    const transparent = node.tag === "Rectangle" && alphaOf(a.color) * op <= 0.01;
+    // Only a painted node, or the hit rectangle of a control, is a row.
+    const listed = sem && (sem[1] === "hit" ? transparent && CONTROL_ROLES.has(sem[2]) : !transparent);
+    if (listed && rect) items.push({ ...base, kind: "a11y", node, rect, op, role: sem[2], radius: Number(sem[3]), declared: sem[4], baked: sem[5], text: sem[6] });
     else if (node.tag === "Label" && a.text && rect) items.push({ ...base, kind: "label", node, rect, op, parent });
     else if (node.tag === "Poster" && a.uri && rect) items.push({ ...base, kind: "poster", node, rect, op });
     else if (node.tag === "VideoBackground" && rect) items.push({ ...base, kind: "rect", node, rect, op });
@@ -77,6 +86,16 @@ export function measureTree(root) {
     for (const k of node.children) walk(k, child, op, node, below, clip);
   };
   walk(root, { sx: 1, sy: 1, tx: 0, ty: 0 }, 1, null, [], null);
+  // The device reports a group's bounds over every child, hidden ones included (the focus ring, a shadow). A link is what it
+  // shows: the union of its visible painted descendants.
+  for (const it of items) {
+    if (it.kind !== "a11y" || it.role !== "link") continue;
+    const inside = items.filter((o) => o !== it && o.chain.includes(it.node));
+    if (!inside.length) continue;
+    const x0 = Math.min(...inside.map((o) => o.rect.x)), y0 = Math.min(...inside.map((o) => o.rect.y));
+    const x1 = Math.max(...inside.map((o) => o.rect.x + o.rect.w)), y1 = Math.max(...inside.map((o) => o.rect.y + o.rect.h));
+    it.rect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
   return items;
 }
 
@@ -88,8 +107,11 @@ const fontOf = (name = "") => {
 export function buildLayoutDocument(appUiXml, { screen, theme, clockPinned }) {
   const items = measureTree(parseAppUi(appUiXml));
   // The video plane paints over everything before it in the tree (the pages under a full-screen player are not on screen).
+  // Only a video plane that fills the screen hides them; a smaller plane hides nothing.
   const lastVideo = items.map((it) => it.kind).lastIndexOf("video");
-  if (lastVideo > 0) items.splice(0, lastVideo);
+  const fullScreen = lastVideo > 0 && items[lastVideo].rect.x <= 0.5 && items[lastVideo].rect.y <= 0.5 && items[lastVideo].rect.w >= 1919 && items[lastVideo].rect.h >= 1079;
+  let hiddenByVideo = 0;
+  if (fullScreen) { hiddenByVideo = lastVideo; items.splice(0, lastVideo); }
   items.forEach((it, i) => { it.order = i; });
   // Word and glyph Labels of one TrackedText are one text element: the union of their bounds, words joined by the gaps between them.
   const groups = [];
@@ -104,7 +126,7 @@ export function buildLayoutDocument(appUiXml, { screen, theme, clockPinned }) {
       groups.push({ single: it, order: it.order });
     }
   }
-  return finish(groups, items, { screen, theme, clockPinned });
+  return finish(groups, items, { screen, theme, clockPinned, hiddenByVideo });
 }
 
 const imageDir = fileURLToPath(new URL("../../../clients/roku/images/", import.meta.url));
@@ -129,7 +151,7 @@ function opaquePicture(it) {
 const rgb = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
 const toHex = (v) => "#" + v.map((x) => Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, "0")).join("");
 
-function finish(groups, items, { screen, theme, clockPinned }) {
+function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }) {
   const elements = [];
   const r2 = (v) => Math.round(v * 100) / 100;
   // The colour behind an element: the painted Rectangles of the tree that lie under its centre, composited in paint order over white
@@ -161,10 +183,28 @@ function finish(groups, items, { screen, theme, clockPinned }) {
         const c = [0, 2, 4].map((k) => parseInt(it.declared.slice(k, k + 2), 16)), al = parseInt(it.declared.slice(6, 8), 16) / 255;
         const under = rgb(background(it.rect, it.order, false, it.chain));
         it.fill = toHex(c.map((v, k) => v * al + under[k] * (1 - al)));
-        it.opaque = !it.baked && parseInt(it.declared.slice(6, 8), 16) >= 250;
+        it.opaque = !it.baked && it.op >= 0.99 && parseInt(it.declared.slice(6, 8), 16) >= 250;
         fills.push(it);
       } // a bitmap with no declared tint (artwork) paints no background of its own: nothing is guessed from its pixels
     } else if ((it.kind === "rect" || (it.kind === "a11y" && it.node.tag === "Rectangle")) && alphaOf(it.node.attrs.color) > 0) {
+      // A childless Rectangle that is not a control and paints the colour already behind it at its corners and centre is not a fill
+      // (the web rule: a background identical to the one behind it is not a fill). Read from native colours and paint order only.
+      if (it.node.tag === "Rectangle" && it.node.attrs.color && !it.node.children.length && !(it.kind === "a11y" && CONTROL_ROLES.has(it.role))) {
+        const al = alphaOf(it.node.attrs.color) * it.op, c = rgb(it.node.attrs.color);
+        const r = it.rect, pts = [[r.x + r.w / 2, r.y + r.h / 2], [r.x + 0.5, r.y + 0.5], [r.x + r.w - 0.5, r.y + 0.5], [r.x + 0.5, r.y + r.h - 0.5], [r.x + r.w - 0.5, r.y + r.h - 0.5]];
+        // A bitmap drawn before it over one of those points (artwork, a veil, a gradient) means the colour behind is not a flat fill: the
+        // Rectangle paints something new there (a panel over the artwork), so it is a fill.
+        // A bitmap that a later opaque fill (before this Rectangle) paints over at that point is no longer on screen: it makes nothing new.
+        const covered = (o, px, py) => fills.some((f) => f.order > o.order && f.order < it.order && f.opaque && !f.dropped && px >= f.rect.x && px <= f.rect.x + f.rect.w && py >= f.rect.y && py <= f.rect.y + f.rect.h);
+        const bitmapUnder = (px, py) => items.some((o) => o.order < it.order && (o.kind === "poster" || (o.kind === "a11y" && o.node.tag === "Poster" && o.role !== "container")) && o.op > 0.01 && px >= o.rect.x && px <= o.rect.x + o.rect.w && py >= o.rect.y && py <= o.rect.y + o.rect.h && !/\.9\.png$/.test(o.node.attrs.uri ?? "") && !covered(o, px, py));
+        const same = pts.every(([px, py]) => {
+          if (bitmapUnder(px, py)) return false;
+          const under = rgb(background({ x: px, y: py, w: 0, h: 0 }, it.order, false));
+          return toHex(c.map((v, k) => v * al + under[k] * (1 - al))) === toHex(under);
+        });
+        // It is not exported, but it is still painted: it keeps hiding what lies beneath it (and the colour behind later elements is unchanged).
+        if (same && fills.length) it.dropped = true;
+      }
       it.opaque = alphaOf(it.node.attrs.color) * it.op >= 0.99;
       fills.push(it);
     }
@@ -196,6 +236,7 @@ function finish(groups, items, { screen, theme, clockPinned }) {
     });
   };
   for (const g of groups) {
+    if (g.single?.dropped) continue;
     curOrder = g.order;
     curSource = g.labels ? { node: g.labels[0].node, chain: g.labels[0].chain } : { node: g.single.node, chain: g.single.chain };
     if (g.labels) {
@@ -232,7 +273,7 @@ function finish(groups, items, { screen, theme, clockPinned }) {
       textElement([it], { size: null, weight: null }, it.node.attrs.text, it.order);
     } else if (it.kind === "a11y") {
       // A radius is the corner of the mask the app drew, scaled with the node, never above half the box; an unpainted hit box has no corner.
-      const painted = it.node.tag === "Poster" || alphaOf(it.node.attrs.color) > 0;
+      const painted = it.node.tag === "Poster" || (it.node.tag === "Rectangle" && alphaOf(it.node.attrs.color) > 0);
       const radius = painted ? Math.min(it.radius * it.scaleX, it.rect.w / 2, it.rect.h / 2) : 0;
       push({ text: it.text, role: it.role === "fill" ? "container" : it.role, _fill: it.role === "fill", rect: it.rect, color: null, background: background(it.rect, it.order, true, it.chain), fontSize: null, fontWeight: null, ...(radius ? { radius: r2(radius) } : {}), ...opacityOf(it.op) });
     } else if (it.kind === "video") {
@@ -251,15 +292,17 @@ function finish(groups, items, { screen, theme, clockPinned }) {
     if (face && e._source.node.tag === "Rectangle") e.radius = face.radius;
   }
   // A painted surface that another element already describes at the same box is not listed twice.
-  const kept = elements.filter((e) => !(e._fill && elements.some((f) => f !== e && !f._fill && same(f.rect, e.rect))));
+  // (A control's own face only: an artwork image at the same box is a different paint, so its veil stays; and only when that row
+  // reports the same colour, so a different surface that shares the box is never dropped as a duplicate.)
+  const kept = elements.filter((e) => !(e._fill && elements.some((f) => f !== e && !f._fill && f.role !== "image" && same(f.rect, e.rect) && f.background === e.background)));
   // Content fully covered by a later opaque surface (a fill, or a bundled opaque picture) is not on screen (a drawer over the page).
-  // A surface never covers its own ancestors or descendants, and a rounded one is shrunk by its corner.
+  // A surface never covers its own ancestors or descendants (nor does an unexported duplicate cover the fill of its own colour it repeats), and a rounded one is shrunk by its corner.
   const covers = [...fills.filter((f) => f.opaque), ...items.filter((it) => (it.kind === "poster" || (it.kind === "a11y" && it.role === "image" && it.node.tag === "Poster")) && it.op >= 0.99 && opaquePicture(it))].map((f) => {
     const r = f.kind === "a11y" && f.node.tag === "Poster" && f.role !== "image" ? Math.min(f.radius * f.scaleX, f.rect.w / 2, f.rect.h / 2) : 0;
-    return { order: f.order, node: f.node, chain: f.chain, rect: { x: f.rect.x + r, y: f.rect.y + r, w: f.rect.w - 2 * r, h: f.rect.h - 2 * r } };
+    return { order: f.order, node: f.node, chain: f.chain, dropped: !!f.dropped, rect: { x: f.rect.x + r, y: f.rect.y + r, w: f.rect.w - 2 * r, h: f.rect.h - 2 * r } };
   });
-  const visible = kept.filter((e) => !covers.some((f) => f.order > e._order && !e._source.chain.includes(f.node) && !f.chain.includes(e._source.node) && f.rect.x <= e.rect.x + 0.01 && f.rect.y <= e.rect.y + 0.01 && f.rect.x + f.rect.w >= e.rect.x + e.rect.w - 0.01 && f.rect.y + f.rect.h >= e.rect.y + e.rect.h - 0.01));
+  const visible = kept.filter((e) => !covers.some((f) => f.order > e._order && !e._source.chain.includes(f.node) && !f.chain.includes(e._source.node) && !(f.dropped && e._source.node.tag === "Rectangle" && e._source.node.attrs.color === f.node.attrs.color) && f.rect.x <= e.rect.x + 0.01 && f.rect.y <= e.rect.y + 0.01 && f.rect.x + f.rect.w >= e.rect.x + e.rect.w - 0.01 && f.rect.y + f.rect.h >= e.rect.y + e.rect.h - 0.01));
   for (const e of visible) { delete e._source; delete e._fill; }
   for (const e of visible) delete e._order;
-  return { screen, theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: !!clockPinned, elements: visible };
+  return { screen, theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: !!clockPinned, occluded: kept.length - visible.length + hiddenByVideo, elements: visible };
 }

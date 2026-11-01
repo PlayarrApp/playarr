@@ -73,7 +73,7 @@ internal sealed class OtherSources
         var sw = Ui.TextWidth(symbol, 19.2f, 400, 0); var lw = Ui.TextWidth(label, 19.2f, 700, 0);
         row.PillW = 16 + sw + 7 + lw + 16;
         row.PillX = X + Width - 18 - row.PillW;
-        var bg = new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.88f);
+        var bg = _t.SurfaceStrong.Mixed(0.88f);
         row.Pill?.Dispose();
         row.Pill = Ui.Box(row.PillX - X, 25, row.PillW, PillH, bg, 22);
         row.Pill.BorderlineWidth = 1; row.Pill.BorderlineColor = Ui.LineA(_t, 0.176f);

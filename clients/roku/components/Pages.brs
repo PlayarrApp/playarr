@@ -82,7 +82,6 @@ function pgLabel(parent as Object, x as Float, y as Float, w as Float, h as Floa
         if opts.tracking <> invalid then label.tracking = opts.tracking
         if opts.aria <> invalid then label.aria = opts.aria
         if opts.radius <> invalid then label.radius = opts.radius
-        if opts.fitWidth <> invalid then label.fitWidth = opts.fitWidth
     end if
     label.text = text
     parent.AppendChild(label)
@@ -118,7 +117,9 @@ end function
 
 function pgRadiusFor(h as Float, r as Float) as Integer
     if r >= 82 then return 82
+    if r = 29 and h >= 56 and h <= 60 then return 29
     if r >= 25 then return 25
+    if r = 14 then return 14
     if r >= 12 then return 12
     return 6
 end function
@@ -131,6 +132,7 @@ function pgRound(parent as Object, x as Float, y as Float, w as Float, h as Floa
     if w < smallest then smallest = w
     if radius = 82 and smallest < 160 then radius = 25
     if radius = 25 and smallest < 49 then radius = 12
+    if radius = 14 and smallest < 29 then radius = 12
     if radius = 12 and smallest < 23 then radius = 6
     name = "round"
     if outline then name = "round-outline"
@@ -149,8 +151,22 @@ function pgRound(parent as Object, x as Float, y as Float, w as Float, h as Floa
     return poster
 end function
 
+' A box drawn as its 1 px border only (a 9-patch with square corners), tinted by `role`.
+function pgOutlineBox(parent as Object, x as Float, y as Float, w as Float, h as Float, role as String) as Object
+    poster = CreateObject("roSGNode", "Poster")
+    poster.uri = "pkg:/images/square-outline.9.png"
+    poster.translation = [x, y]
+    poster.width = w
+    poster.height = h
+    poster.blendColor = ThemeColor(role)
+    ThemeSetRole(poster, role)
+    parent.AppendChild(poster)
+    return poster
+end function
+
 ' Control semantics: the drawn bitmap of the control (its fill, laid just before this call at the same box) takes the id
-' `a11y|role|radius|name` (ECP query/app-ui prints ids). A control with no drawn box gets a transparent Rectangle at its layout box.
+' `a11y|role|radius|name` (ECP query/app-ui prints ids). A control with no drawn box gets a hit rectangle (pgHit) at its layout
+' box, but only a control the viewer can focus or act on: a role that is no control (image, container) with nothing drawn gets nothing.
 function pgMark(parent as Object, role as String, name as String, x as Float, y as Float, w as Float, h as Float, radius = 0 as Float) as Object
     id = "a11y|" + role + "|" + radius.ToStr() + "|" + name
     n = parent.getChildCount()
@@ -166,19 +182,30 @@ function pgMark(parent as Object, role as String, name as String, x as Float, y 
             end if
         end if
     end for
-    return pgBare(parent, role, name, x, y, w, h, radius)
+    if role = "image" or role = "container" then return CreateObject("roSGNode", "Group")
+    return pgHit(parent, role, name, x, y, w, h, radius)
 end function
 
-' A transparent box at a control's layout box, named for assistive tech (never attached to a drawn bitmap).
-function pgBare(parent as Object, role as String, name as String, x as Float, y as Float, w as Float, h as Float, radius = 0 as Float) as Object
+' The hit rectangle of a control that is not drawn as one bitmap: the box the app focuses or acts on (the same box the focus target
+' or the key handling uses), named for assistive tech. It paints nothing; the export lists it only because it is a control. A box
+' that drives no focus or action must not be made with this call.
+function pgHit(parent as Object, role as String, name as String, x as Float, y as Float, w as Float, h as Float, radius = 0 as Float) as Object
     mark = CreateObject("roSGNode", "Rectangle")
     mark.translation = [x, y]
     mark.width = w
     mark.height = h
     mark.color = "0x00000000"
-    mark.id = "a11y|" + role + "|" + radius.ToStr() + "|" + name
+    mark.id = "hit|" + role + "|" + radius.ToStr() + "|" + name
     parent.AppendChild(mark)
     return mark
+end function
+
+' A group node that holds one block of a page (its rule, text and controls): the block's box is the union its children measure.
+function pgContainer(parent as Object) as Object
+    g = CreateObject("roSGNode", "Group")
+    g.id = "a11y|container|0|"
+    parent.AppendChild(g)
+    return g
 end function
 
 ' A text glyph from the symbol fonts (arrows, play, check, chevron): a WebLabel at the web's text box. symbol = false draws Nunito Sans.
@@ -582,9 +609,12 @@ sub pageFocusRender()
         m.pageRing.height = item.h + 10
     else
         m.pageRing.uri = "pkg:/images/round-ring-r" + radius.ToStr() + ".9.png"
-        m.pageRing.translation = [item.x + ox - 3, item.y + oy - 3]
-        m.pageRing.width = item.w + 6
-        m.pageRing.height = item.h + 6
+        ' Web focus outline: 3 px ring with a 2 px gap around the control box. The calendar header controls sit on the web boxes.
+        gap = 3
+        if m.pageKind = "calendar" and (item.action = "calToday" or item.action = "calView" or item.action = "calPrev" or item.action = "calNext") then gap = 5
+        m.pageRing.translation = [item.x + ox - gap, item.y + oy - gap]
+        m.pageRing.width = item.w + gap * 2
+        m.pageRing.height = item.h + gap * 2
     end if
     if m.pageKind = "calendar"
         focusX = item.x + ox
@@ -1950,7 +1980,7 @@ function calendarCard(parent as Object, x as Float, y as Float, w as Float, entr
     full = entry.title
     if hasSub then full = full + " " + calendarEntrySubtitle(entry)
     full = full + " " + calendarTimeText(entry) + " " + calendarReleaseLabel(entry) + " " + calendarKindLabel(entry) + " " + status
-    pgBare(parent, "button", full, x, y, w, ch, 12)
+    pgHit(parent, "button", full, x, y, w, ch, 12)
     pgLabel(parent, x + 70.4, y + titleY, w - 90, 26, entry.title, 19.2, 640, "ink", { maxLines: 1 })
     if hasSub then pgLabel(parent, x + 70.4, y + 41.2, w - 90, 26, calendarEntrySubtitle(entry), 19.2, 400, "inkSoft", { maxLines: 1 })
     endX = calendarMetaRow(parent, x + 70.4, y + metaY, entry)
@@ -2070,7 +2100,7 @@ sub renderCalendarBody()
     end if
 end sub
 
-' Calendar header controls at the web's boxes: a 50 px circle (the arrow is a text glyph there) and a 52.8 px pill whose text box is 20 px tall.
+' Calendar header controls at the web's boxes: a 50 px circle (the arrow is a text glyph there) and a 50 px pill whose text box is 20 px tall.
 sub pgCalendarCircle(x as Float, name as String, icon as String, glyphX as Float, action as String)
     pgRound(m.pageHead, x, 56.2, 50, 50, 25, "surface")
     pgRound(m.pageHead, x, 56.2, 50, 50, 25, "line", -1, true)
@@ -2083,10 +2113,10 @@ end sub
 
 sub pgCalendarPill(x as Float, text as String, action as String)
     w = PlayarrTextWidth(text, 14.72, 720, 0) + 41.2
-    pgTag(pgRound(m.pageHead, x, 54.8, w, 52.8, 26.4, "surface"), "button", 0, text)
-    pgRound(m.pageHead, x, 54.8, w, 52.8, 26.4, "line", -1, true)
+    pgTag(pgRound(m.pageHead, x, 56.2, w, 50, 25, "surface"), "button", 0, text)
+    pgRound(m.pageHead, x, 56.2, w, 50, 25, "line", -1, true)
     pgLabel(m.pageHead, x + 20.6, 71.1, w - 41.2, 20, text, 14.72, 720, "inkSoft", { horizAlign: "center" })
-    pgFocusable(x, 54.8, w, 52.8, 26.4, action)
+    pgFocusable(x, 56.2, w, 50, 25, action)
 end sub
 
 sub renderCalendarAgenda(entries as Object)
@@ -2187,11 +2217,11 @@ sub renderCalendarAgenda(entries as Object)
             pgTint(hg, 775, ay, 1060, 58, "panel")
             headRole = "ink"
             if day = today then headRole = "accent"
-            headLabel = pgLabel(hg, 783.4, ay + 9.2, 0, 25, calendarDayHeading(edt, false), 18.4, 640, headRole)
+            headLabel = pgLabel(hg, 783.4, ay + 9.2, 0, 25, calendarDayHeading(edt, false), 18.4, 640, headRole, { aria: "heading" })
             if day = today
                 hx = 783.4 + headLabel.textWidth + 18.5
-                pgRound(hg, hx - 9.35, ay + 10.1, 61, 22, 11, "lineStrong", -1, true)
-                tl = pgLabel(hg, hx, ay + 13.6, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3 })
+                pgRound(hg, hx - 9, ay + 10.1, PlayarrTextWidth("TODAY", 11.2, 640, 0.896) + 18, 22, 11, "lineStrong", -1, true)
+                tl = pgLabel(hg, hx, ay + 13.6, 0, 15, "TODAY", 11.2, 640, "accent", { tracking: 0.896 })
             end if
             m.agendaDays.Push({ group: hg, y: ay, endY: ay + 44 })
             ay = ay + 76
@@ -2208,7 +2238,11 @@ function calendarButton(x as Float, y as Float, text as String, style as String,
     size = 14.72
     textRole = "inkSoft"
     parts = [text]
-    if style = "secondary" and Left(text, 2) = "+ " then parts = ["+", Mid(text, 3)]
+    buttonName = text
+    if style = "secondary" and Left(text, 2) = "+ "
+        parts = ["+", Mid(text, 3)]
+        buttonName = Mid(text, 3)
+    end if
     w = 42.0
     gap = 9.6
     for i = 0 to parts.Count() - 1
@@ -2218,10 +2252,10 @@ function calendarButton(x as Float, y as Float, text as String, style as String,
         if i > 0 then w = w + gap
     end for
     if style = "primary"
-        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "accent"), "button", 0, text)
+        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "accent"), "button", 0, buttonName)
         textRole = "onAccent"
     else
-        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "surface"), "button", 0, text)
+        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "surface"), "button", 0, buttonName)
         pgRound(m.pageHead, x, y, w, 58, 29, "line", -1, true)
     end if
     tx = x + 21
@@ -2285,12 +2319,18 @@ sub renderCalendarMonth(entries as Object)
         y = gy + Int(i / 7) * ch
         if Mid(day, 6, 2) <> monthOf then pgRect(m.pageBody, x, y, cw, ch, "ink", 12).id = "a11y|container|0|"
     end for
-    for rr = 0 to rows
-        pgRect(m.pageBody, gx, gy + rr * ch, cw * 7, 1, "line")
+    ' Each day cell is a box with its own 1 px border (web .calendar-month-cell): a bordered container, no corner.
+    for i = 0 to days - 1
+        ' Edges land on whole pixels, as the web snaps a border: two neighbours show two adjacent 1 px borders.
+        bx0 = Int(gx + (i mod 7) * cw + 0.5)
+        bx1 = Int(gx + ((i mod 7) + 1) * cw + 0.5)
+        by0 = Int(gy + Int(i / 7) * ch + 0.5)
+        by1 = Int(gy + (Int(i / 7) + 1) * ch + 0.5)
+        cellBox = pgOutlineBox(m.pageBody, bx0, by0, bx1 - bx0, by1 - by0, "line")
+        cellBox.id = "a11y|container|0|"
     end for
-    for c = 0 to 7
-        pgRect(m.pageBody, gx + c * cw, gy, 1, ch * rows, "line")
-    end for
+    firstStop = m.pageItems.Count()
+    weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     for i = 0 to days - 1
         day = calAddDays(r.start, i)
         x = gx + (i mod 7) * cw
@@ -2323,16 +2363,27 @@ sub renderCalendarMonth(entries as Object)
             if chips[k].status = "Missing" then dotRole = "danger"
             pgRound(m.pageBody, x + 11.4, cy + 17.6, 8.8, 8.8, 4.4, dotRole)
             pgMark(m.pageBody, "container", "", x + 11.4, cy + 17.6, 8.8, 8.8, 50)
+            ' The chip is a control: web names it "Title, Status, Weekday D Month" and it is 226 x 44 (a later chip is cut by the next one).
+            chipH = 44.0
+            if k < shown - 1 then chipH = 25.4
+            chipName = chips[k].title + ", " + chips[k].status + ", " + weekdays[calWeekday(day)] + " " + Val(Mid(day, 9, 2)).ToStr() + " " + calendarMonthName(Val(Mid(day, 6, 2)), false)
+            pgHit(m.pageBody, "button", chipName, x + 5.8, cy, 226, chipH, 0)
+            if k = 0 and day = today then todayIdx = m.pageItems.Count()
+            pgFocusable(x + 5.8, cy, 226, chipH, 6, "cell", day)
             pgLabel(m.pageBody, x + 27.4, cy + 12.5, cw - 38, 17, text, 12.48, 400, "ink", { maxLines: 1 })
         end for
         numRole = "ink"
         if Mid(day, 6, 2) <> monthOf then numRole = "inkMuted"
         pgLabel(m.pageBody, x + 8.8, y + 117.9, 60, 18, Val(Mid(day, 9, 2)).ToStr(), 12.8, 640, numRole)
         if n > shown then pgLabel(m.pageBody, x + 60, y + ch - 24, cw - 70, 16, "+" + (n - shown).ToStr() + " more", 11, 600, "inkMuted", { horizAlign: "right" })
-        if day = today then todayIdx = m.pageItems.Count()
-        pgFocusable(x + 1, y + 1, cw - 1, ch - 1, 6, "cell", day)
+        ' A day with chips is reached through its chips; an empty day keeps the whole-cell stop that opens it in the agenda.
+        if shown = 0
+            if day = today then todayIdx = m.pageItems.Count()
+            pgHit(m.pageBody, "button", weekdays[calWeekday(day)] + " " + Val(Mid(day, 9, 2)).ToStr() + " " + calendarMonthName(Val(Mid(day, 6, 2)), false), x + 1, y + 1, cw - 1, ch - 1, 0)
+            pgFocusable(x + 1, y + 1, cw - 1, ch - 1, 6, "cell", day)
+        end if
     end for
-    m.pageFocusIdx = m.pageItems.Count() - days + 0
+    m.pageFocusIdx = firstStop
     if todayIdx > 0 then m.pageFocusIdx = todayIdx
 end sub
 
@@ -2395,8 +2446,8 @@ sub renderCalendarWeek(entries as Object)
         if day = today
             ' Web's TODAY chip beside the day heading.
             hx = x + headLabel.textWidth + 18.5
-            pgRound(m.pageBody, hx - 9.35, 175.5, 61, 22, 11, "lineStrong", -1, true)
-            tl = pgLabel(m.pageBody, hx, 179.4, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3 })
+            pgRound(m.pageBody, hx - 9, 175.5, PlayarrTextWidth("TODAY", 11.2, 640, 0.896) + 18, 22, 11, "lineStrong", -1, true)
+            tl = pgLabel(m.pageBody, hx, 179.4, 0, 15, "TODAY", 11.2, 640, "accent", { tracking: 0.896 })
         end if
         list = byDay[day]
         y = 208.0

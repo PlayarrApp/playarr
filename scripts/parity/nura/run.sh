@@ -12,6 +12,7 @@ THEMES=${*:-dark light}
 : "${PARITY_ROOT:?}"
 export PLAYARR_CONTROL=${PLAYARR_CONTROL:-/tmp/pa-route} PLAYARR_CAPTURE_IDENTITY_GUARD=$H/guard.sh
 export PLAYARR_PARITY_CLOCK=${PLAYARR_PARITY_CLOCK:-2026-10-07T12:00:00Z}
+"$H/pmfresh.sh" "$H/../../.."
 FILM=ca309574-c0f4-4564-bb54-4512eab7e531 SERIES=7ab4ce97-d59e-43d6-8e03-31d4d29a5c90
 if [ -z "${SKIP_SIGNIN:-}" ]; then
   PLAYARR_NURA_EXPECTED_SUB=$("$H/signin.py" | sed -n 's/^sub //p')
@@ -22,14 +23,17 @@ mkdir -p "$O"
 layout() {
   local theme=$1 name=$2 f=/tmp/pa-layout.json
   "$H/pmssh.sh" "rm -f $f; printf %s 'layout:$name:$f' > $PLAYARR_CONTROL" </dev/null
-  for _ in $(seq 1 20); do "$H/pmssh.sh" "[ -s $f ]" </dev/null && break; sleep 1; done
+  for _ in $(seq 1 180); do "$H/pmssh.sh" "[ -s $f ]" </dev/null && break; sleep 1; done
   mkdir -p "$O/$theme/layout"; "$H/pmssh.sh" "cat $f" </dev/null > "$O/$theme/layout/$name.json"
 }
 for t in $THEMES; do
   rm -f -- "$O/$t"/*.png
   "$H/pmrun.sh" </dev/null; sleep 15; "$H/pmfocus.sh"
+  # calendar-link goes last: the display can keep a remnant of the closed panel's close-button ring on the next screen.
   # One route per call, each retried: a display repaint glitch can outlast one stability window.
-  for r in home movies series music calendar-month calendar-week calendar-agenda search "film:$FILM" "series-detail:$SERIES" settings filters profiles actions; do
+  for r in home movies series music calendar-month calendar-week calendar-agenda search "film:$FILM" "series-detail:$SERIES" settings filters profiles actions calendar-link; do
+    # The web ref opens a series from the Series list, so the detail page's back button reads "Back to Series".
+    case $r in series-detail:*) "$H/pmssh.sh" "printf %s series > $PLAYARR_CONTROL" </dev/null; sleep 8;; esac
     for try in 1 2 3; do WAIT=${WAIT:-45} "$H/pmcap3.sh" "$O/$t" "theme:$t" "$r" </dev/null && break; [ "$try" = 3 ] && exit 1; done
     case $r in film:*) n=film-detail;; series-detail:*) n=series-detail;; *) n=$r;; esac
     layout "$t" "$n"
@@ -65,5 +69,8 @@ for t in themes.split():
         n = os.path.basename(f)[:-4]
         Image.open(f).convert("RGB").crop((0, 64, 720, 1410)).save(f"{out}/{ren.get(n, n)}.png")
 PY
-  printf '{"branch":"%s","sha":"%s","pr":"%s","captured_at":"%s","server":"static server"}\n' "${BRANCH:-}" "${SHA:-}" "${PR:-}" "$(date -u +%FT%TZ)" | tee "$D/build.json" > "$D/light/build.json"
+  # Provenance comes from the checkout the capture was built from; the PR is looked up by branch unless PR is set.
+  BRANCH=${BRANCH:-$(git rev-parse --abbrev-ref HEAD)}; SHA=${SHA:-$(git rev-parse --short=9 HEAD)}
+  if [ -z "${PR:-}" ] || [ "$PR" = 0 ]; then PR=$(gh pr list --head "$BRANCH" --state all --json number --jq '.[0].number // empty' 2>/dev/null || true); fi
+  printf '{"branch":"%s","sha":"%s","pr":"%s","captured_at":"%s","server":"static server"}\n' "${BRANCH:-}" "${SHA:-}" "${PR:-0}" "$(date -u +%FT%TZ)" | tee "$D/build.json" > "$D/light/build.json"
 fi

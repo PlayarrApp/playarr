@@ -1,0 +1,3 @@
+- Nura: captures repaint the whole surface and refuse a part-painted black display tile; layout export uses Pango run bounds for fallback glyphs, the actions glyph and settings description column match the web, and the search empty-state icon follows the theme.
+- Nura: settings descriptions use Pango's own ellipsis again at the web's column width.
+- Nura: layout export sizes fallback-glyph text boxes by the element's own font and exports ring shadows; the detail art, profile theme control, Clients pill and filter selects follow the web's values; captures draw the whole surface three times so a blurred shadow always comes from the renderer's cache, and the capture driver refuses a VM build that is not the checkout.

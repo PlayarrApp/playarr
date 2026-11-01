@@ -13,7 +13,7 @@ Web is the source of truth: fix the native client, not the web reference. If the
 Every screen is captured and diffed in both themes, `light` and `dark`. A native client must match both,
 whether it follows the system appearance or its own theme setting.
 
-Acceptance per screen and theme: at most 1% of pixels mismatched (pixelmatch threshold 0.1, anti-aliasing ignored), or a
+Acceptance per screen and theme: at most 1% of pixels mismatched (exact comparison: a pixel matches only when all four RGBA bytes are identical, no threshold, anti-aliasing counted), or a
 written, owner-reviewable justification for an unavoidable platform difference (system status bar, OS font
 rasterisation).
 
@@ -42,7 +42,7 @@ rasterisation).
   client; `web/build.json` records that build's `sha` (and `repoSha`). `recapture-round2.mjs` runs the deck reset and then this for
   all groups. The legend (`update.mjs`, outside the repo) scores `player-controls` inside the `compareRegions` only, so a device
   video frame cannot count against the black web ref.
-- `scripts/parity/diff.mjs`: pixelmatch diff, per-screen mismatch table and an HTML report. Ignored regions:
+- `scripts/parity/diff.mjs`: exact RGBA byte diff, per-screen mismatch table and an HTML report. Ignored regions:
   `--mask-rect x,y,w,h[,screen-id]` (CSS px of the layout, repeatable) and the `maskRects` the reference manifest
   records for text that differs per fixture instance (the `settings-server` address, from `maskSelectors` in
   `screens.json`); both images are blanked there before comparing. `--no-manifest-masks` turns the manifest ones off.
@@ -54,7 +54,7 @@ rasterisation).
 ## Setup
 
 ```sh
-cd scripts/parity && npm ci          # pixelmatch, pngjs, playwright-core
+cd scripts/parity && npm ci          # pngjs, playwright-core
 npx playwright-core install chromium # once, or set PARITY_CHROMIUM to a Chromium binary
 ```
 

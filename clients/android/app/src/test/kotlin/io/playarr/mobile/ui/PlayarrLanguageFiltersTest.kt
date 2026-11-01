@@ -68,7 +68,7 @@ class PlayarrLanguageFiltersTest {
         assertTrue(source.contains("else 11.84f"))
         assertTrue(source.contains("LibraryViewMode.List -> Triple(3, 20f, if (tv) 3f else 2f)"))
         assertTrue(source.contains("LibraryViewMode.Screen -> if (tv) Triple(3, 5.46f, 13.13f) else Triple(3, 5.5f, 3.9f)"))
-        assertTrue(source.contains("if (list && !tv) it.background(colour, RoundedCornerShape(1.dp)) else it.border(1.dp, colour, RoundedCornerShape(1.dp))"))
+        assertTrue(source.contains("it.parityBackground(\"container\", Color.Transparent, RoundedCornerShape(1.dp), radius = 1f, drawsBorder = true).border(borderWidth, colour, RoundedCornerShape(1.dp))"))
 
         assertTrue(source.contains("suppressFocusedCardVisuals = isTelevision && contextWork != null"))
 
