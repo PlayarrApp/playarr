@@ -1,1 +1,1 @@
-- Apple TV and Mac library cards sit at the stylesheet's fractional column x (the grid's whole-point snap is offset back) and use the stylesheet card radius 12.48.
+- Apple TV and Mac library cards are laid out at the stylesheet's fractional column x and painted on the device-pixel-snapped rect Blink uses (round(x) to round(x + width)), with the stylesheet card radius 12.48.
