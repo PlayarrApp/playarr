@@ -169,7 +169,7 @@ internal static class Ui
     public static View Box(float x, float y, float w, float h, Rgba? bg = null, float radius = 0)
     {
         var v = new View { PositionX = x, PositionY = y, Size = new Size(w, h) };
-        if (bg is { } c) { v.BackgroundColor = C(c); if (c.IsMix) Sem.ColorMix(v); }
+        if (bg is { } c) { v.BackgroundColor = C(c); }
         if (radius > 0) v.CornerRadius = FullRadius(radius, w, h);
         return v;
     }
@@ -188,7 +188,7 @@ internal static class Ui
         else if (family == Font && text is "⇩" or "☷" or "⌄" or "✓" or "▶") { family = "Playarr Symbols"; weight = weight >= 600 ? 700 : 400; }
         if (!multiline && w <= 0) w = TextWidth(upper ? text.ToUpperInvariant() : text, size, weight, spacing, family); // an inline run is as wide as its text
         (family, weight) = Face(family, weight, size);
-        var cssWeight = family.StartsWith(Font + " W", StringComparison.Ordinal) ? int.Parse(family[(Font.Length + 2)..]) : family == "Liberation Sans" ? reqWeight /* a fallback-font arrow: the style weight the page asked for, as the web reports it, not the face file */ : weight;
+        var cssWeight = family.StartsWith(Font + " W", StringComparison.Ordinal) ? int.Parse(family[(Font.Length + 2)..]) : weight; // a fallback-font arrow reports the weight its face really draws (Liberation Sans Bold, 700)
         var cssY = y;
         var line = lh > 0 ? lh : size * 1.4f;
         // a single line is a label exactly as tall as the browser's content area (rounded ascent plus rounded descent), top-aligned and centred in the CSS line box

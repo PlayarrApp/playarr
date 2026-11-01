@@ -137,17 +137,14 @@ internal sealed class Shell : View
 
     private View AddGroup(float y, float h)
     {
-        // light: the drawn fill is opaque (strong surface 56 % over the page layer the rail sits on, --surface) because the box shadow would show through a translucent fill; web clips it outside the border box.
-        // The export reports the web fill (56 % mix) over the rail's ancestors, which is what the web dump composites (the rail is a sibling of the page, so --bg is beneath it)
-        var web = _theme.SurfaceStrong.Mixed(0.56f);
-        var fill = _theme.Name == "dark" ? web
+        // light: the fill is opaque (strong surface 56 % over the page surface the rail is painted on) because the box shadow would show through a translucent fill; web clips it outside the border box
+        var fill = _theme.Name == "dark" ? _theme.SurfaceStrong.Mixed(0.56f)
             : new Rgba(_theme.SurfaceStrong.R * 0.56f + _theme.Surface.R * 0.44f, _theme.SurfaceStrong.G * 0.56f + _theme.Surface.G * 0.44f, _theme.SurfaceStrong.B * 0.56f + _theme.Surface.B * 0.44f);
         var box = Ui.Box(RailX, y, RailW, h, fill, 22);
         box.BorderlineWidth = 1;
         box.BorderlineColor = Ui.LineA(_theme, _theme.Line.A * 0.48f); // web: the line colour at 48 % of its own alpha
         // light only: on the dark rail the web shadow (warm brown at 10 %) is not visible, and ours read as a pink halo
         if (_theme.Name != "dark") box.BoxShadow = new Shadow(42, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.1f), new Vector2(0, 14), new Vector2(0, 0));
-        if (_theme.Name != "dark") Sem.Frost(box, web);
         _chrome.Add(box);
         return box;
     }

@@ -88,7 +88,7 @@ internal sealed class LibraryScreen : IPage
     private void BuildSide()
     {
         // Filters tile (shell action column: 62x72 at 1845.5,151.2)
-        var tile = Ui.Box(1845.5f, 151.2f, 62, 72, _t.SurfaceStrong.Mixed(0.78f), 14); Sem.ShellLayer(tile); // shell action column: a sibling of the page on the web
+        var tile = Ui.Box(1845.5f, 151.2f, 62, 72, _t.SurfaceStrong.Mixed(0.78f), 14);
         tile.BorderlineWidth = 1; tile.BorderlineColor = Ui.LineA(_t, 0.075f);
         tile.Add(Ui.Icon("filters", 19, 15, 24, _t.InkMuted)); // web: the sliders glyph
         _tile = tile; Sem.Tag(tile, "button", "Filters");

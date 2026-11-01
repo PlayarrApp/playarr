@@ -103,7 +103,7 @@ internal sealed class CalendarScreen : IPage
 
     private void Tile(float y, float w, float h, string text, string icon, Action select)
     {
-        var tile = Ui.Box(1845.5f, y, w, h, _t.SurfaceStrong.Mixed(0.78f), 14); Sem.ShellLayer(tile); // shell action column: a sibling of the page on the web
+        var tile = Ui.Box(1845.5f, y, w, h, _t.SurfaceStrong.Mixed(0.78f), 14);
         tile.BorderlineWidth = 1; tile.BorderlineColor = Ui.LineA(_t, 0.075f);
         Sem.Tag(tile, "button", text);
         tile.Add(Ui.Icon(icon, 19, 15, 24, _t.InkMuted));

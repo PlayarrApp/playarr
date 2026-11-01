@@ -171,7 +171,7 @@ internal sealed class SearchScreen : IPage
 
     private void BuildSide()
     {
-        var tile = Ui.Box(1845.5f, 151.2f, 62, 72, _t.SurfaceStrong.Mixed(0.78f), 14); Sem.ShellLayer(tile); // shell action column: a sibling of the page on the web
+        var tile = Ui.Box(1845.5f, 151.2f, 62, 72, _t.SurfaceStrong.Mixed(0.78f), 14);
         _filterTile = tile;
         tile.Focusable = true;
         Sem.Tag(tile, "button", "Filters");
