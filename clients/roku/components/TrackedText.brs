@@ -93,6 +93,9 @@ sub onSpecChange()
                 glyph.font = font
                 glyph.width = 0
                 glyph.height = 0
+                ' A single line is as tall as the web's text box (rounded ascent plus descent). The Label is scaled to the web's fractional
+                ' size, so its own height is that box divided by the scale; the glyphs stay top-aligned where they were.
+                if lines.Count() = 1 and spec.symbol <> true then glyph.height = PlayarrContentHeight(size) / PlayarrScaleFor(size)
                 ' The Font node is a whole pixel size: scale the Label to the web's fractional size about its top-left corner.
                 glyph.scaleRotateCenter = [0, 0]
                 glyph.scale = [PlayarrScaleFor(size), PlayarrScaleFor(size)]
