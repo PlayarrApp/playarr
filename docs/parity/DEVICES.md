@@ -164,6 +164,23 @@ PARITY_NETLOG=<netlog dir> node scripts/parity/tizen-webos/signin-tizen.mjs   # 
 TIZEN_OUT=<legend dir>/tizen PARITY_NETLOG=<netlog dir> scripts/parity/tizen-webos/run-tizen.sh
 ```
 
+### Chromium stand-in raster mode
+
+The Tizen 6.5 row (Chromium 85, cand `tizen65`) runs the emulated web bundle in a Chromium 85 build started by
+`scripts/parity/tizen-webos/launch-chromium.sh` (`CHROME_BIN`, `PROFILE_DIR`, `URL`, `DISPLAY`, optional `UA`; the webOS
+stand-in can reuse it with its own UA). The default is CPU raster (`--disable-gpu --num-raster-threads=1`), which is what
+the web references use (Chromium 151, software raster) and is byte-deterministic between twin runs.
+
+GPU raster over SwiftShader (`RASTER=gpu`: `--use-gl=swiftshader --ignore-gpu-blocklist --enable-gpu-rasterization`) was
+evaluated on 1 Nov 2026 and is not adopted. It changes the harness engine, not the app. Measured on Chromium 85 against the
+software-raster web refs: the `.tv-stage-wash` overlay renders the token colour exactly (the CPU path loses one level to
+the 8 bit quantisation of a premultiplied alpha gradient), and the Tizen 6.5 row rose from 73.65 to 78.57 (overall 43.86 to
+44.12); calendar-week (dark, light) and calendar-month (light) dipped. Two runs with this helper were byte-identical; a run
+made with an earlier hand-written launch line differed in 52 px of one screen. It stays opt-in because the adoption
+condition "real Tizen 6.5 TVs rasterise on the GPU" has no evidence: no Samsung or Chromium document states it for the
+web engine and no `chrome://gpu` output from a Tizen device exists. On webOS (Chromium 94) the same flags only cut the
+differing pixels from 65.9 % to 39.9 %. Revisit when device evidence exists.
+
 ### webOS documented exceptions (not chased)
 
 These are engine or simulator effects of the webOS TV 23 Simulator, not Playarr code. The webOS score is reported with
