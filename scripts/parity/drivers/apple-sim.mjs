@@ -467,7 +467,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       // Ask the app for a layout and wait for the answer stamped with this request's id.
       const measure = async (requestID) => {
         writeFileSync(join(base, "parity-layout-request"), requestID);
-        for (let i = 0; i < 240; i += 1) { // the app renders the screen once per batch of hidden items
+        for (let i = 0; i < 600; i += 1) { // the app renders the screen once per batch of hidden items
           await sleep(500);
           try {
             const doc = JSON.parse(readFileSync(join(base, "parity-layout.json"), "utf8"));

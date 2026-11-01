@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreText
 #if os(macOS)
 import AppKit
 #endif
@@ -564,6 +565,9 @@ struct TVParityStageRender {
 /// Drawing is unchanged; nothing is measured by another renderer.
 @available(tvOS 18.0, macOS 15.0, *)
 private struct TVParityTextRenderer: TextRenderer {
+    /// The font size and weight the text is set in (the face's own line metrics decide the box a browser reports for a run).
+    let size: CGFloat
+    let weight: Int
     let report: ([CGRect], [String]) -> Void
 
     func draw(layout: Text.Layout, in context: inout GraphicsContext) {
@@ -576,7 +580,45 @@ private struct TVParityTextRenderer: TextRenderer {
             }
             return parts.joined().trimmingCharacters(in: .whitespaces)
         }
-        report(layout.map { $0.typographicBounds.rect }, strings)
+        report(TVParityFontMetrics.lineBoxes(layout.map { $0.typographicBounds.rect }, size: size, weight: weight), strings)
+    }
+}
+
+/// The line boxes a browser reports for text (`Range.getBoundingClientRect`, docs/parity/LAYOUT.md), as Blink builds them: each run's
+/// box is the font's content area, `round(ascent)` above the baseline and `round(descent)` below it, with the ascent and descent read
+/// from the `hhea` table of the face the text is set in (Blink rounds both to whole pixels). The text view's own frame is the box
+/// SwiftUI laid the first line in, and its baseline is that frame's top plus the unrounded ascent; the typographic bounds SwiftUI
+/// hands the renderer carry an offset inside the frame that the drawn glyphs do not have (the heading "Movies": box 4.03 pt below
+/// its frame while the glyph ink sits on the frame's baseline), so only the spacing between lines is taken from them.
+@available(tvOS 18.0, macOS 15.0, *)
+enum TVParityFontMetrics {
+    private static var cache: [String: (ascent: CGFloat, descent: CGFloat)?] = [:]
+
+    /// The face's `hhea` ascender and descender as fractions of the em, read from the font file itself.
+    static func hhea(weight: Int) -> (ascent: CGFloat, descent: CGFloat)? {
+        let key = "\(weight)"
+        if let hit = cache[key] { return hit }
+        let font = CTFontCreateWithName(TVFontLoader.uiFont(mono: false, size: 100, weight: CGFloat(weight)).fontName as CFString, 100, nil)
+        var result: (CGFloat, CGFloat)?
+        if let head = CTFontCopyTable(font, CTFontTableTag(kCTFontTableHead), []) as Data?,
+           let hhea = CTFontCopyTable(font, CTFontTableTag(kCTFontTableHhea), []) as Data?, head.count >= 20, hhea.count >= 8 {
+            func i16(_ d: Data, _ o: Int) -> CGFloat { CGFloat(Int16(bitPattern: UInt16(d[d.startIndex + o]) << 8 | UInt16(d[d.startIndex + o + 1]))) }
+            let upem = CGFloat(UInt16(head[head.startIndex + 18]) << 8 | UInt16(head[head.startIndex + 19]))
+            if upem > 0 { result = (i16(hhea, 4) / upem, -i16(hhea, 6) / upem) }
+        }
+        cache[key] = result
+        return result
+    }
+
+    /// Line rects relative to the text view's frame (x and width as laid out, y from the frame's top).
+    static func lineBoxes(_ rects: [CGRect], size: CGFloat, weight: Int) -> [CGRect] {
+        guard size > 0, let first = rects.first, let m = hhea(weight: weight), m.ascent + m.descent > 0 else { return rects }
+        let ascent = m.ascent * size
+        return rects.map { rect in
+            let baseline = rect.minY - first.minY + ascent
+            let above = ascent.rounded(), below = (m.descent * size).rounded()
+            return CGRect(x: rect.minX, y: baseline - above, width: rect.width, height: above + below)
+        }
     }
 }
 
@@ -654,7 +696,7 @@ private struct TVParityLayoutModifier: ViewModifier {
     @ViewBuilder
     private func rendered(_ content: Content) -> some View {
         if #available(tvOS 18.0, macOS 15.0, *), text != nil, size != nil {
-            content.textRenderer(TVParityTextRenderer { bounds, strings in
+            content.textRenderer(TVParityTextRenderer(size: size ?? 0, weight: weight ?? 400) { bounds, strings in
                 let key = id
                 Task { @MainActor in TVParityLayoutRegistry.shared.setLines(key, bounds, texts: strings) }
             })
