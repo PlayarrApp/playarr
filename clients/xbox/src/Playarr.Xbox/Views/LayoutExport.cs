@@ -47,9 +47,9 @@ namespace Playarr.Xbox.Views
                 return "heading";
             }
 
-            if (Windows.UI.Xaml.Automation.AutomationProperties.GetLocalizedControlType(element) == "img")
+            if (Windows.UI.Xaml.Automation.AutomationProperties.GetLocalizedControlType(element) is "img" or "image")
             {
-                return "img"; // a decorative marker the web exposes as role="img" (the card's unwatched dot)
+                return Windows.UI.Xaml.Automation.AutomationProperties.GetLocalizedControlType(element); // "img": the card's unwatched dot (web role="img"); "image": a drawn icon (the web's svg)
             }
 
             return PeerOf(element)?.GetAutomationControlType() switch
@@ -298,26 +298,47 @@ namespace Playarr.Xbox.Views
             throw new InvalidOperationException("The rendered frame did not settle during the visibility pass: " + last);
         }
 
-        /// <summary>A control the user can focus is exported even when it paints nothing, unless something else is drawn over it.</summary>
-        private static bool IsFocusableAndOnTop(FrameworkElement owner, Rect box)
+        /// <summary>
+        /// Not covered: an element that paints nothing of its own (a transparent button around an icon, a layout box) is on screen
+        /// unless something else sits over it. As the web's check does, nine sample points in the box are tested and one point
+        /// whose topmost hit is the element, a part of it or the surface behind it is enough.
+        /// </summary>
+        private static bool IsOnTop(FrameworkElement owner, Rect box)
         {
-            if (owner is not Control { IsTabStop: true, IsEnabled: true })
+            var left = Math.Max(box.X, 0);
+            var top = Math.Max(box.Y, 0);
+            var right = Math.Min(box.Right, 1920);
+            var bottom = Math.Min(box.Bottom, 1080);
+            foreach (var fx in new[] { 0.2, 0.5, 0.8 })
             {
-                return false;
-            }
-
-            var point = new Windows.Foundation.Point(box.X + box.Width / 2, box.Y + box.Height / 2);
-            foreach (var hit in VisualTreeHelper.FindElementsInHostCoordinates(point, Window.Current.Content, false))
-            {
-                for (DependencyObject? n = hit; n != null; n = VisualTreeHelper.GetParent(n))
+                foreach (var fy in new[] { 0.2, 0.5, 0.8 })
                 {
-                    if (ReferenceEquals(n, owner))
+                    var point = new Windows.Foundation.Point(left + (right - left) * fx, top + (bottom - top) * fy);
+                    var covered = false;
+                    foreach (var hit in VisualTreeHelper.FindElementsInHostCoordinates(point, Window.Current.Content, false))
+                    {
+                        covered = !(IsWithin(hit, owner) || IsWithin(owner, hit));
+                        break;
+                    }
+
+                    if (!covered)
                     {
                         return true;
                     }
                 }
+            }
 
-                return false;
+            return false;
+        }
+
+        private static bool IsWithin(DependencyObject node, DependencyObject ancestor)
+        {
+            for (DependencyObject? n = node; n != null; n = VisualTreeHelper.GetParent(n))
+            {
+                if (ReferenceEquals(n, ancestor))
+                {
+                    return true;
+                }
             }
 
             return false;
@@ -428,8 +449,8 @@ namespace Playarr.Xbox.Views
                 }
 
                 var changed = rounds[0] > 0 && rounds[1] > 0; // an unplayed second round stays 0
-                var focusable = !changed && IsFocusableAndOnTop(candidate.Owner, candidate.Box);
-                log.Add($"#{log.Count} {Math.Round(candidate.Box.X)},{Math.Round(candidate.Box.Y)} {Math.Round(candidate.Box.Width)}x{Math.Round(candidate.Box.Height)} r1={rounds[0]} r2={rounds[1]} h={rawHide} u={unstable} o={candidate.Owner.Opacity:0.##} {(changed ? "visible" : focusable ? "focusable" : "covered")} d={colours.Count}");
+                var focusable = !changed && IsOnTop(candidate.Owner, candidate.Box);
+                log.Add($"#{log.Count} {Math.Round(candidate.Box.X)},{Math.Round(candidate.Box.Y)} {Math.Round(candidate.Box.Width)}x{Math.Round(candidate.Box.Height)} r1={rounds[0]} r2={rounds[1]} h={rawHide} u={unstable} o={candidate.Owner.Opacity:0.##} {(changed ? "visible" : focusable ? "on top" : "covered")} d={colours.Count}");
                 if (!changed && !focusable)
                 {
                     hidden.Add(candidate.Item);
@@ -497,6 +518,11 @@ namespace Playarr.Xbox.Views
                 {
                     Add(element, root, scale, output);
                 }
+            }
+
+            if (node is FrameworkElement { } icon && Windows.UI.Xaml.Automation.AutomationProperties.GetLocalizedControlType(icon) == "image")
+            {
+                return; // a drawn icon is one image, as the web's svg is, not its glyph text
             }
 
             var count = VisualTreeHelper.GetChildrenCount(node);

@@ -177,7 +177,9 @@ namespace Playarr.Xbox.Views
         {
             var side = box ?? size;
             var icon = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = size, Foreground = (Brush)Application.Current.Resources[brushKey], HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-            return new Grid { Width = side, Height = side, VerticalAlignment = VerticalAlignment.Center, Children = { icon } };
+            var holder = new Grid { Width = side, Height = side, VerticalAlignment = VerticalAlignment.Center, Children = { icon } };
+            Windows.UI.Xaml.Automation.AutomationProperties.SetLocalizedControlType(holder, "image"); // a drawn icon: the export reports one image, as the web's svg
+            return holder;
         }
 
         /// <summary>The web's gear (Settings) and Sign out pills under the selected profile.</summary>
