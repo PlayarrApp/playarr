@@ -110,3 +110,9 @@ reveal its controls). Household blocked needs a restricted profile, which the re
   fast-forward keys control the player. Artwork in a system now-playing entry is not possible: the server's art needs the sign-in headers,
   which the system cannot send.
 
+
+## Text and grid geometry from the web CSS (1 Nov 2026)
+
+Every Roku text takes its size, weight and line box from the web CSS through one path: `PlayarrMakeFont` / `TrackedText`. The package carries Nunito Sans cut at the exact web weights per size band (`clients/roku/scripts/make_font_data.py`, `EXACT`), so no weight is rounded to a hundred. A Roku `Font` node takes a whole-pixel size, so the Label is scaled by web size / whole size (`PlayarrScaleFor`) and reports the web's fractional size. Browse grid pitch, row shift and column shift derive from the web card width, grid gap and card copy (`WebGridPitchX`, `WebGridPitchY`, `WebGridColumnShift`, `WebGridRowShift`, `WebRailCellWidth` in `Theme.brs`).
+
+Evidence (exact scorer, dark): fontSize plus fontWeight failures on home, movies and series fell from 54, 84 and 83 to 1, 3 and 3; screens still with a few fontSize/fontWeight misses are symbol glyphs (arrows, play, check), which fall back to DejaVu Sans, not Nunito Sans. Letter-spacing stays an exception: Roku has no tracking, so TrackedText sets words at web advances.
