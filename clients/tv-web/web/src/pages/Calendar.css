@@ -430,10 +430,10 @@
   --agenda-heading-base: var(--surface);
   --agenda-panel-frost: linear-gradient(
     90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 68%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 88%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 96%, transparent) 62%,
+    var(--agenda-heading-base) 0%,
+    color-mix(in srgb, var(--tv-rail-frost) 68%, var(--agenda-heading-base)) 12%,
+    color-mix(in srgb, var(--tv-rail-frost) 88%, var(--agenda-heading-base)) 34%,
+    color-mix(in srgb, var(--tv-rail-frost) 96%, var(--agenda-heading-base)) 62%,
     var(--tv-rail-frost) 100%
   );
   /* Nothing shows above the pinned heading (the header area); no top ramp, so the heading itself is not faded. */
@@ -454,10 +454,10 @@
   --agenda-heading-base: var(--bg);
   --agenda-panel-frost: linear-gradient(
     90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 72%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 90%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 97%, transparent) 62%,
+    var(--agenda-heading-base) 0%,
+    color-mix(in srgb, var(--tv-rail-frost) 72%, var(--agenda-heading-base)) 12%,
+    color-mix(in srgb, var(--tv-rail-frost) 90%, var(--agenda-heading-base)) 34%,
+    color-mix(in srgb, var(--tv-rail-frost) 97%, var(--agenda-heading-base)) 62%,
     var(--tv-rail-frost) 100%
   );
 }

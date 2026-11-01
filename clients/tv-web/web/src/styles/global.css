@@ -5293,10 +5293,10 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   border-bottom: 0;
   background: linear-gradient(
     90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 68%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 88%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 96%, transparent) 62%,
+    var(--surface) 0%,
+    color-mix(in srgb, var(--tv-rail-frost) 68%, var(--surface)) 12%,
+    color-mix(in srgb, var(--tv-rail-frost) 88%, var(--surface)) 34%,
+    color-mix(in srgb, var(--tv-rail-frost) 96%, var(--surface)) 62%,
     var(--tv-rail-frost) 100%
   );
   box-shadow: none;
@@ -5307,10 +5307,10 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   --tv-rail-frost: color-mix(in srgb, var(--surface-soft) 44%, var(--surface-strong));
   background: linear-gradient(
     90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 72%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 90%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 97%, transparent) 62%,
+    var(--surface) 0%,
+    color-mix(in srgb, var(--tv-rail-frost) 72%, var(--surface)) 12%,
+    color-mix(in srgb, var(--tv-rail-frost) 90%, var(--surface)) 34%,
+    color-mix(in srgb, var(--tv-rail-frost) 97%, var(--surface)) 62%,
     var(--tv-rail-frost) 100%
   );
 }
@@ -6188,10 +6188,10 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   -webkit-overflow-scrolling: touch;
   background: linear-gradient(
     90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 68%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 88%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 96%, transparent) 62%,
+    var(--surface) 0%,
+    color-mix(in srgb, var(--tv-rail-frost) 68%, var(--surface)) 12%,
+    color-mix(in srgb, var(--tv-rail-frost) 88%, var(--surface)) 34%,
+    color-mix(in srgb, var(--tv-rail-frost) 96%, var(--surface)) 62%,
     var(--tv-rail-frost) 100%
   );
   overscroll-behavior: contain;
@@ -6203,10 +6203,10 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   --tv-rail-frost: color-mix(in srgb, var(--surface-soft) 44%, var(--surface-strong));
   background: linear-gradient(
     90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 72%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 90%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 97%, transparent) 62%,
+    var(--surface) 0%,
+    color-mix(in srgb, var(--tv-rail-frost) 72%, var(--surface)) 12%,
+    color-mix(in srgb, var(--tv-rail-frost) 90%, var(--surface)) 34%,
+    color-mix(in srgb, var(--tv-rail-frost) 97%, var(--surface)) 62%,
     var(--tv-rail-frost) 100%
   );
 }
@@ -6552,10 +6552,10 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   overflow: hidden;
   background: linear-gradient(
     90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 68%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 88%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 96%, transparent) 62%,
+    var(--surface) 0%,
+    color-mix(in srgb, var(--tv-rail-frost) 68%, var(--surface)) 12%,
+    color-mix(in srgb, var(--tv-rail-frost) 88%, var(--surface)) 34%,
+    color-mix(in srgb, var(--tv-rail-frost) 96%, var(--surface)) 62%,
     var(--tv-rail-frost) 100%
   );
   /* No entrance of its own: the route transition (page-layout.css) owns it. A base animation here replayed (translateX
@@ -6566,10 +6566,10 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   --tv-rail-frost: color-mix(in srgb, var(--surface-soft) 44%, var(--surface-strong));
   background: linear-gradient(
     90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 72%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 90%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 97%, transparent) 62%,
+    var(--surface) 0%,
+    color-mix(in srgb, var(--tv-rail-frost) 72%, var(--surface)) 12%,
+    color-mix(in srgb, var(--tv-rail-frost) 90%, var(--surface)) 34%,
+    color-mix(in srgb, var(--tv-rail-frost) 97%, var(--surface)) 62%,
     var(--tv-rail-frost) 100%
   );
 }
