@@ -52,6 +52,9 @@ extension TVParityLaunch {
 
     static var isLive: Bool { route != nil }
 
+    /// A capture or D-pad run drives the app (a parity screen or route); a normal launch has neither.
+    static var isParityRun: Bool { requestedScreen != nil || route != nil }
+
     /// `-PlayarrPlayFile <media file id>`: plays that file at once (suite playback cases a and b); the player reports to parity-state.json.
     static var playFile: UUID? {
         let args = ProcessInfo.processInfo.arguments
