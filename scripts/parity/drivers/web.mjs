@@ -564,7 +564,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     }
     // The focused film's runtime fills in when its detail request lands (LibraryPreview, Home hero): a shot taken before it drops the "1 min" span.
     // The app can drop the answer of that request when the Home page's controller is released as the library mounts (the response is 200 and the span never appears), so the wait is short and a reload retries it.
-    if (path === "/movies") {
+    if (path === "/movies" && await page.locator(".tv-library-preview").isVisible()) {
       for (let attempt = 1; ; attempt++) {
         try { await page.waitForSelector(".tv-library-preview [data-detail-field=runtime]", { timeout: 8000 }); break; } catch (e) {
           if (e?.name !== "TimeoutError" || attempt >= 3) throw e;
@@ -943,6 +943,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       // A detail page opens at its top. On a phone the focus-scroll to the first episode card can land late and leave the page scrolled
       // (a different frame per run), so the capture returns every scrolled box to the top first.
       if (detailRoute) await page.evaluate(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; });
+      // Backdrop art cross-fades (CrossfadeArt): until the older layer is gone and none is pending, the backdrop-filter surfaces (nav rail, filter button) blur a different mix.
+      await page.waitForFunction(() => document.querySelectorAll(".tv-key-art-layer").length <= 1 && !document.querySelector(".tv-key-art-layer.is-pending"), null, { timeout: 20000, polling: 100 });
       await page.evaluate(settleDecodedPaint);
       if (disableAnimations) {
         await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
