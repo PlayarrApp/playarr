@@ -418,7 +418,8 @@ internal object PlayarrLayoutExport {
                             .put("color", hex(colour.toArgb()))
                             .put("fontSize", r2(size * ctx.unit)).put("fontWeight", runStyle.fontWeight?.weight ?: 400)
                         // A text that paints its own pill (kind textfill on the text node itself, as the web span does) carries that outline: the drawn corners of its own paint, never a copy from another node.
-                        ctx.ownBoxes(node).lastOrNull { b -> b.kind == "textfill" }?.let { pill ->
+                        // The pill may sit on the text's line frame (its parent node): fall back to the textfill boxes of the chain, nearest first.
+                        (ctx.ownBoxes(node).lastOrNull { b -> b.kind == "textfill" } ?: ctx.chainOf(node).asReversed().firstNotNullOfOrNull { id -> ctx.boxes[id]?.takeIf { b -> b.kind == "textfill" } })?.let { pill ->
                             val pb = pill.bounds(); val d = pill.drawnRadiusPx
                             if (pb != null && d != null && d > 0f) e.put("radius", radius(d * pill.scale(), pb.width, pb.height, ctx.unit))
                         }
