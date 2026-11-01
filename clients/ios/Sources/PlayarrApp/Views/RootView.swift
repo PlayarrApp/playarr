@@ -663,7 +663,7 @@ private struct AuthenticatedPlayarrShell: View {
                                 .offset(x: 0.33, y: 0.5) // measured: web glyphs sit 1 px right and 1.5 px lower (3x)
                                 .frame(width: 44, height: 46)
                                 .parityShape("link", name: destination.title, color: phoneSelectedDestination == destination ? WM.ink : nil,
-                                             in: RoundedRectangle(cornerRadius: 14, style: .continuous), radius: phoneSelectedDestination == destination ? 14 : 0)
+                                             in: RoundedRectangle(cornerRadius: 14, style: .continuous), radius: 14) // web: every nav link carries the 14 radius, selected or not
                             }
                             .parityButtonStyle(.plain)
                             .accessibilityLabel(destination.title)
@@ -774,7 +774,7 @@ private struct AuthenticatedPlayarrShell: View {
                     .foregroundStyle(selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft)
                     .frame(width: 64, height: 60.67)
                     .parityShape("link", name: destination.title, color: selected == destination ? PlayarrStyle.ink.opacity(0.09) : nil,
-                                 in: RoundedRectangle(cornerRadius: 16, style: .continuous), radius: selected == destination ? 16 : 0)
+                                 in: RoundedRectangle(cornerRadius: 16, style: .continuous), radius: 16) // web: every rail link carries the 16 radius, selected or not
                 }
                 .parityButtonStyle(.plain)
                 .accessibilityLabel(destination.title)
