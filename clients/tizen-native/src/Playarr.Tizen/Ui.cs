@@ -280,7 +280,7 @@ internal static class Ui
         root.Add(g);
         var dir = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";
         Directory.CreateDirectory(dir);
-        var path = dir + $"panel-{t.Name}-{origin:0.###}-{width:0.###}-v2.png";
+        var path = dir + $"panel-{t.Name}-{origin:0.###}-{width:0.###}-v3.png";
         if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.MakeDitheredPanel(alphas, frost, ((int)Math.Round(t.Surface.R * 255), (int)Math.Round(t.Surface.G * 255), (int)Math.Round(t.Surface.B * 255)), origin, width, artEnd, TizenClient.DesignHeight));
         root.Add(Sem.Overlay(new ImageView(path) { PositionX = artEnd - origin, PositionY = 0, Size = new Size(TizenClient.DesignWidth - artEnd, TizenClient.DesignHeight), SynchronousLoading = true }));
         return root;
