@@ -253,7 +253,7 @@ internal static class LayoutExport
     /// </summary>
     private static (double R, double G, double B) Over((double R, double G, double B) bg, Color c)
     {
-        double a = Math.Floor(c.A * 255f + 0.5f) / 255.0;
+        double a = Math.Floor((double)c.A * 255.0 + 0.5) / 255.0; // double: 0.7f * 255 is 178.49999 here, but the float product 0.7f * 255f rounds up to 178.5 and would give 179
         // The framebuffer holds 8-bit channels, so every layer is quantised (nearest) before the next one blends over it, as the GPU's blend output is.
         double Ch(double back, double top) => Math.Floor(Math.Floor(top * 255.0 + 0.5) * a + back * (1 - a) + 0.5);
         return (Ch(bg.R, c.R), Ch(bg.G, c.G), Ch(bg.B, c.B));
