@@ -1002,23 +1002,21 @@ struct CalendarView: View {
             let rows = stride(from: 0, to: days.count, by: 7).map { Array(days[$0..<min($0 + 7, days.count)]) }
             let groups = Dictionary(uniqueKeysWithValues: viewModel.dayGroups.map { ($0.day, $0) })
             let gridWidth = max(720, proxy.size.width)
-            let rowHeight = max(0, (proxy.size.height - 32) / CGFloat(max(rows.count, 1)))
+            // Same web structure as the tablet grid (`.calendar-month`, min-width 720px on phones): the 30.78 pt head, then equal rows of cells.
+            let headHeight: CGFloat = Self.layoutUnit(6.4) * 2 + 18
+            let rowHeight = max(0, (proxy.size.height - headHeight) / CGFloat(max(rows.count, 1)))
             ScrollView(.horizontal) {
                 VStack(spacing: 0) {
                     HStack(spacing: 0) {
                         ForEach(rows.first ?? [], id: \.self) { day in
-                            Text(weekdayHeading(day))
-                                .font(.custom("Avenir Next", fixedSize: 12))
-                                .tracking(0.96)
-                                .foregroundStyle(WM.inkSoft) // web weekday heading reads ink-soft
-                                .frame(width: gridWidth / 7, height: 32)
+                            WMText(weekdayHeading(day), 12, 400, color: WM.inkSoft, lh: 18, ls: 0.96)
+                                .frame(width: gridWidth / 7, height: headHeight)
                         }
                     }
                     ForEach(rows, id: \.first) { row in
                         HStack(spacing: 0) {
                             ForEach(row, id: \.self) { day in
-                                phoneMonthCell(day: day, items: groups[day]?.items ?? [], height: rowHeight)
-                                    .frame(width: gridWidth / 7, height: rowHeight)
+                                tabletMonthCell(day: day, items: groups[day]?.items ?? [], width: gridWidth / 7, height: rowHeight)
                             }
                         }
                     }
@@ -1027,70 +1025,6 @@ struct CalendarView: View {
             }
             .scrollIndicators(.hidden)
         }
-    }
-
-    private func phoneMonthCell(day: String, items: [CalendarItem], height: CGFloat) -> some View {
-        let dayNumber = Int(day.suffix(2)) ?? 0
-        let inMonth = String(day.prefix(7)) == String(viewModel.anchor.prefix(7))
-        let shownCount = max(0, min(items.count, Int((height - 60) / 22.6)))
-        return VStack(alignment: .leading, spacing: 0) {
-            Color.clear.frame(height: 11.9) // web rows start 12 pt below the cell top
-            ForEach(items.prefix(shownCount)) { item in
-                Button {
-                    viewModel.select(item)
-                    viewModel.selectedDay = day
-                    detailItem = item
-                } label: {
-                    HStack(spacing: 8.7) {
-                        Circle().fill(monthDotColor(item))
-                            .frame(width: 8, height: 8)
-                        Text(monthItemLabel(item))
-                            .font(.custom("Avenir Next", fixedSize: 12.6))
-                            .lineLimit(1)
-                            .parityToggle() // the button's own label line, hideable by the visibility probe
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .padding(.trailing, 5.1) // 16 pt from the cell edge (cell padding is 10.9)
-                    .foregroundStyle(PlayarrStyle.inkSoft)
-                    .frame(height: 22.6)
-                }
-                .parityButtonStyle(.plain)
-            }
-            Spacer(minLength: 0)
-            Button {
-                viewModel.selectedDay = day
-                if items.count > shownCount { moreDay = day }
-            } label: {
-                HStack(spacing: 4) {
-                    Text("\(dayNumber)")
-                        .font(.custom("Avenir Next", fixedSize: 13).weight(.medium))
-                        .foregroundStyle(PlayarrStyle.ink) // web: today and out-of-month numbers read as plain ink
-                        .parityRenderedText("\(dayNumber)", role: "text", size: 13, weight: 500, color: PlayarrStyle.ink)
-                    let hidden = max(0, items.count - shownCount)
-                    Spacer(minLength: 0)
-                    if hidden > 0 {
-                        Text("+\(hidden) more").font(.custom("Avenir Next", fixedSize: 12)).foregroundStyle(PlayarrStyle.muted)
-                            .parityRenderedText("+\(hidden) more", role: "text", size: 12, weight: 400, color: PlayarrStyle.muted)
-                    }
-                }
-                .padding(.leading, -2.1).padding(.trailing, -2.9) // web footer: number at 12.3 pt, "+N more" ends 13 pt from the edge
-                .frame(maxWidth: .infinity, minHeight: 49, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .parityButtonStyle(.plain)
-        }
-        .padding(.horizontal, 10.9)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(inMonth ? Color.clear : WM.adaptive(light: (239, 238, 237), dark: (36, 31, 35)))
-        .overlay(alignment: .leading) { Rectangle().fill(PlayarrStyle.ink.opacity(0.125)).frame(width: 1) } // web cell borders: 1 pt each side, 1 pt on top
-        .overlay(alignment: .trailing) { Rectangle().fill(PlayarrStyle.ink.opacity(0.125)).frame(width: 1) }
-        .overlay(alignment: .top) { Rectangle().fill(PlayarrStyle.ink.opacity(0.125)).frame(height: 1) }
-        .overlay {
-            if day == viewModel.today {
-                Rectangle().stroke(WM.inkSoft, lineWidth: 2).padding(1) // web today cell: 2 pt ink-soft border
-            }
-        }
-        .accessibilityElement(children: .contain)
     }
 
     private func monthItemLabel(_ item: CalendarItem) -> String {
