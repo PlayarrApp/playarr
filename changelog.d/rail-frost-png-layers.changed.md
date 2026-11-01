@@ -1,0 +1,1 @@
+- TV web: the rail frost (Home rails, Library grid panel, rail surface, agenda heading) is drawn from pre-rendered PNG layers generated from the CSS tokens, so every engine paints the same bytes instead of its own gradient dither.

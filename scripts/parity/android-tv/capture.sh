@@ -64,7 +64,8 @@ fresh_session() { # $1 = user
   # Clearing the data also clears the app language and the zone is a device setting: set both after every clear.
   adb shell cmd alarm set-timezone UTC >/dev/null 2>&1 || true
   adb shell cmd locale set-app-locales $pkg --locales en-GB >/dev/null 2>&1 || true
-  adb shell am start -n $pkg/.MainActivity >/dev/null; sleep 8
+  # A fresh boot runs the unoptimised debug build: its first composition can take 15 s, and a tap before the QR sign-in screen is up is lost.
+  adb shell am start -n $pkg/.MainActivity >/dev/null; sleep "${PARITY_FIRST_LAUNCH_WAIT:-25}"
   sign_in "$1"
   adb shell am force-stop $pkg
   adb shell "run-as $pkg sh -c 'mkdir -p shared_prefs; echo \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\" ?><map><string name=\\\"theme\\\">$pref</string></map>\" > shared_prefs/playarr_display.xml'"

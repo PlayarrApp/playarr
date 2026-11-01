@@ -428,14 +428,7 @@
   /* Room between the pinned heading and a focused entry: the focus lift (7px) plus the glow ring (about 24px). */
   --agenda-glow-room: 2rem;
   --agenda-heading-base: var(--surface);
-  --agenda-panel-frost: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 68%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 88%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 96%, transparent) 62%,
-    var(--tv-rail-frost) 100%
-  );
+  --agenda-panel-frost: url("../assets/gradients/rail-frost-light-1248.png");
   /* Nothing shows above the pinned heading (the header area); no top ramp, so the heading itself is not faded. */
   --edge-fade-start-size: 0px;
   --edge-fade-start-floor: 0;
@@ -452,14 +445,7 @@
 
 :root[data-theme="dark"] .tv-title-grid:has(> .calendar-agenda-content) {
   --agenda-heading-base: var(--bg);
-  --agenda-panel-frost: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 72%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 90%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 97%, transparent) 62%,
-    var(--tv-rail-frost) 100%
-  );
+  --agenda-panel-frost: url("../assets/gradients/rail-frost-dark-1248.png");
 }
 
 /*

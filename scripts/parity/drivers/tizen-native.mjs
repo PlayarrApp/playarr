@@ -18,7 +18,7 @@ const PORT = Number(process.env.PLAYARR_TIZEN_FORWARD ?? 18890);
 const DISPLAY = process.env.PLAYARR_TIZEN_DISPLAY ?? ":25";
 const base = `http://127.0.0.1:${PORT}`;
 // key pacing: a busy host slows the emulator, and keys sent faster than it renders are lost (raise on a loaded machine)
-const OCCLUSION_RENDER_MS = Number(process.env.PLAYARR_TIZEN_OCCLUSION_MS ?? 600); // time for the emulator to repaint after views are hidden or restored
+const OCCLUSION_RENDER_MS = Number(process.env.PLAYARR_TIZEN_OCCLUSION_MS ?? 1500); // time for the emulator to repaint after views are hidden or restored
 // toggling views off and on can leave a few antialiased edge pixels (a rounded fill re-rasterised); a real failure to restore changes far more
 const RESTORE_DRIFT_PIXELS = 2073; // 0.1 % of a 1920x1080 grab
 const KEY_MS = Number(process.env.PLAYARR_TIZEN_KEY_MS ?? 900);

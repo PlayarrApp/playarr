@@ -95,4 +95,32 @@ public class GradientPngTests
         var outsideRadius = 50 * (width * 4 + 1) + 1 + 92 * 4;
         Assert.Equal(0, raw[outsideRadius + 3]);
     }
+
+    private static byte[] Inflate(byte[] png, int size)
+    {
+        var idat = Array.IndexOf(png, (byte)'I', 33);
+        var len = (png[idat - 4] << 24) | (png[idat - 3] << 16) | (png[idat - 2] << 8) | png[idat - 1];
+        using var z = new DeflateStream(new MemoryStream(png, idat + 4 + 2, len - 2), CompressionMode.Decompress);
+        var raw = new byte[size]; var n = 0; while (n < raw.Length) { var r = z.Read(raw, n, raw.Length - n); if (r == 0) break; n += r; }
+        return raw;
+    }
+
+    [Fact]
+    public void DitheredPanelIsOpaqueAndExactAtItsEnds()
+    {
+        // alpha 0 is exactly the page colour, alpha 1 exactly the frost colour (40.04 rounds down at every dither level but 1/8)
+        var png = GradientPng.MakeDitheredPanel(new[] { (0f, 0f), (1f, 1f) }, (0.15702f, 0.136157f, 0.155294f), (27, 24, 27), 1000, 1000, 1000, 2, 1920);
+        var w = 920; var raw = Inflate(png, (w * 4 + 1) * 2);
+        Assert.Equal(27, raw[1]); Assert.Equal(24, raw[2]); Assert.Equal(27, raw[3]); Assert.Equal(255, raw[4]);
+        var last = 1 + (w - 1) * 4;
+        Assert.InRange(raw[last], 39, 41); Assert.Equal(255, raw[last + 3]);
+    }
+
+    [Fact]
+    public void DitheredPanelVariesOnlyByOneLevelBetweenNeighbours()
+    {
+        var png = GradientPng.MakeDitheredPanel(new[] { (0f, 0f), (1f, 1f) }, (0.15702f, 0.136157f, 0.155294f), (27, 24, 27), 0, 1920, 1000, 2, 1920);
+        var w = 920; var raw = Inflate(png, (w * 4 + 1) * 2);
+        for (var i = 1; i < w; i++) Assert.InRange(Math.Abs(raw[1 + i * 4] - raw[1 + (i - 1) * 4]), 0, 1);
+    }
 }

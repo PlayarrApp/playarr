@@ -62,7 +62,7 @@ sub init()
     end if
     if m.profilesTitle <> invalid
         m.profilesTitle.ObserveField("textWidth", "centerProfilesTitle")
-        m.profilesTitle.spec = { text: "Who’s watching?", size: 80.64, weight: 500, tracking: -5.812, role: "ink", aria: "heading" }
+        m.profilesTitle.spec = { text: "Who’s watching?", size: 80.64, weight: 500, tracking: -5.806, role: "ink", aria: "heading" }
     end if
     m.profileActionsGroup = m.top.findNode("profileActionsGroup")
     m.profilesSettingsBtn = m.top.findNode("profilesSettingsBtn")
@@ -2978,7 +2978,7 @@ sub updateBrowsePreview(work as Object)
     m.browsePreviewKind.translation = [153.6, PlayarrTextTop(WebPanelTop(), WebPanelKickerSize(), WebPanelKickerLineHeight())]
     m.browsePreviewTitle.translation = [153.6, PlayarrTextTop(WebPanelTitleLineTop(), 69.12, WebPanelTitleLineHeight())]
     m.browsePreviewKind.spec = { text: kicker, size: 12.29, weight: 860, tracking: 0.97, role: "brandInk", upper: true }
-    m.browsePreviewTitle.spec = { text: work.title, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true, aria: "heading" }
+    m.browsePreviewTitle.spec = { text: work.title, size: 69.12, weight: 560, tracking: -0.072 * 69.12, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true, aria: "heading" }
     year = ""
     ' Web LibraryPreview: release year only (never the added date).
     if work.release_date <> invalid and work.release_date.Len() >= 4 then year = work.release_date.Left(4)
@@ -4005,10 +4005,6 @@ function createHomeRail(contentTarget as Object) as Object
     ' Rail heading matches Web's uniform .tv-rail h2 typography; focus changes the card, not the heading.
     title = CreateObject("roSGNode", "TrackedText")
     title.translation = [0, -21]
-    ' Fresh 1920x1080 r11 Web glyph bounds are about 4% wider for both
-    ' Home rail headings. Widen only the tracked heading group so its font
-    ' size, line height, tracking and vertical alignment stay unchanged.
-    title.scale = [1.04, 1]
     group.AppendChild(title)
 
     row = CreateObject("roSGNode", "RowList")
@@ -4754,7 +4750,7 @@ end sub
 ' Home headings keep the same Web typography regardless of which rail owns card focus.
 sub setRailTitle(rail as Object)
     if rail.label = invalid then return
-    rail.title.spec = { text: rail.label, size: 17.66, weight: 610, tracking: -0.53, role: "ink", aria: "heading" }
+    rail.title.spec = { text: rail.label, size: 17.66, weight: 610, tracking: -0.03 * 17.66, role: "ink", aria: "heading" }
     rail.title.translation = [0, -19.9]
 end sub
 
@@ -7792,7 +7788,7 @@ end function
 sub setDetailRailHead(slot as Integer, y as Float, title as String, caption as String)
     head = m.detailHeads[slot]
     head.title.translation = [0, y]
-    head.title.spec = { text: title, size: 17.66, weight: 610, tracking: -0.534, role: "ink", aria: "heading" }
+    head.title.spec = { text: title, size: 17.66, weight: 610, tracking: -0.03 * 17.66, role: "ink", aria: "heading" }
     head.sub.translation = [0, y + 29.5]
     head.sub.spec = { text: caption, size: 9.98, weight: 400, tracking: 0, role: "inkMuted" }
     head.title.visible = true

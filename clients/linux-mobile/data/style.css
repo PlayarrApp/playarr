@@ -242,7 +242,7 @@ dropdown.pa-dropdown > button { background: @pa_bg; border: 1px solid @pa_line; 
 button.pa-letter { background: none; border: none; box-shadow: none; padding: 0; min-width: 0; min-height: 0; border-radius: 999px; }
 .pa-letter-label { font-size: 8.96px; font-weight: 700; color: @pa_muted; border-radius: 999px; min-width: 18px; min-height: 17px; margin-top: 1px; }
 .pa-letter-label.active { background: @pa_ink; color: @pa_body; box-shadow: 0 0 0 6px #cf3157, 0 0 0 4px @pa_on_accent, 0 0 0 2px @pa_ink; }
-.pa-back-arrow { font-size: 13.2px; font-weight: 720; color: @pa_ink_soft; }
+.pa-back-arrow { font-size: 12.8px; font-weight: 720; color: @pa_ink_soft; }
 .pa-hbtn.ring { outline: 2px solid @pa_ring; outline-offset: 3px; }
 .pa-row-glyph { color: #cf3157; font-size: 19.52px; font-weight: 400; min-height: 27px; margin-top: 2px; }
 .pa-meta-flow flowboxchild { padding: 0; }

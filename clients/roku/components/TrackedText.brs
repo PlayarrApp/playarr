@@ -112,6 +112,8 @@ sub onSpecChange()
                 else
                     glyph.id = glyph.id + "~c"
                 end if
+                ' A space in the app's own string before this Label is stamped (`_`): the Labels hold no spaces, so the export cannot recover them from gaps.
+                if i > 1 and not part.tail and Mid(line, i - 1, 1) = " " then glyph.id = glyph.id + "_"
                 role = "text"
                 if spec.aria <> invalid and spec.aria <> "" then role = spec.aria
                 if role <> "text" then glyph.id = glyph.id + "|" + role

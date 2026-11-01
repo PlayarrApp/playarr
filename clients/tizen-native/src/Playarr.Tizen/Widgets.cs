@@ -566,13 +566,20 @@ internal sealed class KeyArt
                 var img = Ui.FilteredImage(file, 133, -22.9f, 900, 1190.6f, dark ? 0.82f : 0.88f, dark ? 0.6f : 1.1f, fadeStartX: 0.72f);
                 img.Opacity = dark ? 0.72f : 0.24f;
                 Root.Add(img);
+                // Stage layers, resolved against the current CSS (global.css .tv-key-art::after, .tv-stage-wash: opaque --surface stops fading to
+                // transparent). Over a surface-coloured page these layers compose to exactly --surface wherever no artwork lies beneath
+                // (Chromium 151, calibrated with a flat gradient page: one colour over all 1920x1080 px), so drawing a surface-to-clear PNG
+                // there only adds 8-bit premultiply noise. The wash is opaque from 0 to 36 % of the width (691.2 px), which hides the artwork
+                // and the .tv-key-art::after side fade (133 to 526 px) completely. The artwork ends at 133 + 900 px. So only the band from the
+                // wash fade start to the artwork end carries a gradient; left of it one opaque surface box, right of it nothing.
                 var s = _t.Surface; var clear = new Rgba(s.R, s.G, s.B, 0);
-                // web .tv-key-art::after (from the nav clearance), then .tv-stage-wash over it
-                Root.Add(Ui.Gradient(133, 0, 1787, 1080, true, (0, s), (0.22f, clear), (1, clear)));
-                Root.Add(Ui.Gradient(133, 0, 1787, 1080, false, (0, s), (0.22f, clear), (0.82f, clear), (1, s)));
-                Rgba A(float a) => new(s.R, s.G, s.B, a);
-                Root.Add(Ui.Gradient(0, 0, 1920, 1080, true, (0, A(0.94f)), (0.36f, A(0.90f)), (0.52f, A(0)), (1, A(0))));
-                Root.Add(Ui.Gradient(0, 0, 1920, 1080, true, (0, A(0)), (0.66f, A(0)), (1, A(0.5f))));
+                const float washOpaque = 691f, artEnd = 1033f, washEnd = 998.4f;
+                // .tv-key-art::after vertical fade (surface 0 to 22 % from the bottom, 82 to 100 % at the top), only where the art is still visible.
+                Root.Add(Ui.Gradient(washOpaque, 0, artEnd - washOpaque, 1080, false, (0, s), (0.22f, clear), (0.82f, clear), (1, s)));
+                // .tv-stage-wash fade from 36 % (opaque) to 52 % (transparent), starting at the first pixel the opaque stop does not cover.
+                var w = washEnd - washOpaque;
+                Root.Add(Ui.Gradient(washOpaque, 0, w, 1080, true, (0, s), (1, clear)));
+                Root.Add(Sem.Overlay(Ui.Box(0, 0, washOpaque, 1080, s)));
             });
         });
     }

@@ -18,7 +18,9 @@ key() { adb shell input keyevent "KEYCODE_$1"; }
 adb shell pm clear "$pkg" >/dev/null
 adb shell cmd alarm set-timezone UTC >/dev/null 2>&1 || true
 adb shell cmd locale set-app-locales "$pkg" --locales en-GB >/dev/null 2>&1 || true
-adb shell am start -n "$pkg/.MainActivity" >/dev/null; sleep 8
+# A fresh boot runs the unoptimised debug build: its first composition can take 15 s and a tap before the QR sign-in screen is up is lost
+# (the sign-in then silently fails and the suite reports "no stable accessibility focus"): wait long enough.
+adb shell am start -n "$pkg/.MainActivity" >/dev/null; sleep "${PARITY_FIRST_LAUNCH_WAIT:-25}"
 tap 960 898; sleep 2
 tap 960 445; sleep 1
 key MOVE_END; adb shell 'for i in $(seq 1 60); do input keyevent KEYCODE_DEL; done'

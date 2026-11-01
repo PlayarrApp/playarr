@@ -127,7 +127,7 @@ end sub
 
 sub onStageTitleChange()
     ' Web .tv-title-panel h1: 69.1 px, weight 560, -0.075em tracking, 62.2 px lines, max-width 9ch (373 px), text-wrap: balance.
-    m.stageTitleLabel.spec = { text: m.top.stageTitle, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: WebPanelTitleLineHeight(), maxLines: 3, balance: true, aria: "heading" }
+    m.stageTitleLabel.spec = { text: m.top.stageTitle, size: 69.12, weight: 560, tracking: -0.072 * 69.12, role: "ink", width: 373.2, lineHeight: WebPanelTitleLineHeight(), maxLines: 3, balance: true, aria: "heading" }
     layoutStageText()
 end sub
 
