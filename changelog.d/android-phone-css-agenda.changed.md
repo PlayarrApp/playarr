@@ -1,0 +1,1 @@
+- Android phone: the calendar agenda is laid out from the web CSS (agenda heading 2.75rem, 0.75rem list room, 0.85rem entry gap, 2rem day gap, entry rows summed in css px and snapped once), replacing the -18.5 dp / -15 dp offsets and fitted spacers; today's heading and tag use the accent colour, the phone week column is 82vw as a LayoutUnit.
