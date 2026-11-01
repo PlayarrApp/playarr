@@ -113,7 +113,7 @@ namespace Playarr.Xbox.Views
                 CornerRadius = new CornerRadius(41),
                 BorderBrush = Res("PlayarrLine"),
                 BorderThickness = new Thickness(1),
-                Child = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 26, Foreground = Res("PlayarrBrand"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+                Child = Icon(glyph, 26, "PlayarrBrand"),
             });
             var text = new StackPanel { Spacing = 10, VerticalAlignment = VerticalAlignment.Center, MaxWidth = 340 };
             text.Children.Add(Text(title, 17, FontWeights.SemiBold, "PlayarrInk"));
@@ -137,6 +137,20 @@ namespace Playarr.Xbox.Views
             return button;
         }
 
+        /// <summary>A drawn icon: the glyph centred in a square holder that the export reports as one image, as the web's svg.</summary>
+        public static Grid Icon(string glyph, double size, string brushKey = null)
+        {
+            var icon = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = size, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            if (brushKey != null)
+            {
+                icon.Foreground = Res(brushKey);
+            }
+
+            var holder = new Grid { Width = size, Height = size, VerticalAlignment = VerticalAlignment.Center, Children = { icon } };
+            Windows.UI.Xaml.Automation.AutomationProperties.SetLocalizedControlType(holder, "image");
+            return holder;
+        }
+
         public static Button RoundButton(string glyph, Action onClick, bool link = false)
         {
             // Back navigates, so it is an anchor on the web: its peer reports a Hyperlink.
@@ -148,7 +162,7 @@ namespace Playarr.Xbox.Views
             button.Background = new SolidColorBrush(Colors.Transparent);
             button.BorderBrush = Res("PlayarrLineStrong");
             button.BorderThickness = new Thickness(1);
-            button.Content = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14 };
+            button.Content = Icon(glyph, 14);
             button.FocusVisualPrimaryBrush = Theme.FocusRing;
             button.FocusVisualPrimaryThickness = new Thickness(3);
             button.FocusVisualSecondaryThickness = new Thickness(0);
