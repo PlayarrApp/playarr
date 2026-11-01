@@ -249,7 +249,8 @@ internal static class LayoutExport
     private static (double R, double G, double B) Over((double R, double G, double B) bg, Color c)
     {
         double a = Math.Round(c.A, 3);
-        double Ch(double back, double top) => (Math.Floor(top * 255.0 + 0.5) * a + back * (1 - a)) / (a + 1 * (1 - a));
+        // a translucent mix reaches the dumper as a computed color(srgb r g b / a) whose channels are serialised with six decimals, so a channel that sits on a half-way tie lands a hair either side of it
+        double Ch(double back, double top) { var b = Math.Floor(top * 255.0 + 0.5); if (a < 1) b = Math.Round(b / 255.0, 6) * 255.0; return (b * a + back * (1 - a)) / (a + 1 * (1 - a)); }
         return (Ch(bg.R, c.R), Ch(bg.G, c.G), Ch(bg.B, c.B));
     }
 
