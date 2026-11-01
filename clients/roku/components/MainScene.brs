@@ -5191,7 +5191,7 @@ sub renderNavDockFocus()
             hl = m.navHighlights[i].translation
             ' The chip (active or focused) is the link's drawn box; an idle item has only its 64 px hit box.
             m.navHits[i].visible = not showChip
-            m.navHits[i].setFields({ translation: [hl[0] + 1.8, hl[1] + 0.8], width: 64, height: 64 })
+            m.navHits[i].setFields({ translation: [hl[0] + WebNavHitInset(), hl[1] + WebNavHitInset()], width: 64, height: 64 })
             base = m.navIcons[i].translation
             if showChip
                 m.navIcons[i].opacity = 1
