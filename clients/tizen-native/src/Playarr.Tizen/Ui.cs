@@ -281,7 +281,7 @@ internal static class Ui
         Directory.CreateDirectory(dir);
         var path = dir + $"panel-{t.Name}-{origin:0.###}-{width:0.###}-v2.png";
         if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.MakeDitheredPanel(alphas, frost, ((int)Math.Round(t.Surface.R * 255), (int)Math.Round(t.Surface.G * 255), (int)Math.Round(t.Surface.B * 255)), origin, width, artEnd, TizenClient.DesignHeight));
-        root.Add(Sem.Overlay(new ImageView(path) { PositionX = artEnd - origin, PositionY = 0, Size = new Size(TizenClient.DesignWidth - artEnd, TizenClient.DesignHeight) }));
+        root.Add(Sem.Overlay(new ImageView(path) { PositionX = artEnd - origin, PositionY = 0, Size = new Size(TizenClient.DesignWidth - artEnd, TizenClient.DesignHeight), SynchronousLoading = true }));
         return root;
     }
 
