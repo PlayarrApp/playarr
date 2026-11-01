@@ -136,25 +136,25 @@ function PlayarrIsMonoLabel(id as String) as Boolean
     return id = "pairingCode"
 end function
 
-' The web type of labels declared in XML, by id: CSS px size, weight and letter-spacing (px) read from the web layout dump
+' The web type of labels declared in XML, by id: CSS px size, weight and letter-spacing (`tracking` in px, or `em` as the CSS em value, resolved against the size) from the web CSS
 ' (docs/parity/LAYOUT.md). A label without an entry keeps the size its `scale` implies.
 function PlayarrTypeFor(scope as String, id as String) as Dynamic
     g = GetGlobalAA()
     if g.typeTable = invalid
         g.typeTable = {
-            clockTime: { size: 17.28, weight: 760, tracking: -0.526 }
-            clockDate: { size: 11.14, weight: 640, tracking: 0.435 }
+            clockTime: { size: 17.28, weight: 760, em: -0.03 }
+            clockDate: { size: 11.14, weight: 640, em: 0.04 }
             profileLabel: { size: 8.83, weight: 680, tracking: 0.31, role: "inkMuted" }
-            userVersion: { size: 8, weight: 700, tracking: 1.358, role: "ink" }
+            userVersion: { size: 8, weight: 700, em: 0.04, role: "ink" }
             "TvStage.stageMetaLabel": { size: 12.86, weight: 600, tracking: 0, role: "heroSoft" }
             "ProfileAvatar.name": { size: 17.28, weight: 680, tracking: 0 }
-            "ProfileAvatar.status": { size: 9.41, weight: 690, tracking: 0.413, role: "inkMuted" }
+            "ProfileAvatar.status": { size: 9.41, weight: 690, em: 0.045, role: "inkMuted" }
             profilesThemeLabel: { size: 11.52, weight: 720, tracking: 0 }
             profilesLangLabel: { size: 11.52, weight: 720, tracking: 0 }
             searchEmptyHint: { size: 13.82, weight: 400, tracking: 0, role: "inkMuted", lineHeight: 22.4 }
             searchFieldLabel: { size: 17.66, weight: 400, tracking: 0, role: "inkMuted" }
-            searchEmptyLabel: { size: 16.9, weight: 650, tracking: -0.349, role: "ink" }
-            "PosterCard.title": { size: 11.9, weight: 610, tracking: -0.183 }
+            searchEmptyLabel: { size: 16.9, weight: 650, em: -0.02, role: "ink" }
+            "PosterCard.title": { size: 11.9, weight: 610, em: -0.015 }
             "PosterCard.kind": { size: 8.83, weight: 400, tracking: 0 }
         }
     end if
@@ -191,7 +191,7 @@ function PlayarrFontifyLabel(label as Object, scope = "" as String, weight = -1 
     if typed <> invalid
         size = typed.size
         weight = typed.weight
-        tracking = typed.tracking
+        if typed.em <> invalid then tracking = typed.em * typed.size else tracking = typed.tracking
         if typed.lineHeight <> invalid then web.lineHeight = typed.lineHeight
     end if
     web.setFields({ size: size, weight: weight, tracking: tracking, width: newW, height: label.height * sx, horizAlign: label.horizAlign, vertAlign: label.vertAlign, wrap: label.wrap, maxLines: label.maxLines, visible: label.visible, opacity: label.opacity })
