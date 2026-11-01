@@ -138,7 +138,7 @@ internal object PlayarrLayoutExport {
                         // A box that paints nothing (a layout wrapper, a surface without a fill) is not an element: only painted containers are exported.
                         if ((box.kind == "fill" || box.kind == "container") && !painted) continue
                         pending += Triple(e, box.id, painted)
-                        ctx.add(e, x, y, b.width, b.height, occludes = (box.kind == "container" || box.kind == "fill") && painted && ((box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha >= 0.5f) || (box.fill == androidx.compose.ui.graphics.Color.Unspecified && box.brushPainted)), hook = true, boxId = box.id)
+                        ctx.add(e, x, y, b.width, b.height, occludes = (box.kind == "container" || box.kind == "fill") && painted && ((box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha > 0f) || (box.fill == androidx.compose.ui.graphics.Color.Unspecified && box.brushPainted)), hook = true, boxId = box.id)
                     }
                 }
                 // Like the browser's backdrop: the fills of the box's own tree ancestors (and its own), outer to inner. A box that paints nothing
