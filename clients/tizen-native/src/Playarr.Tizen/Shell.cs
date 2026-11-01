@@ -141,10 +141,10 @@ internal sealed class Shell : View
     private View AddGroup(float y, float h)
     {
         var fill = _theme.SurfaceStrong.Mixed(0.56f); // translucent as on the web: over the page layer it is painted on, over the window colour in the layout (the rail is a sibling of the page)
+        _chrome.Add(Ui.BoxShadowRing(RailX, y, RailW, h, 22, 42, 0, 14, new Rgba(56 / 255f, 38 / 255f, 33 / 255f, 0.1f))); // web: box-shadow 0 14px 42px rgba(56, 38, 33, 0.1), painted outside the border box only
         var box = Ui.Box(RailX, y, RailW, h, fill, 22);
         box.BorderlineWidth = 1;
         box.BorderlineColor = Ui.LineA(_theme, _theme.Line.A * 0.48f); // web: the line colour at 48 % of its own alpha
-        // no box shadow: NUI paints a shadow under the whole box (the web clips it outside the border box), which the translucent fill would let through
         _chrome.Add(box);
         return box;
     }
