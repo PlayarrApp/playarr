@@ -203,6 +203,18 @@ const TV_SEEK_SIZE: number = 64;
 const TV_ROW_GAP: number = 13.6;
 const TV_BAR_GAP: number = 0; // web: the 44 px seek row sits directly over the controls
 const TV_TIME_FONT_SIZE: number = 10.88; // web: 0.68rem
+/** Advance widths in em of the Nunito Sans glyphs a clock run uses (hmtx / unitsPerEm; digits are tabular, as web's `tabular-nums`). */
+const TIME_DIGIT_EM: number = 0.6;
+const TIME_COLON_EM: number = 0.228;
+const TIME_SLASH_EM: number = 0.283;
+/** The box width web gives a time run: the sum of its glyph advances. ArkUI otherwise sizes the box from its own text measure (about 1 px off per run). */
+function timeRunWidth(run: string, size: number): number {
+  let em: number = 0;
+  for (const ch of run) {
+    em += ch === ':' ? TIME_COLON_EM : (ch === '/' ? TIME_SLASH_EM : TIME_DIGIT_EM);
+  }
+  return em * size;
+}
 const TV_QUALITY_WIDTH: number = 120;
 const TV_VOLUME_WIDTH: number = 64;
 const BACK_BUTTON_WIDTH_TV: number = 96;
@@ -702,13 +714,13 @@ export struct PlayerChrome {
           } else {
             // web: three spans, the times white and the slash muted, 5.6 apart
             Row({ space: tv(5.6) }) {
-              Text(formatClockMs(this.positionMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE))).fontFeature('"tnum" 1')
+              Text(formatClockMs(this.positionMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE))).fontFeature('"tnum" 1').width(timeRunWidth(formatClockMs(this.positionMs), tv(TV_TIME_FONT_SIZE)))
                 .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
                 .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
-              Text('/').fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE)))
+              Text('/').fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE))).width(timeRunWidth('/', tv(TV_TIME_FONT_SIZE)))
                 .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
                 .fontColor(toResourceColor(CHROME_TEXT_MUTED))
-              Text(formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE))).fontFeature('"tnum" 1')
+              Text(formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE))).fontFeature('"tnum" 1').width(timeRunWidth(formatClockMs(this.durationMs), tv(TV_TIME_FONT_SIZE)))
                 .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
                 .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
             }

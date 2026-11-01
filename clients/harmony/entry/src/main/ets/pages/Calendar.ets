@@ -751,7 +751,8 @@ export struct ReleaseCalendar {
       .width('100%')
       .padding({ left: isTvMetrics() ? 2.2 : 6.8 })
     }
-    .layoutWeight(1)
+    .layoutWeight(isTvMetrics() ? 0 : 1)
+    .width(isTvMetrics() ? tv(GRID_WIDTH / 7) : undefined) // web: seven equal columns of the grid, 237.59 each, so the integer-snapped edges stay on the web's pixels
     .height(isTvMetrics() ? tv(cellHeight) : '100%')
     .padding({ left: isTvMetrics() ? tv(MONTH_CELL_PADDING) : 1, right: isTvMetrics() ? tv(MONTH_CELL_PADDING) : 1, top: 0.58 })
     .backgroundColor(cell.inMonth ? Color.Transparent : toResourceColorWithAlpha(activeColors().surfaceSoft, 0.4))
@@ -782,7 +783,8 @@ export struct ReleaseCalendar {
             .fontColor(toResourceColor(activeColors().inkMuted))
             .translate({ y: isTvMetrics() ? -0.4 : 0 })
             .textAlign(TextAlign.Center)
-            .layoutWeight(1)
+            .width(isTvMetrics() ? tv(GRID_WIDTH / 7) : undefined)
+            .layoutWeight(isTvMetrics() ? 0 : 1)
         }, (name: string): string => name)
       }
       .width('100%')

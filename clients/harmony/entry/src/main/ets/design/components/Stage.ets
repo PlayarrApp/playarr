@@ -251,8 +251,8 @@ export struct Stage {
   private sideLayer(): void {
     Row()
       .width('100%')
-      .height('calc(100% + 16vp)') // overdraw past the stage's top and bottom: the gradient's own edge rows drew a neutral grey band 4 px high there (30 Oct captures)
-      .position({ x: 0, y: -8 })
+      .height('100%')
+      .position({ x: 0, y: 0 })
       .hitTestBehavior(HitTestMode.Transparent)
       .linearGradient({ angle: HORIZONTAL_ANGLE, colors: backdropSideColors(this.hasKeyArt(), this.hasKeyArt()) })
   }
