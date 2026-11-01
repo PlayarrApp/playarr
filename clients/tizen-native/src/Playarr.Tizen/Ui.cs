@@ -265,7 +265,8 @@ internal static class Ui
         var frost = (Ch(t.SurfaceSoft.R, t.SurfaceStrong.R), Ch(t.SurfaceSoft.G, t.SurfaceStrong.G), Ch(t.SurfaceSoft.B, t.SurfaceStrong.B));
         var alphas = new[] { (0f, 0f), (0.12f, dark ? 0.72f : 0.68f), (0.34f, dark ? 0.9f : 0.88f), (0.62f, dark ? 0.97f : 0.96f), (1f, 1f) };
         var origin = TizenClient.DesignWidth - width;
-        var root = new View { PositionX = origin, PositionY = 0, Size = new Size(width, TizenClient.DesignHeight) };
+        // the panel is one painted box in the web (.tv-library-grid-panel): an image-less ImageView carries its box for the export and the visibility check; the frost pieces are its children
+        var root = Sem.Overlay(new ImageView { PositionX = origin, PositionY = 0, Size = new Size(width, TizenClient.DesignHeight) });
         // Key art (and its stage wash) ends at 133 + 900 px; right of that the panel lies over the flat page colour only, so it is drawn as the
         // browser's dithered result (see GradientPng.MakeDitheredPanel). Left of it the art shows through, so the translucent gradient stays.
         const int artEnd = 1033;
