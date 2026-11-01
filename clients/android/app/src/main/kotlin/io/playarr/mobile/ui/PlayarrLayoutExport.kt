@@ -336,7 +336,9 @@ internal object PlayarrLayoutExport {
             if (layout != null) {
                 val input = layout.layoutInput
                 val style = input.style
-                val role = if (config.contains(SemanticsProperties.Heading)) "heading" else "text"
+                // A web line text sits in a WebLineFrame that carries the caller's modifiers, so a heading() mark lands on its frame node (the text node's parent).
+                val parentConfig = node.parent?.config
+                val role = if (config.contains(SemanticsProperties.Heading) || (parentConfig != null && parentConfig.contains(SemanticsProperties.Heading) && !parentConfig.contains(SemanticsProperties.Text))) "heading" else "text"
                 val raw = input.text.text
                 val layerAlpha = ctx.layerAlpha(ctx.chainOf(node))
                 val spans = input.text.spanStyles
