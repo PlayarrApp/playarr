@@ -89,12 +89,15 @@ internal object PlayarrLayoutExport {
         return roots
     }
 
+    /** The density the app lays css px out with (a web viewport is a whole number of css px wide); null when the platform density is used. */
+    @Volatile internal var cssDensity: Float? = null
+
     private class Item(val window: Int, val json: JSONObject, val x: Float, val y: Float, val w: Float, val h: Float, var occludes: Boolean, val hook: Boolean = false, val boxId: Int = -1, val controlBoxes: Set<Int>? = null, val order: Int = -1, val end: Int = -1, val chain: List<Int> = emptyList())
 
     private fun export(activity: Activity, screen: String, theme: String, captureId: String, file: File, candidates: Boolean) {
         val mainView = activity.window.decorView
         val width = mainView.width.toFloat(); val height = mainView.height.toFloat()
-        val unit = 1f / activity.resources.displayMetrics.density
+        val unit = 1f / (cssDensity ?: activity.resources.displayMetrics.density)
         val main = IntArray(2).also { mainView.getLocationOnScreen(it) }
         val items = mutableListOf<Item>()
         // A dialog window is hosted in the activity (web: inside the shell), so its fills composite over the first window's outermost painted box, not over white.
@@ -402,7 +405,10 @@ internal object PlayarrLayoutExport {
                             if (advance != null && advance > 0f) hiEnd = maxOf(hiEnd, lo + advance)
                         }
                         // The run's four corners through the node's transform (a rotation or unequal scale still gives its bounding box).
-                        val corners = listOf(lo to baseline - ascent, hiEnd to baseline - ascent, lo to baseline + descent, hiEnd to baseline + descent).map { (cx, cy) -> coords.localToRoot(androidx.compose.ui.geometry.Offset(cx, cy)) }
+                        // Text the app laid out as its css content area (LineBreak.Simple marks it) is read to its laid-out line box: the line's own top and bottom.
+                        val boxTop = if (style.lineBreak == androidx.compose.ui.text.style.LineBreak.Simple) layout.getLineTop(i) else baseline - ascent
+                        val boxBottom = if (style.lineBreak == androidx.compose.ui.text.style.LineBreak.Simple) layout.getLineBottom(i) else baseline + descent
+                        val corners = listOf(lo to boxTop, hiEnd to boxTop, lo to boxBottom, hiEnd to boxBottom).map { (cx, cy) -> coords.localToRoot(androidx.compose.ui.geometry.Offset(cx, cy)) }
                         val x = corners.minOf { it.x } + ctx.dx; val y = corners.minOf { it.y } + ctx.dy; val w = corners.maxOf { it.x } - corners.minOf { it.x }; val h = corners.maxOf { it.y } - corners.minOf { it.y }
                         // A run wholly outside the node's clipped bounds (a scroll or clip ancestor) is not drawn.
                         val vis = node.boundsInRoot; if (x - ctx.dx >= vis.right || x - ctx.dx + w <= vis.left || y - ctx.dy >= vis.bottom || y - ctx.dy + h <= vis.top) continue

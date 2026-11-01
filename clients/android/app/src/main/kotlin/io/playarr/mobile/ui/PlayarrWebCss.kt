@@ -94,22 +94,24 @@ internal fun WebCssRow(
     widthsCss: List<Float>,
     gapCss: Float,
     modifier: Modifier = Modifier,
+    originCss: Float = 0f,
     content: @Composable () -> Unit,
 ) {
     androidx.compose.ui.layout.Layout(content = content, modifier = modifier) { measurables, constraints ->
         val d = density
+        val base = Math.round(originCss * d)
         var x = startCss
         var maxH = 0
         val placed = measurables.mapIndexed { i, m ->
             val w = widthsCss[minOf(i, widthsCss.size - 1)]
-            val x0 = Math.round(x * d)
-            val x1 = Math.round((x + w) * d)
+            val x0 = Math.round((originCss + x) * d) - base
+            val x1 = Math.round((originCss + x + w) * d) - base
             x += w + gapCss
             val p = m.measure(androidx.compose.ui.unit.Constraints(minWidth = x1 - x0, maxWidth = x1 - x0, minHeight = 0, maxHeight = constraints.maxHeight))
             maxH = maxOf(maxH, p.height)
             x0 to p
         }
-        val total = Math.round((x - gapCss + endCss) * d)
+        val total = Math.round((originCss + x - gapCss + endCss) * d) - base
         layout(total, maxH) { placed.forEach { (px, p) -> p.placeRelative(px, 0) } }
     }
 }
