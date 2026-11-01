@@ -597,12 +597,12 @@ namespace Playarr.Xbox.Views
             {
                 text,
                 role,
-                rect = new { x = Math.Round(rect.X, 1), y = Math.Round(rect.Y, 1), w = Math.Round(rect.Width, 1), h = Math.Round(rect.Height, 1) },
+                rect = new { x = Math.Round(rect.X, 2), y = Math.Round(rect.Y, 2), w = Math.Round(rect.Width, 2), h = Math.Round(rect.Height, 2) },
                 color,
                 background = BackgroundBehind(element, includeSelf: role != "text" && element is not TextBlock),
                 fontSize,
                 fontWeight,
-                radius = radius > 0 ? (double?)Math.Round(radius * scale * radiusScale, 1) : null,
+                radius = radius > 0 ? (double?)Math.Round(radius * scale * radiusScale, 2) : null,
                 opacity = EffectiveOpacity(element) is var opacity && opacity < 0.995 ? (double?)Math.Round(opacity, 2) : null,
             });
             if (element is Border { Background: ImageBrush })
@@ -612,12 +612,12 @@ namespace Playarr.Xbox.Views
                 {
                     text,
                     role = "image",
-                    rect = new { x = Math.Round(rect.X, 1), y = Math.Round(rect.Y, 1), w = Math.Round(rect.Width, 1), h = Math.Round(rect.Height, 1) },
+                    rect = new { x = Math.Round(rect.X, 2), y = Math.Round(rect.Y, 2), w = Math.Round(rect.Width, 2), h = Math.Round(rect.Height, 2) },
                     color,
                     background = BackgroundBehind(element, includeSelf: true),
                     fontSize,
                     fontWeight,
-                    radius = radius > 0 ? (double?)Math.Round(radius * scale * radiusScale, 1) : null,
+                    radius = radius > 0 ? (double?)Math.Round(radius * scale * radiusScale, 2) : null,
                     opacity = EffectiveOpacity(element) is var shown && shown < 0.995 ? (double?)Math.Round(shown, 2) : null,
                 });
             }
@@ -717,7 +717,7 @@ namespace Playarr.Xbox.Views
                     {
                         text,
                         role,
-                        rect = new { x = Math.Round(r.X * scale, 1), y = Math.Round(r.Y * scale, 1), w = Math.Round(r.Width * scale, 1), h = Math.Round(r.Height * scale, 1) },
+                        rect = new { x = Math.Round(r.X * scale, 2), y = Math.Round(r.Y * scale, 2), w = Math.Round(r.Width * scale, 2), h = Math.Round(r.Height * scale, 2) },
                         color = Hex(block.Foreground),
                         background = BackgroundBehind(block, includeSelf: false),
                         fontSize = Math.Round(block.FontSize * Math.Abs(transform.TransformBounds(new Rect(0, 0, 1, 1)).Height) * scale, 2),

@@ -61,9 +61,9 @@
 
         <local:LinkGridView
             x:Name="WorksGridView"
-            Width="1128"
-            Margin="735,0,0,0"
-            Padding="48,162,0,48"
+            Width="1133.4"
+            Margin="729.6,0,0,0"
+            Padding="53.76,162,0,48"
             HorizontalAlignment="Left"
             SelectionMode="None"
             IsItemClickEnabled="True"

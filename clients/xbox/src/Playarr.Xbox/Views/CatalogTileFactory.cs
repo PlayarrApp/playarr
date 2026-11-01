@@ -286,6 +286,7 @@ namespace Playarr.Xbox.Views
                     IsHitTestVisible = false,
                 };
                 Windows.UI.Xaml.Automation.AutomationProperties.SetLocalizedControlType(dot, "img");
+                Windows.UI.Xaml.Automation.AutomationProperties.SetName(dot, "Unwatched"); // the web dot is role="img" with this label
                 art.Children.Add(dot);
             }
 
@@ -313,7 +314,7 @@ namespace Playarr.Xbox.Views
                 FontFamily = WebFont.Face(610),
                 FontWeight = WebFont.Weight(610),
                 CharacterSpacing = -15,
-                Margin = new Thickness(2, caption ? 11.16 : 12.4, 0, 0),
+                Margin = new Thickness(1.91, caption ? 11.16 : 11.52, 0, 0), // --card-copy-inset 0.12rem and --card-copy-gap 0.72rem on the Library grid (LayoutUnit 1/64)
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 // Library grid rows repeat every 240.5 px, as the web: 184 px art, 12 px gap, 19 px title and a 25.5 px row gap (25 here: layout rounding lifts each 240.5 px row to 241).
                 LineHeight = 16,
