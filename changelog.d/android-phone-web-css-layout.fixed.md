@@ -1,0 +1,1 @@
+- Android phone parity: text line box derived from Chromium rules instead of the fitted 0.3 split, css px density from the whole web viewport width, and the search pill, settings arrow and filters drawer laid out at absolute web css positions.
