@@ -66,11 +66,15 @@ start_app() {
 [ $variant = native ] && setup_native || setup_web
 
 for n in $(seq 1 "$iters"); do
+  # Health gate: the emulator must answer quickly and be booted, else the run is invalid (a throttled emulator made runs 3-6 null).
+  s0=$(date +%s); adb shell getprop sys.boot_completed >/dev/null; [ $(( $(date +%s) - s0 )) -le 5 ] || { echo "emulator unresponsive before iteration $n" >&2; exit 3; }
   adb shell am force-stop $pkg; adb shell am force-stop com.google.android.webview; sleep 2  # webview_service is counted in PSS: start each arm without a lingering one
   t0=$(now_ms)
   start=$(start_app)
   total=$(printf '%s\n' "$start" | awk '/TotalTime/ { print $2 }')
   ready=$(wait_marker home_ready 60)
+  [ -n "$ready" ] || { echo "iteration $n: no home_ready, aborting (top: $(adb shell dumpsys window | grep -m1 mCurrentFocus))" >&2; exit 4; }
+  adb shell dumpsys activity activities | grep -q 'ResumedActivity.*app.playarr.mobile' || { echo "iteration $n: activity not resumed" >&2; exit 5; }
   sleep 3
   # Native lands on the nav rail; web on the first card. Normalise: BACK-free, go Right until a card is focused (one press from the rail).
   frames="$out/$variant-$n.frames"; : > "$frames"
