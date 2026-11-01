@@ -194,6 +194,14 @@ namespace Playarr.Xbox.Views
                 {
                     var parts = System.IO.File.ReadAllText(file).Trim().Split(',');
                     System.IO.File.Delete(file);
+
+                    // Late-loaded text (the runtime in the meta line) must be on screen before any frame is hashed or exported.
+                    for (var waited = 0; waited < 20000 && System.Threading.Volatile.Read(ref FocusDetail.Pending) > 0; waited += 100)
+                    {
+                        await System.Threading.Tasks.Task.Delay(100);
+                    }
+
+                    await System.Threading.Tasks.Task.Delay(300);
                     if (parts.Length == 3)
                     {
                         string json;
