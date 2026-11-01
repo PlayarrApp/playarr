@@ -379,9 +379,9 @@ private fun PhoneCalendarHeader(state: CalendarUiState, locale: Locale, holder: 
     // The static web refs (2026-10-24, focus dropped before every shot) draw no Today ring on open, so the ring flag starts off
     // (the earlier live refs showed web's focus ring on Today until the first toolbar action).
     var todayRing by remember { mutableStateOf(false) }
-    Row(
-        Modifier.fillMaxWidth().height(44.dp).offset(y = if (state.mode == CalendarViewMode.Agenda) (-18.5).dp else 0.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically,
+    WebCssEndRow(
+        gapCss = 8f, heightCss = 44f,
+        modifier = Modifier.fillMaxWidth().offset(y = if (state.mode == CalendarViewMode.Agenda) (-18.5).dp else 0.dp),
     ) {
         PhoneCalendarToolbarPill(title, { todayRing = false; onJump() }, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         PhoneCalendarRound(Modifier, "\u2190", playarrString(PlayarrString.CalendarPrevious)) { todayRing = false; holder.previous() }
