@@ -152,7 +152,7 @@ export async function createDriver({ out } = {}) {
       if (answers.has(n)) return answers.get(n);
       // the player's repeated state (the app sends it every 2 s while the player is up) stands in for a lost answer
       const tick = ticks.filter((x) => x.t >= t0 + (offsetMs ?? 0) - 500).pop();
-      if (tick) return { ...tick, focus: null, theme: null };
+      if (tick) return { ...tick, focus: tick.focus ?? null, theme: null };
     }
     throw new Error("the app did not answer the state request (is it built with PLAYARR_PARITY_CONTROL=1 and in the foreground?)");
   }

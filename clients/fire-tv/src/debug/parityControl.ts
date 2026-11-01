@@ -140,6 +140,17 @@ export function parseCommand(url: string): Record<string, string> | null {
   return out.cmd ? out : null;
 }
 
+/** The focused item as the state answer reports it: the last report, unless the native focus has moved to another reported item. */
+export function currentFocus(): FocusReport | null {
+  if (!PARITY_CONTROL) return null;
+  const nativeFocusTag = FocusManager.getFocused();
+  let focus = lastFocus;
+  if (focus?.eventTag !== undefined && focus.eventTag !== nativeFocusTag) {
+    focus = nativeFocusTag === undefined ? null : focusReportsByEventTag.get(nativeFocusTag)?.focus ?? null;
+  }
+  return focus;
+}
+
 export function installParityControl(hooks: ParityHooks): () => void {
   if (!PARITY_CONTROL) return () => undefined;
   const handle = (url: string | null): void => {
@@ -181,10 +192,7 @@ export function installParityControl(hooks: ParityHooks): () => void {
     // Every command answers with the state, so the driver needs one read after it.
     setTimeout(() => {
       const nativeFocusTag = command.cmd === 'state' ? FocusManager.getFocused() : undefined;
-      let focus = lastFocus;
-      if (command.cmd === 'state' && focus?.eventTag !== undefined && focus.eventTag !== nativeFocusTag) {
-        focus = nativeFocusTag === undefined ? null : focusReportsByEventTag.get(nativeFocusTag)?.focus ?? null;
-      }
+      const focus = command.cmd === 'state' ? currentFocus() : lastFocus;
       const state = {cmd: command.cmd, seq: command.seq ?? null, route: hooks.location(), focus, player: hooks.player(), theme: hooks.theme(), clock: isClockFrozen() ? appNow().toISOString() : null};
       console.log('PARITY ' + JSON.stringify(command.cmd === 'state' ? {...state, nativeFocusTag} : state));
     }, command.cmd === 'state' ? 0 : 1500);

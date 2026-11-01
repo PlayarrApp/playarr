@@ -9,7 +9,7 @@ import {getSharedVegaPlaybackEngine} from '../platform/media/VegaPlaybackEngine'
 import type {PlayerScreenHandle} from '../screens/PlayerScreen';
 import {useTheme} from '../theme/ThemeProvider';
 import {exportLayout, LayoutProbe, setCover} from './layoutExport';
-import {currentQuery, installParityControl, PARITY_CONTROL, setPendingQuery} from './parityControl';
+import {currentFocus, currentQuery, installParityControl, PARITY_CONTROL, setPendingQuery} from './parityControl';
 
 /** The slice of the navigation container ref this host uses (the typed ref's route-name union is narrower than the strings it is given). */
 export interface NavRefLike {
@@ -130,7 +130,7 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
     const timer = setInterval(() => {
       if (!playerRef.current?.isVisible()) return;
       const state = engine.getState();
-      console.log('PARITY ' + JSON.stringify({cmd: 'tick', t: Date.now(), route: `/player/${lastPlayed}`, player: {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, bufferedSeconds: state.bufferedSeconds, error: state.error?.message}}));
+      console.log('PARITY ' + JSON.stringify({cmd: 'tick', t: Date.now(), route: `/player/${lastPlayed}`, focus: currentFocus(), player: {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, bufferedSeconds: state.bufferedSeconds, error: state.error?.message}}));
     }, 2000);
     return () => {
       clearInterval(timer);

@@ -14,6 +14,7 @@ import {useTheme} from '../theme/ThemeProvider';
 import {FocusRing} from '../tv/FocusRing';
 import {T, u} from '../tv/kit';
 import {lx, NATIVE_DRIVER} from '../debug/layoutMarks';
+import {reportFocus} from '../debug/parityControl';
 
 export type ChromeControl = 'close' | 'scrubber' | 'play' | 'subtitles' | 'quality' | 'prev' | 'next' | 'mute' | 'volume' | 'audio' | 'playlist' | 'info' | 'cast' | 'fullscreen';
 
@@ -145,7 +146,10 @@ function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>
       {...lx('button', props.web ?? props.label, 50)}
       focusable={props.focusable}
       hasTVPreferredFocus={props.control === 'play'}
-      onFocus={() => props.onFocusControl(props.control)}
+      onFocus={() => {
+        reportFocus(props.web ?? props.label);
+        props.onFocusControl(props.control);
+      }}
       onPress={props.onPress}
       style={{
         ...(props.inline ? {marginHorizontal: u(15.5)} : {position: 'absolute', left: u(props.x ?? 0), top: u(props.y ?? 0)}),
@@ -170,7 +174,10 @@ function Scrubber(props: PlayerChromeProps & {played: number; buffered: number; 
       accessibilityRole="adjustable"
       accessibilityLabel="Seek"
       {...lx('slider', 'Seek')}
-      onFocus={() => props.onFocusControl('scrubber')}
+      onFocus={() => {
+        reportFocus('Seek');
+        props.onFocusControl('scrubber');
+      }}
       onPress={props.onTogglePlay}
       style={{position: 'absolute', left: u(SCRUB_X), top: u(SCRUB_TOP), width: u(SCRUB_W), height: u(44), justifyContent: 'center'}}
     >
@@ -206,7 +213,10 @@ function QualityPill(props: PlayerChromeProps): React.ReactElement {
       accessibilityRole="button"
       accessibilityLabel={`Quality: ${props.qualityLabel}`}
       {...lx('button', `Quality: ${props.qualityLabel}`, 999)}
-      onFocus={() => props.onFocusControl('quality')}
+      onFocus={() => {
+        reportFocus(`Quality: ${props.qualityLabel}`);
+        props.onFocusControl('quality');
+      }}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       onPress={props.onOpenQuality}
@@ -244,7 +254,10 @@ function VolumeSlider(props: PlayerChromeProps): React.ReactElement {
       accessibilityLabel="Volume"
       accessibilityValue={{min: 0, max: 100, now: Math.round(level * 100)}}
       {...lx('textbox', 'Volume')}
-      onFocus={() => props.onFocusControl('volume')}
+      onFocus={() => {
+        reportFocus('Volume');
+        props.onFocusControl('volume');
+      }}
       onPress={props.onToggleMute}
       style={{position: 'absolute', left: u(448.77), top: u(968), width: u(130), height: u(44), justifyContent: 'center'}}
     >
