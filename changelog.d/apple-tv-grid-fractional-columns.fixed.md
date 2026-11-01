@@ -1,0 +1,1 @@
+- Apple TV and Mac library cards sit at the stylesheet's fractional column x (the grid's whole-point snap is offset back) and use the stylesheet card radius 12.48.

@@ -71,6 +71,12 @@ enum TVWeb {
     static let gridLeft: CGFloat = railLeft + cardPadLeft
     /// Left edge of column `index` at medium.
     static func gridColumnLeft(_ index: Int) -> CGFloat { gridLeft + CGFloat(index) * cardPitch() }
+    /// The part of column `column`'s CSS x that a layout snapped to whole points drops: `gridLeft + column * (width + gap)`
+    /// minus its integer part. Cards and their children are offset by it so they sit where the 1/64 px LayoutUnit puts them.
+    static func fractionalColumnOffset(column: Int, width: CGFloat, gap: CGFloat) -> CGFloat {
+        let x = gridLeft + CGFloat(column) * (width + gap)
+        return x - x.rounded(.down)
+    }
     /// `--card-radius: clamp(8px, 0.65 * var(--vw), 13px)`.
     static let cardRadius: CGFloat = clamp(8, 0.65 * vw, 13)
     /// `--card-title-size: clamp(0.55rem, 0.62 * var(--vw), 0.78rem)` and `--card-title-weight: 610`.

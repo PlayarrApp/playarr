@@ -11,6 +11,11 @@ final class TVWebTokensTests: XCTestCase {
         XCTAssertEqual(TVWeb.cardRadius, 12.48, accuracy: 0.0001)
     }
 
+    func testSnappedColumnRemainderRestoresTheLayoutUnit() {
+        let gap = TVWeb.layoutUnit(TVWeb.cardGap)
+        XCTAssertEqual(TVWeb.fractionalColumnOffset(column: 2, width: TVWeb.cardWidthMedium, gap: gap), 0.515625, accuracy: 0.0001)
+    }
+
     func testDetailsPanelTypeAndInk() {
         XCTAssertEqual(TVWeb.detailsMetaSize, 13.056, accuracy: 0.0001)
         XCTAssertEqual(TVWeb.detailsOverviewSize, 13.824, accuracy: 0.0001)

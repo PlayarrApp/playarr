@@ -124,7 +124,7 @@ enum DesignTokens {
         static let md: CGFloat = 6
         static let lg: CGFloat = 8
         static let full: CGFloat = 9999
-        static let card: CGFloat = 12
+        static let card: CGFloat = TVWeb.cardRadius // `--card-radius: clamp(8px, 0.65 * var(--vw), 13px)` (12.48)
         static let button: CGFloat = 4
         static let input: CGFloat = 9999 // pill search field
         static let badge: CGFloat = 2

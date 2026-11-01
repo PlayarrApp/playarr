@@ -2070,6 +2070,9 @@ struct TVLibraryKindView: View {
                     } else {
                         libraryCard(work: work, width: cardW, artHeight: artH, showTitle: true, artIncludesDot: false,
                                     gridPosition: TVParityGridPosition(itemIndex: index, columns: cols))
+                            // The grid snaps each column's origin down to a whole point; Blink keeps the 1/64 px LayoutUnit
+                            // (`grid-template-columns: repeat(n, var(--card-w))` with the CSS gap). The remainder goes back here.
+                            .offset(x: TVWeb.fractionalColumnOffset(column: index % cols, width: cardW, gap: gap))
                     }
                 }
             }
