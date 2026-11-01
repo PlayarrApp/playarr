@@ -743,6 +743,33 @@ impl Walk<'_> {
     }
 }
 
+/// The text a label displays: the laid-out runs in order, the ellipsis run reading as the ellipsis. A label that is not
+/// ellipsized shows its whole text; the web names a control by what it displays (innerText), ellipsis included.
+fn shown_text(l: &gtk4::Label) -> String {
+    let layout = l.layout();
+    if !layout.is_ellipsized() {
+        return l.text().to_string();
+    }
+    let text = layout.text().to_string();
+    let mut out = String::new();
+    let mut it = layout.iter();
+    loop {
+        if let Some(run) = it.run_readonly() {
+            let item = run.item();
+            if item.analysis().flags() & PANGO_FLAG_IS_ELLIPSIS != 0 {
+                out.push('\u{2026}');
+            } else {
+                let o = item.offset() as usize;
+                out.push_str(text.get(o..o + item.length() as usize).unwrap_or(""));
+            }
+        }
+        if !it.next_run() {
+            break;
+        }
+    }
+    out
+}
+
 /// The text of the labels inside a control, the name a screen reader falls back to.
 fn child_text(w: &gtk4::Widget) -> String {
     let mut parts = Vec::new();
@@ -753,7 +780,7 @@ fn child_text(w: &gtk4::Widget) -> String {
         }
         if let Some(l) = n.downcast_ref::<gtk4::Label>() {
             if !l.text().is_empty() && !is_decorative(&n) {
-                parts.push(l.text().to_string());
+                parts.push(shown_text(l));
             }
             continue;
         }
