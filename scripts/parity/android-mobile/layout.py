@@ -69,6 +69,19 @@ def changed_fraction(e, other):
     changed = sum(1 for p, q in zip(a, b) if abs(p[0] - q[0]) + abs(p[1] - q[1]) + abs(p[2] - q[2]) > 24)
     return changed / total if total else 0
 
+def samples_changed(e, other):
+    # docs/parity/LAYOUT.md: the 3 x 3 grid (20%, 50%, 80%) of the part of the element on the screen; covered when the pixel at every point changes with the cover hidden.
+    r = e["rect"]
+    x0, y0 = max(0.0, r["x"] * density), max(0.0, r["y"] * density)
+    x1, y1 = min(float(shown.width), (r["x"] + r["w"]) * density), min(float(shown.height), (r["y"] + r["h"]) * density)
+    if x1 <= x0 or y1 <= y0: return False
+    for fy in (0.2, 0.5, 0.8):
+        for fx in (0.2, 0.5, 0.8):
+            px, py = min(shown.width - 1, int(x0 + (x1 - x0) * fx)), min(shown.height - 1, int(y0 + (y1 - y0) * fy))
+            p, q = shown.getpixel((px, py)), other.getpixel((px, py))
+            if abs(p[0] - q[0]) + abs(p[1] - q[1]) + abs(p[2] - q[2]) <= 24: return False
+    return True
+
 flagged = [e for e in doc["elements"] if e.get("covered")]
 drop = set()
 window_level = [e for e in flagged if not e.get("coverIds")]
@@ -86,7 +99,7 @@ for e in same_window:
 for g in groups:
     bare = hidden_shot(False, g["hide"])
     for e in g["members"]:
-        if changed_fraction(e, bare) >= 0.9: drop.add(id(e))
+        if samples_changed(e, bare): drop.add(id(e))
 for e in doc["elements"]:
     for k in ("covered", "coverIds", "chainIds"): e.pop(k, None)
 if flagged and sh("exec-out", "screencap", "-p", binary=True) != after: sys.exit(f"screen did not return after the cover check of {screen} {theme}")

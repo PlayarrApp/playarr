@@ -169,7 +169,7 @@ internal static class Ui
     public static View Box(float x, float y, float w, float h, Rgba? bg = null, float radius = 0)
     {
         var v = new View { PositionX = x, PositionY = y, Size = new Size(w, h) };
-        if (bg is { } c) { v.BackgroundColor = C(c); if (c.IsMix) Sem.ColorMix(v); }
+        if (bg is { } c) { v.BackgroundColor = C(c); }
         if (radius > 0) v.CornerRadius = FullRadius(radius, w, h);
         return v;
     }
@@ -188,15 +188,14 @@ internal static class Ui
         else if (family == Font && text is "⇩" or "☷" or "⌄" or "✓" or "▶") { family = "Playarr Symbols"; weight = weight >= 600 ? 700 : 400; }
         if (!multiline && w <= 0) w = TextWidth(upper ? text.ToUpperInvariant() : text, size, weight, spacing, family); // an inline run is as wide as its text
         (family, weight) = Face(family, weight, size);
-        var cssWeight = family.StartsWith(Font + " W", StringComparison.Ordinal) ? int.Parse(family[(Font.Length + 2)..]) : family == "Liberation Sans" ? reqWeight /* a fallback-font arrow: the style weight the page asked for, as the web reports it, not the face file */ : weight;
+        var cssWeight = family.StartsWith(Font + " W", StringComparison.Ordinal) ? int.Parse(family[(Font.Length + 2)..]) : weight; // a fallback-font arrow reports the weight its face really draws (Liberation Sans Bold, 700)
         var cssY = y;
         var line = lh > 0 ? lh : size * 1.4f;
         // a single line is a label exactly as tall as the browser's content area (rounded ascent plus rounded descent), top-aligned and centred in the CSS line box
-        var content = (float)Math.Round(1.011 * size) + (float)Math.Round(0.353 * size);
+        var content = CssLineBox.Content(size);
         // a block-level text element (the clock) is as tall as its CSS line; an inline run is the browser's content area
         var boxH = multiline ? Math.Max(line, size * 1.45f) : content;
-        y += multiline ? (exactLines ? 0 : -(boxH - line) / 2f) : (line - boxH) / 2f;
-        if (cssFamily.StartsWith(Font, StringComparison.Ordinal) && !block) y -= BaselineShifts.Up(size); // NUI vs Chromium glyph placement, measured per size
+        y += multiline ? (exactLines ? 0 : -(boxH - line) / 2f) : CssLineBox.Top(line, size); // single line: Blink puts the content area at the floored half-leading below the line top (FontHeight::AddLeading)
         var t = new TextLabel(upper ? text.ToUpperInvariant() : text)
         {
             PositionX = x,
@@ -279,6 +278,23 @@ internal static class Ui
         var path = dir + "grad-" + Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(key)))[..16] + ".png";
         if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.MakeDiagonal(stops, pixelWidth, pixelHeight, degrees));
         return Sem.Overlay(new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) });
+    }
+
+    /// <summary>
+    /// A CSS box-shadow ring around the rounded box at (x, y, w, h): the blurred, offset shadow outside the border box only (see <see cref="BoxShadowPng"/>),
+    /// so a translucent fill over it is not tinted by it. Add it before the box so the box paints over.
+    /// </summary>
+    public static View BoxShadowRing(float x, float y, float w, float h, float radius, float blur, float dx, float dy, Rgba color)
+    {
+        var dir = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";
+        Directory.CreateDirectory(dir);
+        float fx = x - (float)Math.Floor(x), fy = y - (float)Math.Floor(y);
+        var key = $"s{w:0.####}x{h:0.####}-{radius:0.###}-{blur:0.###}-{dx:0.###}-{dy:0.###}-{fx:0.####}-{fy:0.####}-{color.R:0.##}-{color.G:0.##}-{color.B:0.##}-{color.A:0.###}";
+        var path = dir + "shadow-" + Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(key)))[..16] + ".png";
+        var m = Playarr.Tizen.Logic.BoxShadowPng.Margin(blur, dx, dy);
+        int iw = (int)Math.Ceiling(w + fx) + 2 * m, ih = (int)Math.Ceiling(h + fy) + 2 * m;
+        if (!File.Exists(path)) File.WriteAllBytes(path, Playarr.Tizen.Logic.BoxShadowPng.Make(w, h, radius, blur, dx, dy, color, fx, fy).Png);
+        return Sem.Overlay(new ImageView(path) { PositionX = (float)Math.Floor(x) - m, PositionY = (float)Math.Floor(y) - m, Size = new Size(iw, ih) });
     }
 
     public static View RadialGradient(float x, float y, float w, float h, Rgba color, float centerX, float centerY, float radiusFraction)
