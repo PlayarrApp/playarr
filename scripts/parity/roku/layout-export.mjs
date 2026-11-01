@@ -267,9 +267,11 @@ function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }
       // A Label the app did not set through TrackedText: the tree does not say which font it draws, so size and weight stay unknown.
       textElement([it], { size: null, weight: null }, it.node.attrs.text, it.order);
     } else if (it.kind === "a11y") {
-      // A radius is the corner of the mask the app drew, scaled with the node, never above half the box; an unpainted hit box has no corner.
+      // A radius is the corner of the mask the app drew, never above half the box; an unpainted hit box has no corner. Like the web's
+      // computed border-radius it is the declared corner: a scale on the node or an ancestor (the focus lift of a card) is a transform
+      // that moves the box (the rect above is mapped through it) but never changes the declared radius.
       const painted = it.node.tag === "Poster" || (it.node.tag === "Rectangle" && alphaOf(it.node.attrs.color) > 0);
-      const radius = painted ? Math.min(it.radius * it.scaleX, it.rect.w / 2, it.rect.h / 2) : 0;
+      const radius = painted ? Math.min(it.radius, it.rect.w / 2, it.rect.h / 2) : 0;
       push({ text: it.text, role: it.role === "fill" ? "container" : it.role, _fill: it.role === "fill", rect: it.rect, color: null, background: background(it.rect, it.order, true, it.chain), fontSize: null, fontWeight: null, ...(radius ? { radius: r2(radius) } : {}), ...opacityOf(it.op) });
     } else if (it.kind === "video") {
       push({ text: "", role: "video", rect: it.rect, color: null, background: background(it.rect, it.order, false, it.chain), fontSize: null, fontWeight: null });
@@ -293,7 +295,7 @@ function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }
   // Content fully covered by a later opaque surface (a fill, or a bundled opaque picture) is not on screen (a drawer over the page).
   // A surface never covers its own ancestors or descendants (nor does an unexported duplicate cover the fill of its own colour it repeats), and a rounded one is shrunk by its corner.
   const covers = [...fills.filter((f) => f.opaque), ...items.filter((it) => (it.kind === "poster" || (it.kind === "a11y" && it.role === "image" && it.node.tag === "Poster")) && it.op >= 0.99 && opaquePicture(it))].map((f) => {
-    const r = f.kind === "a11y" && f.node.tag === "Poster" && f.role !== "image" ? Math.min(f.radius * f.scaleX, f.rect.w / 2, f.rect.h / 2) : 0;
+    const r = f.kind === "a11y" && f.node.tag === "Poster" && f.role !== "image" ? Math.min(f.radius, f.rect.w / 2, f.rect.h / 2) : 0;
     return { order: f.order, node: f.node, chain: f.chain, dropped: !!f.dropped, rect: { x: f.rect.x + r, y: f.rect.y + r, w: f.rect.w - 2 * r, h: f.rect.h - 2 * r } };
   });
   const visible = kept.filter((e) => !covers.some((f) => f.order > e._order && !e._source.chain.includes(f.node) && !f.chain.includes(e._source.node) && !(f.dropped && e._source.node.tag === "Rectangle" && e._source.node.attrs.color === f.node.attrs.color) && f.rect.x <= e.rect.x + 0.01 && f.rect.y <= e.rect.y + 0.01 && f.rect.x + f.rect.w >= e.rect.x + e.rect.w - 0.01 && f.rect.y + f.rect.h >= e.rect.y + e.rect.h - 0.01));

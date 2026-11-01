@@ -4525,7 +4525,7 @@ sub finishHomeLoad()
         end if
         buildRailContent(rail.row, rail.works, isActiveRail, WebCardWidth() / 220.0, m.artActiveGeneration, "home", railIndex)
         m.visibleRails.Push({ row: rail.row, works: rail.works, first: 0, col: 0, last: 0, jumping: -1, rightAligned: false })
-        ' Rails sit 366 px apart (web .tv-home-rail rhythm with the 327 px cards); 470 px with covers.
+        ' Rails sit WebHomeRailPitch() apart (365.86, the .tv-home-rail rhythm from CSS); 470 px with covers.
         y += homeRailPitch()
         railIndex = railIndex + 1
     end for
@@ -4750,7 +4750,8 @@ end sub
 ' Home headings keep the same Web typography regardless of which rail owns card focus.
 sub setRailTitle(rail as Object)
     if rail.label = invalid then return
-    rail.title.spec = { text: rail.label, size: 17.66, weight: 610, tracking: -0.03 * 17.66, role: "ink", aria: "heading" }
+    railHeadingSize = WebClamp(12.16, 0.92 * WebVw(), 18.88)
+    rail.title.spec = { text: rail.label, size: railHeadingSize, weight: 610, tracking: -0.03 * railHeadingSize, role: "ink", aria: "heading" }
     rail.title.translation = [0, -19.9]
 end sub
 
@@ -7888,9 +7889,9 @@ function WorkYearLabel(work as Object) as String
     return start
 end function
 
-function homeRailPitch() as Integer
-    if m.homeCover = true then return 470
-    return 366
+function homeRailPitch() as Float
+    if m.homeCover = true then return 470.0
+    return WebHomeRailPitch()
 end function
 
 ' Home opens aligned with the Library grid: the panel starts at web --card-pad-left (53.76) from the 62 vw rail and the first rail at

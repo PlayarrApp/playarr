@@ -132,7 +132,8 @@ sub onSpecChange()
                 ' The last Label of a line ends where the web's run ends: the box the firmware lays out for it (its real bounding rect, at the
                 ' web's fractional scale) is set so that its right edge is the web's advance end of the line.
                 if j = total and spec.symbol <> true and part.last = true
-                    boxWidth = glyph.boundingRect().width * PlayarrScaleFor(size)
+                    ' boundingRect() is already the scaled box (ECP bounds 8.83 = 9 x 0.9811): scaling it again ends the run short of the web's edge by (1 - scale) x box.
+                    boxWidth = glyph.boundingRect().width
                     glyph.translation = [lineOffset + x + advanceOf(piece) - boxWidth, lineIndex * lineHeight]
                 end if
                 glyph.visible = true
