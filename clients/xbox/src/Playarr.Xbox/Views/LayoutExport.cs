@@ -47,9 +47,9 @@ namespace Playarr.Xbox.Views
                 return "heading";
             }
 
-            if (Windows.UI.Xaml.Automation.AutomationProperties.GetLocalizedControlType(element) is "img" or "image")
+            if (Windows.UI.Xaml.Automation.AutomationProperties.GetLocalizedControlType(element) is "img" or "image" or "video")
             {
-                return Windows.UI.Xaml.Automation.AutomationProperties.GetLocalizedControlType(element); // "img": the card's unwatched dot (web role="img"); "image": a drawn icon (the web's svg)
+                return Windows.UI.Xaml.Automation.AutomationProperties.GetLocalizedControlType(element); // "img": the card's unwatched dot (web role="img"); "image": a drawn icon (the web's svg); "video": the surface that stands for the video
             }
 
             return PeerOf(element)?.GetAutomationControlType() switch
