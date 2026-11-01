@@ -858,6 +858,10 @@ internal class PlayarrExperienceViewModel @Inject constructor(
     val currentUserId = tokenStore.currentUserId.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val currentUserName = tokenStore.currentUserName.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** The user whose session the first loads below ran with (the saved one), read once the store answers. */
+    private val initialLoadUserId = viewModelScope.async { tokenStore.currentUserId.first() }
+    private var initialLoadPending = true
+
     init {
         loadAvailableKinds()
         loadHome()
@@ -989,7 +993,24 @@ internal class PlayarrExperienceViewModel @Inject constructor(
         }
     }
 
-    fun reloadForProfile() {
+    /**
+     * The signed-in user changed (or appeared). The first user the screen sees is normally the saved session whose data the
+     * ViewModel's own initial loads already fetch: loading it all a second time only competes with Home's first paint.
+     */
+    fun reloadForProfile(userId: String) {
+        viewModelScope.launch {
+            if (initialLoadPending) {
+                initialLoadPending = false
+                if (initialLoadUserId.await() == userId) {
+                    refreshProfileAvatar()
+                    return@launch
+                }
+            }
+            reloadForProfileNow()
+        }
+    }
+
+    private fun reloadForProfileNow() {
         // Libraries a screen has already asked for are reloaded for the new profile; otherwise a library opened as the
         // first screen (a restored route) was left without data.
         val openLibraries = (libraryJobs.keys + _libraries.value.keys).toSet()
@@ -1601,7 +1622,7 @@ internal fun PlayarrExperience(
         }
     }
     LaunchedEffect(currentUserId) {
-        if (currentUserId != null) viewModel.reloadForProfile()
+        currentUserId?.let(viewModel::reloadForProfile)
     }
     val household by viewModel.household.collectAsState()
     val householdBlock = householdBlockState(household)

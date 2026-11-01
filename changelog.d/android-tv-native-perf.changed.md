@@ -1,0 +1,1 @@
+- Android TV starts faster: the saved session's Home, library kinds and capabilities are no longer fetched a second time at launch, and the app ships a baseline profile so ART compiles its own code and the Compose, Media3, Coil and OkHttp hot paths ahead of time.
