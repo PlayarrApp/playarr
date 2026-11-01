@@ -62,7 +62,7 @@ struct TVWorkDetailView: View {
 
     private var content: some View {
         ZStack {
-            TVStageBackground()
+            TVWebPageBase()
             Group {
                 switch viewModel.state {
                 case .idle, .loading:
@@ -489,7 +489,7 @@ struct TVWorkDetailView: View {
     private func movieRail(_ detail: WorkDetail) -> some View {
         let list = chapters(runtimeMs: detail.runtimeMs)
         return ZStack(alignment: .topLeading) {
-            TVRailPanelGradient(width: 1190.4)
+            TVRailPanelGradient(width: TVWeb.railWidth)
             if !list.isEmpty {
                 railHeading("Chapters", count: "\(list.count) scene markers", y: 540)
                 ForEach(list) { chapter in
@@ -674,7 +674,7 @@ struct TVWorkDetailView: View {
         let base: CGFloat = viewModel.similar.isEmpty ? 358 : 540
         let shift = max(0, base + CGFloat(activeSeason) * 314.3 + 270 - 1020)
         return ZStack(alignment: .topLeading) {
-            TVRailPanelGradient(width: 1190.4)
+            TVRailPanelGradient(width: TVWeb.railWidth)
             Group {
                 ForEach(Array(ordered.enumerated()), id: \.element.season.id) { seasonIndex, season in
                     let top = base + CGFloat(seasonIndex) * 314.3

@@ -49,8 +49,8 @@ struct TVRailPanelGradient: View {
             .frame(width: width)
         return Group {
             if bleed {
-                // the panel's own box (the web `.tv-rail-surface`); its paint is a gradient, so no flat fill is declared
-                panel.parityBox("container", bleed: true)
+                // the panel's own box (the web `.tv-rail-surface`): its computed background is the surface colour; the frost is painted over it
+                panel.parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
             } else {
                 panel
             }
@@ -158,9 +158,9 @@ struct TVPageHeader: View {
                 .overlay {
                     // the arrow drawn in the disc; the disc is not a control here (the shell handles Back), so only what is drawn is reported
                     Text("\u{2190}")
-                        .font(TVTheme.font(size: 17.3, weight: .semibold))
+                        .font(TVTheme.font(size: TVWeb.backArrowSize, css: TVWeb.backArrowWeight))
                         .foregroundStyle(DesignTokens.Color.textSecondary)
-                        .parityLayout(text: "\u{2190}", size: 17.3, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textSecondary)
+                        .parityLayout(text: "\u{2190}", size: TVWeb.backArrowSize, weight: Int(TVWeb.backArrowWeight), color: DesignTokens.Color.textSecondary)
                         .frame(width: 50, height: 50)
                 }
                 .frame(width: size, height: size, alignment: .leading)
@@ -1103,3 +1103,19 @@ private struct MacEdgeFade: ViewModifier {
 }
 #endif
 
+
+/// The web page's three full-stage containers, bottom to top: the `body` background (`--bg`) and the two surface-coloured
+/// page wrappers (`--surface`, global.css `:root` tokens). Each is a real, painted view; every screen stacks its key art,
+/// wash and rail panel over this base.
+struct TVWebPageBase: View {
+    var body: some View {
+        ZStack {
+            DesignTokens.Stage.bg.ignoresSafeArea()
+                .parityBox("container", fill: DesignTokens.Stage.bg, bleed: true)
+            DesignTokens.Stage.surface.ignoresSafeArea()
+                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
+            DesignTokens.Stage.surface.ignoresSafeArea()
+                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
+        }
+    }
+}

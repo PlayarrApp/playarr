@@ -37,6 +37,8 @@ enum DesignTokens {
         static let ink = adaptive(light: 0x382621, dark: 0xf4f0f1)
         static let inkSoft = adaptive(light: 0x443a40, dark: 0xcdc1c6)
         static let inkMuted = adaptive(light: 0x4d4248, dark: 0xc2b5bb)
+        /// `--dp-soft: color-mix(in srgb, var(--ink) 88%, var(--surface))` (global.css `.details-panel`): the details panel's meta and overview ink.
+        static let detailsSoft = adaptive(light: TVWeb.mix(0x382621, 88, 0xfbfaf9), dark: TVWeb.mix(0xf4f0f1, 88, 0x1b181b))
         /// The pre-AAA muted ink, kept only for hairlines and borders (web borders did not change).
         static let line = adaptive(light: 0xa5969e, dark: 0x887a82)
         static let accentSoft = adaptive(light: 0xc5b8bd, dark: 0x675961)
@@ -345,13 +347,13 @@ enum DesignTokens {
         /// Grid panel width 62% (1190.4 from x 729.6, `.tv-library-grid-panel`)
         static let libraryGridWidthFraction: CGFloat = 0.62
         /// First card art top-left (measured @ 1920×1080 SPA frame).
-        static let libraryCardOriginX: CGFloat = 783.5
+        static let libraryCardOriginX: CGFloat = TVWeb.gridLeft
         static let libraryCardOriginY: CGFloat = 162
         /// Art tile size (16:9) measured from SPA first card.
-        static let libraryCardArtWidth: CGFloat = 327.2
-        static let libraryCardArtHeight: CGFloat = 184
+        static let libraryCardArtWidth: CGFloat = TVWeb.cardWidthMedium
+        static let libraryCardArtHeight: CGFloat = TVWeb.layoutUnit(TVWeb.cardWidthMedium * 9 / 16)
         /// Centre-to-centre pitch of unwatched dots / cards.
-        static let libraryCardPitchX: CGFloat = 353
+        static let libraryCardPitchX: CGFloat = TVWeb.cardPitch()
         static let libraryCardPitchY: CGFloat = 240.4
         /// Title under art.
         static let libraryCardTitleHeight: CGFloat = 28

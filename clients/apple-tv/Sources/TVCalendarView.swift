@@ -16,8 +16,7 @@ struct TVCalendarView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            DesignTokens.Color.backgroundElevated.ignoresSafeArea()
-                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
+            TVWebPageBase()
             if let viewModel {
                 content(viewModel)
             }
@@ -52,7 +51,7 @@ struct TVCalendarView: View {
             TVKeyArt(url: entry.posterURL.flatMap { environment.apiClient.artworkURL(forPath: $0) })
             TVStageWash()
             // Web `ListPanel`: the frosted right-hand surface the agenda list sits on (x 729.6, 1190.4 wide, full height).
-            TVRailPanelGradient(width: 1190.4, bleed: false)
+            TVRailPanelGradient(width: TVWeb.railWidth, bleed: false)
             agendaDetail(entry, item: item, today: model.today, model: model)
         }
 
@@ -88,7 +87,7 @@ struct TVCalendarView: View {
                         .font(TVTheme.font(size: 22.4, weight: .bold))
                         .foregroundStyle(DesignTokens.Color.textPrimary)
                         .parityLayout(text: "Nothing scheduled", size: 22.4, weight: Int(TVTheme.cssWeight(.bold)), color: DesignTokens.Color.textPrimary)
-                        .placed(x: 783.4, y: 170, w: 600, h: 33.6)
+                        .placed(x: TVWeb.gridLeft, y: 170, w: 600, h: 33.6)
                 } else {
                     agendaList(model)
                 }
@@ -223,7 +222,7 @@ struct TVCalendarView: View {
         // The list starts under the header row so the header controls stay reachable with UP (focus search).
         .parityBackdrop(DesignTokens.Stage.bg) // web: the list's text sits on the page background colour
         .mask(Self.topFade)
-        .placed(x: 783.4, y: 130, w: 1033.4 + 30, h: 950, alignment: .topLeading)
+        .placed(x: TVWeb.gridLeft, y: 130, w: TVWeb.cardContentWidth + 30, h: 950, alignment: .topLeading)
     }
 
     private func dayHeading(_ day: String, today: String) -> some View {
@@ -515,7 +514,7 @@ struct TVCalendarView: View {
         } else {
             ForEach(0..<5, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 12).fill(block.opacity(0.5))
-                    .placed(x: 783.4, y: 238 + 120.6 * CGFloat(index), w: 1033.4, h: 106.9)
+                    .placed(x: TVWeb.gridLeft, y: 238 + 120.6 * CGFloat(index), w: TVWeb.cardContentWidth, h: 106.9)
             }
         }
     }
@@ -605,32 +604,32 @@ struct TVCalendarView: View {
         let codeLine = [code, item.entries.count > 1 ? nil : (entry.subtitle ?? "TBA")].compactMap { $0 }.joined(separator: " \u{00B7} ")
         let when = entry.releaseAt.map { Self.format($0, "EEEE, d MMMM yyyy 'at' HH:mm") }
             ?? CalendarDays.displayDate(entry.date).map { Self.format($0, "EEEE, d MMMM yyyy") } ?? entry.date
-        let soft = DesignTokens.Color.textPrimary.opacity(0.86)
+        let soft = DesignTokens.Stage.detailsSoft
         return ZStack(alignment: .topLeading) {
             Text("\(Self.kindLabel(entry)) \u{00B7} \(Self.releaseLabel(entry))".uppercased())
-                .font(TVTheme.font(size: 12.288, css: 860))
+                .font(TVTheme.font(size: TVWeb.kickerSize, css: TVWeb.detailsKickerWeight))
                 .tracking(0.98)
                 .foregroundStyle(DesignTokens.Stage.brandInk)
-                .parityLayout(text: "\(Self.kindLabel(entry)) \u{00B7} \(Self.releaseLabel(entry))".uppercased(), size: 12.288, weight: Int(860), color: DesignTokens.Stage.brandInk, tracking: 0.98)
+                .parityLayout(text: "\(Self.kindLabel(entry)) \u{00B7} \(Self.releaseLabel(entry))".uppercased(), size: TVWeb.kickerSize, weight: Int(TVWeb.detailsKickerWeight), color: DesignTokens.Stage.brandInk, tracking: 0.98)
                 .placed(x: 153.6, y: 263.2, w: 455, h: 18.4)
             TVHeroTitle(title: title, role: "text")
                 .placed(x: 153.6, y: 307.5, w: 379.5, h: 62.2 * CGFloat(lines), alignment: .topLeading)
             HStack(spacing: 12.8) {
                 Text(codeLine)
-                    .parityLayout(text: codeLine, size: 13.056, weight: 600, color: soft)
+                    .parityLayout(text: codeLine, size: TVWeb.detailsMetaSize, weight: Int(TVWeb.detailsTextWeight), color: soft)
                 Text(when)
-                    .parityLayout(text: when, size: 13.056, weight: 600, color: soft)
+                    .parityLayout(text: when, size: TVWeb.detailsMetaSize, weight: Int(TVWeb.detailsTextWeight), color: soft)
             }
-            .font(TVTheme.font(size: 13.056, css: 600))
+            .font(TVTheme.font(size: TVWeb.detailsMetaSize, css: TVWeb.detailsTextWeight))
             .foregroundStyle(soft)
             .placed(x: 153.6, y: metaY, h: 19.6)
             TVStatusPill(tone: Self.tone(of: item, today: today))
                 .placed(x: 153.6, y: metaY + 36.9, h: 26.6)
             if let overview = entry.overview, !overview.isEmpty {
                 Text(overview)
-                    .font(TVTheme.font(size: 13.82, css: 600))
+                    .font(TVTheme.font(size: TVWeb.detailsOverviewSize, css: TVWeb.detailsTextWeight))
                     .foregroundStyle(soft)
-                    .parityLayout(text: overview, size: 13.82, weight: 600, color: soft)
+                    .parityLayout(text: overview, size: TVWeb.detailsOverviewSize, weight: Int(TVWeb.detailsTextWeight), color: soft)
                     .placed(x: 153.6, y: metaY + 86, w: 455, h: 19)
             }
             actionButtons(entry, model: model, y: metaY + (entry.overview?.isEmpty == false ? 130.6 : 87.2))

@@ -200,7 +200,7 @@ struct TVHomeView: View {
             // Web `.tv-home-rails.is-vertical-tracks`: the first rail opens at the Library grid's first row (clamp(128, 15vh, 174)).
             .padding(.top, Self.railTopY - origin.y)
             // Web `.tv-home-rails` starts where the Library grid panel starts (100% - 62%), cards at its left padding.
-            .padding(.leading, 783.4 - origin.x - Self.cardBleed)
+            .padding(.leading, TVWeb.gridLeft - origin.x - Self.cardBleed)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
@@ -370,7 +370,7 @@ struct TVHomeView: View {
                 : heroWork(from: viewModel.works)
             ZStack(alignment: .topLeading) {
                 heroBackdrop(hero: hero, size: geo.size)
-                TVRailPanelGradient(width: geo.size.width * (1 - DesignTokens.Shell.railLeftInset))
+                TVRailPanelGradient(width: TVWeb.railWidth)
                 if let hero {
                     VStack(alignment: .leading, spacing: 0) {
                         Text(kindKicker(hero))
@@ -767,14 +767,13 @@ struct TVHomeView: View {
     /// `wide`: the Home's first hero, which web loads at 1920 (every other hero reuses the 780 card art).
     private func liveHeroBackdrop(_ hero: Work?, wide: Bool = false) -> some View {
         ZStack(alignment: .topLeading) {
-            DesignTokens.Color.backgroundElevated
-                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
+            TVWebPageBase()
             if let hero {
                 TVKeyArt(url: imageURL(for: hero, prefer: .backdrop, width: wide ? 1920 : nil))
             }
             TVStageWash()
             // Web `.tv-home .tv-rail-surface`: the frosted right panel the rails sit on (the captured Home draws it too).
-            TVRailPanelGradient(width: 1920 * (1 - DesignTokens.Shell.railLeftInset))
+            TVRailPanelGradient(width: TVWeb.railWidth)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -782,7 +781,7 @@ struct TVHomeView: View {
     @ViewBuilder
     private func legacyHeroBackdrop(hero: Work?, size: CGSize) -> some View {
         ZStack(alignment: .leading) {
-            DesignTokens.Color.backgroundBase
+            TVWebPageBase()
             // Fixture hero is already SPA-filtered; display with opacity + mask only.
             // Live API art gets greyscale + contrast + colorMultiply(0.6) + opacity.
             let liveURL = hero.flatMap { imageURL(for: $0, prefer: .backdrop) }
@@ -1005,7 +1004,7 @@ struct TVWebHomeCard: View {
     /// Web `.tv-watch-progress`: a 3 px bar along the art's foot on On deck cards (replaces the unseen dot).
     var progress: Double? = nil
     /// The artwork size setting's card width (medium 327.2); 16:9 art.
-    var artWidth: CGFloat = 327.2
+    var artWidth: CGFloat = TVWeb.cardWidthMedium
     /// Home screen artwork = Covers (macOS): portrait 2:3 art from the posters, as the web `is-cover-view`.
     var cover = false
 
@@ -1023,7 +1022,7 @@ struct TVWebHomeCard: View {
                 TVWorkArt(work: work, apiClient: apiClient, posterFirst: cover)
                     .frame(width: artWidth, height: artHeight)
                     .parityBox("image", fill: DesignTokens.Stage.surfaceSoft)
-                    .parityBox("container", radius: 12.48, fill: DesignTokens.Stage.surfaceSoft)
+                    .parityBox("container", radius: TVWeb.cardRadius, fill: DesignTokens.Stage.surfaceSoft)
                     .overlay(alignment: .bottomLeading) {
                         if let progress {
                             ZStack(alignment: .leading) {
@@ -1035,7 +1034,7 @@ struct TVWebHomeCard: View {
                             .parityBox("container", fill: Color.white, alpha: 0.2) // the track really paints white at 0.2 over the art
                         }
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 12.48, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: TVWeb.cardRadius, style: .continuous))
                 if progress == nil {
                     Circle()
                         .fill(DesignTokens.Color.brandPrimary)
@@ -1046,28 +1045,28 @@ struct TVWebHomeCard: View {
                 }
             }
             .background(
-                RoundedRectangle(cornerRadius: 12.48, style: .continuous)
+                RoundedRectangle(cornerRadius: TVWeb.cardRadius, style: .continuous)
                     .fill(DesignTokens.Stage.surfaceSoft)
                     .shadow(color: Self.shadow.opacity(focused ? 0.32 : 0.16), radius: focused ? 26 : 11, y: focused ? 26 : 10)
                     .shadow(color: Self.shadow.opacity(focused ? 0.22 : 0.10), radius: focused ? 11 : 4.5, y: focused ? 11 : 3)
             )
-            .modifier(TVCardFocusGlow(focused: focused, cornerRadius: 12.48))
+            .modifier(TVCardFocusGlow(focused: focused, cornerRadius: TVWeb.cardRadius))
             .scaleEffect(focused ? 1.025 : 1)
             Text(work.title)
-                .font(TVTheme.font(size: 11.904, css: 610))
+                .font(TVTheme.font(size: TVWeb.cardTitleSize, css: TVWeb.cardTitleWeight))
                 .tracking(-0.18)
                 .foregroundStyle(focused ? Color.white : DesignTokens.Color.textPrimary)
-                .parityLayout(text: work.title, size: 11.904, weight: Int(610), color: focused ? Color.white : DesignTokens.Color.textPrimary, tracking: -0.18) // web: the focused card's text is white
+                .parityLayout(text: work.title, size: TVWeb.cardTitleSize, weight: Int(TVWeb.cardTitleWeight), color: focused ? Color.white : DesignTokens.Color.textPrimary, tracking: -0.18) // web: the focused card's text is white
                 .lineLimit(1)
                 .frame(width: artWidth - 1.91, height: 17.9, alignment: .leading)
                 .padding(.leading, 1.91) // web: the text sits 1.91 pt inside the card
                 .frame(width: artWidth, alignment: .leading)
                 .padding(.top, 10.2)
             Text([work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "))
-                .font(TVTheme.font(size: 8.832, css: 400))
+                .font(TVTheme.font(size: TVWeb.cardMetaSize, css: 400))
                 .foregroundStyle(focused ? Color.white : DesignTokens.Color.textDisabled)
                 .lineLimit(1)
-                .parityLayout(text: [work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "), size: 8.832, weight: Int(400), color: focused ? Color.white : DesignTokens.Color.textDisabled)
+                .parityLayout(text: [work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "), size: TVWeb.cardMetaSize, weight: Int(400), color: focused ? Color.white : DesignTokens.Color.textDisabled)
                 .frame(width: artWidth - 1.91, height: 11.5, alignment: .leading)
                 .padding(.leading, 1.91)
                 .frame(width: artWidth, alignment: .leading)
@@ -1178,11 +1177,11 @@ struct TVHomeSkeleton: View {
             RoundedRectangle(cornerRadius: 8).fill(block).frame(width: 330, height: 56).placed(x: 153.6, y: 306, w: 330, h: 56)
             ForEach(0..<2, id: \.self) { rail in
                 let top = 162 + 365.9 * CGFloat(rail)
-                RoundedRectangle(cornerRadius: 4).fill(block).frame(width: 180, height: 18).placed(x: 782.6, y: top + 4, w: 180, h: 18)
+                RoundedRectangle(cornerRadius: 4).fill(block).frame(width: 180, height: 18).placed(x: TVWeb.gridLeft, y: top + 4, w: 180, h: 18)
                 ForEach(0..<4, id: \.self) { card in
-                    let x = 782.6 + 352.1 * CGFloat(card)
-                    RoundedRectangle(cornerRadius: 12.48, style: .continuous).fill(block)
-                        .placed(x: x, y: top + 61.8, w: 327.2, h: 184)
+                    let x = TVWeb.gridColumnLeft(card)
+                    RoundedRectangle(cornerRadius: TVWeb.cardRadius, style: .continuous).fill(block)
+                        .placed(x: x, y: top + 61.8, w: TVWeb.cardWidthMedium, h: TVWeb.layoutUnit(TVWeb.cardWidthMedium * 9 / 16))
                     RoundedRectangle(cornerRadius: 3).fill(block).placed(x: x, y: top + 61.8 + 195.3, w: 180, h: 12)
                 }
             }
@@ -1296,14 +1295,13 @@ struct TVSearchView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             // `.tv-search` uses surface (#1b181b), not pure stage base.
-            DesignTokens.Color.backgroundElevated.ignoresSafeArea()
-                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
+            TVWebPageBase()
             if let viewModel, let work = selectedWork(viewModel) {
                 TVKeyArt(url: searchArtURL(work))
             }
             TVStageWash()
             // `.tv-search-rail-surface`: x 729.6, width 1190.4.
-            TVRailPanelGradient(width: 1190.4)
+            TVRailPanelGradient(width: TVWeb.railWidth)
             if let viewModel {
                 searchContent(viewModel)
             }
@@ -1366,9 +1364,9 @@ struct TVSearchView: View {
         switch model.state {
         case .idle:
             Text.parityWrapped("Find any available movie, series, artist or playlist.")
-                .font(TVTheme.font(size: 13.82, weight: .regular))
+                .font(TVTheme.font(size: TVWeb.detailsOverviewSize, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
-                .parityLayout(text: "Find any available movie, series, artist or playlist.", size: 13.82, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
+                .parityLayout(text: "Find any available movie, series, artist or playlist.", size: TVWeb.detailsOverviewSize, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
                 .frame(maxWidth: 280, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
                 .lineSpacing(2.4)
@@ -1469,13 +1467,13 @@ struct TVSearchView: View {
         let kind = work.kind.rawValue.capitalized
         let lines = TVTextWrap.lines(work.title, weight: 560, size: 49.92, kern: -3, width: 420).count
         let metaY = 330.9 + 47.4 * CGFloat(max(1, lines)) + 27
-        let soft = DesignTokens.Color.textPrimary.opacity(0.86)
+        let soft = DesignTokens.Stage.detailsSoft
         return ZStack(alignment: .topLeading) {
             Text([kind, year].compactMap { $0 }.joined(separator: " \u{00B7} ").uppercased())
-                .font(TVTheme.font(size: 12.288, css: 860))
-                .tracking(0.98)
+                .font(TVTheme.font(size: TVWeb.kickerSize, css: TVWeb.detailsKickerWeight))
+                .tracking(TVWeb.kickerTracking)
                 .foregroundStyle(DesignTokens.Stage.brandInk)
-                .parityLayout(text: [kind, year].compactMap { $0 }.joined(separator: " \u{00B7} ").uppercased(), size: 12.288, weight: Int(860), color: DesignTokens.Stage.brandInk, tracking: 0.98)
+                .parityLayout(text: [kind, year].compactMap { $0 }.joined(separator: " \u{00B7} ").uppercased(), size: TVWeb.kickerSize, weight: Int(TVWeb.detailsKickerWeight), color: DesignTokens.Stage.brandInk, tracking: TVWeb.kickerTracking)
                 .placed(x: 153.6, y: 286.6, w: 544, h: 18.4)
             Text.parityWrapped(work.title)
                 .font(TVTheme.font(size: 49.92, css: 560))
@@ -1489,15 +1487,15 @@ struct TVSearchView: View {
                 if let year { Text(year) }
                 if !work.genres.isEmpty { Text(work.genres.prefix(2).joined(separator: " \u{00B7} ")) }
             }
-            .font(TVTheme.font(size: 13.056, css: 600))
+            .font(TVTheme.font(size: TVWeb.detailsMetaSize, css: TVWeb.detailsTextWeight))
             .foregroundStyle(soft)
             .placed(x: 153.6, y: metaY, h: 19.6)
             if let overview = work.overview, !overview.isEmpty {
                 Text.parityWrapped(overview)
-                    .font(TVTheme.font(size: 13.824, css: 600))
+                    .font(TVTheme.font(size: TVWeb.detailsOverviewSize, css: TVWeb.detailsTextWeight))
                     .foregroundStyle(soft)
                     .lineLimit(4)
-                    .parityLayout(text: overview, size: 13.824, weight: Int(600), color: soft)
+                    .parityLayout(text: overview, size: TVWeb.detailsOverviewSize, weight: Int(TVWeb.detailsTextWeight), color: soft)
                     .frame(width: 336, alignment: .topLeading)
                     .placed(x: 153.6, y: metaY + 19.6 + 21.6, w: 336, h: 87.4, alignment: .topLeading)
             }
@@ -1508,7 +1506,7 @@ struct TVSearchView: View {
     /// right rail, scrolling under a top edge fade; other sources follow the results.
     private func searchResultRow(_ model: TVSearchViewModel) -> some View {
         ScrollView(.vertical, showsIndicators: false) {
-            LazyVGrid(columns: Array(repeating: GridItem(.fixed(displayPreferences.cardWidth), spacing: 25.9),
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(displayPreferences.cardWidth), spacing: TVWeb.layoutUnit(TVWeb.cardGap)),
                                      count: displayPreferences.cardColumns),
                       alignment: .leading, spacing: 251.2 - 184 - 11.5 - 20) {
                 ForEach(model.results) { work in
@@ -1570,11 +1568,11 @@ struct TVSearchView: View {
             }
             ZStack(alignment: .topLeading) {
                 Text(work.title)
-                    .font(TVTheme.font(size: 11.904, css: 610))
+                    .font(TVTheme.font(size: TVWeb.cardTitleSize, css: TVWeb.cardTitleWeight))
                     .tracking(-0.18)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
-                    .parityLayout(text: work.title, size: 11.904, weight: Int(610), color: DesignTokens.Color.textPrimary, tracking: -0.18)
+                    .parityLayout(text: work.title, size: TVWeb.cardTitleSize, weight: Int(TVWeb.cardTitleWeight), color: DesignTokens.Color.textPrimary, tracking: -0.18)
                     .placed(x: 1.9, y: 0, w: w - 66.4, h: 18.4)
                 Text(
                     ([work.kind.rawValue.capitalized] + [work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 })
@@ -1766,11 +1764,11 @@ struct TVLibraryKindView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
-                DesignTokens.Color.backgroundBase.ignoresSafeArea()
+                TVWebPageBase()
                 heroBackdrop(size: geo.size)
 
                 // Right frost panel (65%).
-                TVRailPanelGradient(width: geo.size.width * DesignTokens.Shell.libraryGridWidthFraction)
+                TVRailPanelGradient(width: TVWeb.railWidth)
 
                 TVPageHeader(
                     title: kindLabel,
@@ -1870,9 +1868,9 @@ struct TVLibraryKindView: View {
     private var libraryHeading: some View {
         HStack(spacing: 20) {
             Text("\u{2190}")
-                .font(TVTheme.font(size: 17.3, weight: .semibold))
+                .font(TVTheme.font(size: TVWeb.backArrowSize, css: TVWeb.backArrowWeight))
                 .foregroundStyle(DesignTokens.Color.textSecondary)
-                        .parityLayout(text: "\u{2190}", size: 17.3, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textSecondary)
+                        .parityLayout(text: "\u{2190}", size: TVWeb.backArrowSize, weight: Int(TVWeb.backArrowWeight), color: DesignTokens.Color.textSecondary)
                 .frame(
                     width: DesignTokens.Shell.searchBackSize,
                     height: DesignTokens.Shell.searchBackSize
@@ -1925,10 +1923,10 @@ struct TVLibraryKindView: View {
     private func libraryPreview(_ work: Work) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text((work.genres.first ?? kindLabel).uppercased())
-                .font(TVTheme.font(size: 12.29, css: 820))
-                .tracking(0.98)
+                .font(TVTheme.font(size: TVWeb.kickerSize, css: TVWeb.detailsKickerWeight))
+                .tracking(TVWeb.kickerTracking)
                 .foregroundStyle(DesignTokens.Stage.brandInk)
-                .parityLayout(text: (work.genres.first ?? kindLabel).uppercased(), size: 12.29, weight: Int(820), color: DesignTokens.Stage.brandInk, tracking: 0.98)
+                .parityLayout(text: (work.genres.first ?? kindLabel).uppercased(), size: TVWeb.kickerSize, weight: Int(TVWeb.detailsKickerWeight), color: DesignTokens.Stage.brandInk, tracking: TVWeb.kickerTracking)
             // SPA `.tv-library-preview h2` / `.tv-detail-copy h1`: weight 560,
             // tracking -0.072em, max-width 9ch. DemiBold (semibold) matches
             // white-pixel mass better than Medium (full109 title thr200:
@@ -1947,11 +1945,11 @@ struct TVLibraryKindView: View {
                 Text.parityWrapped(overview)
                     // Web `.details-panel .tv-preview-overview`: 0.72vw (13.8 px) at weight 600, line-height 1.58 (21.8 px pitch),
                     // measured on the light refs of series and music (lines wrap at about 348 px).
-                    .font(TVTheme.font(size: 13.8, css: 600))
-                    .foregroundStyle(DesignTokens.Stage.inkMuted)
+                    .font(TVTheme.font(size: TVWeb.detailsOverviewSize, css: TVWeb.detailsTextWeight))
+                    .foregroundStyle(DesignTokens.Stage.detailsSoft)
                     .lineLimit(5)
                     .lineSpacing(3)
-                    .parityLayout(text: overview, size: 13.8, weight: 600, color: DesignTokens.Stage.inkMuted)
+                    .parityLayout(text: overview, size: TVWeb.detailsOverviewSize, weight: Int(TVWeb.detailsTextWeight), color: DesignTokens.Stage.detailsSoft)
                     .padding(.top, 24)
                     .frame(maxWidth: 348, alignment: .leading)
             }
@@ -1967,21 +1965,21 @@ struct TVLibraryKindView: View {
         return HStack(spacing: 12.8) {
             if !year.isEmpty {
                 Text(year)
-                    .foregroundStyle(DesignTokens.Color.textSecondary)
-                    .parityLayout(text: year, size: 13, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textSecondary)
+                    .foregroundStyle(DesignTokens.Stage.detailsSoft)
+                    .parityLayout(text: year, size: TVWeb.detailsMetaSize, weight: Int(TVWeb.detailsTextWeight), color: DesignTokens.Stage.detailsSoft)
             }
             if !genreLine.isEmpty {
                 Text(genreLine)
-                    .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .parityLayout(text: genreLine, size: 13, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textDisabled)
+                    .foregroundStyle(DesignTokens.Stage.detailsSoft)
+                    .parityLayout(text: genreLine, size: TVWeb.detailsMetaSize, weight: Int(TVWeb.detailsTextWeight), color: DesignTokens.Stage.detailsSoft)
             }
             if let runtime = previewRuntime, runtime.id == work.id, let text = runtime.text {
                 Text(text)
-                    .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .parityLayout(text: text, size: 13, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textDisabled)
+                    .foregroundStyle(DesignTokens.Stage.detailsSoft)
+                    .parityLayout(text: text, size: TVWeb.detailsMetaSize, weight: Int(TVWeb.detailsTextWeight), color: DesignTokens.Stage.detailsSoft)
             }
         }
-        .font(TVTheme.font(size: 13, weight: .medium))
+        .font(TVTheme.font(size: TVWeb.detailsMetaSize, css: TVWeb.detailsTextWeight))
     }
 
     @ViewBuilder
@@ -2043,14 +2041,14 @@ struct TVLibraryKindView: View {
         let padL: CGFloat = 0
         let rowGap: CGFloat = 27.0 // web row pitch 240.4 (213.4 card plus 27)
         #endif
-        let gridWidth = size.width - 783.4 + padL
+        let gridWidth = size.width - TVWeb.gridLeft + padL
         let padR: CGFloat = 0
         // Web: screen cards use `--card-w` (3 + step columns, 25.92 apart); cover cards `--card-w-cover`
         // (5 + step columns, 19.2 apart, 2:3); list rows are one column.
         let cover = view == "cover"
         let cols = view == "list" ? 1 : cover ? displayPreferences.cardColumns + 2 : displayPreferences.cardColumns
-        let gap: CGFloat = cover ? 19.2 : 25.92
-        let cardW = view == "list" ? 1033.44 : cover ? (1033.44 - 19.2 * CGFloat(cols - 1)) / CGFloat(cols) : displayPreferences.cardWidth
+        let gap: CGFloat = TVWeb.layoutUnit(cover ? TVWeb.cardGapCover : TVWeb.cardGap)
+        let cardW = view == "list" ? TVWeb.cardContentWidth : cover ? displayPreferences.coverCardWidth : displayPreferences.cardWidth
         let artH = cover ? cardW * 1.5 : cardW * 9 / 16
         let grid = ScrollView(.vertical, showsIndicators: false) {
             LazyVGrid(
@@ -2198,17 +2196,17 @@ struct TVLibraryKindView: View {
                 if showTitle {
                     // Fixture SPA crops do not include the title line; draw it.
                     Text(work.title)
-                        .font(TVTheme.font(size: 11.9, css: 610))
+                        .font(TVTheme.font(size: TVWeb.cardTitleSize, css: TVWeb.cardTitleWeight))
                         .tracking(-0.18)
                         .foregroundStyle(isSelected ? Color.white : DesignTokens.Color.textPrimary)
-                        .parityLayout(text: work.title, size: 11.9, weight: 610, color: isSelected ? Color.white : DesignTokens.Color.textPrimary, tracking: -0.18) // web: the focused card's text is white
+                        .parityLayout(text: work.title, size: TVWeb.cardTitleSize, weight: Int(TVWeb.cardTitleWeight), color: isSelected ? Color.white : DesignTokens.Color.textPrimary, tracking: -0.18) // web: the focused card's text is white
                         .lineLimit(1)
                         .padding(.leading, 1.91) // web: the title sits 1.91 pt inside the card
                         .frame(width: width, height: 17.9, alignment: .topLeading) // web: a 17.9 pt caption line, so the card is 213.4 tall
                 }
             }
             .frame(width: width, alignment: .leading)
-            .parityBox("link", text: "Open \(work.title)", radius: DesignTokens.Radius.card)
+            .parityBox("link", text: "Open \(work.title)", radius: DesignTokens.Radius.card, fill: DesignTokens.Stage.surface)
             // Pinned web library focus: translateY(-7px) scale(1.025) over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1); no ring.
             .scaleEffect(isSelected ? 1.015 : 1)
             .offset(y: isSelected ? -5 : 0)
@@ -2258,7 +2256,7 @@ struct TVLibraryKindView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .frame(width: 1033.44, height: 97.2 + 24.7 - 27, alignment: .leading)
+            .frame(width: TVWeb.cardContentWidth, height: 97.2 + 24.7 - 27, alignment: .leading)
             .scaleEffect(isSelected ? 1.015 : 1, anchor: .leading)
             .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: isSelected)
         }
@@ -2337,7 +2335,7 @@ struct TVLibraryKindView: View {
     private func legacyHeroBackdrop(size: CGSize) -> some View {
         let kind = workKind ?? .series
         ZStack(alignment: .leading) {
-            DesignTokens.Color.backgroundBase
+            Color.clear // the page base (bg and the two surface containers) is TVWebPageBase, under the whole page
             // Hero fills left ~47% (to grid origin); SPA key-art is greyscale.
             let heroW = DesignTokens.Shell.libraryCardOriginX - 20
             if let fixture = TVParityArtwork.libraryHero(kind: kind) {
