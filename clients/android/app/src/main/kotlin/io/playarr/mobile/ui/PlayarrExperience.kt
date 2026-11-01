@@ -934,7 +934,7 @@ internal class PlayarrExperienceViewModel @Inject constructor(
     private fun launchHome(silent: Boolean): Job {
         // Fetch and parse on Default: Main is busy composing Home's first frame; only the state writes below go back to Main.
         return viewModelScope.launch(Dispatchers.Default) {
-            android.os.Trace.beginAsyncSection("pl:launchHome", 1)
+            android.os.Trace.beginSection("pl:launchHome_start"); android.os.Trace.endSection()
             homeStamp.begin()
             if (!silent) _home.value = ExperienceLoad.Loading
             val progressRequest = async { runCatching { api.listWatchProgress() }.getOrNull() }
@@ -993,7 +993,7 @@ internal class PlayarrExperienceViewModel @Inject constructor(
                 }
             val onDeck = (fromRows + fromPlans).awaitAll().filterNotNull()
             val rails = railsRequest.await()
-            android.os.Trace.endAsyncSection("pl:launchHome", 1)
+            android.os.Trace.beginSection("pl:launchHome_fetched"); android.os.Trace.endSection()
             val ready = android.os.Trace.beginSection("pl:buildHomeRails").let {
                 try { ExperienceLoad.Ready(buildPlayarrHomeRails(byKind, onDeck, rails)) } finally { android.os.Trace.endSection() }
             }
@@ -9385,7 +9385,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
             return
         }
         activeRequest = request
-        android.os.Trace.beginAsyncSection("pl:play->prepare", 2)
+        android.os.Trace.beginSection("pl:play_entered"); android.os.Trace.endSection()
         prepareJob?.cancel()
         switchJob?.cancel()
         prepareJob = viewModelScope.launch {
@@ -9744,8 +9744,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         val selectedAudioLanguage = playback.audioTracks
             .firstOrNull { it.id == playback.selectedAudioTrackId }
             ?.language
-        android.os.Trace.endAsyncSection("pl:play->prepare", 2)
-        android.os.Trace.beginAsyncSection("pl:prepare->first_frame", 3)
+        android.os.Trace.beginSection("pl:player_prepare"); android.os.Trace.endSection()
         player.prepare(
             resolvePlayarrPlaybackUrl(activeServerUrl, playback.url),
             if (playback.mode == io.playarr.shared.data.model.PlaybackMode.Hls) StreamFormat.Hls else StreamFormat.Direct,
