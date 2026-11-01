@@ -112,7 +112,7 @@ internal sealed class Shell : View
             nv.Item64.Size = new Size(64, 64); nv.Item64.CornerRadius = 16; nv.Item64.PositionX = Cx - 32 - RailX; nv.Item64.PositionY = nv.CentreY - 32 - groupY;
             nv.Tile = Ui.Box(0, 0, 64, 64, null, 16);
             nv.Icon = Ui.Icon(item.Icon, 22, 15.1f, 20, _theme.InkMuted);
-            nv.Label = Ui.Text(item.Label, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
+            nv.Label = Ui.Text(item.Label, -6.75f, 39.9f, 8.832f, 680, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
             nv.Item64.Add(nv.Tile); nv.Item64.Add(nv.Icon); nv.Item64.Add(nv.Label);
             var navIndex = _nav.Count; // this item's index once added just below
             Sem.Tag(nv.Item64, "link", item.Label);
@@ -126,7 +126,7 @@ internal sealed class Shell : View
         _avatarIcon = new ImageView(Ui.ResPath("avatars/" + AvatarPresets.Default("")) + ".png") { PositionX = 0, PositionY = 0, Size = new Size(20, 20) };
         var avatarFrame = Ui.Box(22, 15.1f, 20, 20, _theme.Surface, 10); avatarFrame.ClippingMode = ClippingModeType.ClipChildren; avatarFrame.Add(_avatarIcon); // web: a rounded span holding the picture
         pv.Icon = null!;
-        pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
+        pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 680, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
         pv.Item64.Add(pv.Tile); pv.Item64.Add(avatarFrame); pv.Item64.Add(pv.Label);
         Sem.Tag(pv.Item64, "link", $"Signed in as {_env.Profile}. Open profiles.");
         chip.Add(pv.Item64);
@@ -137,9 +137,9 @@ internal sealed class Shell : View
 
     private View AddGroup(float y, float h)
     {
-        // light: the fill is opaque (strong surface 56 % over the page surface) because the box shadow would show through a translucent fill; web clips it outside the border box
+        // light: the fill is opaque (strong surface 56 % over the page background) because the box shadow would show through a translucent fill; web clips it outside the border box
         var fill = _theme.Name == "dark" ? _theme.SurfaceStrong.Mixed(0.56f)
-            : new Rgba(_theme.SurfaceStrong.R * 0.56f + _theme.Surface.R * 0.44f, _theme.SurfaceStrong.G * 0.56f + _theme.Surface.G * 0.44f, _theme.SurfaceStrong.B * 0.56f + _theme.Surface.B * 0.44f);
+            : new Rgba(_theme.SurfaceStrong.R * 0.56f + _theme.Bg.R * 0.44f, _theme.SurfaceStrong.G * 0.56f + _theme.Bg.G * 0.44f, _theme.SurfaceStrong.B * 0.56f + _theme.Bg.B * 0.44f);
         var box = Ui.Box(RailX, y, RailW, h, fill, 22);
         box.BorderlineWidth = 1;
         box.BorderlineColor = Ui.LineA(_theme, _theme.Line.A * 0.48f); // web: the line colour at 48 % of its own alpha

@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import io.playarr.shared.designsystem.page.Surface
-import androidx.compose.material3.Text
+import io.playarr.shared.designsystem.page.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier

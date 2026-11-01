@@ -1,0 +1,1 @@
+- Tizen native: the light nav rail group fill and the filter drawer backdrop are composited over the page background as the web CSS does, which fixes the light surface colours in the layout export.

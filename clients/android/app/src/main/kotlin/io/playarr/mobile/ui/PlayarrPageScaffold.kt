@@ -62,7 +62,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import io.playarr.shared.designsystem.page.Surface
-import androidx.compose.material3.Text
+import io.playarr.shared.designsystem.page.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -339,10 +339,11 @@ private fun PhoneDrawerPanel(
             .then(if (paneTitle != null) Modifier.semantics { this.paneTitle = paneTitle } else Modifier)
             .parityBackground("container", WebSurfaceStrong.copy(alpha = if (blurUnderlay) 0.94f else 0.985f))
     ) {
+        androidx.compose.material3.ProvideTextStyle(androidx.compose.material3.LocalTextStyle.current.copy(lineHeightStyle = io.playarr.shared.designsystem.page.WebLineBox)) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         ) {
-            Row(verticalAlignment = Alignment.Top) {
+            Row(Modifier.height(rememberWebSpan(20f, 20f + 47.36f)), verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f).padding(end = 12.dp)) {
                     if (kicker != null) {
                         Text(kicker.uppercase(), color = WebInkMuted, modifier = Modifier, fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.493.sp)
@@ -365,13 +366,14 @@ private fun PhoneDrawerPanel(
                     }
                 }
             }
-            Spacer(Modifier.height(26.6.dp))
+            Spacer(Modifier.height(with(androidx.compose.ui.platform.LocalDensity.current) { webSpan(20f + 47.36f, PHONE_DRAWER_BODY_TOP_CSS) }))
             Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 content()
                 if (footer != null) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = footer)
                 }
             }
+        }
         }
     }
     LaunchedEffect(initialFocus, focus, inputMode) {

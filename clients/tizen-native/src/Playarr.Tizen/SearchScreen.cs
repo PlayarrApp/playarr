@@ -166,7 +166,7 @@ internal sealed class SearchScreen : IPage
         art.Add(Ui.Icon("search-empty", 39f, 48f, 54f, 36f, _t.Name == "dark" ? Rgba.Hex(0xd75a79) : Rgba.Hex(0xae2f4b))); // web TvEmptyState "search" graphic (zoom-out, 1.2x)
         Sem.Tag(art, "container");
         _empty.Add(art);
-        _empty.Add(Ui.Text("Start typing to search.", 1298.6f, 365.1f, 16.896f, 700, _t.Ink, 400, 25.344f, spacing: -0.44f));
+        _empty.Add(Ui.Text("Start typing to search.", 1298.6f, 365.1f, 16.896f, 650, _t.Ink, 400, 25.344f, spacing: -0.44f));
     }
 
     private void BuildSide()
