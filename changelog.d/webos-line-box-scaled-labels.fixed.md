@@ -1,0 +1,1 @@
+- webOS: the content-sized label test uses the untransformed layout height, so a label inside a scaled (selected) card keeps the web line box

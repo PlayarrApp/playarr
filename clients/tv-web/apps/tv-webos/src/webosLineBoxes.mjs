@@ -28,6 +28,16 @@ export function isContentSized(contentHeight, lineHeight) {
   return Math.abs(contentHeight - Math.floor(lineHeight)) < 0.5;
 }
 
+/**
+ * An element's height before any transform: the bounding rect divided by the scale a transform (a selected card's grow) puts on it.
+ * @param {HTMLElement} el
+ */
+export function layoutHeight(el) {
+  const r = el.getBoundingClientRect();
+  const scale = el.offsetWidth > 0 && r.width > 0 ? r.width / el.offsetWidth : 1;
+  return r.height / scale;
+}
+
 /** @param {CSSStyleDeclaration} cs vertical padding and border of an element */
 function boxPadding(cs) {
   return parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
@@ -76,7 +86,7 @@ export function installLineBoxFix(win, options = {}) {
       const box = cs.boxSizing === "border-box" ? boxPadding(cs) : 0;
       // Single-line ellipsis labels in a box the web sizes itself (the line box overflows it) are left alone. A label that is only as tall as its own
       // truncated line box (a flex item centred in a row, a card's name) is a content-sized box: it gets the web line height like any other text.
-      if (lines < 2 && cs.textOverflow === "ellipsis" && !isContentSized(el.getBoundingClientRect().height - boxPadding(cs), lh)) return null;
+      if (lines < 2 && cs.textOverflow === "ellipsis" && !isContentSized(layoutHeight(/** @type {HTMLElement} */ (el)) - boxPadding(cs), lh)) return null;
       // A clamped block shows at most N lines however many the hidden text would wrap to.
       const clamp = parseInt(cs.getPropertyValue("-webkit-line-clamp"), 10);
       if (Number.isFinite(clamp) && clamp > 0) lines = Math.min(lines, clamp);
