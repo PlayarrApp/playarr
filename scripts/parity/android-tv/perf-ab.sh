@@ -81,7 +81,9 @@ for n in $(seq 1 "$iters"); do
   adb shell dumpsys gfxinfo $pkg reset >/dev/null
   press() { # one D-pad press, then drain the frame buffer
     key "$1"; sleep 0.45
-    adb shell dumpsys gfxinfo $pkg framestats | awk '/---PROFILEDATA---/ { on = !on; next } on && $1 ~ /^[0-9]+,/ && $1 !~ /^Flags/' >> "$frames"
+    adb shell dumpsys gfxinfo $pkg framestats | awk '/---PROFILEDATA---/ { on = !on; next } on && $1 ~ /^[0-9]+,/ && $1 !~ /^Flags/' | tee -a "$frames" > "$frames.press"
+    # PERF_PRESS_LOG=<file>: one line per press with the slowest frame (diagnostic, to find which action spikes)
+    [ -n "${PERF_PRESS_LOG:-}" ] && awk -F, -v k="$1" -v n="$n" '$1 == 0 && $18 > 0 { t = ($18 - $3) / 1e6; if (t > m) m = t; c++ } END { printf "iter %s %s max_ms %.0f frames %d\n", n, k, m, c }' "$frames.press" >> "$PERF_PRESS_LOG"
     adb shell dumpsys gfxinfo $pkg reset >/dev/null
   }
   seq_keys=(DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT
@@ -93,6 +95,11 @@ for n in $(seq 1 "$iters"); do
   for k in "${seq_keys[@]}"; do press "$k"; done      # 32 presses over Home rails
   # 1 + 16 + 1 + 32 = 50 presses (Select on play follows after a fresh launch).
   [ -n "${PERF_SHOT:-}" ] && adb exec-out screencap -p > "$PERF_SHOT-$variant-$n.png"
+  # PERF_MEM_DUMP=<prefix>: keep the full per-process meminfo (native heap, graphics, code) of the app and the WebView processes.
+  if [ -n "${PERF_MEM_DUMP:-}" ]; then
+    for p in $pkg com.google.android.webview:webview_service; do adb shell dumpsys meminfo "$p" > "$PERF_MEM_DUMP-$variant-$n-${p##*:}.txt" 2>&1 || true; done
+    adb shell dumpsys meminfo | awk '/^Total PSS by process:/ { on = 1; next } on && /^$/ { exit } on' > "$PERF_MEM_DUMP-$variant-$n-all.txt"
+  fi
   mem=$(adb shell dumpsys meminfo | awk '/^Total PSS by process:/ { on = 1; next } on && /^$/ { exit } on && ($0 ~ /app\.playarr\.mobile/ || $0 ~ /webview_service/ || $0 ~ /sandboxed_process/) { v = $1; gsub(/[,K]/, "", v); s += v } END { print s + 0 }')
   # Select to first frame on a fresh launch: Home opens on the first card (a movie), Select opens its detail page where the
   # play button is the default focus, Select again starts playback.

@@ -599,6 +599,19 @@ body[data-input-mode="remote"] .action-pill {
 }
 
 /*
+ * Android TV remote mode: no blur, backdrop blur or decorative shadow on anything that is not focused. The TV's GPU repaints
+ * these on every focus move (perf A/B, 1 Nov 2026: tail frame time fell from about 510 ms to about 330 ms). The parity and
+ * cross-engine capture modes already strip every one of these with !important, so the references are unchanged.
+ */
+html[data-platform="android-tv"] body[data-input-mode="remote"] :is(*, *::before, *::after):not(:focus, :focus-within, [data-remote-active]) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  filter: none;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+/*
  * Shell action column (owner ruling, 8 October 2026, Q1b): every page's side-panel and action pills (Filters, Create,
  * Calendar link, ...) live in one column owned by the app shell, at the right edge where the 30 September
  * `.tv-filter-launcher` sat (commit 54224f36), stacked vertically with Filters last. Pages never position them.

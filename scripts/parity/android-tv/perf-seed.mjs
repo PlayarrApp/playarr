@@ -14,4 +14,6 @@ try { name = (await api("/api/v1/users/profiles", s.access_token)).find((p) => p
 const js = `try{localStorage.setItem("playarr-theme","dark");localStorage.setItem("playarr:apiBaseUrl",${JSON.stringify(base)});` +
   `localStorage.setItem("playarr.profileSessions.v4",${JSON.stringify(JSON.stringify([{ profileKey: "perf", apiBaseUrl: base, userId: s.user_id, name, deviceId: device_id, session: { accessToken: s.access_token, refreshToken: s.refresh_token, tokenType: "Bearer", expiresAt: Date.now() + s.expires_in * 1000 } }]))});` +
   `localStorage.setItem("playarr.currentUserName",${JSON.stringify(name)});localStorage.setItem("playarr.activeProfile.v1",${JSON.stringify(JSON.stringify({ profileKey: "perf", apiBaseUrl: base, userId: s.user_id }))});}catch(e){}`;
-process.stdout.write(Buffer.from(js).toString("base64"));
+// PERF_EXTRA_JS_FILE: diagnostic JavaScript appended to the seed (for example to inject a style experiment). Not used by the A/B proper.
+const extra = process.env.PERF_EXTRA_JS_FILE ? (await import("node:fs")).readFileSync(process.env.PERF_EXTRA_JS_FILE, "utf8") : "";
+process.stdout.write(Buffer.from(js + extra).toString("base64"));
