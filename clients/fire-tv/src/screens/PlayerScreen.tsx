@@ -676,7 +676,8 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
             // Focus that moves while the controls are hidden is the engine walking on the revealing key: Play keeps it, as on the web.
             if (!controlsRef.current && control !== 'play') setTimeout(() => focusNode(playRef), 60);
             setFocusedControl(control);
-            reveal();
+            // Focus put back on Play while the controls are hidden must not raise them again (the next Back would only hide them once more); keys reveal on their own.
+            if (controlsRef.current) reveal();
           }}
           onTogglePlay={guarded(togglePlay)}
           onClose={guarded(() => void stop().then(() => onClose?.()))}
