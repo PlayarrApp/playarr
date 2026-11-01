@@ -93,6 +93,54 @@ public static class GradientPng
         return Encode(width, height, raw);
     }
 
+    /// <summary>
+    /// A horizontal CSS linear gradient (premultiplied stops, straight colour <paramref name="frost"/> at the given alphas) pre-composited over the opaque page
+    /// colour <paramref name="page"/>, rendered the way Chromium 151 draws it: the gradient value at each pixel centre, (x + 0.5 - origin) / width, is
+    /// composited in floating point and rounded to 8 bits with a 2 x 2 ordered dither. The dither was calibrated by capturing the same gradient over a flat
+    /// page in the headless Chromium the references use: the rounding threshold of the fractional part is 7/8, 1/8, 3/8, 5/8 for (x, y) parity (0,0), (1,0),
+    /// (0,1), (1,1) (the coarse levels of Skia's 8 x 8 matrix), matching 94 % of the channel values of that capture. The result is fully opaque, so it is only
+    /// valid where nothing but the flat page lies underneath. Columns run from <paramref name="firstColumn"/> to the right edge of a 1920 px wide design.
+    /// </summary>
+    public static byte[] MakeDitheredPanel(IReadOnlyList<(float At, float Alpha)> stops, (float R, float G, float B) frost, (int R, int G, int B) page, float origin, float width, int firstColumn, int height, int designWidth = 1920)
+    {
+        var w = designWidth - firstColumn;
+        var raw = new byte[(w * 4 + 1) * height];
+        float[,] threshold = { { 0.875f, 0.125f }, { 0.375f, 0.625f } };
+        var alphas = new double[w];
+        for (var i = 0; i < w; i++)
+        {
+            var t = (firstColumn + i + 0.5 - origin) / width;
+            alphas[i] = AlphaAt(stops, t);
+        }
+        for (var y = 0; y < height; y++)
+        {
+            var row = y * (w * 4 + 1);
+            for (var i = 0; i < w; i++)
+            {
+                var a = alphas[i]; var x = firstColumn + i;
+                var o = row + 1 + i * 4;
+                var th = threshold[y & 1, x & 1];
+                raw[o] = Dither(frost.R, page.R, a, th); raw[o + 1] = Dither(frost.G, page.G, a, th); raw[o + 2] = Dither(frost.B, page.B, a, th); raw[o + 3] = 255;
+            }
+        }
+        return Encode(w, height, raw);
+    }
+
+    private static byte Dither(double frost, int page, double a, float threshold)
+    {
+        var v = (frost * a + page / 255.0 * (1 - a)) * 255.0;
+        var floor = Math.Floor(v);
+        return (byte)Math.Clamp(floor + (v - floor >= threshold ? 1 : 0), 0, 255);
+    }
+
+    private static double AlphaAt(IReadOnlyList<(float At, float Alpha)> stops, double t)
+    {
+        if (t <= stops[0].At) return stops[0].Alpha;
+        for (var i = 1; i < stops.Count; i++)
+            if (t <= stops[i].At) return stops[i - 1].Alpha + (stops[i].Alpha - stops[i - 1].Alpha) * (t - stops[i - 1].At) / (stops[i].At - stops[i - 1].At);
+        return stops[^1].Alpha;
+    }
+
     internal static byte[] Encode(int w, int h, byte[] raw)
     {
         using var png = new MemoryStream();
