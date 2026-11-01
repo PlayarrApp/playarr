@@ -137,10 +137,13 @@ struct CalendarView: View {
             }
             .padding(.leading, 120)
             .padding(.trailing, 86 * scale)
-            // The month grid is the page's full-height flex child: its 29.8 pt head starts at 166.58 and the last row ends at 911.38
-            // of the 1024 pt web capture (head + five 143 pt rows); the other views keep the lane padding.
-            .padding(.top, (viewModel.mode == .month ? 166.58 : 171) * proxy.size.height / 1024)
-            .padding(.bottom, (viewModel.mode == .month ? 112.62 : 136) * proxy.size.height / 1024)
+            // The month grid is the page's full-height flex child (Calendar.css `.calendar-scroll`, flex 1 1 auto) inside
+            // `.page-shell-body` (global.css, `gap: 0.75rem`), which starts at the `.page-shell` padding-top
+            // clamp(104px, 15 * 1vh, 168px) and ends above its padding-bottom `--page-safe-bottom`
+            // (page-layout.css) clamp(92px, 11 * 1vh, 124px); `.calendar-header` is empty (its status span is absolute).
+            // Blink lays these out in 1/64 px LayoutUnits. The other views keep the lane padding.
+            .padding(.top, viewModel.mode == .month ? Self.layoutUnit(min(max(104, proxy.size.height * 0.15), 168)) + 12 : 171 * proxy.size.height / 1024)
+            .padding(.bottom, viewModel.mode == .month ? Self.layoutUnit(min(max(92, proxy.size.height * 0.11), 124)) : 136 * proxy.size.height / 1024)
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
 
             PlayarrBackButton(label: "Back to home", action: goHome).offset(x: 122 * scale, y: 55 * scale)
@@ -887,7 +890,8 @@ struct CalendarView: View {
         }
     }
 
-    /// Web tablet month grid (`.calendar-month`): a 29.8 pt weekday head (0.4rem padding around the 17 pt line) over equal rows;
+    /// Web tablet month grid (`.calendar-month`): a 30.78 pt weekday head (`.calendar-month-weekday` 0.4rem padding around the
+    /// 18 pt line, body `line-height: 1.5` at 0.75rem) over equal rows;
     /// every cell is a container with a 1 pt line border, entries are 44 pt buttons (dot, 12.48 pt label) and the day number
     /// sits in the 44 pt footer row.
     private var desktopMonthView: some View {
@@ -895,13 +899,13 @@ struct CalendarView: View {
             let days = viewModel.window.days
             let rows = stride(from: 0, to: days.count, by: 7).map { Array(days[$0..<min($0 + 7, days.count)]) }
             let groups = Dictionary(uniqueKeysWithValues: viewModel.dayGroups.map { ($0.day, $0) })
-            let headHeight: CGFloat = 29.8
+            let headHeight: CGFloat = Self.layoutUnit(6.4) * 2 + 18
             let columnWidth = proxy.size.width / 7
             let rowHeight = max(0, (proxy.size.height - headHeight) / CGFloat(max(rows.count, 1)))
             VStack(spacing: 0) {
                 HStack(spacing: 0) {
                     ForEach(rows.first ?? [], id: \.self) { day in
-                        WMText(weekdayHeading(day), 12, 400, color: WM.inkSoft, lh: 17, ls: 0.96)
+                        WMText(weekdayHeading(day), 12, 400, color: WM.inkSoft, lh: 18, ls: 0.96)
                             .frame(width: columnWidth, height: headHeight)
                     }
                 }
@@ -916,6 +920,9 @@ struct CalendarView: View {
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }
     }
+
+    /// Blink LayoutUnit: a length floored to 1/64 px.
+    private static func layoutUnit(_ value: CGFloat) -> CGFloat { (value * 64).rounded(.down) / 64 }
 
     private func tabletMonthCell(day: String, items: [CalendarItem], width: CGFloat, height: CGFloat) -> some View {
         let dayNumber = Int(day.suffix(2)) ?? 0
@@ -936,8 +943,7 @@ struct CalendarView: View {
                             Circle().fill(monthDotColor(item))
                                 .frame(width: 8.8, height: 8.8)
                                 .parityBox("container", background: monthDotColor(item), radius: 4.4)
-                            WMText(monthItemLabel(item), 12.48, 400, color: WM.ink, lh: 17)
-                                .offset(y: -0.98) // the glyph run sits just above the centre of its 15 pt line box
+                            WMText(monthItemLabel(item), 12.48, 400, color: WM.ink, lh: 15) // web 15 px line box: the floored half-leading puts the glyphs 1 px above its centre
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .padding(.horizontal, 5.6)

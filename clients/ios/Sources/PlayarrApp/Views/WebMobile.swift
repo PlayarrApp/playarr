@@ -108,7 +108,30 @@ enum WM {
     }
 }
 
-/// One line of text with a CSS-style line box (height) and letter spacing.
+/// The CSS line box of one line of Nunito Sans (`line-height: lh`), as Blink lays it out: the content area is the
+/// font's hhea ascent (1.011 em) and descent (0.353 em), each rounded to a whole CSS px, and the half-leading
+/// `(lh - (ascent + descent)) / 2` is floored (LayoutNG `CalculateLeadingSpace`, 1/64 px LayoutUnit) above the content area.
+enum WMLineBox {
+    static let ascentEm: CGFloat = 1.011
+    static let descentEm: CGFloat = 0.353
+
+    static func ascent(_ size: CGFloat) -> CGFloat { (ascentEm * size).rounded() }
+    static func descent(_ size: CGFloat) -> CGFloat { (descentEm * size).rounded() }
+
+    /// Distance from the top of the line box to the top of the content area.
+    static func contentTop(size: CGFloat, lineHeight: CGFloat) -> CGFloat {
+        let line = (lineHeight * 64).rounded(.down) / 64
+        return ((line - (ascent(size) + descent(size))) / 2).rounded(.down)
+    }
+
+    /// Distance from the top of the line box to the baseline.
+    static func baseline(size: CGFloat, lineHeight: CGFloat) -> CGFloat {
+        contentTop(size: size, lineHeight: lineHeight) + ascent(size)
+    }
+}
+
+/// One line of text with a CSS line box (height), laid out like Blink: the baseline sits at the line box top plus
+/// the floored half-leading plus the rounded hhea ascent (`WMLineBox`). The export reports the CSS content area.
 struct WMText: View {
     let text: String
     let size: CGFloat
@@ -143,8 +166,11 @@ struct WMText: View {
             .foregroundStyle(color)
             .lineLimit(1)
             .truncationMode(.tail)
-            .parityRenderedText(text, role: role, size: size, weight: weight, color: color)
-            .frame(height: lineHeight, alignment: .leading)
+            .parityRenderedText(text, role: role, size: size, weight: weight, color: color,
+                                cssBox: (WMLineBox.ascent(size), WMLineBox.descent(size)))
+            // SwiftUI puts the baseline one unrounded hhea ascent below the top of the view; move it to the CSS baseline.
+            .padding(.top, WMLineBox.baseline(size: size, lineHeight: lineHeight) - WMLineBox.ascentEm * size)
+            .frame(height: lineHeight, alignment: .topLeading)
             .accessibilityAddTraits(role == "heading" ? .isHeader : [])
     }
 }

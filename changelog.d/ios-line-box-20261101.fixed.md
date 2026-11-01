@@ -1,0 +1,1 @@
+- iOS text follows the CSS line box (rounded hhea ascent and descent, floored half-leading) in what it draws and exports; the iPad month grid padding is derived from the page shell CSS.

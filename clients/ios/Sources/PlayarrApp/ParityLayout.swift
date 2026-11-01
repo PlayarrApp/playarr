@@ -740,6 +740,8 @@ func parityHex(_ color: Color, _ environment: EnvironmentValues) -> String { Par
 /// One laid-out line of a text view: its glyph-run bounds and the source-text offsets of the characters it draws.
 struct ParityRenderedLine: Equatable {
     var rect: CGRect
+    /// Distance from the top of `rect` to the baseline the line is drawn on.
+    var ascent: CGFloat = 0
     var indices: [Int]
 }
 
@@ -752,7 +754,7 @@ struct ParityTextRenderer: TextRenderer {
     func draw(layout: Text.Layout, in context: inout GraphicsContext) {
         for line in layout { context.draw(line) }
         report(layout.map { line in
-            ParityRenderedLine(rect: line.typographicBounds.rect, indices: line.flatMap { $0.characterIndices.compactMap(parityOffset) })
+            ParityRenderedLine(rect: line.typographicBounds.rect, ascent: line.typographicBounds.ascent, indices: line.flatMap { $0.characterIndices.compactMap(parityOffset) })
         })
     }
 }
@@ -789,6 +791,8 @@ private struct ParityRenderedTextModifier: ViewModifier {
     let size: CGFloat
     let weight: Int
     let color: Color
+    /// The CSS content area (rounded hhea ascent and descent) of a text drawn with `WMLineBox`; nil exports the glyph-run bounds.
+    var cssBox: (ascent: CGFloat, descent: CGFloat)?
     @Environment(\.self) private var environment
     @State private var id = UUID()
     @State private var frame = CGRect.zero
@@ -826,7 +830,14 @@ private struct ParityRenderedTextModifier: ViewModifier {
         let runs = lines.enumerated().compactMap { index, line -> ParityLayoutRegistry.Item? in
             // The line rectangle is in the text view's own space and the frame origin is global (already transformed), so
             // the offset inside the view follows the ancestors' scale.
-            let rect = CGRect(x: frame.minX + line.rect.minX * factor, y: frame.minY + line.rect.minY * factor, width: line.rect.width * factor, height: line.rect.height * factor)
+            var rect = CGRect(x: frame.minX + line.rect.minX * factor, y: frame.minY + line.rect.minY * factor, width: line.rect.width * factor, height: line.rect.height * factor)
+            if let cssBox {
+                // The web reports the content area of the line: the rounded ascent above the baseline this line is drawn on
+                // and the rounded descent below it.
+                let baseline = frame.minY + (line.rect.minY + line.ascent) * factor
+                rect.origin.y = baseline - cssBox.ascent * factor
+                rect.size.height = (cssBox.ascent + cssBox.descent) * factor
+            }
             let background = environment.parityBackdrop.rgb(at: CGPoint(x: rect.midX, y: rect.midY), environment).hex
             guard rect.intersects(CGRect(origin: .zero, size: UIScreen.main.bounds.size)) else { return nil }
             let opacity = paint.effective(rect) ?? paint.opacity
@@ -953,10 +964,10 @@ extension View {
     }
 
     @ViewBuilder
-    func parityRenderedText(_ text: String, role: String, size: CGFloat, weight: Int, color: Color) -> some View {
+    func parityRenderedText(_ text: String, role: String, size: CGFloat, weight: Int, color: Color, cssBox: (ascent: CGFloat, descent: CGFloat)? = nil) -> some View {
         #if DEBUG
         if #available(iOS 18.0, *) {
-            modifier(ParityRenderedTextModifier(text: text, role: role, size: size, weight: weight, color: color))
+            modifier(ParityRenderedTextModifier(text: text, role: role, size: size, weight: weight, color: color, cssBox: cssBox))
         } else {
             self
         }
