@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -38,6 +39,40 @@ class LoadSecrets(unittest.TestCase):
         self.assertIn('"userId": "u1"', html)
         self.assertNotIn('"pw"', html)
         self.assertIn("playarr.profileSessions.v4", html)
+
+
+class UnchangedFrames(unittest.TestCase):
+    """A frame that says imageUnchanged stores the receiver's last picture again; with none stored the page is told to upload one."""
+
+    def post(self, body):
+        import threading
+        import urllib.request
+        from http.server import ThreadingHTTPServer
+        server = ThreadingHTTPServer(("127.0.0.1", 0), receiver.H)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            req = urllib.request.Request("http://127.0.0.1:%d/__mirror/frame" % server.server_port, json.dumps(body).encode(), {"Content-Type": "application/json"})
+            with urllib.request.urlopen(req) as r:
+                reply = json.loads(r.read())
+        finally:
+            server.shutdown()
+            server.server_close()
+        newest = sorted(receiver.FRAMES.glob("frame-*.json"))[-1]
+        return reply, json.loads(newest.read_text()), newest.with_suffix(".jpg")
+
+    def test_unchanged_frame_reuses_the_last_picture(self):
+        png = base64.b64encode(b"\x89PNG-test").decode()
+        with mock.patch.object(receiver.H, "_authed", lambda self: True), mock.patch.object(receiver, "identity_rejection", lambda *a, **k: "accepted"), mock.patch.object(receiver, "identity_allowed", lambda *a, **k: True):
+            receiver.LAST_IMAGE = None
+            reply, meta, _ = self.post({"identity": {}, "imageUnchanged": True})
+            self.assertEqual((reply.get("needImage"), meta["hasImage"]), (True, False))
+            time.sleep(0.01)
+            reply, meta, _ = self.post({"identity": {}, "image": "data:image/png;base64," + png})
+            self.assertEqual((reply.get("needImage"), meta["hasImage"]), (None, True))
+            time.sleep(0.01)
+            reply, meta, jpg = self.post({"identity": {}, "imageUnchanged": True})
+            self.assertEqual((reply.get("needImage"), meta["hasImage"]), (None, True))
+            self.assertEqual(jpg.read_bytes(), b"\x89PNG-test")
 
 
 if __name__ == "__main__":
