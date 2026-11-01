@@ -33,11 +33,21 @@ export function nextIntervalMs(now: number, lastActivityAt: number): number {
 }
 
 /**
- * Frames one page load may capture. Measured in headless Chromium: the renderer keeps about 15 MB of native memory per captured frame
- * until the page is reloaded (JS heap stays near 9 MB, so garbage collection never reacts); a TV with a fraction of that memory hangs.
- * A reload clears it. ?mirrorMaxFrames= overrides.
+ * Native memory one rendered frame leaves behind until the page is reloaded. JS heap stays near 9 MB, so garbage collection never reacts.
+ * Measured on 1 Nov 2026 with the active dwell (a key every 4th frame, 240 frames) in Chromium 111.0.5563.19 and 153: renderer RSS grew
+ * 3.8 GB over 183 renders on 111 (20.8 MB each) and 23 MB per render on 153. Blob-loaded SVG frames taint the canvas on both, so
+ * every render takes the data: URL path. Rounded up to 25.
  */
-export const DEFAULT_MAX_FRAMES = 120;
+export const NATIVE_MB_PER_RENDER = 25;
+/** Native memory (MB) a page load may add before it stops mirroring; the peak the active dwell was measured to reach and survive. */
+export const SAFE_NATIVE_CEILING_MB = 1000;
+
+/** Renders one page load may do: the ceiling divided by the per-render cost. ?mirrorMaxFrames= overrides. */
+export function renderBudget(ceilingMb: number = SAFE_NATIVE_CEILING_MB, perRenderMb: number = NATIVE_MB_PER_RENDER): number {
+  return Math.max(1, Math.floor(ceilingMb / perRenderMb));
+}
+
+export const DEFAULT_MAX_FRAMES = renderBudget();
 
 export function frameBudgetSpent(captured: number, max: number): boolean {
   return captured >= max;
