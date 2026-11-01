@@ -250,40 +250,29 @@ fn rgba(c: &gdk::RGBA) -> [f32; 4] {
     [c.red(), c.green(), c.blue(), c.alpha()]
 }
 
-/// Pango units rounded to whole logical px (half up), still in Pango units.
-fn round_px(v: i32) -> i32 {
-    let u = pango::SCALE;
-    (v + u / 2).div_euclid(u) * u
-}
-
 /// A background colour as the layout document defines it: sRGB channels in 0..255, every ancestor fill composited over white.
 type Bg = [f64; 3];
 
-/// One composite step with the layout document's own arithmetic (docs/parity/LAYOUT.md: the colour behind and including the
-/// element, ancestors composited over white, rounded once to 8 bits at the end). The fill's channels are the 8-bit values it
-/// was declared with and its alpha is the declared one, so a fill of 70 % reads 27.5 or 27.4999 exactly where the web's
-/// double-precision composite does; the web rounds that tie by the same arithmetic.
+/// One composite step over the colour behind (every ancestor fill composited over white, in 0..255). The fill's channels are
+/// the 8-bit values it was declared with and its alpha is the declared one.
 fn over(top: [f32; 4], under: Bg) -> Bg {
     let a = (f64::from(top[3]) * 1000.0).round() / 1000.0;
-    // A translucent fill is declared with `color-mix(in srgb, ...)` in the web CSS, and the browser serialises such a colour with six decimals per channel (33 reads as 0.129412), which the document's arithmetic then multiplies back by 255.
     let ch = |v: f32| {
         let t = f64::from(v) * 255.0;
-        if (t - t.round()).abs() >= 0.01 {
-            t
-        } else if a < 1.0 {
-            (t.round() / 255.0 * 1.0e6).round() / 1.0e6 * 255.0
-        } else {
+        if (t - t.round()).abs() < 0.01 {
             t.round()
+        } else {
+            t
         }
     };
-    let total = a + (1.0 - a);
-    let mix = |i: usize| (ch(top[i]) * a + under[i] * (1.0 - a)) / total;
+    let mix = |i: usize| ch(top[i]) * a + under[i] * (1.0 - a);
     [mix(0), mix(1), mix(2)]
 }
 
-/// The document's `#rrggbb` of a background (a round half up, as `Math.round`).
+/// The `#rrggbb` of a background, rounded once to 8 bits. A channel exactly between two values reads as the lower one, which
+/// is what GTK's renderer draws for it (surface #211d21 at 70 % over #1b181b is drawn #1f1b1f, its green 27.5 drawing as 27).
 fn hex_bg(c: Bg) -> String {
-    let b = |v: f64| (v + 0.5).floor().clamp(0.0, 255.0) as u8;
+    let b = |v: f64| (v - 0.5 - 1.0e-6).ceil().clamp(0.0, 255.0) as u8;
     format!("#{:02x}{:02x}{:02x}", b(c[0]), b(c[1]), b(c[2]))
 }
 
@@ -546,12 +535,6 @@ impl Walk<'_> {
             // One record per shaped style run (a run holds one font and one colour); neighbours on a line with the same
             // colour are one record. Text is each run's own, the ellipsis run reading as the ellipsis.
             let mut recs: Vec<(Rect, String, [f32; 4], f32)> = Vec::new();
-            // A text box is the CSS content area of the element's own (first available) font: its ascent and descent
-            // around the baseline, whichever face draws a glyph. The web sizes the box of a glyph that comes from a
-            // fallback face (an arrow, a play triangle) this way; Pango's run rectangle carries the fallback face's smaller
-            // ascent and descent instead, which is the named font difference.
-            let ctx = layout.context();
-            let primary = ctx.metrics(ctx.font_description().as_ref(), None);
             let mut it = layout.iter();
             loop {
                 if let Some(run) = it.run_readonly() {
@@ -580,22 +563,12 @@ impl Walk<'_> {
                         }
                     }
                     // The label's real transform to the root (an ancestor's CSS scale is part of it), applied to the run's
-                    // logical rectangle exactly as Pango laid it out (a fallback face keeps its own extents).
-                    let (top, height) =
-                        if item.analysis().flags() & PANGO_FLAG_IS_ELLIPSIS != 0 || primary.height() <= 0 {
-                            (lg.y(), lg.height())
-                        } else {
-                            // Blink rounds the font's ascent and descent to whole px separately (SimpleFontData), so the
-                            // content area is round(ascent) + round(descent), not their sum.
-                            let base = it.baseline();
-                            let (asc, desc) = (round_px(primary.ascent()), round_px(primary.descent()));
-                            (base - asc, asc + desc)
-                        };
+                    // logical rectangle exactly as Pango measured it; the run's own vertical extent is exported as it is.
                     let local = graphene::Rect::new(
                         ox as f32 + x0 as f32 / s,
-                        oy as f32 + top as f32 / s,
+                        oy as f32 + lg.y() as f32 / s,
                         (x1 - x0) as f32 / s,
-                        height as f32 / s,
+                        lg.height() as f32 / s,
                     );
                     let r = match w.compute_transform(self.root) {
                         Some(t) => to_root(&t, &local),
@@ -999,9 +972,8 @@ mod tests {
     use gtk4::AccessibleRole as R;
 
     #[test]
-    fn a_translucent_fill_composites_with_the_documents_arithmetic() {
-        // Surface #211d21 at 70 % over the page #1b181b: the green channel is 27.5 in exact arithmetic and 27.4999 in the
-        // web's double precision with the six-decimal colour, which is the web's #1f1b1f.
+    fn a_translucent_fill_composites_as_the_renderer_draws_it() {
+        // Surface #211d21 at 70 % over the page #1b181b: the green channel is exactly 27.5, which GTK draws as 27 (#1f1b1f).
         let under = [27.0, 24.0, 27.0];
         let fill = [33.0 / 255.0, 29.0 / 255.0, 33.0 / 255.0, 0.7];
         assert_eq!(hex_bg(over(fill, under)), "#1f1b1f");
