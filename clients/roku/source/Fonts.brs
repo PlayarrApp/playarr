@@ -281,7 +281,8 @@ function PlayarrSymbolWeight(ch as String, weight as Integer) as Integer
     return 400
 end function
 
-' The height of a line of Nunito Sans text on the web: Blink rounds the font's ascent (1.011 em) and descent (0.353 em, the hhea values
+' CSS layout input only (where a text node is drawn): the height Blink gives a line of Nunito Sans. It is never assigned to a Label and the
+' exporter does not use it; exported text boxes are the bounds the Roku lays out. Blink rounds the font's ascent (1.011 em) and descent (0.353 em, the hhea values
 ' of the variable font; the bundled instances keep the ascent and carry banded descents) to whole pixels and adds them.
 function PlayarrContentHeight(size as Float) as Float
     return Int(1.011 * size + 0.5) + Int(0.353 * size + 0.5)
