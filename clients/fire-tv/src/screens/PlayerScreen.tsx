@@ -68,6 +68,7 @@ import {ensureFireTvAccessToken} from '../auth/session';
 import {useAppForeground, useRemoteKey} from '../platform';
 import {TvFocusScope, focusNode} from '../platform/focus';
 import {reportQuery} from '../debug/parityControl';
+import {audioCodecName, audioTrackLabel} from '../lib/trackLabels';
 import {useBackLayer} from '../navigation/backPolicy';
 import {DarkSurface} from '../theme/ThemeProvider';
 import {PlayerChrome, type ChromeControl} from '../player/PlayerChrome';
@@ -570,8 +571,14 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
     },
     [queue, show],
   );
-  const audioTracks = engineState.audioTracks;
-  const audioLabel = audioTracks.length > 1 ? audioTracks.find((track) => track.id === engineState.selectedAudioTrackId)?.label ?? audioTracks[0].label : null;
+  // As the web does for HLS: the audio list is the one the server negotiated (source tracks plus any dub), labelled the web's way.
+  const sourceAudio = negotiation.status === 'ready' ? negotiation.data.audio_tracks : [];
+  const audioTracks: {id: string; label: string; language?: string | null}[] =
+    sourceAudio.length > 0
+      ? sourceAudio.map((track) => ({id: track.id, label: audioTrackLabel({label: track.label, language: track.language, codec: track.codec_label?.trim() || audioCodecName(track.codec), channels: track.channels}), language: track.language}))
+      : engineState.audioTracks;
+  const selectedAudioId = sourceAudio.length > 0 ? (negotiation.status === 'ready' ? negotiation.data.selected_audio_track_id : null) ?? sourceAudio[0].id : engineState.selectedAudioTrackId;
+  const audioLabel = audioTracks.length > 0 ? audioTracks.find((track) => track.id === selectedAudioId)?.label ?? audioTracks[0].label : null;
   const stepVolume = useCallback(
     (direction: 1 | -1) => {
       engine.setMuted(false);
@@ -702,11 +709,11 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
             <SheetOption
               key={track.id}
               label={track.label}
-              detail={track.language}
-              selected={engineState.selectedAudioTrackId === track.id}
-              hasTVPreferredFocus={engineState.selectedAudioTrackId === track.id}
+              detail={track.language ?? undefined}
+              selected={selectedAudioId === track.id}
+              hasTVPreferredFocus={selectedAudioId === track.id}
               onPress={() => {
-                void engine.selectAudioTrack(track.id);
+                if (engineState.audioTracks.some((candidate) => candidate.id === track.id)) void engine.selectAudioTrack(track.id);
                 closeMenu();
               }}
             />

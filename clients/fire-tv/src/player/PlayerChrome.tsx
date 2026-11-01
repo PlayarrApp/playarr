@@ -120,8 +120,8 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
           </T>
         </View>
 
-        {/* The group at the web's positions (64 px buttons 77.59 px apart). */}
-        <RoundButton icon={props.muted || props.volume === 0 ? 'volumeOff' : 'volume'} label={props.muted ? 'Unmute' : 'Mute'} web={props.muted ? 'Unmute' : 'Mute'} size={64} x={374.77} y={958} iconSize={20} control="mute" {...props} onPress={props.onToggleMute} bare />
+        {/* The group at the web's positions (64 px buttons 77.59 px apart). Mute, the volume slider and Fullscreen are drawn as in the web's xbox layout reference, but the web D-pad session (Android TV user agent, usesSystemVolumeOnly) hides them from the control row because the remote owns the volume, as the Fire TV remote does: they are drawn and never focused. */}
+        <RoundButton icon={props.muted || props.volume === 0 ? 'volumeOff' : 'volume'} label={props.muted ? 'Unmute' : 'Mute'} web={props.muted ? 'Unmute' : 'Mute'} size={64} x={374.77} y={958} iconSize={20} control="mute" {...props} onPress={props.onToggleMute} bare focusable={false} />
         <VolumeSlider {...props} />
         <RoundButton icon="audio" label={`Audio: ${props.audioLabel ?? 'Unavailable'}`} size={64} x={1223.98} y={958} iconSize={20} control="audio" {...props} onPress={props.onOpenAudio} bare focusable={props.audioLabel !== null} dim={props.audioLabel === null} />
         <RoundButton icon="subtitles" label="Subtitles" web={`Subtitles: ${props.subtitlesOn ? 'On' : 'Off'}`} size={64} x={1301.58} y={958} iconSize={20} control="subtitles" focusable={props.hasSubtitles} {...props} nodeRef={props.subtitlesRef} onPress={props.onOpenSubtitles} dim={!props.subtitlesOn} />
@@ -129,7 +129,7 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
         <QualityPill {...props} />
         <RoundButton icon="info" label="Info and playback health" size={64} x={1630.81} y={958} iconSize={20} control="info" {...props} onPress={props.onOpenInfo} bare />
         <RoundButton icon="cast" label="Play on another device" size={64} x={1708.41} y={958} iconSize={20} control="cast" {...props} onPress={props.onOpenCast} bare />
-        <RoundButton icon="fullscreen" label="Enter fullscreen" size={64} x={1786} y={958} iconSize={20} control="fullscreen" {...props} onPress={props.onToggleFullscreen} bare />
+        <RoundButton icon="fullscreen" label="Enter fullscreen" size={64} x={1786} y={958} iconSize={20} control="fullscreen" {...props} onPress={props.onToggleFullscreen} bare focusable={false} />
       </Animated.View>
     </View>
   );
@@ -138,6 +138,23 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
 function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>; icon: IconName; label: string; web?: string; size: number; x?: number; y?: number; iconSize?: number; control: ChromeControl; onPress: () => void; filled?: boolean; dim?: boolean; inline?: boolean; focusable?: boolean; bare?: boolean}): React.ReactElement {
   const {colour} = useTheme();
   const focused = props.focused === props.control;
+  const innerStyle = {
+    ...(props.inline ? {marginHorizontal: u(15.5)} : {position: 'absolute' as const, left: u(props.x ?? 0), top: u(props.y ?? 0)}),
+    width: u(props.size),
+    height: u(props.size),
+    borderRadius: u(props.size / 2),
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    backgroundColor: props.filled ? 'rgba(255,255,255,0.14)' : props.inline || props.bare ? 'transparent' : mix('#000000', 0.42),
+  };
+  // The web skips a disabled button when it walks the control row (rowControls filters `disabled`): it is drawn, never focused.
+  if (props.focusable === false) {
+    return (
+      <View accessibilityRole="button" accessibilityLabel={props.label} {...lx('button', props.web ?? props.label, 50)} style={innerStyle}>
+        <Icon name={props.icon} size={u(props.iconSize ?? 16)} color={props.dim ? colour.inkMuted : '#ffffff'} strokeWidth={2} />
+      </View>
+    );
+  }
   return (
     <Pressable
       ref={props.nodeRef}
@@ -145,22 +162,13 @@ function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>
       accessibilityLabel={props.label}
       {...lx('button', props.web ?? props.label, 50)}
       focusable={props.focusable}
-      isTVSelectable={props.focusable !== false}
       hasTVPreferredFocus={props.control === 'play'}
       onFocus={() => {
         reportFocus(props.web ?? props.label);
         props.onFocusControl(props.control);
       }}
       onPress={props.onPress}
-      style={{
-        ...(props.inline ? {marginHorizontal: u(15.5)} : {position: 'absolute', left: u(props.x ?? 0), top: u(props.y ?? 0)}),
-        width: u(props.size),
-        height: u(props.size),
-        borderRadius: u(props.size / 2),
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: props.filled ? 'rgba(255,255,255,0.14)' : props.inline || props.bare ? 'transparent' : mix('#000000', 0.42),
-      }}
+      style={innerStyle}
     >
       <Icon name={props.icon} size={u(props.iconSize ?? 16)} color={props.dim ? colour.inkMuted : '#ffffff'} strokeWidth={2} />
       {focused ? <FocusRing /> : null}
@@ -250,25 +258,17 @@ function VolumeSlider(props: PlayerChromeProps): React.ReactElement {
   const focused = props.focused === 'volume';
   const level = props.muted ? 0 : props.volume;
   return (
-    <Pressable
+    <View
       accessibilityRole="adjustable"
       accessibilityLabel="Volume"
-      focusable={false}
-      isTVSelectable={false}
       accessibilityValue={{min: 0, max: 100, now: Math.round(level * 100)}}
       {...lx('textbox', 'Volume')}
-      onFocus={() => {
-        reportFocus('Volume');
-        props.onFocusControl('volume');
-      }}
-      onPress={props.onToggleMute}
       style={{position: 'absolute', left: u(448.77), top: u(968), width: u(130), height: u(44), justifyContent: 'center'}}
     >
       <View style={{height: u(focused ? 6 : 4), borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.22)', overflow: 'hidden'}}>
         <View style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${level * 100}%`, backgroundColor: '#ffffff'}} />
       </View>
-      {focused ? <FocusRing /> : null}
-    </Pressable>
+    </View>
   );
 }
 
