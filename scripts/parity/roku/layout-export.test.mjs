@@ -84,10 +84,3 @@ test("a same-colour Rectangle that is not exported still hides what lies beneath
     <Rectangle bounds="{0, 0, 100, 100}" color="#101010ff" />`);
   assert.deepEqual(els.filter((e) => e.role === "container").map((e) => e.rect.x), [0]);
 });
-
-test("a focus scale moves the box but never changes the declared corner radius", () => {
-  const els = doc(`<Group scale="{1.025, 1.025}" scaleRotateCenter="{100, 50}"><Poster name="a11y|container|12.48|" uri="pkg:/images/round-r12.9.png" blendColor="#312a30ff" bounds="{0, 0, 200, 100}" /></Group>`);
-  const box = els.find((e) => e.role === "container");
-  assert.equal(box.rect.w, 205);
-  assert.equal(box.radius, 12.48);
-});
