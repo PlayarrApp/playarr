@@ -60,6 +60,8 @@ struct LibraryView: View {
         Group {
             if viewModel.isSearchMode && UIDevice.current.userInterfaceIdiom == .phone {
                 phoneSearch
+            } else if viewModel.isSearchMode {
+                padSearch
             } else {
             switch viewModel.loadState {
             case .idle, .loading:
@@ -161,6 +163,7 @@ struct LibraryView: View {
                         TextField("", text: $viewModel.searchText, prompt: Text("Search").foregroundColor(WM.muted))
                             .font(WM.font(16, 400))
                             .foregroundStyle(WM.ink)
+                            .parityToggle()
                             .accessibilityAddTraits(.isSearchField)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
@@ -192,7 +195,7 @@ struct LibraryView: View {
                         .background(WM.chip.opacity(0.66), in: Capsule())
                         .wmChipShadow()
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                     .offset(x: 16, y: 150)
 
                     if filtersOpen {
@@ -210,7 +213,7 @@ struct LibraryView: View {
                                     in: Capsule()
                                 )
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         .offset(x: chip.x, y: active ? 183 : 184)
                     }
                     }
@@ -234,7 +237,7 @@ struct LibraryView: View {
                                 } label: {
                                     WMSearchCard(work: work, apiClient: apiClient, focused: focusedWork.map { $0 == work.id } ?? false)
                                 }
-                                .buttonStyle(.plain)
+                                .parityButtonStyle(.plain)
                                 .focusable()
                                 .focused($focusedWork, equals: work.id)
                                 .focusEffectDisabled()
@@ -268,6 +271,72 @@ struct LibraryView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .ignoresSafeArea(edges: .vertical)
+        .parityFill(WM.page) // the page fill this screen draws first (`WM.page` at the bottom of the stack)
+        .webGutter()
+    }
+
+    /// Web tablet search (measured at 1366 pt): Back circle, title at x 181, a 423 x 68 pill with the search icon and
+    /// placeholder, a two-line hint, the Filters tile at the right edge and, in the right-hand pane, the results or the
+    /// "Start typing to search." empty state (a 109 pt circle with the zoom-out glyph).
+    private var padSearch: some View {
+        GeometryReader { proxy in
+            let s = proxy.size.width / 1366
+            ZStack(alignment: .topLeading) {
+                WMPageFill()
+                if viewModel.works.isEmpty || viewModel.searchText.isEmpty {
+                    Circle()
+                        .fill(WM.chip)
+                        .overlay(Circle().stroke(PlayarrStyle.line, lineWidth: 1))
+                        .overlay(Image(systemName: "minus.magnifyingglass").font(.system(size: 30, weight: .light)).foregroundStyle(WM.pink).parityToggle())
+                        .frame(width: 109.27 * s, height: 109.27 * s)
+                        .offset(x: 783.25 * s, y: 303.55 * s)
+                    WMText("Start typing to search.", 12.02, 600, lh: 16)
+                        .offset(x: 925.3 * s, y: 350.17 * s)
+                } else {
+                    libraryContent
+                        .padding(.leading, 519 * s)
+                        .padding(.top, 140 * s)
+                }
+                PlayarrBackButton(action: goHome).offset(x: 120.84 * s, y: 53.23 * s)
+                WMText("Search", 23.91 * s, 580, lh: 32, ls: -1, role: "heading")
+                    .offset(x: 181.23 * s, y: 59.23 * s)
+                HStack(spacing: 9.55 * s) {
+                    WMIconView(icon: .search, color: WM.muted, size: 19.11)
+                    TextField("", text: $viewModel.searchText, prompt: Text("Search your libraries and playlists").foregroundColor(WM.muted))
+                        .font(WM.font(12.57, 400))
+                        .foregroundStyle(WM.ink)
+                        .parityToggle()
+                        .accessibilityAddTraits(.isSearchField)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.search)
+                        .accessibilityIdentifier("search-field")
+                        .onSubmit { Task { await viewModel.load() } }
+                        .onChange(of: viewModel.searchText) { _, value in
+                            if value.isEmpty { Task { await viewModel.load() } }
+                        }
+                }
+                .padding(.leading, 20.11 * s)
+                .padding(.trailing, 16 * s)
+                .frame(width: 423.45 * s, height: 68.3 * s)
+                .background(WM.chip, in: Capsule())
+                .overlay(Capsule().stroke(PlayarrStyle.line, lineWidth: 1))
+                .offset(x: 120.84 * s, y: 163.83 * s)
+                Text("Find any available movie, series, artist or playlist.")
+                    .wm(9.92, 400, color: WM.muted)
+                    .lineSpacing(5)
+                    .frame(width: 190 * s, alignment: .leading)
+                    .offset(x: 120.84 * s, y: 283.31 * s)
+                HStack {
+                    Spacer()
+                    PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3") { showingFilters = true }
+                }
+                .padding(.trailing, 8.9 * s).offset(y: 143.36 * s)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
+        }
+        .ignoresSafeArea(edges: .vertical)
+        .parityFill(PlayarrStyle.surface)
         .webGutter()
     }
 
@@ -328,7 +397,7 @@ struct LibraryView: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        .background(PlayarrStyle.surface.ignoresSafeArea())
+        .background(WMPageFill())
         .parityFill(PlayarrStyle.surface)
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
@@ -458,7 +527,7 @@ struct LibraryView: View {
                         WMLibraryCard(work: work, apiClient: apiClient, focused: keyIndex.map { $0 == index } ?? (focusedWork.map { $0 == work.id } ?? phoneGridFocused(index: index)), cover: viewModel.viewMode == .cover)
                     }
                     .id(work.id)
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                     .accessibilityLabel("Open \(work.title)")
                     .accessibilityAddTraits(.isLink)
                     .focusable()
@@ -562,7 +631,7 @@ struct LibraryView: View {
                                         .rotation3DEffect(.degrees(index.isMultiple(of: 2) ? 7 : -7), axis: (x: 0, y: 1, z: 0))
                                         .shadow(color: .black.opacity(0.34), radius: 18, y: 10)
                                 }
-                                .buttonStyle(.plain)
+                                .parityButtonStyle(.plain)
                                 .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
                                 .task { if work.id == viewModel.works.last?.id { await viewModel.loadMore() } }
                             }
@@ -587,7 +656,7 @@ struct LibraryView: View {
                         } label: {
                             playlistSearchCard(playlist, width: cardWidth)
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                     }
                     ForEach(viewModel.works) { work in
                         NavigationLink {
@@ -626,7 +695,7 @@ struct LibraryView: View {
                                 )
                             }
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                         .accessibilityLabel("Open \(work.title)")
                         .accessibilityAddTraits(.isLink)
                         .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
@@ -820,7 +889,7 @@ struct LibraryView: View {
                     Image(systemName: "line.3.horizontal.decrease.circle")
                         .frame(width: 42, height: 42)
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 .foregroundStyle(PlayarrStyle.inkSoft)
             } else {
                 PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3", iconOnly: phone) { showingFilters = true }

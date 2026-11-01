@@ -28,11 +28,6 @@ internal static class Sem
     public static T Overlay<T>(T v) where T : View { Overlays.Add(v, v); return v; }
     internal static bool IsOverlay(View v) => Overlays.TryGetValue(v, out _);
 
-    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, object> Mixes = new();
-    /// <summary>A fill the web declares as <c>color-mix(in srgb, X p%, transparent)</c>: the browser serialises that as color(srgb r g b / a) with channels at 6 decimals, not as 8-bit rgba().</summary>
-    public static T ColorMix<T>(T v) where T : View { Mixes.AddOrUpdate(v, v); return v; }
-    internal static bool IsColorMix(View v) => Mixes.TryGetValue(v, out _);
-
     public static T Tag<T>(T v, string role, string? name = null) where T : View
     {
         v.AccessibilityRole = Native.TryGetValue(role, out var native) ? native : throw new ArgumentException("no native role for " + role);
@@ -159,14 +154,10 @@ internal static class LayoutExport
 
     private static string Q(string s) => Newtonsoft.Json.JsonConvert.ToString(s);
 
-    // ts: the product of the CSS transforms (focus and active scale on plain views) above; a TextLabel's own 1/TextScale is a drawing detail, not a transform. The web reports border-radius as declared (pre-transform) but caps it at half the short side of the transformed box, so only the declared part is taken out of the transforms.
     // vx, vy: screen top-left of the parent; sx, sy: its accumulated scale; bg: the real backgrounds composited so far (over the window colour); op: accumulated opacity; clip: the visible area left by ancestors that clip their children
-    // the web reports a declared radius before the transforms, but a radius that reaches half the short side (circle, pill, percentage) is capped on the transformed box
-    private static float CapRadius(float drawn, float ts, float w, float h)
-    {
-        var half = Math.Min(w, h) / 2f;
-        return drawn >= half - 0.01f ? half : Math.Min(drawn / ts, half);
-    }
+    // ts: the product of the CSS transforms (focus and active scale on plain views) above; exported rects and radii carry them, as drawn
+    /// <summary>The radius the view draws: its own CornerRadius times its real accumulated scale, never more than half the short side of the drawn box (the renderer clamps the same way).</summary>
+    private static float DrawnRadius(float drawn, float w, float h) => Math.Min(drawn, Math.Min(w, h) / 2f);
 
     private static void Walk(Ctx ctx, Container parent, float vx, float vy, float sx, float sy, (double R, double G, double B) bg, float op, RectF clip, float ts)
     {
@@ -192,7 +183,7 @@ internal static class LayoutExport
                 // a label that draws its own pill (fill, border, rounded corners) is the web span: its fill is the run's background and its corner radius the run's radius
                 var own = label.BackgroundColor; var ownFill = own.A > 0.02f;
                 var runBg = bg; if (ownFill) runBg = Over(bg, own);
-                var runRadius = ownFill || label.BorderlineWidth > 0 ? CapRadius(label.CornerRadius.X * csx, cts, w, h) : 0;
+                var runRadius = ownFill || label.BorderlineWidth > 0 ? DrawnRadius(label.CornerRadius.X * csx, w, h) : 0;
                 var pad = label.Padding; // TextGeometry is relative to the text area, which the label's padding insets
                 var runs = TextRuns(label, m).Select(run => (run.Text, R: new RectF(cx + (run.X + pad.Start) * csx, cy + (run.Y + pad.Top) * csy, run.W * csx, run.H * csy))).Where(r => r.R.W > 0 && r.R.H > 0).ToList();
                 foreach (var (runText, r) in runs)
@@ -209,16 +200,14 @@ internal static class LayoutExport
             var border = child is not ImageView && child.BorderlineWidth > 0 && child.BorderlineColor.A > 0.02f;
             var shadow = child is not ImageView && child.BoxShadow is not null;
             (double R, double G, double B) cbg = bg;
-            if (fills) cbg = Over(bg, bc, Sem.IsColorMix(child));
-            var visible = w > 1 && h > 1 && box.Overlaps(clip);
-            var radius = CapRadius(child.CornerRadius.X * csx, cts, w, h);
+            if (fills) cbg = Over(bg, bc);
+            var visible = w >= 1 && h >= 1 && box.Overlaps(clip); // a drawn one-pixel rule is visible; only a view smaller than a pixel is not (the web export measures the same)
+            var radius = DrawnRadius(child.CornerRadius.X * csx, w, h);
             if (visible)
             {
                 // a section whose top edge is drawn as a hairline child (a top border) is a painted container
                 var hairline = role == "container" && child.Children.OfType<View>().Any(c => c.PositionY < 1 && c.Size.Height <= 1.5f && c.Size.Width >= size.Width * 0.95f && c.BackgroundColor.A > 0.02f);
-                // a shadow-only helper that sits behind a sibling of the same box is that sibling's second shadow layer (NUI draws one BoxShadow per view, a CSS box-shadow list has two): the sibling is the element
-                var shadowLayer = shadow && !fills && !border && !hairline && parent.Children.OfType<View>().Any(o => !ReferenceEquals(o, child) && o.PositionX == child.PositionX && o.PositionY == child.PositionY && o.Size.Width == size.Width && o.Size.Height == size.Height);
-                var painted = (fills || border || shadow || hairline) && !shadowLayer;
+                var painted = fills || border || shadow || hairline; // a shadow-only helper is a candidate like any painted view: the toggle-and-diff on the real screen decides whether it shows
                 var control = role is not null and not ("container" or "none" or "text" or "img");
                 if (child is ImageView)
                     ctx.Nodes.Add(new Node(role == "video" ? name ?? "" : "", role is null or "none" ? "image" : role, cx, cy, w, h, null, Hex255(bg), null, null, radius, cop, id, role == "container" && Sem.IsOverlay(child)));
@@ -246,28 +235,22 @@ internal static class LayoutExport
             if (li < 0) lines.Add((y, y + h, x, x + w, i, i));
             else { var l = lines[li]; lines[li] = (Math.Min(l.Top, y), Math.Max(l.Bottom, y + h), Math.Min(l.L, x), Math.Max(l.R, x + w), l.First, i); }
         }
-        // The box of a run is the browser's content area: ascent and descent each rounded to a whole CSS px (Chrome SimpleFontData), hung from the baseline.
-        // NUI rounds the same two metrics at the drawn pixel size (TextScale times the CSS size), so its glyph box is taller by up to a quarter px each side.
-        // The baseline is the measured one: the laid-out glyph top plus the ascent FontClient reports for the drawn size. Nothing here is per text or per size.
-        var k = label.PixelSize / meta.Size; var fam = meta.Family ?? Ui.Font;
-        var drawn = Ui.FontAscentDescent(meta.Size, meta.Weight, fam, label.PixelSize);
-        var design = Ui.FontAscentDescent(meta.Size, meta.Weight, fam, 500f); // the face's ascent and descent per px at a size where FreeType's whole-px rounding no longer matters
-        var ascCss = (float)Math.Round(design.Asc / 500f * meta.Size); var descCss = (float)Math.Round(-design.Desc / 500f * meta.Size);
+        // The box of a run is what the label's own text layout reports: the union of its glyphs' positions and sizes (TextGeometry), top to bottom, from the faces actually shaped (fallback faces included).
         foreach (var l in lines.OrderBy(l => l.Top))
-        {
-            var baseline = l.Top + drawn.Asc;
-            yield return (System.Text.RegularExpressions.Regex.Replace(text[l.First..(l.Last + 1)], @"\s+", " ").Trim(), l.L, baseline - ascCss * k, l.R - l.L, (ascCss + descCss) * k);
-        }
+        // The web dump (scripts/parity/layout-dump.mjs, w: x.l.right - x.l.left - spacing) takes the trailing letter-spacing of the last character off the run edge, so the run is its glyph advances plus one spacing
+        // between characters; the glyph union of the label stops at the last advance, which is the same edge, and nothing is added to it.
+            yield return (System.Text.RegularExpressions.Regex.Replace(text[l.First..(l.Last + 1)], @"\s+", " ").Trim(), l.L, l.Top, l.R - l.L, l.Bottom - l.Top);
     }
 
     /// <summary>
     /// A fill with alpha over the backdrop, in the web exporter's arithmetic (layout-dump.mjs over): doubles on the 0..255 scale and the CSS alpha (a
     /// float 0.7f must not become 0.699999988, which tips a half-way channel the other way). Hex255 rounds like the web's hex2.
     /// </summary>
-    private static (double R, double G, double B) Over((double R, double G, double B) bg, Color c, bool mix = false)
+    private static (double R, double G, double B) Over((double R, double G, double B) bg, Color c)
     {
         double a = Math.Round(c.A, 3);
-        double Ch(double back, double top) => ((mix ? Math.Round((double)top, 6) * 255.0 : Math.Floor(top * 255.0 + 0.5)) * a + back * (1 - a)) / (a + 1 * (1 - a));
+        // a translucent mix reaches the dumper as a computed color(srgb r g b / a) whose channels are serialised with six decimals, so a channel that sits on a half-way tie lands a hair either side of it
+        double Ch(double back, double top) { var b = Math.Floor(top * 255.0 + 0.5); if (a < 1) b = Math.Round(b / 255.0, 6) * 255.0; return (b * a + back * (1 - a)) / (a + 1 * (1 - a)); }
         return (Ch(bg.R, c.R), Ch(bg.G, c.G), Ch(bg.B, c.B));
     }
 

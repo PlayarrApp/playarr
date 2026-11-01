@@ -1,0 +1,1 @@
+- iOS palette tokens use the web's exact bytes (n / 255) so the parity backdrop arithmetic composites the nav fill to the web colour.

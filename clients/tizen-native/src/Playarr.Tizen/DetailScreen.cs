@@ -84,7 +84,7 @@ internal sealed class DetailScreen : IPage
 
     private void BuildCopy(Work w, WorkDetail d)
     {
-        _content.Add(Ui.Text(w.Genres.FirstOrDefault() ?? "Movie", 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
+        _content.Add(Ui.Text(w.Genres.FirstOrDefault() ?? "Movie", 153.6f, 259.2f, 12.288f, 820, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
         var lines = Ui.Paragraph(_content, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5, balance: true, role: "heading");
         var bas = 303.5f + 62.208f * lines;
         var meta = new List<string> { "Movie" };
