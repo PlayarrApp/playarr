@@ -102,20 +102,19 @@ sub onKeyArtUriChange()
     m.keyArt.uri = uri
     emitStageArtStatus("pending")
     sampleStageArtStatus()
-    ' The server bake is already greyscale and faded; the web draws it fainter still. Measured against the live web (mean luminance of
-    ' the art zone over the page background): dark 0.3, light 0.15.
-    fade = 0.4
+    ' Web .tv-key-art img opacity (dark 0.72, light 0.24). The server bakes its own opacity into the stage PNG's alpha (dark 0.72,
+    ' light 0.4; style.rs STAGE_DARK / STAGE_LIGHT), so the Poster opacity is the CSS value over the baked one. No veil.
+    baked = 1.0
     web = 0.72
     if Instr(1, uri, "style=stage-light") > 0
-        fade = 0.15
+        baked = 0.4
         web = 0.24
     else if Instr(1, uri, "style=stage") > 0
-        fade = 0.3
+        baked = 0.72
     end if
-    m.keyArt.opacity = web
-    veil = Int((1 - fade / web) * 255 + 0.5)
-    m.keyArtVeil.color = ThemeColor("surface", veil)
-    ThemeSetRole(m.keyArtVeil, "surface", veil)
+    m.keyArt.opacity = web / baked
+    m.keyArtVeil.color = ThemeColor("surface", 0)
+    ThemeSetRole(m.keyArtVeil, "surface", 0)
     m.keyArtRetryTimer.duration = 10
     m.keyArtRetryTimer.control = "start"
     if m.keyArtLayer <> invalid then m.keyArtLayer.opacity = 1
@@ -123,7 +122,7 @@ end sub
 
 sub onStageKickerChange()
     ' Web .tv-provider: 12.3 px, weight 820, 0.08em tracking, upper case, brand colour.
-    m.stageKickerLabel.spec = { text: m.top.stageKicker, size: 12.29, weight: m.top.kickerWeight, tracking: EpisodeCodeTracking(m.top.stageKicker, 0.173 - 0.97) + 0.97, role: "brandInk", upper: true }
+    m.stageKickerLabel.spec = { text: m.top.stageKicker, size: 12.29, weight: m.top.kickerWeight, tracking: 12.29 * 0.08, role: "brandInk", upper: true }
 end sub
 
 sub onStageTitleChange()

@@ -3059,18 +3059,19 @@ sub onBrowseKeyArtTimer()
         emitArtStatus(m.artActiveGeneration, m.artActiveScope, m.artActiveScope + "-preview", "pending", m.browseArtTelemetryVersion)
         sampleBrowseKeyArtStatus()
     end if
-    fade = 0.4
+    ' Web .tv-key-art img opacity (dark 0.72, light 0.24). The server bakes its own opacity into the stage PNG's alpha (dark 0.72,
+    ' light 0.4; style.rs STAGE_DARK / STAGE_LIGHT), so the Poster opacity is the CSS value over the baked one. No veil.
+    baked = 1.0
     web = 0.72
     if Instr(1, uri, "style=stage-light") > 0
-        fade = 0.15
+        baked = 0.4
         web = 0.24
     else if Instr(1, uri, "style=stage") > 0
-        fade = 0.15
+        baked = 0.72
     end if
-    m.browseKeyArt.opacity = web
-    veil = Int((1 - fade / web) * 255 + 0.5)
-    m.browseKeyArtVeil.color = ThemeColor("surface", veil)
-    ThemeSetRole(m.browseKeyArtVeil, "surface", veil)
+    m.browseKeyArt.opacity = web / baked
+    m.browseKeyArtVeil.color = ThemeColor("surface", 0)
+    ThemeSetRole(m.browseKeyArtVeil, "surface", 0)
     m.browseKeyArt.visible = true
     m.browseKeyArtFade.visible = true
 end sub
@@ -6151,7 +6152,7 @@ sub updateSeriesEpisodeHeader()
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 10.56, weight: parts[i].weight, tracking: EpisodeCodeTracking(parts[i].text, -0.494), role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 10.56, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else
@@ -7763,7 +7764,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 10.56, weight: parts[i].weight, tracking: EpisodeCodeTracking(parts[i].text, -0.494), role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 10.56, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else

@@ -82,7 +82,6 @@ function pgLabel(parent as Object, x as Float, y as Float, w as Float, h as Floa
         if opts.tracking <> invalid then label.tracking = opts.tracking
         if opts.aria <> invalid then label.aria = opts.aria
         if opts.radius <> invalid then label.radius = opts.radius
-        if opts.fitWidth <> invalid then label.fitWidth = opts.fitWidth
     end if
     label.text = text
     parent.AppendChild(label)
@@ -2221,8 +2220,8 @@ sub renderCalendarAgenda(entries as Object)
             headLabel = pgLabel(hg, 783.4, ay + 9.2, 0, 25, calendarDayHeading(edt, false), 18.4, 640, headRole, { aria: "heading" })
             if day = today
                 hx = 783.4 + headLabel.textWidth + 18.5
-                pgRound(hg, hx - 9.35, ay + 10.1, 61, 22, 11, "lineStrong", -1, true)
-                tl = pgLabel(hg, hx, ay + 13.6, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3 })
+                pgRound(hg, hx - 9, ay + 10.1, PlayarrTextWidth("TODAY", 11.2, 640, 0.896) + 18, 22, 11, "lineStrong", -1, true)
+                tl = pgLabel(hg, hx, ay + 13.6, 0, 15, "TODAY", 11.2, 640, "accent", { tracking: 0.896 })
             end if
             m.agendaDays.Push({ group: hg, y: ay, endY: ay + 44 })
             ay = ay + 76
@@ -2447,8 +2446,8 @@ sub renderCalendarWeek(entries as Object)
         if day = today
             ' Web's TODAY chip beside the day heading.
             hx = x + headLabel.textWidth + 18.5
-            pgRound(m.pageBody, hx - 9.35, 175.5, 61, 22, 11, "lineStrong", -1, true)
-            tl = pgLabel(m.pageBody, hx, 179.4, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3 })
+            pgRound(m.pageBody, hx - 9, 175.5, PlayarrTextWidth("TODAY", 11.2, 640, 0.896) + 18, 22, 11, "lineStrong", -1, true)
+            tl = pgLabel(m.pageBody, hx, 179.4, 0, 15, "TODAY", 11.2, 640, "accent", { tracking: 0.896 })
         end if
         list = byDay[day]
         y = 208.0

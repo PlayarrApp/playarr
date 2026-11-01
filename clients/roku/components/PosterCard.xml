@@ -107,8 +107,8 @@
              into this 16:9 box. object-fit:cover on the real
              .tv-title-card-art/.tv-home-card-art img is Roku's scaleToZoom,
              not scaleToFill despite the deceptively similar name. -->
-        <!-- Web chapter thumbnails carry a 33 % black wash (sampled 254 to 173); shown only on the numbered chapter cards. -->
-        <Rectangle id="chapterWash" width="220" height="124" color="0x00000054" visible="false" />
+        <!-- Web .tv-episode-art::after: linear-gradient(135deg, rgba(0,0,0,0.05), rgba(0,0,0,0.48)) over the art, on the numbered chapter cards. -->
+        <Poster id="chapterWash" width="220" height="124" uri="pkg:/images/episode-wash.png" loadDisplayMode="scaleToFill" visible="false" />
         <!-- Rounded corners (from: .tv-home-card-art's overflow:hidden plus
              border-radius over a background of the surface-soft token,
              container element clipped): since the img covers the box fully
