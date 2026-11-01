@@ -429,6 +429,8 @@ internal val WebAccent get() = PlayarrWebTheme.palette.accent
 internal val WebPink get() = WebAccent
 
 /** Clears the series' remembered resume answers (web "Ask again"); provided by the detail screen. */
+/** Network fetches and parsing leave Main on at most two shared workers: more threads only add per-thread allocator arenas (memory). */
+private val PlayarrFetchDispatcher = Dispatchers.Default.limitedParallelism(2)
 /** Detail page Play pill focus hooks: negotiate the playback info early (web's dwell prefetch) and release it when focus leaves. */
 internal class PlayarrPlayPrewarm(val prewarm: (String, PlayarrPlaybackLaunchSettings?) -> Unit, val release: (String) -> Unit)
 internal val LocalPlayPrewarm = androidx.compose.runtime.staticCompositionLocalOf<PlayarrPlayPrewarm?> { null }
@@ -846,7 +848,7 @@ internal class PlayarrExperienceViewModel @Inject constructor(
     fun refreshProgress() {
         viewModelScope.launch {
             progressStamp.begin()
-            withContext(Dispatchers.Default) { runCatching { api.listWatchProgress() }.getOrNull() }?.let {
+            withContext(PlayarrFetchDispatcher) { runCatching { api.listWatchProgress() }.getOrNull() }?.let {
                 _progress.value = it
                 _progressLoaded.value = true
             }
@@ -933,7 +935,7 @@ internal class PlayarrExperienceViewModel @Inject constructor(
 
     private fun launchHome(silent: Boolean): Job {
         // Fetch and parse on Default: Main is busy composing Home's first frame; only the state writes below go back to Main.
-        return viewModelScope.launch(Dispatchers.Default) {
+        return viewModelScope.launch {
             android.os.Trace.beginSection("pl:launchHome_start"); android.os.Trace.endSection()
             homeStamp.begin()
             if (!silent) _home.value = ExperienceLoad.Loading
@@ -7479,7 +7481,10 @@ private fun VideoDetailActions(
         // Web dwell prefetch: negotiate the playback info shortly after Play gains focus so Select only prepares the player.
         // Only the plain Play of a film or episode (no custom launch settings, no stacked chooser) is the request play() makes.
         val playPrewarm = LocalPlayPrewarm.current
-        val prewarmTarget = if (smartPlan != null && smartPlan.isStacked) null
+        // A film's launch settings arrive with its playback options (a separate request): negotiating before they are known
+        // would open a second session once they land (the two requests differ), so wait for them.
+        val settingsPending = work.kind == WorkKind.Movie && episode == null && onPlaybackSettings == null
+        val prewarmTarget = if (settingsPending || (smartPlan != null && smartPlan.isStacked)) null
             else smartPlan?.target?.mediaFileId?.let { it to null } ?: (mediaFileId to launchSettings)
         var playFocused by remember { mutableStateOf(false) }
         if (playPrewarm != null && prewarmTarget != null) {
@@ -9390,8 +9395,8 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         switchJob?.cancel()
         prepareJob = viewModelScope.launch {
             // The saved position and the server lookup are independent network calls: start both now, not one after the other.
-            val progressCall = async(Dispatchers.Default) { runCatching { api.getWatchProgress(mediaFileId) }.getOrNull() }
-            val serverCall = async(Dispatchers.Default) { runCatching { serverAccessResolver.forMedia(mediaFileId).serverUrl }.getOrNull() }
+            val progressCall = async(PlayarrFetchDispatcher) { runCatching { api.getWatchProgress(mediaFileId) }.getOrNull() }
+            val serverCall = async(PlayarrFetchDispatcher) { runCatching { serverAccessResolver.forMedia(mediaFileId).serverUrl }.getOrNull() }
             if (activeMediaFileId != null) persistProgress(ensureCompletion = true)
             closeActiveSessionAndWait(PlaybackStopReason.UserStopped)
             activeMediaFileId = mediaFileId
@@ -9438,7 +9443,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
 
             val selectedQuality = launchSettings?.qualityId ?: parsePlayarrQualityDefault(defaults.qualityId)
             val prewarmed = takePrewarm(mediaFileId, resumePosition, launchSettings)
-            _state.value = when (val result = prewarmed ?: withContext(Dispatchers.Default) {
+            _state.value = when (val result = prewarmed ?: withContext(PlayarrFetchDispatcher) {
                 getPlaybackInfo(
                     mediaFileId = mediaFileId,
                     containers = playarrAndroidContainers,
@@ -9511,7 +9516,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         if (prewarm?.mediaFileId == mediaFileId && prewarm?.launchSettings == launchSettings) return
         if (castingMediaFileId.value != null) return
         discardPrewarm()
-        val deferred = viewModelScope.async(Dispatchers.Default) {
+        val deferred = viewModelScope.async(PlayarrFetchDispatcher) {
             val resume = runCatching { api.getWatchProgress(mediaFileId) }.getOrNull()
                 ?.takeIf { it.state == WatchState.PartWatched }?.positionMs ?: 0L
             if (runCatching { downloadRepository.localFile(mediaFileId) }.getOrNull() != null) {
