@@ -243,14 +243,14 @@ internal static class LayoutExport
     }
 
     /// <summary>
-    /// A fill with alpha over the backdrop, in the web exporter's arithmetic (layout-dump.mjs over): doubles on the 0..255 scale and the CSS alpha (a
-    /// float 0.7f must not become 0.699999988, which tips a half-way channel the other way). Hex255 rounds like the web's hex2.
+    /// A fill with alpha over the backdrop: ordinary source-over composition of the native colour (8-bit channels, the alpha as CSS states it) in doubles on
+    /// the 0..255 scale. Nothing here imitates the browser's computed-style serialisation: the web dump parses its own strings, this reads the live NUI colour.
+    /// Hex255 is the schema conversion to the hex string (halves round up, as JS Math.round).
     /// </summary>
     private static (double R, double G, double B) Over((double R, double G, double B) bg, Color c)
     {
         double a = Math.Round(c.A, 3);
-        // a translucent mix reaches the dumper as a computed color(srgb r g b / a) whose channels are serialised with six decimals, so a channel that sits on a half-way tie lands a hair either side of it
-        double Ch(double back, double top) { var b = Math.Floor(top * 255.0 + 0.5); if (a < 1) b = Math.Round(b / 255.0, 6) * 255.0; return (b * a + back * (1 - a)) / (a + 1 * (1 - a)); }
+        double Ch(double back, double top) { var b = Math.Floor(top * 255.0 + 0.5); return (b * a + back * (1 - a)) / (a + 1 * (1 - a)); }
         return (Ch(bg.R, c.R), Ch(bg.G, c.G), Ch(bg.B, c.B));
     }
 

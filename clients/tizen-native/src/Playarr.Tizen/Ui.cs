@@ -261,10 +261,28 @@ internal static class Ui
     public static View PanelWash(PlayarrTheme t, float width = 1190.39f)
     {
         var dark = t.Name == "dark"; var mix = dark ? 0.44f : 0.48f;
-        Rgba Frost(float a) => new(t.SurfaceSoft.R * mix + t.SurfaceStrong.R * (1 - mix), t.SurfaceSoft.G * mix + t.SurfaceStrong.G * (1 - mix), t.SurfaceSoft.B * mix + t.SurfaceStrong.B * (1 - mix), a);
-        var w = width;
-        return Gradient(TizenClient.DesignWidth - w, 0, w, TizenClient.DesignHeight, true,
-            (0, Frost(0)), (0.12f, Frost(dark ? 0.72f : 0.68f)), (0.34f, Frost(dark ? 0.9f : 0.88f)), (0.62f, Frost(dark ? 0.97f : 0.96f)), (1, Frost(1)));
+        float Ch(float soft, float strong) => soft * mix + strong * (1 - mix);
+        var frost = (Ch(t.SurfaceSoft.R, t.SurfaceStrong.R), Ch(t.SurfaceSoft.G, t.SurfaceStrong.G), Ch(t.SurfaceSoft.B, t.SurfaceStrong.B));
+        var alphas = new[] { (0f, 0f), (0.12f, dark ? 0.72f : 0.68f), (0.34f, dark ? 0.9f : 0.88f), (0.62f, dark ? 0.97f : 0.96f), (1f, 1f) };
+        var origin = TizenClient.DesignWidth - width;
+        var root = new View { PositionX = origin, PositionY = 0, Size = new Size(width, TizenClient.DesignHeight) };
+        // Key art (and its stage wash) ends at 133 + 900 px; right of that the panel lies over the flat page colour only, so it is drawn as the
+        // browser's dithered result (see GradientPng.MakeDitheredPanel). Left of it the art shows through, so the translucent gradient stays.
+        const int artEnd = 1033;
+        var cut = (artEnd - origin) / width;
+        var a0 = alphas.Last(s => s.Item1 <= cut); var a1 = alphas.First(s => s.Item1 > cut);
+        var aCut = a0.Item2 + (a1.Item2 - a0.Item2) * (cut - a0.Item1) / (a1.Item1 - a0.Item1);
+        Rgba Frost(float a) => new(frost.Item1, frost.Item2, frost.Item3, a);
+        var left = alphas.Where(s => s.Item1 < cut).Select(s => (s.Item1 / cut, Frost(s.Item2))).Append((1f, Frost(aCut))).ToArray();
+        var leftWidth = artEnd - origin;
+        var g = Gradient(0, 0, leftWidth, TizenClient.DesignHeight, true, left);
+        root.Add(g);
+        var dir = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";
+        Directory.CreateDirectory(dir);
+        var path = dir + $"panel-{t.Name}-{origin:0.###}-{width:0.###}-v2.png";
+        if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.MakeDitheredPanel(alphas, frost, ((int)Math.Round(t.Surface.R * 255), (int)Math.Round(t.Surface.G * 255), (int)Math.Round(t.Surface.B * 255)), origin, width, artEnd, TizenClient.DesignHeight));
+        root.Add(Sem.Overlay(new ImageView(path) { PositionX = artEnd - origin, PositionY = 0, Size = new Size(TizenClient.DesignWidth - artEnd, TizenClient.DesignHeight) }));
+        return root;
     }
 
     /// <summary>Angled gradient rendered at the target aspect ratio so its direction is preserved when displayed.</summary>
