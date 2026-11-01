@@ -1,0 +1,1 @@
+- The Tizen native layout export now reports the radius each view draws (focus and active scale included), counts a drawn one-pixel rule and a shadow-only helper as visibility candidates, and ends a text run at its last glyph like the layout dump (the trailing letter-spacing is not part of the run); the shell clock centres on the header grid.

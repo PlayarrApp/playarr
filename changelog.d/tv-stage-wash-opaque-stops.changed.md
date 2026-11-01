@@ -1,0 +1,1 @@
+- TV stage wash and profiles scrim gradients use opaque exact-colour stops fading to transparent instead of translucent colour-mix stops, so Chromium 85 to 94 TV engines and the Chromium 151 web reference rasterise them identically (no visible change where the layer below is the same colour; the right-edge wash is a touch stronger at the edge only where art shows through)

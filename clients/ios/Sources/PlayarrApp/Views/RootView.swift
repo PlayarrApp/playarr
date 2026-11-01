@@ -125,6 +125,8 @@ struct RootView: View {
         .preferredColorScheme(preferredColourScheme)
         #if DEBUG
         .statusBarHidden(ParityLaunch.zeroInsets) // the web references have no system status bar
+        .persistentSystemOverlays(ParityLaunch.zeroInsets ? .hidden : .automatic) // nor a home indicator (it dims and fades with time, so it is never the same twice)
+        .transaction { transaction in if ParityLaunch.zeroInsets { transaction.animation = nil } } // no implicit animation can be caught mid-flight
         #endif
         .updateGate(updateViewModel)
         #if DEBUG
@@ -410,6 +412,13 @@ private struct AuthenticatedPlayarrShell: View {
         #endif
     }
 
+    private var rootColor: Color {
+        #if DEBUG
+        if case .player = selected { return .black }
+        #endif
+        return PlayarrStyle.background
+    }
+
     var body: some View {
         ZStack {
             selectedContent
@@ -422,7 +431,10 @@ private struct AuthenticatedPlayarrShell: View {
                     .zIndex(20)
             }
         }
-        .background(PlayarrStyle.background.parityBox("container", background: PlayarrStyle.background).ignoresSafeArea())
+        // The web `body`: the shell colour behind the page, and the ancestor of everything on screen (black behind the player).
+        // It is judged like web's body, by hiding it with everything inside it; each page paints its one page fill above it.
+        .background(rootColor.ignoresSafeArea())
+        .parityBox("container", background: rootColor, bleed: true)
         // The shell colour, then the page colour every screen paints over it (each page draws WM.page full-bleed).
         .parityFill(PlayarrStyle.surface)
         .parityFill(PlayarrStyle.background)
@@ -651,9 +663,9 @@ private struct AuthenticatedPlayarrShell: View {
                                 .offset(x: 0.33, y: 0.5) // measured: web glyphs sit 1 px right and 1.5 px lower (3x)
                                 .frame(width: 44, height: 46)
                                 .parityShape("link", name: destination.title, color: phoneSelectedDestination == destination ? WM.ink : nil,
-                                             in: RoundedRectangle(cornerRadius: 14, style: .continuous), radius: phoneSelectedDestination == destination ? 14 : 0)
+                                             in: RoundedRectangle(cornerRadius: 14, style: .continuous), radius: 14) // web: every nav link carries the 14 radius, selected or not
                             }
-                            .buttonStyle(.plain)
+                            .parityButtonStyle(.plain)
                             .accessibilityLabel(destination.title)
                 .accessibilityAddTraits(.isLink)
                             .accessibilityIdentifier(destination.phoneAccessibilityIdentifier)
@@ -674,6 +686,7 @@ private struct AuthenticatedPlayarrShell: View {
         }
         .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         .parityTopLayer()
+        .parityFill(WM.shell) // the nav is fixed over the shell colour (--bg), outside the page container: web composites its 88% fill over it
     }
 
     private func stageChrome(proxy: GeometryProxy) -> some View {
@@ -689,7 +702,7 @@ private struct AuthenticatedPlayarrShell: View {
                 #else
                 let clockDate = context.date
                 #endif
-                HStack(alignment: .firstTextBaseline, spacing: 11) {
+                HStack(alignment: .firstTextBaseline, spacing: 9.03) {
                     Text(clockDate.formatted(headerTimeStyle))
                         .wm(13.12, 760, text: clockDate.formatted(headerTimeStyle))
                     Text(clockDate.formatted(headerDateStyle).uppercased())
@@ -698,7 +711,7 @@ private struct AuthenticatedPlayarrShell: View {
                         .parityRenderedText(clockDate.formatted(headerDateStyle).uppercased(), role: "text", size: 8.32, weight: 640, color: PlayarrStyle.ink)
                 }
                 .foregroundStyle(PlayarrStyle.ink)
-                .offset(x: proxy.size.width * 0.24, y: chromeTop + 14)
+                .offset(x: proxy.size.width * 0.2438, y: chromeTop + 11.7) // web header clock at x 333.08, y 65.39 on the 1366x1024 capture
             }
             }
 
@@ -706,7 +719,7 @@ private struct AuthenticatedPlayarrShell: View {
             PlayarrLogo(size: 32.09)
                 .accessibilityHidden(true)
                 .parityBox("image")
-                .offset(x: navEdge + 23.34, y: chromeTop + 5.94)
+                .offset(x: navEdge + 23.34, y: chromeTop + 7.24)
 
             // Web rail: Downloads and Search, then the four browse tabs, then the four personal tabs, each in its own pill.
             VStack(spacing: 13) {
@@ -721,7 +734,7 @@ private struct AuthenticatedPlayarrShell: View {
             .offset(x: navEdge, y: 110 * proxy.size.height / 1024 + 2)
 
             profileTile
-                .offset(x: navEdge, y: proxy.size.height - 121 * proxy.size.height / 1024 + 26) // +26: the iPad stage is inset by the status bar and home indicator, measured against the web 1366x1024 capture
+                .offset(x: navEdge, y: proxy.size.height - 121 * proxy.size.height / 1024 + 22.95) // +26: the iPad stage is inset by the status bar and home indicator, measured against the web 1366x1024 capture
         }
     }
 
@@ -748,30 +761,30 @@ private struct AuthenticatedPlayarrShell: View {
     }
 
     private func navGroup(_ group: [Destination]) -> some View {
-        // The web rail pitch is 70 pt: 64 pt tiles with a 6 pt gap.
-        VStack(spacing: 6) {
+        // Web rail (1366 pt capture): 64 x 60.67 tiles at a 69.76 pitch inside a 77.5 pt wide pill.
+        VStack(spacing: 9.09) {
             ForEach(group, id: \.self) { destination in
                 Button { select(destination) } label: {
-                    VStack(spacing: 6) {
-                        WMIconView(icon: destination.webIcon, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft, size: 18)
+                    VStack(spacing: 2.5) {
+                        WMIconView(icon: destination.webIcon, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft, size: 20)
                         Text(destination.title)
-                            .wm(8.5, 700, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft, text: destination.title)
+                            .wm(6.72, 700, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft, text: destination.title)
                             .lineLimit(1)
                     }
                     .foregroundStyle(selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft)
-                    .frame(width: 64, height: 64)
+                    .frame(width: 64, height: 60.67)
                     .parityShape("link", name: destination.title, color: selected == destination ? PlayarrStyle.ink.opacity(0.09) : nil,
-                                 in: RoundedRectangle(cornerRadius: 16, style: .continuous), radius: selected == destination ? 16 : 0)
+                                 in: RoundedRectangle(cornerRadius: 16, style: .continuous), radius: 16) // web: every rail link carries the 16 radius, selected or not
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 .accessibilityLabel(destination.title)
                 .accessibilityAddTraits(.isLink)
             }
         }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 6)
-        // Web rail pills are solid surface-strong with a 1 px line border (the art never shows through).
-        .parityShape("container", color: PlayarrStyle.surfaceStrong, in: RoundedRectangle(cornerRadius: 22, style: .continuous), radius: 22)
+        .padding(.vertical, 7.73)
+        .padding(.horizontal, 6.75)
+        // Web rail pills: surface-strong at 56% (global.css `.app-nav-group`) over the shell colour, with a 1 px line border.
+        .parityShape("container", color: PlayarrStyle.surfaceStrong.opacity(0.56), in: RoundedRectangle(cornerRadius: 22, style: .continuous), radius: 22)
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(PlayarrStyle.line, lineWidth: 1)
@@ -779,44 +792,59 @@ private struct AuthenticatedPlayarrShell: View {
         .shadow(color: PlayarrStyle.ink.opacity(0.1), radius: 21, y: 14)
     }
 
-    /// The web rail's profile tile: avatar over the profile name in its own pill, 78 x 75 pt at 1366 wide.
+    /// The web rail's profile tile: a link (avatar over the profile name) in its own 77.5 x 76.11 pt pill at 1366 wide.
     private var profileTile: some View {
         Button { select(.profiles) } label: {
             VStack(spacing: 4) {
-                currentAvatar(size: 20)
+                currentAvatar(size: 20).parityBox("image").parityBox("container", radius: 10)
                 Text((environment.currentUserName ?? "").split(separator: " ").first.map(String.init) ?? "Profile")
-                    .wm(7.2, 700, color: PlayarrStyle.muted, text: (environment.currentUserName ?? "").split(separator: " ").first.map(String.init) ?? "Profile")
+                    .wm(6.72, 700, color: PlayarrStyle.muted, text: (environment.currentUserName ?? "").split(separator: " ").first.map(String.init) ?? "Profile")
                     .foregroundStyle(PlayarrStyle.muted)
                     .lineLimit(1)
             }
-            .frame(width: 76, height: 75)
-            .background(PlayarrStyle.surfaceStrong, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay { RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(PlayarrStyle.line, lineWidth: 1) }
-            .overlay(alignment: .bottom) {
-                // The web rail prints the app version under the profile tile.
-                Text("v\(InstalledAppVersion.current)")
-                    .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(PlayarrStyle.ink)
-                    .fixedSize()
-                    .offset(y: 13)
-            }
+            .frame(width: 64, height: 60.67)
+            .parityBox("link", name: profileLinkName)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Open profile and settings")
+        .parityButtonStyle(.plain)
+        .accessibilityLabel(profileLinkName)
+        .accessibilityAddTraits(.isLink)
+        .padding(.vertical, 7.72)
+        .padding(.horizontal, 6.75)
+        // The same pill as every rail group (web: surface-strong at 56% over the shell colour, a 1 px line border).
+        .parityShape("container", color: PlayarrStyle.surfaceStrong.opacity(0.56), in: RoundedRectangle(cornerRadius: 22, style: .continuous), radius: 22)
+        .overlay { RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(PlayarrStyle.line, lineWidth: 1) }
+        .overlay(alignment: .bottom) {
+            // The web rail prints the app version under the profile tile, on the shell colour.
+            Text("v\(InstalledAppVersion.current)")
+                .font(.system(size: 6.08, weight: .semibold, design: .monospaced))
+                .foregroundStyle(PlayarrStyle.ink)
+                .fixedSize()
+                .offset(y: 13)
+        }
     }
+
+    private var profileLinkName: String { "Signed in as \(environment.currentUserName ?? "viewer"). Open profiles." }
 
     private func profileButton(size: CGFloat, avatarSize: CGFloat, ring: Bool = true) -> some View {
         Button { select(.profiles) } label: {
             ZStack {
-                currentAvatar(size: avatarSize)
+                if ring {
+                    currentAvatar(size: avatarSize).parityBox("image")
+                } else {
+                    // Web phone nav: the avatar is a round container 3.4 pt above the icon line, holding the image.
+                    currentAvatar(size: avatarSize).parityBox("image").parityBox("container", radius: avatarSize / 2)
+                }
             }
             .frame(width: avatarSize, height: avatarSize)
-            .frame(width: size, height: size)
+            .offset(y: ring ? 0 : -3.36)
+            .frame(width: size, height: ring ? size : 46)
             .background(ring ? PlayarrStyle.surfaceStrong.opacity(0.66) : .clear, in: Circle())
             .overlay { if ring { Circle().stroke(PlayarrStyle.line.opacity(0.7), lineWidth: 1) } }
+            // The web phone nav item is a link named after the signed-in profile (the ring variant is the plain button).
+            .parityBox(ring ? "button" : "link", name: ring ? "Open profile and settings" : profileLinkName)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Open profile and settings")
+        .parityButtonStyle(.plain)
+        .accessibilityLabel(ring ? "Open profile and settings" : profileLinkName)
     }
 
     @ViewBuilder

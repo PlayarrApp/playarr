@@ -1,0 +1,1 @@
+- Android phone and tablet parity: single-line text is laid out as the css inline box (rounded ascent and descent content area inside the css line box, floored half leading) and the layout export reads that laid-out line box instead of font metrics; the layout export converts with the css viewport density; settings rows placed at summed css x and y.

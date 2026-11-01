@@ -351,8 +351,8 @@ export async function createDriver() {
       const layoutPath = join(dirname(statePath()), "parity-layout.json");
       const readLayout = () => parseCaptureLayout(readFileSync(layoutPath, "utf8"), { screen: id, theme, deterministic: deterministicCapture });
       // The app writes atomically after its tree settles. A missing export is a capture failure, never an optional sidecar.
-      for (let attempt = 0; !existsSync(layoutPath) && attempt < 30; attempt += 1) await sleep(1000);
-      if (!existsSync(layoutPath)) throw new Error(`iOS parity layout export missing for ${id} after 30 seconds`);
+      for (let attempt = 0; !existsSync(layoutPath) && attempt < 120; attempt += 1) await sleep(1000);
+      if (!existsSync(layoutPath)) throw new Error(`iOS parity layout export missing for ${id} after 120 seconds; probe counts: ${JSON.stringify(state().layoutProbeCounts ?? null)}`);
       readLayout();
       const raw = device === "ipad" ? `${file}.raw.png` : file;
       // Wait for two byte-identical frames so the capture contains the settled screen.
@@ -362,7 +362,7 @@ export async function createDriver() {
         for (let t = 0; t < 120; t += 1) {
           const current = state();
           if (current.failure) throw new Error(`iOS parity app failed: ${String(current.failure)}`);
-          if (current.screenContentReady === true) {
+          if (current.screenContentReady === true && current.layoutProbing !== true) { // never capture while the visibility probe hides views
             assertCaptureState(current, expectedUsername, { player: id === "player-controls", deterministic: deterministicCapture, fixedNow });
             return;
           }
@@ -372,8 +372,9 @@ export async function createDriver() {
       };
       const layout = await captureStableScreen(async () => {
         await stillReady();
-        run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);
+        const shot = run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);
         await stillReady();
+        if (!existsSync(raw)) throw new Error(`simctl wrote no screenshot for ${id} (${raw}); simctl said: ${String(shot).trim().slice(0, 300)}; state: ${JSON.stringify({ ready: state().screenContentReady, probing: state().layoutProbing })}`);
         return readFileSync(raw);
       }, readLayout, { attempts: 8, intervalMs: 4000, wait: sleep });
       if (device === "ipad") { run("sips", ["-r", "90", raw, "--out", file]); rmSync(raw); } // the iPad frame is landscape
@@ -383,6 +384,7 @@ export async function createDriver() {
       const dir = join(dirname(dirname(file)), "layout", theme);
       run("mkdir", ["-p", dir]);
       writeFileSync(join(dir, `${id}.json`), JSON.stringify(layout));
+      writeFileSync(`${file}.probe-counts.json`, JSON.stringify(state().layoutProbeCounts ?? null)); // per-element changed-pixel counts of the visibility probe
       if (layoutDiagnostics) {
         const diagnostics = run("xcrun", ["simctl", "spawn", udid, "log", "show", "--info", "--start", launchedAt, "--style", "compact",
           "--predicate", 'eventMessage CONTAINS "PLAYARR_IOS_TITLE_LAYOUT_DIAGNOSTIC"']);

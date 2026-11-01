@@ -25,6 +25,9 @@ sub init()
     m.titlePanel = m.top.findNode("titlePanel")
     m.stageKickerLabel = m.top.findNode("stageKickerLabel")
     m.stageTitleLabel = m.top.findNode("stageTitleLabel")
+    ' Text boxes sit their half-leading into the line boxes of the details panel (global.css .tv-provider, h2).
+    m.stageKickerLabel.translation = [0, PlayarrTextTop(0, WebPanelKickerSize(), WebPanelKickerLineHeight())]
+    m.stageTitleLabel.translation = [0, PlayarrTextTop(WebPanelTitleLineTop() - WebPanelTop(), 69.12, WebPanelTitleLineHeight())]
     m.stageMetaLabel = m.top.findNode("stageMetaLabel")
     m.stageOverviewLabel = m.top.findNode("stageOverviewLabel")
     m.contentPanel = m.top.findNode("contentPanel")
@@ -99,20 +102,19 @@ sub onKeyArtUriChange()
     m.keyArt.uri = uri
     emitStageArtStatus("pending")
     sampleStageArtStatus()
-    ' The server bake is already greyscale and faded; the web draws it fainter still. Measured against the live web (mean luminance of
-    ' the art zone over the page background): dark 0.3, light 0.15.
-    fade = 0.4
+    ' Web .tv-key-art img opacity (dark 0.72, light 0.24). The server bakes its own opacity into the stage PNG's alpha (dark 0.72,
+    ' light 0.4; style.rs STAGE_DARK / STAGE_LIGHT), so the Poster opacity is the CSS value over the baked one. No veil.
+    baked = 1.0
     web = 0.72
     if Instr(1, uri, "style=stage-light") > 0
-        fade = 0.15
+        baked = 0.4
         web = 0.24
     else if Instr(1, uri, "style=stage") > 0
-        fade = 0.3
+        baked = 0.72
     end if
-    m.keyArt.opacity = web
-    veil = Int((1 - fade / web) * 255 + 0.5)
-    m.keyArtVeil.color = ThemeColor("surface", veil)
-    ThemeSetRole(m.keyArtVeil, "surface", veil)
+    m.keyArt.opacity = web / baked
+    m.keyArtVeil.color = ThemeColor("surface", 0)
+    ThemeSetRole(m.keyArtVeil, "surface", 0)
     m.keyArtRetryTimer.duration = 10
     m.keyArtRetryTimer.control = "start"
     if m.keyArtLayer <> invalid then m.keyArtLayer.opacity = 1
@@ -120,12 +122,12 @@ end sub
 
 sub onStageKickerChange()
     ' Web .tv-provider: 12.3 px, weight 820, 0.08em tracking, upper case, brand colour.
-    m.stageKickerLabel.spec = { text: m.top.stageKicker, size: 12.29, weight: m.top.kickerWeight, tracking: EpisodeCodeTracking(m.top.stageKicker, 0.173 - 0.97) + 0.97, role: "brandInk", upper: true }
+    m.stageKickerLabel.spec = { text: m.top.stageKicker, size: 12.29, weight: m.top.kickerWeight, tracking: 12.29 * 0.08, role: "brandInk", upper: true }
 end sub
 
 sub onStageTitleChange()
     ' Web .tv-title-panel h1: 69.1 px, weight 560, -0.075em tracking, 62.2 px lines, max-width 9ch (373 px), text-wrap: balance.
-    m.stageTitleLabel.spec = { text: m.top.stageTitle, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true, aria: "heading" }
+    m.stageTitleLabel.spec = { text: m.top.stageTitle, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: WebPanelTitleLineHeight(), maxLines: 3, balance: true, aria: "heading" }
     layoutStageText()
 end sub
 
@@ -146,7 +148,7 @@ sub layoutStageText()
     lines = m.stageTitleLabel.lineCount
     if lines < 1 then lines = 1
     if lines > 3 then lines = 3
-    titleBottom = 44.3 + 62.208 * lines
+    titleBottom = WebPanelTitleLineTop() - WebPanelTop() + WebPanelTitleLineHeight() * lines
     if m.top.stageMeta <> invalid and m.top.stageMeta <> ""
         m.stageMetaLabel.translation = [0, titleBottom + 22.6]
         m.stageOverviewLabel.translation = [0, titleBottom + 22.6 + 41.9]

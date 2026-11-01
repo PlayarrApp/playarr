@@ -55,8 +55,7 @@ struct CalendarView: View {
                 tabletBody(proxy: proxy)
             }
         }
-        .background(PlayarrStyle.background.ignoresSafeArea())
-        .parityFill(PlayarrStyle.background)
+        .parityFill(WM.page) // the page fill every calendar body paints (WMPageFill)
         .foregroundStyle(PlayarrStyle.ink)
         .navigationBarHidden(true)
         .parityScreenLoad(parityLoadState)
@@ -110,7 +109,7 @@ struct CalendarView: View {
                                     .background(PlayarrStyle.surfaceStrong.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
                                 }
                                 .simultaneousGesture(TapGesture().onEnded { viewModel.select(item) })
-                                .buttonStyle(.plain)
+                                .parityButtonStyle(.plain)
                             }
                         }
                         .padding(20)
@@ -138,8 +137,13 @@ struct CalendarView: View {
             }
             .padding(.leading, 120)
             .padding(.trailing, 86 * scale)
-            .padding(.top, 171 * proxy.size.height / 1024)
-            .padding(.bottom, 136 * proxy.size.height / 1024)
+            // The month grid is the page's full-height flex child (Calendar.css `.calendar-scroll`, flex 1 1 auto) inside
+            // `.page-shell-body` (global.css, `gap: 0.75rem`), which starts at the `.page-shell` padding-top
+            // clamp(104px, 15 * 1vh, 168px) and ends above its padding-bottom `--page-safe-bottom`
+            // (page-layout.css) clamp(92px, 11 * 1vh, 124px); `.calendar-header` is empty (its status span is absolute).
+            // Blink lays these out in 1/64 px LayoutUnits. The other views keep the lane padding.
+            .padding(.top, viewModel.mode == .month ? Self.layoutUnit(min(max(104, proxy.size.height * 0.15), 168)) + 12 : 171 * proxy.size.height / 1024)
+            .padding(.bottom, viewModel.mode == .month ? Self.layoutUnit(min(max(92, proxy.size.height * 0.11), 124)) : 136 * proxy.size.height / 1024)
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
 
             PlayarrBackButton(label: "Back to home", action: goHome).offset(x: 122 * scale, y: 55 * scale)
@@ -160,17 +164,17 @@ struct CalendarView: View {
                         .fixedSize()
                         .padding(.horizontal, 20.5)
                         .frame(height: 44)
-                        .parityShape("container", color: WM.page, in: Capsule(), radius: 22)
+                        .parityShape("button", name: phoneRangeLabel, color: WM.page, in: Capsule(), radius: 22)
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
                 roundButton("\u{2190}", label: "Previous") { Task { await viewModel.step(-1) } }
                 Button { Task { await viewModel.goToToday() } } label: {
                     WMText("Today", 11.52, 720, color: WM.inkSoft, lh: 17.28)
                         .frame(width: 74, height: 44)
-                        .parityShape("container", color: WM.page, in: Capsule(), radius: 22)
+                        .parityShape("button", name: "Today", color: WM.page, in: Capsule(), radius: 22)
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 roundButton("\u{2192}", label: "Next") { Task { await viewModel.step(1) } }
             }
             .frame(width: proxy.size.width - 55 * scale, alignment: .trailing)
@@ -238,7 +242,7 @@ struct CalendarView: View {
                 .parityShape("button", name: label, color: WM.page, in: Capsule(), radius: 22)
                 .overlay(Circle().stroke(WM.line.opacity(0.14), lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .accessibilityLabel(label)
     }
 
@@ -247,7 +251,7 @@ struct CalendarView: View {
     private var phoneBody: some View {
         let top = WM.topInset + 2
         return ZStack(alignment: .topLeading) {
-            WM.page.ignoresSafeArea()
+            WMPageFill()
             VStack(alignment: .leading, spacing: 12) {
                 if !viewModel.unhealthySources.isEmpty { sourceBanner }
                 switch viewModel.loadState {
@@ -306,17 +310,17 @@ struct CalendarView: View {
                         .fixedSize()
                         .padding(.horizontal, 20.5)
                         .frame(height: 44)
-                        .parityShape("container", color: WM.page, in: Capsule(), radius: 22)
+                        .parityShape("button", name: phoneRangeLabel, color: WM.page, in: Capsule(), radius: 22)
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
                 roundButton("\u{2190}", label: "Previous") { Task { await viewModel.step(-1) } }
                 Button { Task { await viewModel.goToToday() } } label: {
                     WMText("Today", 11.52, 720, color: WM.inkSoft, lh: 17.28)
                         .frame(width: 74, height: 44)
-                        .parityShape("container", color: WM.page, in: Capsule(), radius: 22)
+                        .parityShape("button", name: "Today", color: WM.page, in: Capsule(), radius: 22)
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 roundButton("\u{2192}", label: "Next") { Task { await viewModel.step(1) } }
             }
             .frame(width: screenWidth - 16, alignment: .trailing)
@@ -441,7 +445,7 @@ struct CalendarView: View {
                             .frame(width: resume ? 88 : 66, height: 44)
                             .background(PlayarrStyle.accent, in: Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                 }
                 if showOpen {
                     NavigationLink {
@@ -458,7 +462,7 @@ struct CalendarView: View {
                             .background(primary ? PlayarrStyle.accent : WM.page, in: Capsule())
                             .overlay(Capsule().stroke(primary ? Color.clear : WM.line.opacity(0.2), lineWidth: 1))
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                 }
             }
             if showWatchlist {
@@ -594,8 +598,9 @@ struct CalendarView: View {
                     .stroke(WM.line.opacity(0.14), lineWidth: 1)
             )
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .wmKeyFocus(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .parityFill(PlayarrStyle.surfaceStrong) // the card paints surface-strong: the button and its texts sit on it
     }
 
     private func calendarTimeLabel24(_ entry: CalendarEntry) -> String {
@@ -866,7 +871,7 @@ struct CalendarView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 
     private func weekSubtitle(_ item: CalendarItem) -> String {
@@ -885,31 +890,109 @@ struct CalendarView: View {
         }
     }
 
+    /// Web tablet month grid (`.calendar-month`): a 30.78 pt weekday head (`.calendar-month-weekday` 0.4rem padding around the
+    /// 18 pt line, body `line-height: 1.5` at 0.75rem) over equal rows;
+    /// every cell is a container with a 1 pt line border, entries are 44 pt buttons (dot, 12.48 pt label) and the day number
+    /// sits in the 44 pt footer row.
     private var desktopMonthView: some View {
-        let window = viewModel.window
-        let days = window.days
-        let rows = stride(from: 0, to: days.count, by: 7).map { Array(days[$0..<min($0 + 7, days.count)]) }
-        let groups = Dictionary(uniqueKeysWithValues: viewModel.dayGroups.map { ($0.day, $0) })
-        let selectedDay = viewModel.selectedDay ?? viewModel.today
-        return ScrollView {
-            VStack(spacing: 4) {
+        GeometryReader { proxy in
+            let days = viewModel.window.days
+            let rows = stride(from: 0, to: days.count, by: 7).map { Array(days[$0..<min($0 + 7, days.count)]) }
+            let groups = Dictionary(uniqueKeysWithValues: viewModel.dayGroups.map { ($0.day, $0) })
+            let headHeight: CGFloat = Self.layoutUnit(6.4) * 2 + 18
+            let columnWidth = proxy.size.width / 7
+            let rowHeight = max(0, (proxy.size.height - headHeight) / CGFloat(max(rows.count, 1)))
+            VStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    ForEach(rows.first ?? [], id: \.self) { day in
+                        WMText(weekdayHeading(day), 12, 400, color: WM.inkSoft, lh: 18, ls: 0.96)
+                            .frame(width: columnWidth, height: headHeight)
+                    }
+                }
                 ForEach(rows, id: \.first) { row in
-                    HStack(spacing: 4) {
+                    HStack(spacing: 0) {
                         ForEach(row, id: \.self) { day in
-                            monthCell(day: day, count: groups[day]?.entryCount ?? 0, selected: day == selectedDay)
+                            tabletMonthCell(day: day, items: groups[day]?.items ?? [], width: columnWidth, height: rowHeight)
                         }
                     }
                 }
-                if let group = groups[selectedDay], !group.items.isEmpty {
-                    dayList(groups: [group], phone: false).frame(minHeight: 160)
-                } else {
-                    Text("Nothing scheduled on \(dayHeading(selectedDay, today: viewModel.today).capitalized)")
-                        .font(.custom("Avenir Next", fixedSize: 12))
-                        .foregroundStyle(PlayarrStyle.muted)
-                        .padding(.top, 12)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
+        }
+    }
+
+    /// Blink LayoutUnit: a length floored to 1/64 px.
+    private static func layoutUnit(_ value: CGFloat) -> CGFloat { (value * 64).rounded(.down) / 64 }
+
+    private func tabletMonthCell(day: String, items: [CalendarItem], width: CGFloat, height: CGFloat) -> some View {
+        let dayNumber = Int(day.suffix(2)) ?? 0
+        let inMonth = String(day.prefix(7)) == String(viewModel.anchor.prefix(7))
+        // 1 pt border + 0.05rem top padding above the first line; the footer row is 44 pt and ends 1.8 pt above the cell bottom.
+        let shown = max(0, min(items.count, Int((height - 1.8 - 44 - 2) / 44)))
+        let hidden = items.count - shown
+        let cellFill: Color? = inMonth ? nil : WM.adaptive(light: (239, 238, 237), dark: (36, 31, 35))
+        return ZStack(alignment: .topLeading) {
+            VStack(spacing: 0) {
+                ForEach(items.prefix(shown)) { item in
+                    Button {
+                        viewModel.select(item)
+                        viewModel.selectedDay = day
+                        detailItem = item
+                    } label: {
+                        HStack(spacing: 7.2) {
+                            Circle().fill(monthDotColor(item))
+                                .frame(width: 8.8, height: 8.8)
+                                .parityBox("container", background: monthDotColor(item), radius: 4.4)
+                            WMText(monthItemLabel(item), 12.48, 400, color: WM.ink, lh: 15) // web 15 px line box: the floored half-leading puts the glyphs 1 px above its centre
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(.horizontal, 5.6)
+                        .frame(width: width - 11.6, height: 44)
+                        .parityShape("button", name: monthEntryLabel(item, day: day), color: nil, in: RoundedRectangle(cornerRadius: 4, style: .continuous), radius: 4)
+                    }
+                    .parityButtonStyle(.plain)
+                    .accessibilityLabel(monthEntryLabel(item, day: day))
                 }
             }
+            .offset(x: 5.8, y: 1.8)
+            HStack(spacing: 5.6) {
+                WMText("\(dayNumber)", 12.8, 640, color: inMonth ? WM.ink : WM.inkSoft, lh: 18)
+                if hidden > 0 {
+                    WMText("+\(hidden) more", 12.48, 400, color: WM.inkSoft, lh: 18)
+                }
+            }
+            .offset(x: 8.8, y: height - 33.4)
         }
+        .frame(width: width, height: height, alignment: .topLeading)
+        .parityShape("container", color: cellFill, in: Rectangle())
+        .overlay(Rectangle().strokeBorder(PlayarrStyle.ink.opacity(0.125), lineWidth: 1)) // web cell border: 1 pt line colour
+        .overlay {
+            if day == viewModel.today {
+                Rectangle().stroke(WM.inkSoft, lineWidth: 2).padding(1) // web today cell: 2 pt inset ring
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { if hidden > 0 { moreDay = day } }
+    }
+
+    /// Web entry button name: "<chip text>, <tone>, <weekday d Month>".
+    private func monthEntryLabel(_ item: CalendarItem, day: String) -> String {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(identifier: "UTC") ?? .current
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.timeZone = utc.timeZone
+        formatter.dateFormat = "EEEE d MMMM"
+        let heading = CalendarDays.displayDate(day).map { formatter.string(from: $0) } ?? day
+        return "\(monthItemLabel(item)), \(monthToneLabel(item)), \(heading)"
+    }
+
+    private func monthToneLabel(_ item: CalendarItem) -> String {
+        let entries = item.entries
+        if entries.allSatisfy(\.hasFile) { return "Available" }
+        if entries.contains(where: { !$0.hasFile && $0.date <= viewModel.today && $0.monitored }) { return "Missing" }
+        if entries.contains(where: { !$0.hasFile && $0.date > viewModel.today }) { return "Upcoming" }
+        return "Not tracked"
     }
 
     private var phoneMonthView: some View {
@@ -919,23 +1002,21 @@ struct CalendarView: View {
             let rows = stride(from: 0, to: days.count, by: 7).map { Array(days[$0..<min($0 + 7, days.count)]) }
             let groups = Dictionary(uniqueKeysWithValues: viewModel.dayGroups.map { ($0.day, $0) })
             let gridWidth = max(720, proxy.size.width)
-            let rowHeight = max(0, (proxy.size.height - 32) / CGFloat(max(rows.count, 1)))
+            // Same web structure as the tablet grid (`.calendar-month`, min-width 720px on phones): the 30.78 pt head, then equal rows of cells.
+            let headHeight: CGFloat = Self.layoutUnit(6.4) * 2 + 18
+            let rowHeight = max(0, (proxy.size.height - headHeight) / CGFloat(max(rows.count, 1)))
             ScrollView(.horizontal) {
                 VStack(spacing: 0) {
                     HStack(spacing: 0) {
                         ForEach(rows.first ?? [], id: \.self) { day in
-                            Text(weekdayHeading(day))
-                                .font(.custom("Avenir Next", fixedSize: 12))
-                                .tracking(0.96)
-                                .foregroundStyle(WM.inkSoft) // web weekday heading reads ink-soft
-                                .frame(width: gridWidth / 7, height: 32)
+                            WMText(weekdayHeading(day), 12, 400, color: WM.inkSoft, lh: 18, ls: 0.96)
+                                .frame(width: gridWidth / 7, height: headHeight)
                         }
                     }
                     ForEach(rows, id: \.first) { row in
                         HStack(spacing: 0) {
                             ForEach(row, id: \.self) { day in
-                                phoneMonthCell(day: day, items: groups[day]?.items ?? [], height: rowHeight)
-                                    .frame(width: gridWidth / 7, height: rowHeight)
+                                tabletMonthCell(day: day, items: groups[day]?.items ?? [], width: gridWidth / 7, height: rowHeight)
                             }
                         }
                     }
@@ -944,69 +1025,6 @@ struct CalendarView: View {
             }
             .scrollIndicators(.hidden)
         }
-    }
-
-    private func phoneMonthCell(day: String, items: [CalendarItem], height: CGFloat) -> some View {
-        let dayNumber = Int(day.suffix(2)) ?? 0
-        let inMonth = String(day.prefix(7)) == String(viewModel.anchor.prefix(7))
-        let shownCount = max(0, min(items.count, Int((height - 60) / 22.6)))
-        return VStack(alignment: .leading, spacing: 0) {
-            Color.clear.frame(height: 11.9) // web rows start 12 pt below the cell top
-            ForEach(items.prefix(shownCount)) { item in
-                Button {
-                    viewModel.select(item)
-                    viewModel.selectedDay = day
-                    detailItem = item
-                } label: {
-                    HStack(spacing: 8.7) {
-                        Circle().fill(monthDotColor(item))
-                            .frame(width: 8, height: 8)
-                        Text(monthItemLabel(item))
-                            .font(.custom("Avenir Next", fixedSize: 12.6))
-                            .lineLimit(1)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .padding(.trailing, 5.1) // 16 pt from the cell edge (cell padding is 10.9)
-                    .foregroundStyle(PlayarrStyle.inkSoft)
-                    .frame(height: 22.6)
-                }
-                .buttonStyle(.plain)
-            }
-            Spacer(minLength: 0)
-            Button {
-                viewModel.selectedDay = day
-                if items.count > shownCount { moreDay = day }
-            } label: {
-                HStack(spacing: 4) {
-                    Text("\(dayNumber)")
-                        .font(.custom("Avenir Next", fixedSize: 13).weight(.medium))
-                        .foregroundStyle(PlayarrStyle.ink) // web: today and out-of-month numbers read as plain ink
-                        .parityRenderedText("\(dayNumber)", role: "text", size: 13, weight: 500, color: PlayarrStyle.ink)
-                    let hidden = max(0, items.count - shownCount)
-                    Spacer(minLength: 0)
-                    if hidden > 0 {
-                        Text("+\(hidden) more").font(.custom("Avenir Next", fixedSize: 12)).foregroundStyle(PlayarrStyle.muted)
-                            .parityRenderedText("+\(hidden) more", role: "text", size: 12, weight: 400, color: PlayarrStyle.muted)
-                    }
-                }
-                .padding(.leading, -2.1).padding(.trailing, -2.9) // web footer: number at 12.3 pt, "+N more" ends 13 pt from the edge
-                .frame(maxWidth: .infinity, minHeight: 49, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 10.9)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(inMonth ? Color.clear : WM.adaptive(light: (239, 238, 237), dark: (36, 31, 35)))
-        .overlay(alignment: .leading) { Rectangle().fill(PlayarrStyle.ink.opacity(0.125)).frame(width: 1) } // web cell borders: 1 pt each side, 1 pt on top
-        .overlay(alignment: .trailing) { Rectangle().fill(PlayarrStyle.ink.opacity(0.125)).frame(width: 1) }
-        .overlay(alignment: .top) { Rectangle().fill(PlayarrStyle.ink.opacity(0.125)).frame(height: 1) }
-        .overlay {
-            if day == viewModel.today {
-                Rectangle().stroke(WM.inkSoft, lineWidth: 2).padding(1) // web today cell: 2 pt ink-soft border
-            }
-        }
-        .accessibilityElement(children: .contain)
     }
 
     private func monthItemLabel(_ item: CalendarItem) -> String {
@@ -1061,7 +1079,7 @@ struct CalendarView: View {
                 in: RoundedRectangle(cornerRadius: 8)
             )
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .accessibilityLabel("\(dayHeading(day, today: viewModel.today)), \(count) releases")
     }
 
@@ -1074,7 +1092,7 @@ struct CalendarView: View {
                 .font(.custom("Avenir Next", fixedSize: 16).weight(.bold))
             if !viewModel.filters.isEmpty {
                 Button("Clear filters") { viewModel.filters = CalendarFilters() }
-                    .buttonStyle(PlayarrPrimaryButtonStyle())
+                    .parityButtonStyle(PlayarrPrimaryButtonStyle())
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1120,7 +1138,7 @@ private struct CalendarItemRow: View {
                 in: RoundedRectangle(cornerRadius: 12)
             )
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 
     private var first: CalendarEntry? { item.entries.first }
@@ -1262,7 +1280,7 @@ struct CalendarDetailPane: View {
                     } label: {
                         Text("Open").frame(minWidth: 120)
                     }
-                    .buttonStyle(PlayarrPrimaryButtonStyle())
+                    .parityButtonStyle(PlayarrPrimaryButtonStyle())
                     .padding(.top, 6)
                 } else {
                     Text("Not in your library yet")

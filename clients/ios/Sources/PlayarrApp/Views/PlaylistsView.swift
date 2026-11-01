@@ -206,7 +206,7 @@ struct PlaylistsView: View {
                                 } label: {
                                     playlistCard(playlist, width: cardWidth)
                                 }
-                                .buttonStyle(.plain)
+                                .parityButtonStyle(.plain)
                                 .contextMenu {
                                     if !playlist.isSystem {
                                         Button("Rename", systemImage: "pencil") {
@@ -255,7 +255,7 @@ struct PlaylistsView: View {
                             .font(.custom("Avenir Next", fixedSize: 12).weight(.bold))
                             .frame(minWidth: 42, minHeight: 42)
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                     .foregroundStyle(PlayarrStyle.ink)
                     .background(PlayarrStyle.surfaceStrong.opacity(0.82), in: Capsule())
                     .overlay { Capsule().stroke(PlayarrStyle.lineStrong, lineWidth: 1) }
@@ -574,7 +574,7 @@ struct PlaylistDetailView: View {
             }
             .frame(width: width, alignment: .leading)
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .contextMenu {
             if !playlist.isSystem {
                 Button("Move earlier", systemImage: "arrow.left") { move(item, by: -1) }

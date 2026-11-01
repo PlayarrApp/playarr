@@ -1,0 +1,1 @@
+- Android phone parity: shared CSS layout helper (1/64 px LayoutUnit, fr tracks, clamp), calendar month, library grid and film-detail derived from CSS, exporter measures the shaped run advance and uses the 3x3 occlusion test, no fitted offsets.

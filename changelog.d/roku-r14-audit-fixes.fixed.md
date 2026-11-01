@@ -1,0 +1,1 @@
+- Roku: browse rows use the grid's real whole-pixel pitch for the row shift, card links no longer declare a corner the Group does not paint, the layout export keeps panels and veils drawn over artwork and lists the empty calendar days as controls, the page body fill is the ancestor of every screen as on the web, and buttons and tiles use a true 14 px corner mask.

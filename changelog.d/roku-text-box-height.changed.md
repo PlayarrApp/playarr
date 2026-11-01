@@ -1,0 +1,1 @@
+- Roku: single-line text is as tall as the web's text box (rounded ascent plus descent, Fonts.brs PlayarrContentHeight) and nav links sit in their 67.2 px dock item as on the web (Theme.brs WebNavHitInset).

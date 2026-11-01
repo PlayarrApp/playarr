@@ -87,7 +87,8 @@ struct HomeView: View {
                 stageContent(proxy: proxy)
             }
         }
-        .background(PlayarrStyle.surface)
+        .background(WMPageFill())
+        .parityFill(WM.page) // what the page really paints behind its content, for the backdrop the export reports
         .ignoresSafeArea(edges: .horizontal)
         .navigationBarHidden(true)
     }
@@ -96,7 +97,6 @@ struct HomeView: View {
     /// 179x101 cards, no featured-title copy (numbers from the web layout dump).
     private var phoneContent: some View {
         ZStack(alignment: .topLeading) {
-            WM.page.ignoresSafeArea()
             WMKeyArt(
                 work: viewModel.featuredWork, apiClient: apiClient, lightOpacity: 0.41, webMask: true,
                 fadeStops: [(0, 0), (84, 0), (148, 1)]
@@ -321,7 +321,7 @@ struct HomeView: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .contextMenu {
             Button("Download", systemImage: "arrow.down.circle") { downloadTarget = work }
         }
@@ -380,6 +380,7 @@ struct HomeView: View {
                     .font(phone ? .custom("Avenir Next", fixedSize: 16).weight(.semibold) : WM.font(13.5, 500))
                     .tracking(phone ? -0.4 : -0.2)
                     .foregroundStyle(PlayarrStyle.ink)
+                    .parityRenderedText(rail.title, role: "text", size: phone ? 16 : 13.5, weight: phone ? 600 : 500, color: PlayarrStyle.ink)
                 if phone { Text("\(rail.works.count) titles")
                     .font(.custom("Avenir Next", fixedSize: phone ? 10.5 : 8.5).weight(.semibold))
                     .foregroundStyle(PlayarrStyle.muted) }
@@ -428,7 +429,7 @@ struct HomeView: View {
         } label: {
             content()
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .focusable()
         .focused($focusedWork, equals: work.id)
         .focusEffectDisabled()

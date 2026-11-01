@@ -265,7 +265,7 @@ struct PlayerOptionRow: View {
             .background(selected ? WM.pink.opacity(0.2) : .clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 }
 
@@ -366,6 +366,6 @@ struct PlayerQualityMatrix: View {
                     .strokeBorder(selected ? WM.pink.opacity(0.62) : Color.white.opacity(0.1), lineWidth: 1)
             )
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 }

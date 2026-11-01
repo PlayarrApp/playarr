@@ -1,0 +1,1 @@
+- Pin the Fire TV calendar screen test to a fixed clock so it no longer fails when the real month changes.

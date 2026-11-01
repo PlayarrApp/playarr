@@ -229,7 +229,7 @@ internal sealed class SeriesDetailScreen : IPage
         foreach (var c in _copy.Children.ToArray()) { _copy.Remove(c); c.Dispose(); }
         var w = _detail!.Work;
         var code = $"S{season.Season.SeasonNumber:00} · E{ep.Episode.EpisodeNumber:00}";
-        _copy.Add(Sem.Tag(Ui.Text(code, 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f), "text", $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}"));
+        _copy.Add(Sem.Tag(Ui.Text(code, 153.6f, 259.2f, 12.288f, 820, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f), "text", $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}"));
         var lines = Ui.Paragraph(_copy, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5, balance: true, role: "heading");
         var bas = 303.5f + 62.208f * lines;
         _copy.Add(Sem.Tag(Ui.Text(ep.Episode.Title ?? "", 153.6f, bas + 18.7f, 21.12f, 570, _t.InkSoft, 312, 24.288f, spacing: -0.74f), "heading"));

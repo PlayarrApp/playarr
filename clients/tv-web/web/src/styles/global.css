@@ -4146,14 +4146,17 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   opacity: 0.22;
 }
 
+/* Opaque exact-colour stops fading to transparent: a translucent stop over a surface-coloured layer is dithered by
+   Chromium 85 to 94 (checkerboard of two neighbouring levels) and drawn flat by Chromium 151, so TV engines and the web
+   reference disagree on every pixel. Opaque stops rasterise identically in every engine. */
 .tv-stage-wash {
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--surface) 94%, transparent) 0%, color-mix(in srgb, var(--surface) 90%, transparent) 36%, transparent 52%),
-    linear-gradient(270deg, color-mix(in srgb, var(--surface) 50%, transparent) 0%, transparent 34%);
+    linear-gradient(90deg, var(--surface) 0%, var(--surface) 36%, transparent 52%),
+    linear-gradient(270deg, var(--surface) 0%, transparent 17%);
 }
 
 /* The media-page kicker and the details-panel eyebrow. The page header subtitle is not part of this rule (it is the
@@ -7545,8 +7548,8 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   content: "";
   pointer-events: none;
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--bg) 94%, transparent), transparent 25%),
-    linear-gradient(0deg, color-mix(in srgb, var(--bg) 90%, transparent), transparent 26%);
+    linear-gradient(90deg, var(--bg), transparent 25%),
+    linear-gradient(0deg, var(--bg), transparent 26%);
 }
 
 .profiles-heading {

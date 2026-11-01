@@ -57,7 +57,7 @@ struct YourDataView: View {
                 .frame(width: 318, height: 48, alignment: .topLeading)
                 .overlay(Rectangle().stroke(WM.line.opacity(0.28), lineWidth: 1))
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .offset(y: 561)
             fieldLabel("If progress already exists").offset(y: 636)
             Menu {
@@ -133,7 +133,7 @@ struct YourDataView: View {
                     Text(message).font(.caption).foregroundStyle(PlayarrStyle.danger)
                 }
                 Button("Prepare my data") { Task { await model.startExport() } }
-                    .buttonStyle(PlayarrPrimaryButtonStyle())
+                    .parityButtonStyle(PlayarrPrimaryButtonStyle())
             case .working(let stage):
                 HStack(spacing: 10) { ProgressView(); Text(stage).font(.subheadline) }
                     .foregroundStyle(PlayarrStyle.inkSoft)
@@ -141,7 +141,7 @@ struct YourDataView: View {
                 Text("Ready: \(counts.watchProgress) watch records and \(counts.playlists) playlists.")
                     .font(.subheadline).foregroundStyle(PlayarrStyle.inkSoft)
                 ShareLink(item: url) { Label("Download", systemImage: "square.and.arrow.up") }
-                    .buttonStyle(PlayarrPrimaryButtonStyle())
+                    .parityButtonStyle(PlayarrPrimaryButtonStyle())
             }
         }
     }
@@ -155,14 +155,14 @@ struct YourDataView: View {
             case .idle:
                 importOptions
                 Button("Playarr data file (.zip)") { pickingFile = true }
-                    .buttonStyle(PlayarrPrimaryButtonStyle())
+                    .parityButtonStyle(PlayarrPrimaryButtonStyle())
             case .previewing:
                 HStack(spacing: 10) { ProgressView(); Text("Previewing...").font(.subheadline) }
             case .preview(let preview):
                 previewSummary(preview)
                 HStack {
                     Button("Apply import") { Task { await model.applyImport() } }
-                        .buttonStyle(PlayarrPrimaryButtonStyle())
+                        .parityButtonStyle(PlayarrPrimaryButtonStyle())
                     Button("Cancel", role: .cancel) { model.resetImport() }
                 }
             case .applying:
@@ -172,10 +172,10 @@ struct YourDataView: View {
                 if let unmatched {
                     ShareLink(item: unmatched) { Label("Download \(result.unmatchedTotal) unmatched records", systemImage: "square.and.arrow.down") }
                 }
-                Button("Done") { model.resetImport() }.buttonStyle(.bordered)
+                Button("Done") { model.resetImport() }.parityButtonStyle(.bordered)
             case .failed(let message):
                 Text(message).font(.caption).foregroundStyle(PlayarrStyle.danger)
-                Button("Try again") { model.resetImport() }.buttonStyle(.bordered)
+                Button("Try again") { model.resetImport() }.parityButtonStyle(.bordered)
             }
         }
     }

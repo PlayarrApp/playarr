@@ -83,13 +83,13 @@ struct EndOfPlaybackView: View {
                 Button { controller.replay() } label: {
                     Label("Replay", systemImage: "arrow.counterclockwise").frame(minWidth: 96, minHeight: 44)
                 }
-                .buttonStyle(PlayarrPrimaryButtonStyle())
+                .parityButtonStyle(PlayarrPrimaryButtonStyle())
 
                 if controller.nextEntry != nil {
                     Button { controller.playNow() } label: {
                         Label("Play next", systemImage: "forward.fill").frame(minHeight: 44)
                     }
-                    .buttonStyle(.bordered)
+                    .parityButtonStyle(.bordered)
                     .tint(.white)
                 }
 
@@ -121,11 +121,11 @@ struct EndOfPlaybackView: View {
                 Button { controller.playNow() } label: {
                     Label("Play now", systemImage: "play.fill").frame(minWidth: 96, minHeight: 44)
                 }
-                .buttonStyle(PlayarrPrimaryButtonStyle())
+                .parityButtonStyle(PlayarrPrimaryButtonStyle())
 
                 if controller.machine.autoplaysNext {
                     Button("Cancel") { controller.cancelCountdown() }
-                        .buttonStyle(.bordered)
+                        .parityButtonStyle(.bordered)
                         .tint(.white)
                         .frame(minHeight: 44)
                 }
@@ -133,7 +133,7 @@ struct EndOfPlaybackView: View {
                 Button { controller.replay() } label: {
                     Label("Replay", systemImage: "arrow.counterclockwise").frame(minHeight: 44)
                 }
-                .buttonStyle(.bordered)
+                .parityButtonStyle(.bordered)
                 .tint(.white)
 
                 backButton
@@ -179,7 +179,7 @@ struct EndOfPlaybackView: View {
         Button { controller.exit() } label: {
             Label("Back to details", systemImage: "chevron.backward").frame(minHeight: 44)
         }
-        .buttonStyle(.bordered)
+        .parityButtonStyle(.bordered)
         .tint(.white)
     }
 
@@ -199,7 +199,7 @@ struct EndOfPlaybackView: View {
                         } label: {
                             PlayarrMediaCard(work: work, apiClient: apiClient, width: 160)
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                     }
                 }
             }

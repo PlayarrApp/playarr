@@ -21,6 +21,11 @@ internal sealed class AppEnv
     /// <summary>Set by the shell: moves the header clock right of a page subtitle (x in px; 0 restores the default).</summary>
     public Action<float> SetClockX { get; set; } = _ => { };
     public Action NavigateBack { get; set; } = () => { };
+    /// <summary>The shell's action layer: the web app shell owns the action column (Filters, Create, Calendar link) as a sibling above the page, so those tiles live here, not in the page's own tree.</summary>
+    public global::Tizen.NUI.BaseComponents.View? ShellLayer { get; set; }
+    /// <summary>The views the current page placed in <see cref="ShellLayer"/>; the shell removes them with the page.</summary>
+    public List<global::Tizen.NUI.BaseComponents.View>? PageShellViews { get; set; }
+    public void AddShellView(global::Tizen.NUI.BaseComponents.View v) { ShellLayer!.Add(v); PageShellViews?.Add(v); }
     /// <summary>Set by the app: switches the theme and rebuilds the shell on the same route.</summary>
     public Action<string> SetTheme { get; set; } = _ => { };
     /// <summary>Set by the app: forgets the session and returns to QR sign-in.</summary>

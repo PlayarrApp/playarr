@@ -940,11 +940,9 @@ mod tests {
     use super::*;
     use gtk4::AccessibleRole as R;
 
-    #[test]
+    // GTK must only be used from the thread that initialised it, and the test harness runs each test on its own thread, so the
+    // two GTK checks run in sequence inside `gtk_checks` (two tests initialising GTK on two threads crashed with SIGSEGV).
     fn same_native_role_exports_same_role() {
-        if gtk4::init().is_err() {
-            return;
-        }
         let a = gtk4::Box::builder().accessible_role(R::Group).build();
         let b = gtk4::Frame::builder().accessible_role(R::Group).build();
         let c = gtk4::Box::builder().accessible_role(R::Generic).build();
@@ -983,10 +981,15 @@ mod tests {
     }
 
     #[test]
-    fn a_failed_probe_render_is_an_error_not_a_blank_frame() {
+    fn gtk_checks() {
         if gtk4::init().is_err() {
             return;
         }
+        same_native_role_exports_same_role();
+        a_failed_probe_render_is_an_error_not_a_blank_frame();
+    }
+
+    fn a_failed_probe_render_is_an_error_not_a_blank_frame() {
         // Never shown, so it has no size and no renderer: a render must fail, and the visibility check with it.
         let root = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         assert!(render(root.upcast_ref()).is_err());

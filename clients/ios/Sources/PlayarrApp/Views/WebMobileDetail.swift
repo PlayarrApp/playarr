@@ -284,8 +284,8 @@ struct WMDetailPage: View {
     // MARK: Body
 
     var body: some View {
+        // The one page fill is WorkDetailView's background behind this page: a second full-screen fill would cover it.
         ZStack(alignment: .topLeading) {
-            WM.page.ignoresSafeArea()
             ScrollView(.vertical) {
                 ZStack(alignment: .topLeading) {
                     artBackdrop
@@ -463,7 +463,7 @@ struct WMDetailPage: View {
         width: CGFloat, height: CGFloat = 44, fill: Color,
         glyph: String, glyphSize: CGFloat, glyphColor: Color,
         label: String, labelSize: CGFloat, labelColor: Color, gap: CGFloat,
-        name: String? = nil
+        name: String? = nil, role: String = "button"
     ) -> some View {
         HStack(spacing: gap) {
             Text(glyph).wm(glyphSize, color: glyphColor, text: glyph).foregroundStyle(glyphColor)
@@ -471,7 +471,7 @@ struct WMDetailPage: View {
             WMText(label, labelSize, 700, color: labelColor, lh: labelSize * 1.5).fixedSize()
         }
         .frame(width: width, height: height)
-        .parityShape("container", color: fill, in: Capsule(), radius: min(width, height) / 2)
+        .parityShape(role, name: name ?? label, color: fill, in: Capsule(), radius: min(width, height) / 2) // the control itself: own fill and radius
         .accessibilityElement(children: .combine)
         .accessibilityLabel(name ?? label)
         .wmPillShadow()
@@ -494,7 +494,7 @@ struct WMDetailPage: View {
                             glyphColor: WM.pink, label: "Download", labelSize: 8, labelColor: WM.ink, gap: 9, name: "Download \(work.title)"
                         )
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                     .wmKeyFocus(Capsule())
                     .disabled(downloadCandidates.isEmpty)
                     .offset(x: 0, y: 2)
@@ -504,7 +504,7 @@ struct WMDetailPage: View {
                             glyphColor: WM.pink, label: "Playback", labelSize: 11.2, labelColor: WM.ink, gap: 8, name: "Playback settings for \(work.title)"
                         )
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                     .wmKeyFocus(Capsule())
                     .disabled(playMediaFileID == nil)
                     .offset(x: 112, y: 2)
@@ -537,10 +537,10 @@ struct WMDetailPage: View {
             } label: {
                 pill(
                     width: 127.7, height: 47, fill: WM.ink, /* web touch Play is the ink fill; the rose is its keyboard-focus state */ glyph: "▶\u{FE0E}", glyphSize: 8.6,
-                    glyphColor: WM.shell, label: "Play", labelSize: 11.2, labelColor: WM.shell, gap: 11, name: "Play \(work.title)"
+                    glyphColor: WM.shell, label: "Play", labelSize: 11.2, labelColor: WM.shell, gap: 11, name: "Play \(work.title)", role: "link"
                 )
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .wmKeyFocus(Capsule())
         }
     }
@@ -565,15 +565,15 @@ struct WMDetailPage: View {
             } label: {
                 pill(
                     width: 133.1, fill: WM.ink, glyph: "▶\u{FE0E}", glyphSize: 8.6,
-                    glyphColor: WM.shell, label: "Start", labelSize: 11.2, labelColor: WM.shell, gap: 10
+                    glyphColor: WM.shell, label: "Start", labelSize: 11.2, labelColor: WM.shell, gap: 10, role: "link"
                 )
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .wmKeyFocus(Capsule())
         } else {
             pill(
                 width: 133.1, fill: WM.ink.opacity(0.4), glyph: "▶\u{FE0E}", glyphSize: 8.6,
-                glyphColor: WM.shell, label: "Start", labelSize: 11.2, labelColor: WM.shell, gap: 10
+                glyphColor: WM.shell, label: "Start", labelSize: 11.2, labelColor: WM.shell, gap: 10, role: "button"
             )
         }
     }
@@ -589,7 +589,7 @@ struct WMDetailPage: View {
         } label: {
             pill(
                 width: 104, fill: WM.chip.opacity(0.72), glyph: "+", glyphSize: 9.2,
-                glyphColor: WM.pink, label: "Add to Playlist", labelSize: 8, labelColor: WM.ink, gap: 9, name: "+ Add to Playlist"
+                glyphColor: WM.pink, label: "Add to Playlist", labelSize: 8, labelColor: WM.ink, gap: 9, name: "Add to Playlist"
             )
         }
         .wmKeyFocus(Capsule())
@@ -600,10 +600,10 @@ struct WMDetailPage: View {
             pill(
                 width: width, fill: WM.chip.opacity(0.72), glyph: model.listed ? "✓" : "+", glyphSize: 9.2,
                 glyphColor: WM.pink, label: model.listed ? "Remove from watchlist" : "Add to watchlist",
-                labelSize: 8, labelColor: WM.ink, gap: 9, name: model.listed ? "Remove from watchlist" : "+ Add to watchlist"
+                labelSize: 8, labelColor: WM.ink, gap: 9, name: model.listed ? "Remove from watchlist" : "Add to watchlist"
             )
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .wmKeyFocus(Capsule())
     }
 
@@ -709,7 +709,7 @@ struct WMDetailPage: View {
                         )
                     )
                 } label: { card }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 .focusable()
                 .focused($focusedEpisode, equals: episode.id)
                 .focusEffectDisabled()
@@ -788,7 +788,7 @@ struct WMDetailPage: View {
             }
             .frame(width: 181, height: 132, alignment: .topLeading)
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 
     private var similarTrack: some View {
@@ -806,7 +806,7 @@ struct WMDetailPage: View {
                         } label: {
                             WMRailCard(work: other, apiClient: apiClient, unseen: true, focused: false)
                         }
-                        .buttonStyle(.plain)
+                        .parityButtonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 16)

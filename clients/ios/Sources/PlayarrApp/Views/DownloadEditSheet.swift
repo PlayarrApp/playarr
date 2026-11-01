@@ -49,7 +49,7 @@ struct DownloadEditSheet: View {
                                     }
                                 }
                             }
-                            .buttonStyle(.plain)
+                            .parityButtonStyle(.plain)
                         }
                     }
                 }

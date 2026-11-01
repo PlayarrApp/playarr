@@ -1,0 +1,1 @@
+- iOS: layout exports report the web backdrop colours (page fill behind the phone nav and Search, card behind calendar agenda text, outermost drawn view behind composite controls), and the iPad rail pills are surface-strong at the web 56% alpha with a web-named profile link.

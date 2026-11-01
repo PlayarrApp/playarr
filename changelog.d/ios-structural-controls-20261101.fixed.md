@@ -1,0 +1,1 @@
+- iOS parity: header action pills and detail pills export as real buttons and links with their own fill and radius over the shell colour, rail and nav links carry the web radius, the calendar range and Today controls are buttons, and the iPad month grid is built to the web structure (weekday head, cell containers, entry buttons, day numbers).

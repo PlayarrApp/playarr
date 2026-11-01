@@ -93,7 +93,7 @@ public static class GradientPng
         return Encode(width, height, raw);
     }
 
-    private static byte[] Encode(int w, int h, byte[] raw)
+    internal static byte[] Encode(int w, int h, byte[] raw)
     {
         using var png = new MemoryStream();
         png.Write(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A });
