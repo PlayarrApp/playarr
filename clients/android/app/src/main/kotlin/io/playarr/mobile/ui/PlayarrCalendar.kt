@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityBrushPainted
 import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityPaint
 import io.playarr.shared.designsystem.page.parityShape
@@ -771,7 +772,9 @@ internal fun TvCalendarAgenda(
                                 val headingGap = if (tablet) 0f else AGENDA_HEADING_HEIGHT - dayFont.dayHeadingLine
                                 Box(
                                     Modifier.fillMaxWidth().padding(top = if (index > 0) (if (tablet) 25.dp else 26.dp) else 0.dp, bottom = if (tablet) 43.dp else (if (index > 0) 40f else 39f).minus(headingGap).dp)
-                                        .then(if (tablet) Modifier else Modifier.height(AGENDA_HEADING_HEIGHT.dp).agendaHeadingFrost(agendaOrigin.value, maxWidth.value).semantics { heading() }),
+                                        .then(if (tablet) Modifier else Modifier.offset(y = (-headingGap / 2f).dp).height(AGENDA_HEADING_HEIGHT.dp).agendaHeadingFrost(agendaOrigin.value, maxWidth.value).semantics { heading() }),
+                                    // Web h3 is 44px tall with its line centred: the text keeps its place, the box grows around it.
+                                    contentAlignment = Alignment.CenterStart,
                                 ) {
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     // Static web refs (television): the day heading is --accent at weight 640, a plain text run.
@@ -2298,7 +2301,9 @@ private fun Modifier.agendaHeadingFrost(origin: androidx.compose.ui.geometry.Off
     val frost = androidx.compose.ui.graphics.lerp(WebSurfaceStrong, WebSurfaceSoft, if (dark) 0.44f else 0.48f)
     val stops = if (dark) listOf(0f to 0f, 0.12f to 0.72f, 0.34f to 0.90f, 0.62f to 0.97f, 1f to 1f)
     else listOf(0f to 0f, 0.12f to 0.68f, 0.34f to 0.88f, 0.62f to 0.96f, 1f to 1f)
+    // Web `.calendar-day > h3` is a heading element that paints the frost itself: record it as a painted heading.
     this
+        .parityBrushPainted("heading", androidx.compose.ui.graphics.RectangleShape)
         .onGloballyPositioned { position.value = it.positionInWindow() - origin }
         .drawBehind {
             val left = viewportWidth * 0.35f * density - position.value.x

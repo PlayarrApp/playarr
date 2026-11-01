@@ -1,0 +1,1 @@
+- Android TV: the agenda day headings are recorded as painted `heading` boxes, like web's `.calendar-day > h3`, at the same 44 px box.
