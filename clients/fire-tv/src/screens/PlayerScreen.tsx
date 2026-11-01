@@ -540,8 +540,7 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
     // The first input with the controls hidden only reveals them: it must not pause, seek or activate anything.
     if (!controlsRef.current) {
       // The native focus engine still walks on this key although the controls are hidden; the web keeps focus where it was.
-      const held = nativeControl.current;
-      if (held === 'play' || held === null) setTimeout(() => focusNode(playRef), 60);
+      setTimeout(() => focusNode(playRef), 60);
       swallowPress.current = true;
       setTimeout(() => {
         swallowPress.current = false;
@@ -674,6 +673,8 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
           focused={focusedControl}
           onFocusControl={(control) => {
             nativeControl.current = control;
+            // Focus that moves while the controls are hidden is the engine walking on the revealing key: Play keeps it, as on the web.
+            if (!controlsRef.current && control !== 'play') setTimeout(() => focusNode(playRef), 60);
             setFocusedControl(control);
             reveal();
           }}
