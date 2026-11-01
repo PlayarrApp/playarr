@@ -2188,7 +2188,7 @@ private fun ExperienceNavigation(
                         WebAbsoluteLayout(left, linkTop, NAV_LINK_CSS, NAV_LINK_HEIGHT_CSS) {
                             PlayarrProfileAvatar(
                                 userId = tvProfile.userId, preference = tvProfile.avatar,
-                                modifier = Modifier.webAbs(left + (NAV_LINK_CSS - NAV_ICON_CSS) / 2f, linkTop + 9.3f, NAV_ICON_CSS, NAV_ICON_CSS).parityBox("container", radius = 999f),
+                                modifier = Modifier.webAbs(left + (NAV_LINK_CSS - NAV_ICON_CSS) / 2f, linkTop + 9.3f, NAV_ICON_CSS, NAV_ICON_CSS).parityBox("container", radius = 999f, cssShortSide = NAV_ICON_CSS),
                                 artworkModifier = Modifier.parityBox("image"), glyphSize = 13.sp,
                             )
                         }

@@ -126,8 +126,8 @@ internal object PlayarrLayoutExport {
                             .put("rect", rect(x, y, b.width, b.height, unit)).put("color", JSONObject.NULL).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
                         val drawn = box.drawnRadiusPx ?: tree.own.values.firstOrNull { box.id in it }?.firstNotNullOfOrNull { ctx.boxes[it]?.drawnRadiusPx }
                         // A plain-rectangle paint inside a clipping parent keeps the clip's declared radius.
-                        if (drawn != null && drawn > 0f) e.put("radius", radius(drawn * box.scale(), b.width, b.height, unit))
-                        else if (box.radius > 0f) e.put("radius", radius(box.radius * box.density * box.scale(), b.width, b.height, unit))
+                        if (drawn != null && drawn > 0f) e.put("radius", radius(drawn * box.scale(), b.width, b.height, unit, box.cssShortSide))
+                        else if (box.radius > 0f) e.put("radius", radius(box.radius * box.density * box.scale(), b.width, b.height, unit, box.cssShortSide))
                         val effective = box.opacity * ctx.layerAlpha(ctx.boxChain(box.id), except = box.id)
                         if (effective <= 0f) continue
                         if (effective < 1f) e.put("opacity", effective.toDouble())
@@ -319,7 +319,7 @@ internal object PlayarrLayoutExport {
     private fun r2(v: Float) = Math.round(v * 100) / 100.0
     private fun rect(x: Float, y: Float, w: Float, h: Float, unit: Float) = JSONObject().put("x", r2(x * unit)).put("y", r2(y * unit)).put("w", r2(w * unit)).put("h", r2(h * unit))
     /** A declared corner radius (px) clamped to half the short side, as the drawn shape resolves it. */
-    private fun radius(px: Float, w: Float, h: Float, unit: Float) = r2(minOf(px, minOf(w, h) / 2f) * unit)
+    private fun radius(px: Float, w: Float, h: Float, unit: Float, cssShortSide: Float? = null) = r2(minOf(px * unit, (cssShortSide ?: (minOf(w, h) * unit)) / 2f))
 
     private fun hex(argb: Int): String =
         "#%02x%02x%02x".format((argb shr 16) and 255, (argb shr 8) and 255, argb and 255) + if ((argb ushr 24) < 255) "%02x".format(argb ushr 24) else ""
