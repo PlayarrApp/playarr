@@ -4,20 +4,20 @@ import SwiftUI
 import UIKit
 
 enum PlayarrStyle {
-    static let background = adaptive(light: (0.961, 0.953, 0.949), dark: (0.082, 0.074, 0.082))
-    static let surface = adaptive(light: (0.985, 0.980, 0.976), dark: (0.106, 0.094, 0.106))
-    static let surfaceStrong = adaptive(light: (1, 1, 1), dark: (0.129, 0.114, 0.129))
-    static let ink = adaptive(light: (0.220, 0.149, 0.129), dark: (0.957, 0.941, 0.945))
-    static let inkSoft = adaptive(light: (0.404, 0.349, 0.380), dark: (0.773, 0.722, 0.741))
-    static let muted = adaptive(light: (0.647, 0.588, 0.620), dark: (0.533, 0.478, 0.510))
+    static let background = adaptive(light: (245 / 255, 243 / 255, 242 / 255), dark: (21 / 255, 19 / 255, 21 / 255))
+    static let surface = adaptive(light: (251 / 255, 250 / 255, 249 / 255), dark: (27 / 255, 24 / 255, 27 / 255))
+    static let surfaceStrong = adaptive(light: (1, 1, 1), dark: (33 / 255, 29 / 255, 33 / 255))
+    static let ink = adaptive(light: (56 / 255, 38 / 255, 33 / 255), dark: (244 / 255, 240 / 255, 241 / 255))
+    static let inkSoft = adaptive(light: (103 / 255, 89 / 255, 97 / 255), dark: (197 / 255, 184 / 255, 189 / 255))
+    static let muted = adaptive(light: (165 / 255, 150 / 255, 158 / 255), dark: (136 / 255, 122 / 255, 130 / 255))
     static let pink = Color(red: 0.812, green: 0.192, blue: 0.341)
-    static let brandInk = adaptive(light: (0.510, 0.118, 0.212), dark: (0.918, 0.651, 0.714))
-    static let accent = adaptive(light: (0.404, 0.349, 0.380), dark: (0.875, 0.863, 0.867))
-    static let onAccent = adaptive(light: (1, 1, 1), dark: (0.129, 0.114, 0.129))
-    static let line = adaptive(light: (0.220, 0.149, 0.129), dark: (0.875, 0.863, 0.867)).opacity(0.14)
-    static let lineStrong = adaptive(light: (0.220, 0.149, 0.129), dark: (0.875, 0.863, 0.867)).opacity(0.28)
-    static let danger = adaptive(light: (0.659, 0.275, 0.298), dark: (0.933, 0.573, 0.592))
-    static let navBackground = adaptive(light: (1, 1, 1), dark: (0.129, 0.114, 0.129)).opacity(0.88)
+    static let brandInk = adaptive(light: (130 / 255, 30 / 255, 54 / 255), dark: (234 / 255, 166 / 255, 182 / 255))
+    static let accent = adaptive(light: (103 / 255, 89 / 255, 97 / 255), dark: (223 / 255, 220 / 255, 221 / 255))
+    static let onAccent = adaptive(light: (1, 1, 1), dark: (33 / 255, 29 / 255, 33 / 255))
+    static let line = adaptive(light: (56 / 255, 38 / 255, 33 / 255), dark: (223 / 255, 220 / 255, 221 / 255)).opacity(0.14)
+    static let lineStrong = adaptive(light: (56 / 255, 38 / 255, 33 / 255), dark: (223 / 255, 220 / 255, 221 / 255)).opacity(0.28)
+    static let danger = adaptive(light: (168 / 255, 70 / 255, 76 / 255), dark: (238 / 255, 146 / 255, 151 / 255))
+    static let navBackground = adaptive(light: (1, 1, 1), dark: (33 / 255, 29 / 255, 33 / 255)).opacity(0.88)
     static let cornerRadius: CGFloat = 22
 
     private static func adaptive(
