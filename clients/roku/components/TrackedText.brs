@@ -82,6 +82,10 @@ sub onSpecChange()
                     last = Right(word, 1)
                     parts = [{ text: Left(word, Len(word) - 1), x: parts[0].x, tail: false }, { text: last, x: advanceOf(Left(line, j)) - advanceOf(last), tail: true }]
                 end if
+                for each pp in parts
+                    pp.last = false
+                end for
+                parts[parts.Count() - 1].last = true
                 for each part in parts
                 piece = part.text
                 x = part.x
@@ -122,6 +126,12 @@ sub onSpecChange()
                     ThemeSetRole(glyph, spec.role)
                 end if
                 glyph.translation = [lineOffset + x, lineIndex * lineHeight]
+                ' The last Label of a line ends where the web's run ends: the box the firmware lays out for it (its real bounding rect, at the
+                ' web's fractional scale) is set so that its right edge is the web's advance end of the line.
+                if j = total and spec.symbol <> true and part.last = true
+                    boxWidth = glyph.boundingRect().width * PlayarrScaleFor(size)
+                    glyph.translation = [lineOffset + x + advanceOf(piece) - boxWidth, lineIndex * lineHeight]
+                end if
                 glyph.visible = true
                 end for
                 i = j + 1
