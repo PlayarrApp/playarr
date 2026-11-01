@@ -90,8 +90,11 @@ internal sealed class Shell : View
         BackgroundColor = Ui.C(_theme.Bg);
         BuildRail();
         _chrome.Add(new ImageView(Ui.ResPath("logo.png")) { PositionX = 60.6f, PositionY = 60.2f, Size = new Size(42, 42) });
-        _clockTime = Ui.Text("", 481f, 67.73f, 17.28f, 760, _theme.Ink, 60, 25.92f, spacing: -0.5184f);
-        _clockDate = Ui.Text("", 535.4f, 72.5f, 11.136f, 640, _theme.Ink, 160, 12.25f, upper: true, spacing: 0.44544f, block: true);
+        // web .app-clock: a grid of --page-control-height (50 px) at --page-header-top (5.2 viewport units = 56.16 px), align-items: center, so both items centre on the same line;
+        // a block's text sits at the floored half-leading in its CSS line (CssLineBox.Top)
+        const float ClockMid = 5.2f * 10.8f + 50f / 2f;
+        _clockTime = Ui.Text("", 481f, ClockMid - 25.92f / 2f, 17.28f, 760, _theme.Ink, 60, 25.92f, spacing: -0.5184f);
+        _clockDate = Ui.Text("", 535.4f, ClockMid - 12.25f / 2f + CssLineBox.Top(12.25f, 11.136f), 11.136f, 640, _theme.Ink, 160, 12.25f, upper: true, spacing: 0.44544f, block: true);
         Sem.Tag(_clockTime, "text", null); Sem.Tag(_clockDate, "text", null);
         _chrome.Add(_clockTime); _chrome.Add(_clockDate);
         UpdateClock();

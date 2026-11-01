@@ -8,6 +8,7 @@ namespace Playarr.Tizen;
 internal sealed class PageSubtitle
 {
     private const float TitleX = 226.6f, TitleSize = 33.6f, TitleSpacing = -1.51f, DividerGap = 23f, TextGap = 23f, ClockGap = 25f, MaxTextWidth = 640f, WrappedRuleY = 112f, WrappedTextY = 117.6f, WrappedClockGap = 16f, ClockLeft = 481f, FitMargin = 16f;
+    private const float HeaderTop = 5.2f * 10.8f, HeaderH = 50f, SubLine = 1.5f * 11.136f; // --page-header-top (5.2 viewport units), --page-control-height, the subtitle's line box
     private readonly AppEnv _env;
     private readonly View _parent;
     private readonly PlayarrTheme _t;
@@ -49,7 +50,7 @@ internal sealed class PageSubtitle
         }
         _divider.PositionX = _dividerX; _divider.PositionY = 72f; _divider.Size = new Size(1, 18);
         var x = _dividerX + 1 + TextGap;
-        _label = Ui.Text(text, x, 71f, 11.136f, 680, _t.Ink, MaxTextWidth, 18, upper: true, spacing: 0.50112f);
+        _label = Ui.Text(text, x, HeaderTop + (HeaderH - SubLine) / 2f, 11.136f, 680, _t.Ink, MaxTextWidth, SubLine, upper: true, spacing: 0.50112f); // web: a flex item of the header row (align-items: center), its box one body line (line-height 1.5) tall
         _parent.Add(_label);
         _env.SetClockX(x + Math.Min(MaxTextWidth, Ui.TextWidth(text.ToUpperInvariant(), 11.136f, 680, 0.50112f)) + ClockGap);
     }
