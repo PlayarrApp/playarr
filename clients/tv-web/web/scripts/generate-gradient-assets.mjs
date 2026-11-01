@@ -8,8 +8,8 @@
 // interpolation of one colour only changes alpha) and alpha is the stop ramp, so it blends over any art. Everything is
 // derived from the CSS tokens in src/styles/global.css and the stop tables below (the same numbers as the CSS), never from
 // screenshots. Run `node scripts/generate-gradient-assets.mjs` after changing a token or a stop; the test
-// src/lib/gradientAssets.test.ts fails when the committed files are stale.
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+// src/lib/gradientAssets.test.ts (`--check`) fails when the committed files are stale.
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { deflateSync } from "node:zlib";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -90,7 +90,11 @@ export function buildAssets() {
   return out;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] === fileURLToPath(import.meta.url) && process.argv[2] === "--check") {
+  const stale = [...buildAssets()].filter(([name, png]) => !existsSync(join(outDir, name)) || !readFileSync(join(outDir, name)).equals(png));
+  for (const [name] of stale) console.log(`stale: ${name}`);
+  process.exit(stale.length ? 1 : 0);
+} else if (process.argv[1] === fileURLToPath(import.meta.url)) {
   mkdirSync(outDir, { recursive: true });
   for (const [name, png] of buildAssets()) { writeFileSync(join(outDir, name), png); console.log(name, png.length); }
 }
