@@ -238,6 +238,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   const webBase = new URL(web).pathname.replace(/\/$/, "");
   // Packaged TV platforms (PLAYARR_WEB_HASH=1, bundles built with their platform define) route through the URL hash: /tv/#/movies.
   const hashMode = env.PLAYARR_WEB_HASH === "1";
+  // The player shows no Mute button where the volume is the system's: packaged TVs (hash routing) and the Android TV and Roku user agents (usesSystemVolumeOnly in PlayerSurface).
+  const systemVolume = hashMode || /PlayarrAndroidTV\/|PlayarrRoku\//.test(env.PLAYARR_WEB_USER_AGENT ?? (env.PLAYARR_WEB_MOBILE === "1" ? "" : "PlayarrAndroidTV/"));
   const appUrl = (p) => (hashMode ? `${web}/#${p}` : web + p);
   const appPath = (url) => { if (hashMode) { const h = new URL(url).hash; return h.startsWith("#/") ? h.slice(1).replace(/[?].*$/, "") : "/"; } const p = new URL(url).pathname; return webBase && (p === webBase || p.startsWith(`${webBase}/`)) ? p.slice(webBase.length) || "/" : p; };
   const configuredSecrets = secrets ?? (env.PLAYARR_DEVICE_TEST_SERVER_URL ? {
@@ -415,7 +417,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     // /login, not /: the deployed worker serves the marketing site at / to signed-out visitors, and a signed-in session redirects /login to the app.
     await page.goto(appUrl("/login"), { waitUntil: "load" });
     try {
-      await page.waitForFunction(() => !!document.querySelector(".app-nav-link") || !!document.querySelector("input[name=password]") || (location.pathname.startsWith("/login") || location.hash.startsWith("#/login")), null, { timeout: 30000 });
+      await page.waitForFunction(() => !!document.querySelector(".app-nav-link") || !!document.querySelector("input[name=password]") || (/\/login(\/|$)/.test(location.pathname) || location.hash.startsWith("#/login")), null, { timeout: 30000 });
     } catch (e) {
       if (e?.name !== "TimeoutError") throw e;
       throw new Error(`${web}/login did not show the Playarr web app (page "${await page.title().catch(() => "?")}" at ${page.url()}); set PLAYARR_WEB_URL to a web app build or build clients/tv-web/web/dist`);
@@ -839,7 +841,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
         tick();
       }));
       // The time label follows timeupdate events and can still show the pre-seek second, and the mute button the muted state: wait for 0:02 and an unmuted player. A packaged TV (hash routing) has system volume only: no Mute button to wait for.
-      await page.waitForFunction((system) => /(^|[^\d:])0:02(?![\d:])/.test(document.querySelector(".player-controls")?.textContent?.replace(/\s+/g, " ") ?? "") && document.querySelector("video")?.muted === false && (system || !!document.querySelector(".player-controls [aria-label='Mute'],.player-controls [title='Mute']")), hashMode, { timeout: 10000, polling: 100 });
+      await page.waitForFunction((system) => /(^|[^\d:])0:02(?![\d:])/.test(document.querySelector(".player-controls")?.textContent?.replace(/\s+/g, " ") ?? "") && document.querySelector("video")?.muted === false && (system || !!document.querySelector(".player-controls [aria-label='Mute'],.player-controls [title='Mute']")), systemVolume, { timeout: 10000, polling: 100 });
       await page.waitForTimeout(600); // the player moves focus to play/pause on a timer: let it, then drop it
       await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
       await guard();
@@ -929,7 +931,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
           // Per-server data on the calendar link panel (the URL field and the QR card encode the server address), in css px, so scorers can mask them.
           maskRects: [".calendar-subscription-url", ".calendar-link-secret > :last-child"].flatMap((q) => [...document.querySelectorAll(q)].map((e) => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((n) => Math.round(n * 10) / 10); })),
           fontsReady: document.fonts.status === "loaded",
-          signedOut: !!document.querySelector("input[name=password]") || (location.pathname.startsWith("/login") || location.hash.startsWith("#/login")),
+          signedOut: !!document.querySelector("input[name=password]") || (/\/login(\/|$)/.test(location.pathname) || location.hash.startsWith("#/login")),
         };
       });
       await guard();
