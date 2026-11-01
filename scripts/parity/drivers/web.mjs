@@ -9,6 +9,7 @@ import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import { chromium } from "playwright-core";
 import { assertAllowedDeviceTestUsername, assertDeviceTestPage, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl, trustedLoginUsername } from "../device-test-guard.mjs";
 
@@ -235,6 +236,13 @@ export const DETERMINISTIC_RASTER_ARGS = ["--num-raster-threads=1", "--disable-p
 // Fonts ready, every <img> and CSS background image in the viewport decoded, then two frames, so a shot never catches a half-decoded tile.
 export const settleDecodedPaint = () => (async () => {
   await document.fonts.ready;
+  // A shot taken after earlier layouts depends on the history of the page (nav label tops moved a device pixel, button text a half CSS pixel, between
+  // identical runs: proved with a before/after screenshot of one page). Hiding and showing the root forces one full style, layout and paint pass from
+  // nothing, so the frame is a function of the DOM only. Scroll offsets are restored; focus survives (checked: activeElement is unchanged).
+  const scrolls = [...document.querySelectorAll("*")].filter((e) => e.scrollTop || e.scrollLeft).map((e) => [e, e.scrollLeft, e.scrollTop]);
+  const root = document.documentElement;
+  root.style.display = "none"; void root.offsetHeight; root.style.display = ""; void root.offsetHeight;
+  for (const [e, x, y] of scrolls) { e.scrollLeft = x; e.scrollTop = y; }
   const urls = new Set();
   const inView = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth; };
   const jobs = [];
@@ -490,7 +498,16 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       await page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 });
     }
     // The focused film's runtime fills in when its detail request lands (LibraryPreview, Home hero): a shot taken before it drops the "1 min" span.
-    if (path === "/movies") await page.waitForSelector(".tv-library-preview [data-detail-field=runtime]", { timeout: 30000 });
+    // The app can drop the answer of that request when the Home page's controller is released as the library mounts (the response is 200 and the span never appears), so the wait is short and a reload retries it.
+    if (path === "/movies") {
+      for (let attempt = 1; ; attempt++) {
+        try { await page.waitForSelector(".tv-library-preview [data-detail-field=runtime]", { timeout: 8000 }); break; } catch (e) {
+          if (e?.name !== "TimeoutError" || attempt >= 3) throw e;
+          await page.reload();
+          await page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 });
+        }
+      }
+    }
     if (path === "/") await page.waitForSelector("[data-detail-field=runtime]", { timeout: 8000 }).catch((e) => { if (e?.name !== "TimeoutError") throw e; }); // a series or music first card has no runtime
     if (path === "/calendar") await page.waitForSelector(".calendar-page", { timeout: 30000 });
     if (path === "/search") await page.waitForSelector(".tv-search-results-grid:visible, .tv-empty-state:visible, .tv-search-prompt:visible", { timeout: 30000 }); // :visible, as the phone layout also renders a hidden prompt
