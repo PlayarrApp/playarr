@@ -246,7 +246,9 @@ internal static class LayoutExport
         }
         // The box of a run is what the label's own text layout reports: the union of its glyphs' positions and sizes (TextGeometry), top to bottom, from the faces actually shaped (fallback faces included).
         foreach (var l in lines.OrderBy(l => l.Top))
-            yield return (System.Text.RegularExpressions.Regex.Replace(text[l.First..(l.Last + 1)], @"\s+", " ").Trim(), l.L, l.Top, l.R - l.L, l.Bottom - l.Top);
+        // CSS letter-spacing is added after every character including the last one of a line, so an inline text box is as wide as its glyph advances plus one spacing per character; the glyph union stops at the last
+        // advance, so the label's own CharacterSpacing (the property the app set; local pixels like the glyph bounds) closes the box the way the browser measures it
+            yield return (System.Text.RegularExpressions.Regex.Replace(text[l.First..(l.Last + 1)], @"\s+", " ").Trim(), l.L, l.Top, l.R - l.L + label.CharacterSpacing, l.Bottom - l.Top);
     }
 
     /// <summary>
