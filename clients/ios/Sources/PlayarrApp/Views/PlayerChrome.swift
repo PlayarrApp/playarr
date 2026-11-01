@@ -101,6 +101,26 @@ struct PlayerGlyphView: View {
     let glyph: PlayerGlyph
     var size: CGFloat = 20
     var color: Color = .white
+    @Environment(\.self) private var environment
+
+    var body: some View {
+        // Parity captures blit a bitmap drawn once (GPU vector strokes antialias differently on each runner host).
+        #if DEBUG
+        if ParityLaunch.zeroInsets, let image = PlayerGlyphBitmap.image(glyph: glyph, color: color, size: size, environment: environment) {
+            Image(uiImage: image).resizable().frame(width: size, height: size)
+        } else {
+            PlayerGlyphCanvas(glyph: glyph, size: size, color: color)
+        }
+        #else
+        PlayerGlyphCanvas(glyph: glyph, size: size, color: color)
+        #endif
+    }
+}
+
+struct PlayerGlyphCanvas: View {
+    let glyph: PlayerGlyph
+    var size: CGFloat = 20
+    var color: Color = .white
 
     var body: some View {
         Canvas { context, _ in
@@ -121,6 +141,24 @@ struct PlayerGlyphView: View {
         .frame(width: size, height: size)
     }
 }
+
+#if DEBUG
+@MainActor
+enum PlayerGlyphBitmap {
+    private static var cache: [String: UIImage] = [:]
+
+    static func image(glyph: PlayerGlyph, color: Color, size: CGFloat, environment: EnvironmentValues) -> UIImage? {
+        let resolved = color.resolve(in: environment)
+        let key = "\(glyph)|\(size)|\(resolved)"
+        if let cached = cache[key] { return cached }
+        let renderer = ImageRenderer(content: PlayerGlyphCanvas(glyph: glyph, size: size, color: Color(resolved)))
+        renderer.scale = UIScreen.main.scale
+        guard let image = renderer.uiImage else { return nil }
+        cache[key] = image
+        return image
+    }
+}
+#endif
 
 // MARK: - Quality model (web `qualityMatrix.ts` and `playerQualityLabel.ts`)
 

@@ -530,7 +530,7 @@ struct WMKeyArt: View {
                     .frame(width: 406 * artScale, height: (contain ? 406 * 9 / 16 : imageHeight) * artScale)
                     .mask {
                         if webMask && scheme == .light {
-                            LinearGradient(
+                            WMGradient(
                                 stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.72), .init(color: .clear, location: 1)],
                                 startPoint: .leading, endPoint: .trailing
                             )
@@ -547,9 +547,9 @@ struct WMKeyArt: View {
                     .offset(x: -8, y: imageTop)
             }
             if webMask && scheme == .light {
-                LinearGradient(colors: [WM.page.opacity(0.54), WM.page.opacity(0)], startPoint: .leading, endPoint: .trailing)
+                WMGradient(colors: [WM.page.opacity(0.54), WM.page.opacity(0)], startPoint: .leading, endPoint: .trailing)
             }
-            LinearGradient(
+            WMGradient(
                 stops: fadeStops.map { stops in
                     stops.map { Gradient.Stop(color: WM.page.opacity($0.cover), location: $0.y / 844) }
                 } ?? [
@@ -1100,7 +1100,7 @@ extension View {
         return mask {
             GeometryReader { proxy in
                 if enabled {
-                    LinearGradient(
+                    WMGradient(
                         stops: stops(proxy.size),
                         startPoint: axis == .horizontal ? .leading : .top,
                         endPoint: axis == .horizontal ? .trailing : .bottom

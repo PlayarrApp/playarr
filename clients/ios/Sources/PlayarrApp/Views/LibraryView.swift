@@ -366,7 +366,7 @@ struct LibraryView: View {
                         .parityClipped() // scaledToFill art overflowed the frame and drew a grey band over the grid
                         .parityOpacity(scheme == .dark ? 0.1 : 0.04) // web light: the preview art is nearly invisible on the white page
                         .overlay {
-                            LinearGradient(
+                            WMGradient(
                                 colors: [PlayarrStyle.surface.opacity(0.2), PlayarrStyle.surface],
                                 startPoint: .leading,
                                 endPoint: .trailing
@@ -1069,7 +1069,7 @@ private struct RailPaint: ViewModifier {
             content.background(PlayarrStyle.surface.opacity(0.96))
         } else {
             content
-                .background(LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing))
+                .background(WMGradient(stops: stops, startPoint: .leading, endPoint: .trailing))
                 .parityGradient(stops, from: .leading, to: .trailing)
         }
     }

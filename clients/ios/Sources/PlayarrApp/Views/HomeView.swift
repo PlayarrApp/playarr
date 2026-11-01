@@ -265,7 +265,7 @@ struct HomeView: View {
                     .frame(height: HomeLayout.backdropHeight(viewportHeight: height, phone: phone))
                     .parityOpacity(phone ? 0.42 : (scheme == .dark ? 0.22 : 0.12))
             }
-            LinearGradient(
+            WMGradient(
                 stops: phone
                     ? [
                         .init(color: .clear, location: 0.12),
@@ -279,7 +279,7 @@ struct HomeView: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
-            LinearGradient(
+            WMGradient(
                 colors: [PlayarrStyle.surface.opacity(phone ? 0.28 : 0.5), .clear],
                 startPoint: .leading,
                 endPoint: .trailing
@@ -343,13 +343,13 @@ struct HomeView: View {
         .scrollIndicators(.hidden)
         .background {
             if phone {
-                LinearGradient(
+                WMGradient(
                     colors: [.clear, PlayarrStyle.surface.opacity(0.94), PlayarrStyle.surface],
                     startPoint: .top,
                     endPoint: .bottom
                 )
             } else if scheme == .dark {
-                LinearGradient(
+                WMGradient(
                     colors: [.clear, PlayarrStyle.surface.opacity(0.9), PlayarrStyle.surface],
                     startPoint: .leading,
                     endPoint: .trailing
@@ -508,7 +508,7 @@ struct WMFadingRail<Content: View>: View {
             .scrollClipDisabled()
             .scrollIndicators(.hidden)
             .mask(
-                LinearGradient(stops: maskStops, startPoint: .leading, endPoint: .trailing)
+                WMGradient(stops: maskStops, startPoint: .leading, endPoint: .trailing)
                 // The mask must not clip the focused card's shadow above and below the track.
                 .padding(.vertical, -60)
             )
