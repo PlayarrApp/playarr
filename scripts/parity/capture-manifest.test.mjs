@@ -71,3 +71,12 @@ test("producer manifest is accepted by the receipt-gated selective merge contrac
   assert.equal(merged.manifest.captures[0].sha256, createHash("sha256").update(incomingBytes).digest("hex"));
   assert.deepEqual(merged.files.get("dark/home.png"), incomingBytes);
 });
+
+test("capture manifest binds the layout document hash to its screenshot row", () => {
+  const layoutBytes = Buffer.from("{}\n");
+  const manifest = createCaptureManifest({ suite: 4, buildIdentity: `${sha}@${builtAt}`, clock: builtAt, state: "s", checkedAt,
+    captures: [{ id: "home", theme: "dark", path: "dark/home.png", bytes: Buffer.from("png"), layoutPath: "layout/dark/home.json", layoutBytes, capturedAt: checkedAt }] });
+  assert.deepEqual(manifest.captures[0].layout, { path: "layout/dark/home.json", sha256: createHash("sha256").update(layoutBytes).digest("hex") });
+  assert.throws(() => createCaptureManifest({ suite: 4, buildIdentity: `${sha}@${builtAt}`, clock: builtAt, state: "s", checkedAt,
+    captures: [{ id: "home", theme: "dark", path: "dark/home.png", bytes: Buffer.from("png"), layoutPath: "../x.json", layoutBytes, capturedAt: checkedAt }] }), /layout paths/);
+});

@@ -27,4 +27,4 @@ for attempt in 1 2 3 4; do
   if node tizen-webos/verify-tizen-session.mjs; then ok=1; break; fi
 done
 [ -n "${ok:-}" ] || { echo "Tizen web app did not answer with the parity session" >&2; exit 1; }
-exec node suite-run.mjs --driver drivers/tizen-webos.mjs --out "$out" "$@" --only screens,dpad --skip-player
+exec node suite-run.mjs --driver drivers/tizen-webos.mjs --out "$out" "$@" --only screens,dpad $([ "${PARITY_PLAYER:-1}" = 1 ] && echo --player || echo --skip-player)

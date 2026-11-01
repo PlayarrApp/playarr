@@ -4,7 +4,7 @@
 // webOS: Chrome DevTools Protocol (keys and eval). Tizen: X key events to the emulator window plus the debug build's
 // netlog.js eval channel (a debug build with scripts/parity/tizen-webos/netlog.js; the host side is logserver.py <dir>/log.txt). Both then drive the same page functions.
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -77,6 +77,19 @@ function installLoopbackArt() {
   const sa = Element.prototype.setAttribute;
   Element.prototype.setAttribute = function (n, v) { return sa.call(this, n, this instanceof HTMLImageElement && n === "src" ? fix(v) : v); };
 }
+// The web refs are captured with caret-color transparent (FREEZE_CSS in web.mjs): the blinking text caret is not app layout. Same rule on the device page, set at page start.
+function installCaretHide() {
+  const add = () => {
+    if (document.getElementById("parity-caret-hide")) return;
+    const style = document.createElement("style");
+    style.id = "parity-caret-hide";
+    style.textContent = "*,*::before,*::after{caret-color:transparent!important}";
+    (document.head || document.documentElement).appendChild(style);
+  };
+  if (document.documentElement) add();
+  document.addEventListener("DOMContentLoaded", add);
+}
+
 // Keeps the playback listener the app registers on AVPlay, so a capture can deliver the position tick of a paused seek (AVPlay sends none while paused).
 function tapAvplayListener() {
   try {
@@ -137,7 +150,7 @@ export async function createDriver() {
     await new Promise((r, j) => { socket.onopen = r; socket.onerror = j; });
     // Records the Media Session action handlers (the now-playing buttons) on every new document, as the web driver does.
     await cdp("Page.enable");
-    await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(${pageHook})()` });
+    await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(${pageHook})();(${installCaretHide})()` });
     if (tizen65) await cdp("Page.addScriptToEvaluateOnNewDocument", { source: readFileSync(new URL("../tizen-webos/avplay-shim.js", import.meta.url), "utf8") });
     if (TIZEN_MIRROR) await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `window.__mirrorPause = true;(${installLoopbackArt})();` });
     if (pin) {
@@ -232,10 +245,23 @@ export async function createDriver() {
     } else await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: 960, y: 540 });
     if (!(await until(`!!document.querySelector(".player-controls") && !document.querySelector(".player-controls").classList.contains("is-hidden")`, 10000))) throw new Error("player controls did not show");
     if (device === "tizen") {
-      // The emulator draws the AVPlay video as its own layer above the browser, so a grab of a playing clip shows the video without the controls
-      // (a real TV composites the plane under the browser). The page is not touched: the screenshot is what the emulator shows, and the layout
-      // export is the DOM as laid out. The pixel score of this screen is therefore an emulator limit (docs/parity/DEVICES.md).
+      // The emulator composites the AVPlay plane above the browser, so a grab of the player shows the video and none of the controls the user has
+      // up (a real TV composites the plane under the page: controls over the video). Toggle-and-diff on the real screen showed the plane covers
+      // the whole page there. So the grab is taken with the plane hidden through its own visibility, the same switch the app uses
+      // (setDisplayElementVisible): the controls are then what the screen shows. The paused 2.000 s frame itself stays in the player and is
+      // not in this grab (the page's own backdrop shows); the layout export of the same state finds the controls visible (measurePlaneCells has no plane left).
+      await ev(`(document.querySelector('object[type="application/avplayer"]').style.visibility = "hidden", true)`);
       await sleep(1000);
+    }
+    if (device !== "tizen") {
+      // The engine stops buffering at a different point each run (47 s and 49 s of a 60 s clip seen), which moves the end of the buffered bar. Seek to the
+      // clip end so the whole clip is in the buffer, then the pin below seeks back to 2 s: the bar then ends at the clip end every run.
+      await ev(`(async () => { const v = document.querySelector("video"); v.pause(); await new Promise((res) => { v.addEventListener("seeked", res, { once: true }); v.currentTime = Math.max(0, v.duration - 0.5); setTimeout(res, 8000); }); return true; })()`);
+      const end = `(() => { const v = document.querySelector("video"); return v && v.buffered.length ? v.buffered.length === 1 && v.buffered.start(0) <= 0.05 && v.buffered.end(0) >= v.duration - 0.05 : false; })()`;
+      /* The seek to the end leaves two buffered ranges (each its own bar element, the overlap drawn twice as light): play from the start until they merge into one. */
+      await ev(`(async () => { const v = document.querySelector("video"); v.currentTime = 0; await v.play().catch(() => {}); return true; })()`);
+      if (!(await until(end, 90000))) throw new Error("the player video buffer did not merge into one range");
+      await ev(`(document.querySelector("video").pause(), true)`);
     }
     // A late play() or a timer can resume playback: hold the frame until it stays paused for two checks 0.7 s apart.
     let held = avplay ? 2 : 0;
@@ -247,6 +273,19 @@ export async function createDriver() {
       const synced = `(() => { const v = document.querySelector("video"), f = document.querySelector(".player-seek-progress"); return !!v && !!f && Math.abs(parseFloat(f.style.width) - 100 * v.currentTime / v.duration) < 0.15; })()`;
       for (let i = 0; i < 10 && !(await ev(synced)); i += 1) { await ev(`(document.querySelector("video").dispatchEvent(new Event("timeupdate")), true)`); await sleep(400); }
       if (!(await ev(synced))) throw new Error("the seek bar fill does not show the paused position");
+    }
+    if (device !== "tizen") {
+      // The buffered bar (.player-seek-buffered) follows the download; a capture mid-download put its end at a different x each run. The engine may stop
+      // buffering ahead of the playhead before the clip end, so wait until the buffered end holds still for 5 s (and report it).
+      const end = `(() => { const v = document.querySelector("video"); return v && v.buffered.length ? v.buffered.end(v.buffered.length - 1) : -1; })()`;
+      let prev = -2, still = 0;
+      for (let i = 0; i < 120 && still < 5; i += 1) { const e = await ev(end); still = e > 0 && e === prev ? still + 1 : 0; prev = e; await sleep(1000); }
+      if (still < 5) throw new Error("the player video buffer did not settle");
+      console.log(`  player buffered end ${prev}`);
+      // The bar must show it: the last buffered element ends where the video's buffer ends (re-read on the engine's next tick).
+      const shown = `(() => { const b = [...document.querySelectorAll(".player-seek-buffered")].pop(), v = document.querySelector("video"); if (!b || !v || !v.duration) return false; return Math.abs(parseFloat(b.style.left) + parseFloat(b.style.width) - 100 * v.buffered.end(v.buffered.length - 1) / v.duration) < 0.2; })()`;
+      for (let i = 0; i < 10 && !(await ev(shown)); i += 1) { await ev(`(document.querySelector("video").dispatchEvent(new Event("progress")), document.querySelector("video").dispatchEvent(new Event("timeupdate")), true)`); await sleep(500); }
+      if (!(await ev(shown))) throw new Error("the seek bar does not show the buffered range");
     }
     await sleep(600); // the player moves focus to play/pause on a timer: let it, then drop it
     await ev(`(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)`);
@@ -436,6 +475,34 @@ export async function createDriver() {
     if (stable < 3) throw new Error("visible images did not settle before capture");
     await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
   }
+  // Toggle-and-diff of the native video plane on the real screen. Only on a page that has the AVPlay object laid out (the player): grab, hide the object
+  // (visibility, the app's own way of hiding the plane), grab again, show it again, and report the 48 x 27 grid cells where any channel differs.
+  async function measurePlaneCells() {
+    const plane = `(() => { const o = document.querySelector('object[type="application/avplayer"]'); return o && getComputedStyle(o).visibility !== "hidden" && getComputedStyle(o).display !== "none" ? o : null; })()`;
+    if (!(await ev(`!!${plane}`))) return null;
+    const dir = mkdtempSync(join(tmpdir(), "plane-"));
+    const grab = async (name) => {
+      await sleep(1500);
+      const xwd = join(dir, `${name}.xwd`), png = join(dir, `${name}.png`);
+      writeFileSync(xwd, execFileSync("xwd", ["-display", display, "-root", "-silent"], { maxBuffer: 64 << 20 }));
+      execFileSync("magick", [`xwd:${xwd}`, "-crop", `1920x1080+${process.env.TIZEN_CONTENT_OFFSET ?? "6,35"}`.replace(",", "+"), "+repage", `png:${png}`]);
+      return png;
+    };
+    try {
+      const shown = await grab("shown");
+      await ev(`(${plane}.style.visibility = "hidden", true)`);
+      let hidden;
+      try { hidden = await grab("hidden"); } finally { await ev(`(document.querySelector('object[type="application/avplayer"]').style.visibility = "visible", true)`); }
+      const cols = 48, rows = 27;
+      const txt = execFileSync("magick", [shown, hidden, "-compose", "difference", "-composite", "-channel", "RGB", "-separate", "-evaluate-sequence", "max", "-threshold", "0", "-depth", "16", "-filter", "box", "-resize", `${cols}x${rows}!`, "txt:-"], { encoding: "utf8", maxBuffer: 64 << 20 });
+      const covered = new Array(cols * rows).fill(0);
+      for (const line of txt.split("\n")) {
+        const m = /^(\d+),(\d+): \((\d+)/.exec(line);
+        if (m && Number(m[3]) > 0) covered[Number(m[2]) * cols + Number(m[1])] = 1;
+      }
+      return { cols, rows, covered };
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  }
   const xkey = (k, long) => execFileSync("python3", [XCLICK, display, ...(long ? ["hold", XKEY[k], "900"] : ["press", XKEY[k]])], { stdio: "ignore" });
 
   return {
@@ -445,7 +512,7 @@ export async function createDriver() {
       if (device === "tizen") {
         // No CDP here: the pin is a script kept in the app's localStorage, which the debug build's netlog.js runs at page start, before the app's first render.
         if (timeZone !== "UTC") throw new Error(`tizen stable capture unsupported for ${timeZone}: the page pin renders UTC only`);
-        const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});(${installLoopbackArt})();(${tapAvplayListener})();window.__parityPinned = true;`;
+        const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});(${installLoopbackArt})();(${tapAvplayListener})();(${installCaretHide})();window.__parityPinned = true;`;
         tizenPinScript = Buffer.from(source).toString("base64");
         return;
       }
@@ -455,8 +522,10 @@ export async function createDriver() {
     // The layout schema document (docs/parity/LAYOUT.md): the same DOM dump as the web refs, run in the app page through the inspector or netlog channel.
     async layoutDump({ screen, theme }) {
       await guard();
-      // The emulator composites the AVPlay plane above the browser (DEVICES.md): the app syncs the object's rect to the player shell, so what lies inside it is not visible.
-      const doc = await ev(layoutExpression(screen, device === "tizen" && !TIZEN_REAL ? { opaquePlanes: ['object[type="application/avplayer"]'] } : {}));
+      // The emulator composites the AVPlay plane above the browser (DEVICES.md), so a hit test cannot say what is visible there. Measure it on the rendered
+      // screen: grab with the plane shown and hidden, and hand the dumper the cells whose pixels differ (no rect assumption).
+      const coveredCells = device === "tizen" && !TIZEN_REAL ? await measurePlaneCells() : null;
+      const doc = await ev(layoutExpression(screen, coveredCells ? { coveredCells } : {}));
       if (!doc?.elements) throw new Error("layout dump returned no elements");
       return { screen, theme, viewport: doc.viewport, clockPinned: !!(pin || tizenPinScript), elements: doc.elements, occluded: doc.occluded };
     },
@@ -483,8 +552,10 @@ export async function createDriver() {
       return `${info.sha}@${info.builtAt}`;
     },
     // Fonts decoded, no loading placeholders, every visible image settled, two frames painted: the same bar the web driver holds before a capture.
-    async waitReady() {
+    async waitReady({ phase } = {}) {
       await guard();
+      // A player D-pad key press: the controls hide a few seconds after the last input, so image settling (which polls for seconds) would let them go; the player has no images to settle.
+      if (phase === "focus" && (await ev(`/^#\\/player\\//.test(location.hash)`))) return;
       if (!(await until(`document.fonts.status === "loaded" && !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-spinner")`, 60000))) throw new Error("fonts or loading placeholders did not settle");
       await settleVisibleImages();
       await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
@@ -564,6 +635,7 @@ export async function createDriver() {
       }
       if (device === "tizen") {
         await guard();
+        if (/^#\/player\//.test(await ev("location.hash"))) await this.keepControlsUp();
         if (long) {
           const key = XKEY[k];
           execFileSync("python3", [XCLICK, display, "down", key], { stdio: "ignore" });
@@ -597,7 +669,7 @@ export async function createDriver() {
     // Known state for the player checks on the Tizen 6.5 lane (tizen65 only): the AVPlay shim (tizen-webos/avplay-shim.js, decodes nothing) is PLAYING past 0.5 s,
     // the controls are up and focus is on play/pause. The shim D-pad proves the focus and controls logic only, not decoding or the native plane (up to 30 s, else throws).
     async playerReady() {
-      if (!tizen65) throw new Error("stable capture unsupported: playerReady is the Tizen 6.5 AVPlay shim lane only");
+      if (!tizen65) return this.playerReadyPlatform();
       await guard();
       const ready = `(() => { try { const a = window.webapis.avplay, c = document.querySelector(".player-controls");
         if (a.getState() === "PAUSED" && a.getCurrentTime() < 59000) a.play();
@@ -611,13 +683,58 @@ export async function createDriver() {
       await guard();
     },
     // Used by the shared runner before the first key of a player check (alongside the webOS wait in key()).
-    async playhead() { await guard(); const value = await ev(`(() => { try { const a = window.webapis.avplay; if (a.getState() !== "NONE") return a.getCurrentTime() / 1000; } catch (e) {} const v = document.querySelector("video"); return v ? v.currentTime : null; })()`); await guard(); return value; },
+    // Each page read on this host takes 5 s or more and the player hides its controls 5 s after the last activity, so a read-side nudge always comes too late.
+    // The page keeps its own timer instead: once per second, while the controls are up on the player route, a pointer move over the shell (what a user's mouse
+    // gives; focus is untouched) restarts the app's idle timer. It never reveals hidden controls and stops itself when the route leaves the player.
+    async keepControlsUp() {
+      await ev(`(() => { if (window.__parityKeepUp) return true; window.__parityKeepUp = setInterval(() => {
+        if (!/^#\\/player\\//.test(location.hash)) { clearInterval(window.__parityKeepUp); window.__parityKeepUp = 0; return; }
+        const c = document.querySelector(".player-controls"), s = document.querySelector(".player-shell");
+        if (c && s && !c.classList.contains("is-hidden")) s.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+      }, 1000); return true; })()`);
+    },
+    async playhead() { if (device === "tizen" && /^#\/player\//.test(await ev("location.hash"))) await this.keepControlsUp(); await guard(); const value = await ev(`(() => { try { const a = window.webapis.avplay; if (a.getState() !== "NONE") return a.getCurrentTime() / 1000; } catch (e) {} const v = document.querySelector("video"); return v ? v.currentTime : null; })()`); await guard(); return value; },
+    // Player D-pad checks start from the state web waits for: the title playing past 0.5 s, controls up, focus on play/pause (data-player-default-focus).
+    // The capture left the clip paused at 2 s: resume it with the player's own transport (play()), then reveal the controls with a key if they hid.
+    async playerReadyPlatform() {
+      await guard();
+      // The screen grab hid the AVPlay plane (pinPlayerFrame); a user has it up, and the player plays into it.
+      await ev(`(() => { const o = document.querySelector('object[type="application/avplayer"]'); if (o) o.style.visibility = "visible"; return true; })()`);
+      const playing0 = `(() => { try { const a = webapis.avplay; return [a.getState(), a.getCurrentTime(), location.hash]; } catch (e) { return String(e); } })()`;
+      if (process.env.PROBE_PR) console.log("playerReady start", JSON.stringify(await ev(playing0)));
+      const playing = `(() => { const c = document.querySelector(".player-controls"); const shown = !!c && !c.classList.contains("is-hidden"); const v = document.querySelector("video");
+        let t = null, state = null; let a = null; try { a = webapis.avplay; a.getState(); } catch (e) { a = null; }
+        if (a) { state = a.getState(); t = a.getCurrentTime() / 1000; } else if (v) { state = v.paused ? "PAUSED" : "PLAYING"; t = v.currentTime; }
+        return { shown, state, t, focus: !!document.activeElement && !!document.activeElement.closest("[data-player-default-focus]") }; })()`;
+      const resume = `(() => { const v = document.querySelector("video"); try { if (window.webapis && webapis.avplay) { if (webapis.avplay.getState() === "PAUSED") webapis.avplay.play(); } else if (v) { if (v.paused) v.play(); } } catch (e) {} return true; })()`;
+      const t0 = Date.now();
+      let steady = 0;
+      while (Date.now() - t0 < 90000) {
+        const st = await ev(playing);
+        // two reads 1 s apart and the playhead past 1.5 s: the app's own focus hand-off has settled
+        if (process.env.PROBE_PR) console.log("pr", Date.now() % 100000, JSON.stringify(st));
+        steady = st.state === "PLAYING" && st.t > 1.5 && st.shown && st.focus ? steady + 1 : 0;
+        if (steady >= 1) {
+          await this.keepControlsUp();
+          await guard(); return;
+        }
+        if (st.state === "PAUSED") await ev(resume);
+        if (st.state === "PLAYING" && st.shown && !st.focus) { await sleep(1000); continue; }
+        // Once playing, the app hands focus to the video surface and hides the controls on inactivity; the first arrow key then only reveals them with
+        // focus on play/pause (the app's own rule, the state web is in). A key while they are still up would act, so wait for them to hide.
+        if (!st.shown) await this.key("up");
+        await sleep(1000);
+      }
+      throw new Error("player did not reach playing with controls up and focus on play/pause");
+    },
     async panelOpen() { await guard(); const value = !!(await ev(`[...document.querySelectorAll(".player-quality-menu")].some((m) => m.getBoundingClientRect().width > 0)`)); await guard(); return value; },
     async location() { await guard(); const value = (await ev("location.hash.replace(/^#/, '')")) ?? null; await guard(); return value; },
     async focused() {
       await guard();
+      if (device === "tizen" && /^#\/player\//.test(await ev("location.hash"))) await this.keepControlsUp();
+      if (process.env.PROBE_PR) console.log("fc", Date.now() % 100000, await ev(`(() => { const c = document.querySelector(".player-controls"); const e = document.activeElement; return JSON.stringify({ hidden: c ? c.classList.contains("is-hidden") : null, ae: e ? e.className.toString().slice(0, 40) : null }); })()`));
       const value = await ev(`(() => { const e = document.activeElement; if (!e || e === document.body) return null;
-        const label = (e.getAttribute("aria-label") || e.textContent.trim().slice(0, 80) || e.className.toString()).replace(/^Resume (.*) from \\d+:\\d+(?::\\d+)?$/i, "Open $1");
+        const label = (e.getAttribute("aria-label") || e.textContent.trim() || e.className.toString()).replace(/\\s+/g, " ");
         let position = null; const nav = e.closest(".app-nav-link"); const card = e.closest(".tv-home-card");
         if (nav) position = { rail: "nav", index: [...document.querySelectorAll(".app-nav-link")].indexOf(nav) };
         else if (card) { const rail = (c) => (c.getAttribute("data-navigation-focus-key") || "").split(":")[1]; const cards = [...document.querySelectorAll(".tv-home-card")]; const rails = [...new Set(cards.map(rail))];
@@ -628,6 +745,13 @@ export async function createDriver() {
     },
     async screenshot(file) {
       await guard();
+      // A loaded host lets a late layout pass (icon or font settling) move nav labels by 1 px after the readiness checks: take the grab only once every
+      // element rect has held still across three samples 400 ms apart (measured on the page, nothing assumed).
+      if (!REAL_TV) {
+        const sig = `(() => { let h = 0; for (const e of document.querySelectorAll("*")) { const r = e.getBoundingClientRect(); h = (h * 31 + Math.round(r.left * 100) + 7 * Math.round(r.top * 100) + 13 * Math.round(r.width * 100) + 17 * Math.round(r.height * 100)) % 2147483647; } return h; })()`;
+        let prev = null, still = 0;
+        for (let i = 0; i < 40 && still < 3; i += 1) { const now = await ev(sig); still = now !== undefined && now === prev ? still + 1 : 0; prev = now; await sleep(400); }
+      }
       if (REAL_TV) {
         // Real TV: no X display. The inspector's Page.captureScreenshot shows the app only (no system menus, keyboard or video plane).
         if (await ev(BAD)) throw new Error("signed out or error page");

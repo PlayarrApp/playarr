@@ -1,0 +1,1 @@
+- webOS: one-line ellipsis labels that are as tall as their own truncated line box (calendar entries, profile names) keep the web line height, so their text sits where the web draws it instead of half a pixel off.
