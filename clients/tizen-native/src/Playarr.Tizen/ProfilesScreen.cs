@@ -85,7 +85,7 @@ internal sealed class ProfilesScreen : IPage
     {
         var holder = new View { PositionX = x, PositionY = CircleY, Size = new Size(Circle, 301.63f) }; // web: the card is the circle and its two caption lines
         // web .profile-avatar: the circle carries the gradient plate and the border, the artwork sits inside it at 86 %
-        var artSize = Circle * 0.853f;
+        var artSize = (Circle - 2f) * 0.86f; // the artwork group is 86 % of the 100-unit plate (shared avatar SVG scale 0.86) inside the 1 px border
         var art = new ImageView(Ui.ResPath($"avatars/art-{preset}.png")) { PositionX = (Circle - artSize) / 2, PositionY = (Circle - artSize) / 2, Size = new Size(artSize, artSize) };
         var cardFocused = false;
         float nameBase = 0, subBase = 0;

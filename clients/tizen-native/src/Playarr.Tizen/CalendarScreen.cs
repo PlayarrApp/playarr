@@ -356,22 +356,32 @@ internal sealed class CalendarScreen : IPage
         var sub = members is not null
             ? $"{members.Count} episodes · " + string.Join(", ", members.Select(m => CalendarRules.EpisodeCode(m.SeasonNumber, m.EpisodeNumber)))
             : string.Join(" · ", new[] { CalendarRules.EpisodeCode(e.SeasonNumber, e.EpisodeNumber), e.Subtitle }.Where(s => !string.IsNullOrEmpty(s)));
-        var textW = w - 70.4f - 16f;
-        var h = 106.9f + (sub.Length * 9.6f > textW ? 28.8f : 0) - (sub.Length == 0 ? 29f : 0); // web: an entry without a subtitle line is 29 px shorter
+        // web .calendar-entry (Calendar.css) at rem 16: border-left 4 + padding 0.75rem + poster 40 + gap 0.9rem before the body, padding 0.75rem + border 1 after it
+        static float Lu(float v) => MathF.Floor(v * 64f) / 64f; // Blink LayoutUnit
+        var textW = Lu(w - (4f + 12f + 40f + 14.4f) - (12f + 1f));
+        var wrap = _view == CalendarView.Week; // .calendar-week-scroll sets white-space: normal on the title and subtitle; elsewhere they are nowrap with an ellipsis
+        var lineH = Lu(19.2f * 1.5f); var rowGap = Lu(0.15f * 16f); // body line-height 1.5, .calendar-entry-body gap 0.15rem
+        var titleLines = wrap ? Math.Max(1, Ui.WrapLines(e.Title, 19.2f, 640, 0, textW).Count) : 1;
+        var subLines = sub.Length == 0 ? 0 : wrap ? Math.Max(1, Ui.WrapLines(sub, 19.2f, 400, 0, textW).Count) : 1;
+        var pillH = 2 * Lu(0.18f * 16f) + 2 + Lu(13.44f * 1.4f); // .status-pill: padding 0.18rem, 1 px border, line-height 1.4; the meta row is as tall as the pill
+        var bodyH = titleLines * lineH + (subLines > 0 ? rowGap + subLines * lineH : 0) + rowGap + pillH;
+        var content = Math.Max(60f, bodyH); // the 60 px poster sets the minimum
+        var off = (content - bodyH) / 2; // align-items: center
+        var h = 18f + content; // border 2 + padding 2 x 0.5rem
         // web .calendar-entry: --surface-strong with a 4 px left border (--success when available, else --ink-muted); the border colour is the card, the surface sits 4 px in
         var card = Ui.Box(x, y, w, h, _t.SurfaceStrong, 12);
         card.BorderlineWidth = 1; card.BorderlineColor = Ui.C(_t.LineStrong); // web --line-strong
         card.ClippingMode = ClippingModeType.ClipChildren;
         card.Add(Ui.Box(0, 0, 4, h, CalendarRules.Tone(e, _today) == CalendarTone.Available ? ToneColor(CalendarTone.Available) : _t.InkMuted, 0)); // the 4 px left border
-        var poster = Ui.Box(16, 23.5f + (h - 106.9f) / 2, 40, 60, _t.SurfaceSoft, 6);
+        var poster = Ui.Box(16, 9f + (content - 60f) / 2, 40, 60, _t.SurfaceSoft, 6);
         poster.ClippingMode = ClippingModeType.ClipChildren;
         Sem.Tag(poster, "none");
         // A poster URL on the server's own loopback (the seeded static server) is unreachable from the TV: ask the server's artwork route instead.
         if (e.PosterUrl is { Length: > 0 } pu) LoadPoster(poster, e.WorkId is { } posterWork && Uri.TryCreate(pu, UriKind.Absolute, out var posterUri) && posterUri.IsLoopback ? $"/api/v1/artwork/work/{posterWork:D}/poster?w=185" : pu);
         card.Add(poster);
-        card.Add(Ui.Text(e.Title, 70.4f, sub.Length == 0 ? 9.72f : 9, 19.2f, 640, _t.Ink, textW, 28.8f));
-        if (sub.Length > 0) card.Add(Ui.Text(sub, 70.4f, 40.2f, 19.2f, 400, _t.InkSoft, textW, 28.8f, multiline: sub.Length * 9.6f > textW, maxLines: 2));
-        var my = h - 106.9f + 71.4f - (sub.Length == 0 ? 0.61f : 0); // one-line entries: web meta row 0.6 px higher than the bottom-anchored position
+        card.Add(Ui.Text(e.Title, 70.4f, 9f + off, 19.2f, 640, _t.Ink, textW, lineH, multiline: titleLines > 1, maxLines: titleLines > 1 ? titleLines : 0));
+        if (sub.Length > 0) card.Add(Ui.Text(sub, 70.4f, 9f + off + titleLines * lineH + rowGap, 19.2f, 400, _t.InkSoft, textW, lineH, multiline: subLines > 1, maxLines: subLines > 1 ? subLines : 0));
+        var my = 9f + off + bodyH - pillH;
         var instant = CalendarRules.ReleaseInstant(e);
         var parts = new List<string> { instant is { } at ? at.ToLocalTime().ToString("HH:mm") : "All day", e.ReleaseType is "digital" ? "Digital release" : "Airs", e.MediaKind == "movie" ? "Movies" : "Episodes" };
         // web .calendar-entry-meta: one span per part, 12 px apart (a run of spaces would drift from the span edges)
@@ -380,7 +390,7 @@ internal sealed class CalendarScreen : IPage
         var tone = CalendarRules.Tone(e, _today);
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
-        var pill = Ui.Pill(Ui.Text(label, 0, 2.95f, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), mx, sub.Length == 0 ? my - 0.46f : my, pw, 26.6f, new Rgba(ToneColor(tone).R * 0.14f + _t.Surface.R * 0.86f, ToneColor(tone).G * 0.14f + _t.Surface.G * 0.86f, ToneColor(tone).B * 0.14f + _t.Surface.B * 0.86f), 13.3f, new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f), 1); // web color-mix(tone 14 %, --surface)
+        var pill = Ui.Pill(Ui.Text(label, 0, 2.95f, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), mx, my, pw, pillH, new Rgba(ToneColor(tone).R * 0.14f + _t.Surface.R * 0.86f, ToneColor(tone).G * 0.14f + _t.Surface.G * 0.86f, ToneColor(tone).B * 0.14f + _t.Surface.B * 0.86f), 13.3f, new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f), 1); // web color-mix(tone 14 %, --surface)
         card.Add(Sem.Tag(pill, "text"));
         // web: the whole entry is one button named by its text parts; its children sit on the surface
         Sem.Tag(card, "button", string.Join(" ", new[] { e.Title, sub }.Concat(parts).Append(label).Where(t => t.Length > 0)));
