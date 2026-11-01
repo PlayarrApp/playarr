@@ -212,7 +212,7 @@ namespace Playarr.Xbox.Views
                         catch (Exception failure)
                         {
                             // Say why the export failed instead of leaving the driver to time out.
-                            json = Newtonsoft.Json.JsonConvert.SerializeObject(new { error = failure.Message });
+                            json = Newtonsoft.Json.JsonConvert.SerializeObject(new { error = failure.GetType().Name + " " + failure.Message });
                         }
 
                         System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "layout.json"), json.Substring(0, json.Length - 1) + ",\"layoutNonce\":\"" + parts[2] + "\"}");
@@ -220,7 +220,17 @@ namespace Playarr.Xbox.Views
                     else if (parts.Length == 4 && parts[3] == "frame")
                     {
                         // Only the hash of the app's render: the driver brackets the screenshot with it.
-                        System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "layout.json"), "{\"frame\":\"" + await LayoutExport.FrameHashAsync() + "\",\"layoutNonce\":\"" + parts[2] + "\"}");
+                        string answer;
+                        try
+                        {
+                            answer = "{\"frame\":\"" + await LayoutExport.FrameHashAsync() + "\",\"layoutNonce\":\"" + parts[2] + "\"}";
+                        }
+                        catch (Exception failure)
+                        {
+                            answer = Newtonsoft.Json.JsonConvert.SerializeObject(new { error = failure.GetType().Name + " " + failure.Message, layoutNonce = parts[2] });
+                        }
+
+                        System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "layout.json"), answer);
                     }
                 }
             }
