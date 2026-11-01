@@ -33,6 +33,22 @@ internal static class Sem
     public static T ColorMix<T>(T v) where T : View { Mixes.AddOrUpdate(v, v); return v; }
     internal static bool IsColorMix(View v) => Mixes.TryGetValue(v, out _);
 
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, object> ShellLayers = new();
+    /// <summary>
+    /// A view the web app shell owns and places above the page (the action column, the rail): it is a sibling of the page, not a descendant of the page's background layer, so the web export composites its
+    /// fill over the window colour. Here it lives in the page's tree (so it scrolls and focuses with it) and is drawn over the page layer, which is the same pixels.
+    /// </summary>
+    public static T ShellLayer<T>(T v) where T : View { ShellLayers.AddOrUpdate(v, v); return v; }
+    internal static bool IsShellLayer(View v) => ShellLayers.TryGetValue(v, out _);
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, object> Frosts = new();
+    /// <summary>
+    /// A fill drawn opaque because a translucent one would let the view's box shadow show through (web clips the shadow outside the border box). <paramref name="web"/> is the fill the web declares;
+    /// the drawn colour is that fill over the page layer beneath, and the export reports <paramref name="web"/> over the view's ancestors, as the web export does for the element.
+    /// </summary>
+    public static T Frost<T>(T v, Rgba web) where T : View { Frosts.AddOrUpdate(v, web); return v; }
+    internal static Rgba? FrostOf(View v) => Frosts.TryGetValue(v, out var f) ? (Rgba)f : null;
+
     public static T Tag<T>(T v, string role, string? name = null) where T : View
     {
         v.AccessibilityRole = Native.TryGetValue(role, out var native) ? native : throw new ArgumentException("no native role for " + role);
@@ -56,6 +72,7 @@ internal static class LayoutExport
     private sealed class Ctx
     {
         public readonly List<Node> Nodes = new();
+        public (double R, double G, double B) Window;
         public int NextId;
         public readonly Dictionary<int, View> Views = new();
         public float VW, VH;
@@ -66,7 +83,8 @@ internal static class LayoutExport
         var win = Window.Instance.WindowSize;
         var ctx = new Ctx { VW = win.Width, VH = win.Height };
         var bg = Window.Instance.BackgroundColor;
-        Walk(ctx, root, 0, 0, 1, 1, (Math.Round(bg.R * 255.0), Math.Round(bg.G * 255.0), Math.Round(bg.B * 255.0)), 1f, new RectF(0, 0, ctx.VW, ctx.VH), 1f);
+        ctx.Window = (Math.Round(bg.R * 255.0), Math.Round(bg.G * 255.0), Math.Round(bg.B * 255.0));
+        Walk(ctx, root, 0, 0, 1, 1, ctx.Window, 1f, new RectF(0, 0, ctx.VW, ctx.VH), 1f);
         return ctx;
     }
 
@@ -168,11 +186,12 @@ internal static class LayoutExport
         return drawn >= half - 0.01f ? half : Math.Min(drawn / ts, half);
     }
 
-    private static void Walk(Ctx ctx, Container parent, float vx, float vy, float sx, float sy, (double R, double G, double B) bg, float op, RectF clip, float ts)
+    private static void Walk(Ctx ctx, Container parent, float vx, float vy, float sx, float sy, (double R, double G, double B) parentBg, float op, RectF clip, float ts)
     {
         foreach (var child in parent.Children.OfType<View>().ToArray())
         {
             if (!child.Visibility) continue;
+            var bg = Sem.IsShellLayer(child) ? ctx.Window : parentBg;
             var cop = op * child.Opacity;
             if (cop <= 0.01f) continue;
             var scale = child.Scale; var size = child.Size;
@@ -210,6 +229,7 @@ internal static class LayoutExport
             var shadow = child is not ImageView && child.BoxShadow is not null;
             (double R, double G, double B) cbg = bg;
             if (fills) cbg = Over(bg, bc, Sem.IsColorMix(child));
+            if (Sem.FrostOf(child) is { } frost) cbg = Over(bg, new Color(frost.R, frost.G, frost.B, frost.A), true);
             var visible = w > 1 && h > 1 && box.Overlaps(clip);
             var radius = CapRadius(child.CornerRadius.X * csx, cts, w, h);
             if (visible)

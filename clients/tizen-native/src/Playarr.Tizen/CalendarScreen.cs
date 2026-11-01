@@ -103,7 +103,7 @@ internal sealed class CalendarScreen : IPage
 
     private void Tile(float y, float w, float h, string text, string icon, Action select)
     {
-        var tile = Ui.Box(1845.5f, y, w, h, _t.SurfaceStrong.Mixed(0.78f), 14);
+        var tile = Ui.Box(1845.5f, y, w, h, _t.SurfaceStrong.Mixed(0.78f), 14); Sem.ShellLayer(tile); // shell action column: a sibling of the page on the web
         tile.BorderlineWidth = 1; tile.BorderlineColor = Ui.LineA(_t, 0.075f);
         Sem.Tag(tile, "button", text);
         tile.Add(Ui.Icon(icon, 19, 15, 24, _t.InkMuted));
@@ -396,7 +396,7 @@ internal sealed class CalendarScreen : IPage
         _panelItems.Clear();
         _keyArt.Set(e.WorkId is { } work ? $"/api/v1/artwork/work/{work:D}/backdrop?w=780" : null);
         var tone = CalendarRules.Tone(e, _today);
-        _panel.Add(Ui.Text($"{(e.MediaKind == "movie" ? "Movies" : "Episodes")} \u00b7 {(e.ReleaseType is "digital" ? "Digital release" : "Airs")}", 153.6f, 263.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
+        _panel.Add(Ui.Text($"{(e.MediaKind == "movie" ? "Movies" : "Episodes")} \u00b7 {(e.ReleaseType is "digital" ? "Digital release" : "Airs")}", 153.6f, 263.2f, 12.288f, 860, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
         var lines = Ui.Paragraph(_panel, e.Title, 153.6f, 307.42f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5);
         var my = 308.5f + 62.208f * lines + 24.6f;
         var code = CalendarRules.EpisodeCode(e.SeasonNumber, e.EpisodeNumber);
