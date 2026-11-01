@@ -42,8 +42,6 @@ private fun cssBaselineRatio(fontPx: Float, linePx: Float): Float {
 @Composable
 private fun webStyle(style: TextStyle, fontSize: TextUnit, lineHeight: TextUnit): TextStyle {
     if (style.lineHeightStyle != WebLineBox) return style
-    // The tablet is fitted separately (screen by screen), so it keeps the earlier split until its css-px rework.
-    if (LocalPlayarrFormFactor.current == PlayarrFormFactor.Tv) return style.copy(lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment(0.3f), LineHeightStyle.Trim.None))
     val density = LocalDensity.current
     val size = (if (fontSize.isSpecified) fontSize else style.fontSize)
     val line = (if (lineHeight.isSpecified) lineHeight else style.lineHeight)
@@ -72,7 +70,7 @@ fun Text(
     onTextLayout: ((TextLayoutResult) -> Unit)? = null,
     style: TextStyle = LocalTextStyle.current,
 ) = androidx.compose.material3.Text(
-    text = text, modifier = modifier, color = color, fontSize = fontSize, fontStyle = fontStyle, fontWeight = fontWeight, fontFamily = fontFamily, letterSpacing = letterSpacing, textDecoration = textDecoration, textAlign = textAlign, lineHeight = lineHeight, overflow = overflow, softWrap = softWrap, maxLines = maxLines, minLines = minLines, onTextLayout = onTextLayout, style = webStyle(style, fontSize, lineHeight),
+    text = text, modifier = modifier.cssText(webStyle(style, fontSize, lineHeight)), color = color, fontSize = fontSize, fontStyle = fontStyle, fontWeight = fontWeight, fontFamily = fontFamily, letterSpacing = letterSpacing, textDecoration = textDecoration, textAlign = textAlign, lineHeight = lineHeight, overflow = overflow, softWrap = softWrap, maxLines = maxLines, minLines = minLines, onTextLayout = onTextLayout, style = webStyle(style, fontSize, lineHeight),
 )
 
 @Composable
@@ -95,5 +93,5 @@ fun Text(
     onTextLayout: (TextLayoutResult) -> Unit = {},
     style: TextStyle = LocalTextStyle.current,
 ) = androidx.compose.material3.Text(
-    text = text, modifier = modifier, color = color, fontSize = fontSize, fontStyle = fontStyle, fontWeight = fontWeight, fontFamily = fontFamily, letterSpacing = letterSpacing, textDecoration = textDecoration, textAlign = textAlign, lineHeight = lineHeight, overflow = overflow, softWrap = softWrap, maxLines = maxLines, minLines = minLines, onTextLayout = onTextLayout, style = webStyle(style, fontSize, lineHeight),
+    text = text, modifier = modifier.cssText(webStyle(style, fontSize, lineHeight)), color = color, fontSize = fontSize, fontStyle = fontStyle, fontWeight = fontWeight, fontFamily = fontFamily, letterSpacing = letterSpacing, textDecoration = textDecoration, textAlign = textAlign, lineHeight = lineHeight, overflow = overflow, softWrap = softWrap, maxLines = maxLines, minLines = minLines, onTextLayout = onTextLayout, style = webStyle(style, fontSize, lineHeight),
 )

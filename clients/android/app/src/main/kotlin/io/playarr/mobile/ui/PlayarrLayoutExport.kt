@@ -347,7 +347,9 @@ internal object PlayarrLayoutExport {
                         val probe = kept.firstOrNull() ?: runStart
                         val drawPaint = checkNotNull(shapedRunPaint(layout, i, probe)) { "shaped paint of '${runText.take(20)}' unavailable" }
                         val fm = drawPaint.fontMetrics
-                        val ascent = -fm.ascent; val descent = fm.descent
+                        // A browser's text rect is the inline box's content area: the font's ascent and descent each rounded to a whole px (the television text is laid out to that baseline by CssText).
+                        val cssBox = ctx.unit == 1f
+                        val ascent = if (cssBox) Math.round(-fm.ascent).toFloat() else -fm.ascent; val descent = if (cssBox) Math.round(fm.descent).toFloat() else fm.descent
                         val baseline = layout.getLineBaseline(i)
                         // The drawn ellipsis is part of the text and of the width: the platform layout's own line extent covers it, on the side of the shown characters it was drawn at.
                         val rtl = platformLine?.let { (pl, local, _) -> pl.getParagraphDirection(local) == android.text.Layout.DIR_RIGHT_TO_LEFT } ?: false
