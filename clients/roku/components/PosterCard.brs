@@ -86,6 +86,7 @@ sub onContentChanged()
         m.cardContentInsetX = 8
         m.cardContentInsetY = 15
     end if
+    if content.colShift <> invalid then m.cardContentInsetX = m.cardContentInsetX + content.colShift
     m.cardRoot.translation = [m.cardContentInsetX, m.padTop + m.cardContentInsetY]
     ' Numbered cards (chapters, episodes) round their art a little more than the library cards (web 13.44 px against 12).
     m.cornerR = WebCardRadius()

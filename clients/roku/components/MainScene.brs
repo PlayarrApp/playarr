@@ -2945,7 +2945,7 @@ sub applyBrowseArtworkSize()
     else
         m.browseGrid.numColumns = 3
         m.browseGrid.numRows = 4
-        m.browseGrid.itemSize = [WebCardWidth() + WebCardGridGap(), 240.41]
+        m.browseGrid.itemSize = [WebGridPitchX(), WebGridPitchY()]
         m.browseGrid.itemSpacing = [0, 0]
     end if
 end sub
@@ -3135,8 +3135,13 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
         ' The browse grid sits 8 px higher and each card 8 px lower in its cell: the lift and ring are not clipped at the top row.
         item.AddField("padTop", "float", false)
         if grid.id = "browseGrid" then item.padTop = 8
-        ' Web rows sit 240.33 px apart and the grid takes whole pixels: from the third row the card is 1 px lower (tops 162, 402, 643, 883).
-        if grid.id = "browseGrid" and m.browseArtworkSize <> "small" and m.browseArtworkSize <> "large" and artIndex >= 2 * m.browseGrid.numColumns then item.padTop = 9
+        ' Web rows sit WebGridPitchY apart and the grid places each at a whole pixel (floor), the web rounds: shift the card where they differ.
+        ' Columns are one whole-pixel pitch apart, so each card moves right by its column's remainder.
+        item.AddField("colShift", "float", false)
+        if grid.id = "browseGrid" and m.browseArtworkSize <> "small" and m.browseArtworkSize <> "large"
+            item.padTop = item.padTop + WebGridRowShift(Int(artIndex / m.browseGrid.numColumns))
+            item.colShift = WebGridColumnShift(artIndex mod m.browseGrid.numColumns)
+        end if
         ' Screen view reserves the focus lift, ring and glow overflow inside the grid's clip (8 px sides, 15 px top, grid shifted to match).
         if grid.id = "browseGrid" and (m.browseView = "screen" or m.browseView = "cover")
             item.AddField("focusRingOutsideArt", "boolean", false)
@@ -4022,9 +4027,9 @@ function createHomeRail(contentTarget as Object) as Object
     ' card's lifted/scaled outer ring. The extra item height contains the
     ' full shadow canvas below the art, so its blur fades before the RowList
     ' clip instead of ending at the old 262 px row boundary.
-    row.rowItemSize = [[343, 320]]
-    ' Rail pitch = web card (--card-w) + .tv-home-rail gap (WebRailGap) = 352.13; the row item is 343 px (card plus glow canvas).
-    row.rowItemSpacing = [[WebCardWidth() + WebRailGap() - 343.0, 0]]
+    row.rowItemSize = [[WebRailCellWidth(), 320]]
+    ' Rail pitch = web card (--card-w) + .tv-home-rail gap (WebRailGap) = 352.13; the row item is WebRailCellWidth (card plus the focus-ring inset).
+    row.rowItemSpacing = [[WebCardWidth() + WebRailGap() - WebRailCellWidth(), 0]]
     row.rowHeights = [320]
     row.showRowLabel = false
     row.focusXOffset = [96]
@@ -4511,7 +4516,7 @@ sub finishHomeLoad()
             rail.row.itemSize = [1232, 423]
             rail.row.rowHeights = [423]
         else
-            rail.row.rowItemSize = [[343, 320]]
+            rail.row.rowItemSize = [[WebRailCellWidth(), 320]]
             rail.row.itemSize = [1232, 320]
             rail.row.rowHeights = [320]
         end if

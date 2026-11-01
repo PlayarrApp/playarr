@@ -478,3 +478,35 @@ end function
 function WebGridLeft() as Float
     return 38.0 * WebVw() + WebClamp(28.0, 2.8 * WebVw(), 54.0) - 8.0
 end function
+
+' ---- Browse grid pitch (page-layout.css .tv-title-grid-content) ----
+' Column pitch: card + --card-grid-gap (laid-out values).
+function WebGridPitchX() as Float
+    return WebCardWidth() + WebCardGridGap()
+end function
+
+' Row pitch: the card (16:9 art, --card-copy-gap 0.72rem, then the title line: --card-title-size clamp(0.55rem, 0.62 * --vw, 0.78rem) at the
+' inherited line-height 1.5) plus the grid row gap clamp(22px, 2.5 * --viewport-unit, 36px) (--viewport-unit is 1vh = 10.8 px).
+function WebGridPitchY() as Float
+    titleSize = WebClamp(8.8, 0.62 * WebVw(), 12.48)
+    return WebCardWidth() * 9.0 / 16.0 + 0.72 * 16.0 + 1.5 * titleSize + WebClamp(22.0, 2.5 * 10.8, 36.0)
+end function
+
+' MarkupGrid advances its columns by a whole-pixel pitch (a 353.08 px itemSize lays out at 353), so column `col` lands short of its web
+' x by col * (pitch - whole pitch). The card is moved inside its cell by that amount.
+function WebGridColumnShift(col as Integer) as Float
+    pitch = WebGridPitchX()
+    return col * (pitch - Int(pitch))
+end function
+
+' Rows advance by the web's fractional pitch but the grid places each at a whole pixel (floor); the web rounds. The card moves down one
+' pixel where the two disagree (`top` is the grid's own y, a whole pixel).
+function WebGridRowShift(row as Integer) as Float
+    y = row * WebGridPitchY()
+    return Int(y + 0.5) - Int(y)
+end function
+
+' Home rail cell: the card plus the 8 px focus-ring inset PosterCard keeps on each side (cardContentInsetX) = 343. Pitch stays web card + rail gap.
+function WebRailCellWidth() as Float
+    return Int(WebCardWidth() + 0.5) + 16.0
+end function
