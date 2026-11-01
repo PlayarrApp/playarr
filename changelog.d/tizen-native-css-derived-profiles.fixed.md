@@ -1,0 +1,1 @@
+- Tizen native profiles add-profile plate and the profile and search heading letter-spacing are derived from the web CSS (colour-mix of surface-strong and brand at 84 %, 145 degree gradient, em-based spacing) instead of sampled or fitted values.
