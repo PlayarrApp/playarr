@@ -609,7 +609,10 @@ struct WMUnseenDot: View {
         // shadow differs a little from one simulator to the next, a blitted bitmap does not.
         #if DEBUG
         if ParityLaunch.zeroInsets, let image = WMUnseenDotBitmap.image(scheme) {
-            Image(uiImage: image).resizable().frame(width: 33, height: 33).frame(width: 9, height: 9)
+            // The 33 pt bitmap carries the ring and shadow around the 9 pt dot; it is decoration, so it takes no part in the
+            // accessibility frame of the card that holds it (the link is the card's box, as in the web).
+            Color.clear.frame(width: 9, height: 9)
+                .overlay { Image(uiImage: image).resizable().frame(width: 33, height: 33).accessibilityHidden(true) }
                 .parityBox("img", background: WM.pink, radius: 4.5)
         } else {
             WMUnseenDotVector()
@@ -792,7 +795,8 @@ struct WMLibraryCard: View {
     var cover = false
     @AppStorage(WMArtwork.sizeKey) private var sizeSetting = "medium"
 
-    static func rowHeight(cover: Bool) -> CGFloat { WMArtwork.artHeight(cover: cover) + 27.7 }
+    /// The card: art, margin-top 0.72rem (11.52) and one 13.2 line (`--card-title-size` 0.55rem, line-height 1.5).
+    static func rowHeight(cover: Bool) -> CGFloat { WMArtwork.artHeight(cover: cover) + 24.72 }
 
     var body: some View {
         let width = WMArtwork.cardWidth, art = WMArtwork.artHeight(cover: cover)
@@ -894,8 +898,9 @@ struct WMLibraryHeader: View {
         ZStack(alignment: .topLeading) {
             PlayarrBackButton(action: onBack)
                 .offset(x: PlayarrPageTokens.gutter, y: top)
-            WMText(title, 21.6, 580, lh: 33, ls: -1, role: "heading")
-                .offset(x: 70, y: top + 5.5)
+            // h1: font 1.35rem, letter-spacing -0.045em, line-height --page-control-height (44), left = gutter + back 44 + gap 10.
+            WMText(title, 21.6, 580, lh: 44, ls: -0.972, role: "heading")
+                .offset(x: 70, y: top)
             // The web hides the header subtitle on phones (#1299), so `detail` is not drawn here.
             HStack {
                 Spacer()

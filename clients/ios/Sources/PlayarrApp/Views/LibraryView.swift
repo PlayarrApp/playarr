@@ -464,6 +464,11 @@ struct LibraryView: View {
         let letters = ["#"] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map(String.init)
         let activeLetter: String? = nil // touch refs show no focused letter
         return GeometryReader { geo in
+            // `.tv-directory .tv-alphabet`: fixed, top = mobile-top-inset + 74, bottom = mobile-nav-height (58 + max(8, safe bottom)) + 16;
+            // its 27 letters (flex 1 1 0) share that height.
+            let railTop = WM.topInset + 74
+            let railHeight = max(0, geo.size.height - railTop - (58 + WM.bottomInset + 16))
+            let cell = railHeight / CGFloat(letters.count)
             ScrollView(.vertical) { VStack(spacing: 0) {
                 ForEach(letters, id: \.self) { letter in
                     ZStack {
@@ -473,10 +478,11 @@ struct LibraryView: View {
                             Circle().stroke(PlayarrStyle.background, lineWidth: 2).frame(width: 24, height: 24).offset(y: 1)
                             Circle().stroke(WM.pink, lineWidth: 2.2).frame(width: 28, height: 28).offset(y: 1)
                         }
-                        Text(letter).wm(8.96, 700, color: letter == activeLetter ? PlayarrStyle.background : WM.muted, text: letter)
-                            .foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
+                        // 0.56rem, line-height 1, the span lifted by 0.02em, centred in the cell.
+                        WMText(letter, 8.96, 700, color: letter == activeLetter ? PlayarrStyle.background : WM.muted, lh: 8.96)
+                            .offset(y: -0.02 * 8.96)
                     }
-                    .frame(width: 44).frame(height: 25.27)
+                    .frame(width: 44).frame(height: cell)
                     .contentShape(Rectangle())
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel(letter == "#" ? "Numbers and symbols" : letter)
@@ -491,8 +497,8 @@ struct LibraryView: View {
                 }
             } }
             .scrollIndicators(.hidden)
-            .frame(width: 44, height: max(0, geo.size.height - 90 - 84), alignment: .top)
-            .offset(x: geo.size.width - 48, y: 86.9)
+            .frame(width: 44, height: railHeight, alignment: .top)
+            .offset(x: geo.size.width - 48, y: railTop)
         }
     }
 
@@ -514,7 +520,7 @@ struct LibraryView: View {
             LazyVGrid(
                 columns: Array(repeating: GridItem(.fixed(WMLibraryCard.width), spacing: 12, alignment: .top), count: WMArtwork.columns),
                 alignment: .leading,
-                spacing: 21
+                spacing: 24 // `.tv-title-grid-content` row gap on phones
             ) {
                 ForEach(Array(viewModel.works.enumerated()), id: \.element.id) { index, work in
                     NavigationLink {
