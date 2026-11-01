@@ -190,14 +190,16 @@ function Scrubber(props: PlayerChromeProps & {played: number; buffered: number; 
       onPress={props.onTogglePlay}
       style={{position: 'absolute', left: u(SCRUB_X), top: u(SCRUB_TOP), width: u(SCRUB_W), height: u(44), justifyContent: 'center'}}
     >
-      <View style={{height: u(focused ? 8 : 6), borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.22)', overflow: 'hidden'}}>
-        <View style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${props.buffered * 100}%`, backgroundColor: 'rgba(255,255,255,0.38)'}} />
+      {/* The web track (.player-seek-track): a 6 px square bar, white at 0.2, with the buffered range at 0.34 and the progress in the accent; focus never changes its height. */}
+      <View style={{height: u(6), backgroundColor: 'rgba(255,255,255,0.2)', overflow: 'hidden'}}>
+        <View style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${props.buffered * 100}%`, backgroundColor: 'rgba(255,255,255,0.34)'}} />
         <View {...lx('container', '')} style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${props.played * 100}%`, backgroundColor: '#cf3157'}} />
       </View>
       {focused ? (
         <>
+          {/* Focused thumb: 24 px, the player ink with a 3 px accent ring (the web's box-shadow spread). */}
           <View
-            style={{position: 'absolute', left: props.played * u(SCRUB_W) - u(11), top: u(11), width: u(22), height: u(22), borderRadius: 999, backgroundColor: '#ffffff', borderWidth: u(2), borderColor: '#cf3157'}}
+            style={{position: 'absolute', left: props.played * u(SCRUB_W) - u(12), top: u(10), width: u(24), height: u(24), borderRadius: 999, backgroundColor: '#ffffff', borderWidth: u(3), borderColor: '#cf3157'}}
           />
           {props.targetShown ? (
             <View style={{position: 'absolute', left: props.played * u(SCRUB_W) - u(36), top: u(-34), width: u(72), alignItems: 'center'}}>
