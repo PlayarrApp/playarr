@@ -376,9 +376,11 @@ internal fun setPlayarrWebFont(enabled: Boolean) {
     if (enabled && webFontFamily == null) {
         webFontFamily = variableFamily(io.playarr.mobile.R.font.nunito_sans, 200..1000 step 10)
         webMonoFamily = variableFamily(io.playarr.mobile.R.font.jetbrains_mono, 100..800 step 10)
+        io.playarr.shared.designsystem.page.PlayarrWebMonoFamily = webMonoFamily
     } else if (!enabled) {
         webFontFamily = null
         webMonoFamily = null
+        io.playarr.shared.designsystem.page.PlayarrWebMonoFamily = null
     }
 }
 
@@ -2335,7 +2337,7 @@ private fun TelevisionNavigationContent(
     // Web `.app-nav`: the groups start at y 119.1 under the logo; the profile group and the version sit at its foot.
     Column(
         modifier = modifier.fillMaxHeight().padding(
-            start = web?.left ?: 42.2.dp, top = web?.top ?: 119.1.dp, bottom = web?.bottom ?: 34.5.dp,
+            start = web?.left ?: 42.2.dp, top = web?.top ?: 119.1.dp, bottom = web?.bottom ?: if (profile != null) 0.dp else 34.5.dp,
         ),
     ) {
         groups.forEachIndexed { groupIndex, group ->
@@ -2372,24 +2374,36 @@ private fun TelevisionNavigationContent(
                     PlayarrProfileAvatar(userId = profile.userId, preference = profile.avatar, modifier = Modifier.size(20.dp).parityBox("container", radius = 999f), artworkModifier = Modifier.parityBox("image"), glyphSize = 10.sp, artworkFraction = 1f)
                 }
             }
+            // Web `.app-user-version`: 700 clamp(0.38rem, 0.42vw, 0.5rem)/1 mono, 0.04em tracking, 0.35rem under the profile group, and the
+            // rail ends `clamp(22px, 3.2vu, 46px)` above the viewport foot. On the television the three lengths are one LayoutUnit sum
+            // from the foot, and the text frame is snapped once from it.
+            val versionCss = webLayoutUnit(0.42f * androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp / 100f).coerceIn(6.08f, 8f)
+            val footCss = if (web == null) webLayoutUnit((3.2f * androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp / 100f).coerceIn(22f, 46f)) else 0f
+            val gapCss = webLayoutUnit(5.6f)
             Text(
                 profileVersionLabel(BuildConfig.VERSION_NAME),
                 color = WebInk,
-                fontSize = if (web == null) 8.sp else 6.08.sp,
-                lineHeight = if (web == null) 8.sp else 6.08.sp,
+                fontSize = if (web == null) versionCss.sp else 6.08.sp,
+                lineHeight = if (web == null) versionCss.sp else 6.08.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = if (web == null) 0.32.sp else 0.2432.sp,
+                letterSpacing = if (web == null) (0.04f * versionCss).sp else 0.2432.sp,
                 fontFamily = webMonoFamily,
                 softWrap = false,
                 maxLines = 1,
-                modifier = Modifier.padding(top = if (web == null) 2.6.dp else (8.4f - minOf(8.4f, tabletPull)).dp)
+                modifier = (if (web == null) Modifier.layout { measurable, constraints ->
+                    val lineCss = webLayoutUnit(versionCss)
+                    val below = Math.round((gapCss + lineCss + footCss) * density)
+                    val placeable = measurable.measure(androidx.compose.ui.unit.Constraints())
+                    val w = 77.5.dp.roundToPx()
+                    layout(w, below) { placeable.place((w - placeable.width) / 2, below - Math.round((lineCss + footCss) * density)) }
+                } else Modifier.padding(top = (8.4f - minOf(8.4f, tabletPull)).dp)
                     .layout { measurable, constraints ->
                         // Tablet web: the profile group ends 1.4 css px above the version, the rail drew it 8.3 px above (see tabletPull).
                         val cut = (tabletPull - 8.4f).coerceAtLeast(0f).dp.roundToPx()
                         val placeable = measurable.measure(constraints)
                         layout(placeable.width, (placeable.height - cut).coerceAtLeast(0)) { placeable.place(0, -cut) }
                     }
-                    .width(77.5.dp).wrapContentWidth(unbounded = true),
+                    .width(77.5.dp).wrapContentWidth(unbounded = true)),
             )
         }
     }
@@ -2517,6 +2531,7 @@ private fun ExperienceClock(modifier: Modifier = Modifier) {
             fontWeight = FontWeight(760),
             letterSpacing = (-0.03f * webVw(13.12f, 0.9f, 17.6f).value).sp,
             lineHeight = (1.5f * webVw(13.12f, 0.9f, 17.6f).value).sp,
+            maxLines = 1, softWrap = false,
             modifier = Modifier,
         )
         Text(
@@ -2526,6 +2541,7 @@ private fun ExperienceClock(modifier: Modifier = Modifier) {
             fontWeight = FontWeight(640),
             letterSpacing = (0.04f * webVw(8.32f, 0.58f, 11.52f).value).sp,
             lineHeight = (1.1f * webVw(8.32f, 0.58f, 11.52f).value).sp,
+            maxLines = 1, softWrap = false,
             modifier = Modifier,
         )
     }
@@ -4999,6 +5015,8 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                                     letter,
                                     color = if (active) WebBackground else WebInkMuted,
                                     fontSize = if (alphaTablet) (6.88f * alphaCss).sp else 9.216.sp,
+                                    // Web `line-height: 1`: the line box is the font size, the 12 px content area overhangs it by the floored half leading.
+                                    lineHeight = if (alphaTablet) androidx.compose.ui.unit.TextUnit.Unspecified else 9.216.sp,
                                     fontWeight = FontWeight.Normal,
                                     // Phone/TV: the text carries the browser's baseline itself (page Text), no offset.
                                     modifier = if (alphaTablet) Modifier else Modifier,

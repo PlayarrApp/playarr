@@ -22,6 +22,11 @@ import kotlin.math.roundToInt
 /** Marker for [LocalPlayarrWebTextStyle]: the phone text takes Chromium's line box, derived per size by [Text] below. */
 val WebLineBox = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)
 
+/** The web mono family (JetBrains Mono, hhea 1.02 / 0.3 em); set by the app with the web font. Text in it takes these metrics for its content area. */
+var PlayarrWebMonoFamily: FontFamily? = null
+private const val MONO_ASCENT_EM = 1.02f
+private const val MONO_DESCENT_EM = 0.3f
+
 /** Nunito Sans hhea ascent and descent (em); the file's typo metrics are the same and USE_TYPO_METRICS is set. */
 private const val ASCENT_EM = 1.011f
 private const val DESCENT_EM = 0.353f
@@ -74,23 +79,25 @@ private fun webStyle(style: TextStyle, fontSize: TextUnit, lineHeight: TextUnit)
  */
 @Composable
 private fun WebLineFrame(
-    style: TextStyle, fontSize: TextUnit, lineHeight: TextUnit, modifier: Modifier,
+    style: TextStyle, fontSize: TextUnit, lineHeight: TextUnit, modifier: Modifier, mono: Boolean,
     content: @Composable (TextStyle, TextUnit) -> Unit,
 ) {
+    val ascentEm = if (mono) MONO_ASCENT_EM else ASCENT_EM
+    val descentEm = if (mono) MONO_DESCENT_EM else DESCENT_EM
     val density = LocalDensity.current
     val d = density.density
     val size = if (fontSize.isSpecified) fontSize else style.fontSize
     val line = if (lineHeight.isSpecified) lineHeight else style.lineHeight
     val fontPx = with(density) { size.toPx() }
     val linePx = with(density) { line.toPx() }
-    val aCss = (ASCENT_EM * fontPx / d).roundToInt()
-    val dCss = (DESCENT_EM * fontPx / d).roundToInt()
+    val aCss = (ascentEm * fontPx / d).roundToInt()
+    val dCss = (descentEm * fontPx / d).roundToInt()
     val areaCss = aCss + dCss
     val offCss = kotlin.math.floor((linePx / d - areaCss) / 2f)
-    val a = ASCENT_EM * fontPx
+    val a = ascentEm * fontPx
     // The platform ceils a line height to whole device px; giving it the nearest whole px keeps the box at the width the browser snaps to.
     val areaPx = Math.round(areaCss * d).toFloat()
-    val extra = areaPx - (a + DESCENT_EM * fontPx)
+    val extra = areaPx - (a + descentEm * fontPx)
     val ratio = if (kotlin.math.abs(extra) < 0.5f) 0.5f else ((aCss * d - a) / extra).coerceIn(0f, 1f)
     val childStyle = style.copy(
         lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment(ratio), LineHeightStyle.Trim.None),
@@ -129,7 +136,7 @@ fun Text(
     style: TextStyle = LocalTextStyle.current,
 ) {
     if (isWebLine(style, fontSize, lineHeight, softWrap, maxLines)) {
-        WebLineFrame(style, fontSize, lineHeight, modifier) { cs, cl ->
+        WebLineFrame(style, fontSize, lineHeight, modifier, fontFamily != null && fontFamily === PlayarrWebMonoFamily) { cs, cl ->
             androidx.compose.material3.Text(
     text = text, modifier = Modifier, color = color, fontSize = fontSize, fontStyle = fontStyle, fontWeight = fontWeight, fontFamily = fontFamily, letterSpacing = letterSpacing, textDecoration = textDecoration, textAlign = textAlign, lineHeight = cl, overflow = overflow, softWrap = softWrap, maxLines = maxLines, minLines = minLines, onTextLayout = onTextLayout, style = cs,
             )
@@ -160,7 +167,7 @@ fun Text(
     style: TextStyle = LocalTextStyle.current,
 ) {
     if (isWebLine(style, fontSize, lineHeight, softWrap, maxLines)) {
-        WebLineFrame(style, fontSize, lineHeight, modifier) { cs, cl ->
+        WebLineFrame(style, fontSize, lineHeight, modifier, fontFamily != null && fontFamily === PlayarrWebMonoFamily) { cs, cl ->
             androidx.compose.material3.Text(
     text = text, modifier = Modifier, color = color, fontSize = fontSize, fontStyle = fontStyle, fontWeight = fontWeight, fontFamily = fontFamily, letterSpacing = letterSpacing, textDecoration = textDecoration, textAlign = textAlign, lineHeight = cl, overflow = overflow, softWrap = softWrap, maxLines = maxLines, minLines = minLines, onTextLayout = onTextLayout, style = cs,
             )
