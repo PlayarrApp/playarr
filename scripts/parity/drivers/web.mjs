@@ -299,6 +299,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   const deviceScaleFactor = positiveNumber("PLAYARR_WEB_VIEWPORT_DPR", mobile ? 3 : 1);
   let cdp, browser, ctx, page, theme = "dark", session, detailActionRequired = false, fixedNow = null, disableAnimations = false, pinnedZone = null, pinnedLocale = null;
   let manualLoginStarted = false, manualLoginSucceeded = false; // session: this run's own storage state, in memory
+  let capsCanDownload = null; // the answer of GET /users/me/capabilities for the current document (null until it arrives)
   let avatarSynced = false; // the profile-avatar sync answered for the current document
   let networkFlaps = 0; // requests Chrome aborted because the host's network interfaces changed
   const apiErrors = []; // failing /api/ responses of the current page, named in the error-page failure
@@ -387,6 +388,14 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
         if (Date.now() - t0 > 20000) throw new Error("readiness timeout: the profile avatar sync never answered");
         await page.waitForTimeout(100);
       }
+      // The Downloads nav entry appears only after the capabilities answer and the storage probe resolve (DownloadsProvider): a shot before them
+      // lacks a whole nav item (a webOS series-detail twin differed by it). Wait for the answer, then for the entry when the grant is true.
+      const t1 = Date.now();
+      while (capsCanDownload === null) {
+        if (Date.now() - t1 > 20000) throw new Error("readiness timeout: the capabilities request never answered");
+        await page.waitForTimeout(100);
+      }
+      if (capsCanDownload === true) await page.waitForSelector('.app-nav-link[href*="downloads"]', { timeout: 10000 }).catch((e) => { if (e?.name !== "TimeoutError") throw e; }); // never appears when the browser has no download storage: the same in every run
     }
     await drainApiErrors();
     assertNoApiErrors(apiErrors);
@@ -446,8 +455,9 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     page.on?.("requestfailed", (r) => { if (r.failure()?.errorText === "net::ERR_NETWORK_CHANGED") networkFlaps += 1; });
     // The shell syncs the account's profile avatar after it mounts (GET /api/v1/users/me/profile-avatar): until that answer is back the nav rail and profile
     // chip draw the generated default preset, not the server's choice. settle() waits for the answer so a shot never races it.
-    avatarSynced = false;
-    page.on?.("request", (request) => { if (request.isNavigationRequest() && request.frame() === page.mainFrame()) avatarSynced = false; }); // a real document load only: a pushState route change keeps the answered sync
+    avatarSynced = false; capsCanDownload = null;
+    page.on?.("request", (request) => { if (request.isNavigationRequest() && request.frame() === page.mainFrame()) { avatarSynced = false; capsCanDownload = null; } });
+    page.on?.("response", async (response) => { try { if (/\/api\/v1\/users\/me\/capabilities$/.test(new URL(response.url()).pathname) && response.request().method() === "GET") capsCanDownload = response.status() < 300 ? (await response.json()).can_download === true : false; } catch { /* body gone with the page */ } }); // a real document load only: a pushState route change keeps the answered sync
     page.on?.("response", (response) => { if (/\/api\/v1\/users\/me\/profile-avatar$/.test(new URL(response.url()).pathname) && response.request().method() === "GET" && response.status() < 500) avatarSynced = true; });
     apiErrors.length = 0;
     manualLoginStarted = false;
