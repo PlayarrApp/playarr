@@ -355,6 +355,14 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     }
   };
   const labelled = async (what, wait) => { try { return await wait(); } catch (e) { if (e?.name === "TimeoutError") { const bad = await page.evaluate(() => [...document.images].filter((i) => i.getBoundingClientRect().width > 0 && !(i.complete && i.naturalWidth > 0)).map((i) => { try { return `${i.complete ? "broken" : "loading"} ${i.loading} ${new URL(i.currentSrc || i.src).pathname.slice(0, 50)}`; } catch { return "?"; } }).slice(0, 4)).catch(() => []); throw new Error(`readiness timeout: ${what}${bad.length ? ` (${bad.join(", ")})` : ""}`); } throw e; } };
+  // A reload starts the app with no input mode; the key presses that brought the page here had set body[data-input-mode=remote], which switches
+  // the nav rail, nav pill and filter button from backdrop-filter glass to flat translucency (the shipped TV behaviour). Without restoring it a
+  // retried load shot the glass variant, one load in five (proved: the mode was null exactly in the differing movies shots).
+  const reloadKeepingInputMode = async (options) => {
+    const mode = await page.evaluate(() => document.body?.dataset.inputMode ?? null);
+    await page.reload(options);
+    if (mode) await page.evaluate((m) => { document.body.dataset.inputMode = m; }, mode);
+  };
   const settle = async () => {
     await page.evaluate(() => document.fonts.ready);
     await labelled("visible images loaded", () => page.waitForFunction(() => [...document.images].filter((i) => {
@@ -367,7 +375,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       const runtime = () => page.waitForFunction(() => !!document.querySelector("[data-detail-field=runtime]"), null, { timeout: 8000 }).then(() => true, () => false);
       for (let tries = 0; !(await runtime()); tries++) {
         if (tries >= 3) throw new Error("readiness timeout: the Movies preview never showed its runtime");
-        await page.reload({ waitUntil: "load" });
+        await reloadKeepingInputMode({ waitUntil: "load" });
         await labelled("library grid", () => page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 }));
       }
     }
@@ -568,7 +576,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       for (let attempt = 1; ; attempt++) {
         try { await page.waitForSelector(".tv-library-preview [data-detail-field=runtime]", { timeout: 8000 }); break; } catch (e) {
           if (e?.name !== "TimeoutError" || attempt >= 3) throw e;
-          await page.reload();
+          await reloadKeepingInputMode();
           await page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 });
         }
       }
