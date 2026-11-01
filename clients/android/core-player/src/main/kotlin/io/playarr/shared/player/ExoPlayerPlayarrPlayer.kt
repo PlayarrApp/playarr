@@ -361,6 +361,7 @@ class ExoPlayerPlayarrPlayer private constructor(
             // One marker per first rendered frame for the device performance A/B (scripts/parity/android-tv/perf-ab.sh).
             exo.addListener(object : Player.Listener {
                 override fun onRenderedFirstFrame() {
+                    android.os.Trace.endAsyncSection("pl:prepare->first_frame", 3)
                     Log.i("PlayarrPerf", "first_frame")
                 }
             })

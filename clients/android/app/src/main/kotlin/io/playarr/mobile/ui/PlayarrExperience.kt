@@ -934,6 +934,7 @@ internal class PlayarrExperienceViewModel @Inject constructor(
     private fun launchHome(silent: Boolean): Job {
         // Fetch and parse on Default: Main is busy composing Home's first frame; only the state writes below go back to Main.
         return viewModelScope.launch(Dispatchers.Default) {
+            android.os.Trace.beginAsyncSection("pl:launchHome", 1)
             homeStamp.begin()
             if (!silent) _home.value = ExperienceLoad.Loading
             val progressRequest = async { runCatching { api.listWatchProgress() }.getOrNull() }
@@ -992,8 +993,12 @@ internal class PlayarrExperienceViewModel @Inject constructor(
                 }
             val onDeck = (fromRows + fromPlans).awaitAll().filterNotNull()
             val rails = railsRequest.await()
-            val ready = ExperienceLoad.Ready(buildPlayarrHomeRails(byKind, onDeck, rails))
+            android.os.Trace.endAsyncSection("pl:launchHome", 1)
+            val ready = android.os.Trace.beginSection("pl:buildHomeRails").let {
+                try { ExperienceLoad.Ready(buildPlayarrHomeRails(byKind, onDeck, rails)) } finally { android.os.Trace.endSection() }
+            }
             withContext(Dispatchers.Main.immediate) {
+                android.os.Trace.beginSection("pl:home_state_set"); android.os.Trace.endSection()
                 _progress.value = progress
                 if (progressRows != null) _progressLoaded.value = true
                 homeByKind = byKind
@@ -3093,6 +3098,7 @@ private fun ExperienceHomeScreen(
             LaunchedEffect(Unit) {
                 withFrameNanos { }
                 withFrameNanos { }
+                android.os.Trace.beginSection("pl:home_ready"); android.os.Trace.endSection()
                 android.util.Log.i("PlayarrPerf", "home_ready")
             }
             val selectedId = savedSelectedId?.takeIf { id -> allWorks.any { it.id == id } } ?: allWorks.first().id
@@ -9379,6 +9385,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
             return
         }
         activeRequest = request
+        android.os.Trace.beginAsyncSection("pl:play->prepare", 2)
         prepareJob?.cancel()
         switchJob?.cancel()
         prepareJob = viewModelScope.launch {
@@ -9737,6 +9744,8 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         val selectedAudioLanguage = playback.audioTracks
             .firstOrNull { it.id == playback.selectedAudioTrackId }
             ?.language
+        android.os.Trace.endAsyncSection("pl:play->prepare", 2)
+        android.os.Trace.beginAsyncSection("pl:prepare->first_frame", 3)
         player.prepare(
             resolvePlayarrPlaybackUrl(activeServerUrl, playback.url),
             if (playback.mode == io.playarr.shared.data.model.PlaybackMode.Hls) StreamFormat.Hls else StreamFormat.Direct,
@@ -11144,9 +11153,12 @@ private fun rememberPlayarrNowPlayingArtwork(work: Work?, fallbackServerUrl: Str
             .apply { if (!token.isNullOrBlank()) httpHeaders(NetworkHeaders.Builder().set("Authorization", "Bearer $token").build()) }
             .build()
         val image = (coil3.SingletonImageLoader.get(context).execute(request) as? coil3.request.SuccessResult)?.image ?: return@LaunchedEffect
-        bytes = runCatching {
-            java.io.ByteArrayOutputStream().also { image.toBitmap().compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, it) }.toByteArray()
-        }.getOrNull()
+        // Reading a hardware bitmap back and encoding it took ~120 ms on Main right as playback starts: do it off the UI thread.
+        bytes = withContext(Dispatchers.Default) {
+            runCatching {
+                java.io.ByteArrayOutputStream().also { image.toBitmap().compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, it) }.toByteArray()
+            }.getOrNull()
+        }
     }
     return bytes
 }
