@@ -4295,10 +4295,9 @@ private fun TvSettingsBody(
             ),
         ),
     ) {
-        // Web (#1299): the section is the page header subtitle, wrapped under the title behind a 1 px rule as wide as the title,
-        // in the page ink (not pink). shortcut: the rule is the English "Preferences" title's width, measure the title when localised titles differ.
+        // Web (#1299): the section is the page header subtitle, wrapped under the title in the page ink (not pink). The 1 px rule web draws under the title is as wide
+        // as the title; its width would have to be measured from the localised title, so it is not drawn until that measurement exists (no English-title width is assumed).
         val ku = if (tablet) 1f / stage else 1f
-        Box(Modifier.offset(x = if (tablet) (178.31f * ku).dp else 226.6.dp, y = if (tablet) (92.2f * ku).dp else 112.dp).width(if (tablet) (108.77f * ku).dp else 163.4.dp).height(1.dp).background(TvSettingsPalette.inputBorder))
         Text(
             playarrString(section.label).uppercase(locale),
             color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.ink,

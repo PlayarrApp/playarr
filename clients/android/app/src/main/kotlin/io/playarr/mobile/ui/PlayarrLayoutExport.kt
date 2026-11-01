@@ -122,7 +122,7 @@ internal object PlayarrLayoutExport {
                         // A layer alpha is not an element: its alpha is multiplied into everything below it.
                         if (box.kind == "alpha") continue
                         val x = b.left + ctx.dx; val y = b.top + ctx.dy
-                        val e = JSONObject().put("text", if (box.kind == "video") ownerLabel(tree, box.id) else "").put("role", if (box.kind == "image") "image" else if (box.kind == "fill") "container" else if (box.kind == "img") (if (ownerIsImage(tree, box.id)) "img" else "container") else box.kind)
+                        val e = JSONObject().put("text", if (box.kind == "video" || ((box.kind == "img" || box.kind == "image") && ownerIsImage(tree, box.id))) ownerLabel(tree, box.id) else "").put("role", if (box.kind == "image") "image" else if (box.kind == "fill") "container" else if (box.kind == "img") (if (ownerIsImage(tree, box.id)) "img" else "container") else box.kind)
                             .put("rect", rect(x, y, b.width, b.height, unit)).put("color", JSONObject.NULL).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
                         val drawn = box.drawnRadiusPx ?: tree.own.values.firstOrNull { box.id in it }?.firstNotNullOfOrNull { ctx.boxes[it]?.drawnRadiusPx }
                         // A plain-rectangle paint inside a clipping parent keeps the clip's declared radius.
@@ -458,7 +458,7 @@ internal object PlayarrLayoutExport {
             }
             // An image the app tagged for the export and also exposes through semantics on the same node is one element: the tagged record carries the alpha.
             // The label the control itself declares wins over the descriptions and text merged up from its children (those are exported as their own elements).
-            val name = if (kind == "dialog") ctx.tree.ownLabel[node.id]?.joinToString(" ").orEmpty() else ctx.tree.ownLabel[node.id]?.joinToString(" ")?.takeIf { it.isNotBlank() }
+            val name = if (kind == "dialog") ctx.tree.ownLabel[node.id]?.joinToString(" ").orEmpty().ifBlank { config.getOrNull(SemanticsProperties.PaneTitle).orEmpty() } else ctx.tree.ownLabel[node.id]?.joinToString(" ")?.takeIf { it.isNotBlank() }
                 ?: config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString(" ")?.takeIf { it.isNotBlank() }
                 ?: (if (editable) config.getOrNull(SemanticsProperties.EditableText)?.text else null)
                 ?: config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }.orEmpty()

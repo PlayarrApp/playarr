@@ -4815,7 +4815,7 @@ private fun ExperienceLibraryScreen(
                 Column(
                     modifier = Modifier
                         .then(if (isTelevision) Modifier.width(1190.4.dp).fillMaxHeight().align(Alignment.CenterEnd).parityBox("container") else Modifier.fillMaxSize())
-                        .background(if (isTelevision) webRailSurfaceBrush() else Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)))
+                        .then(if (isTelevision) Modifier.background(webRailSurfaceBrush()) else Modifier)
                         .windowInsetsPadding(if (isTelevision) WindowInsets(0) else webPhoneBodyInsets())
                         .padding(top = if (isTelevision) 76.dp else 0.dp),
                 ) {
@@ -6898,7 +6898,7 @@ private fun PhoneVideoDetailBody(
                     Spacer(Modifier.height(10.dp))
                 }
                 WebClampedText(synopsis, color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 11.52.sp, lineHeight = 16.704.sp, fontWeight = FontWeight.Normal, style = WebTextStyle, maxLines = 3, modifier = Modifier, minLines = if (episode != null) 3 else 1)
-                Spacer(Modifier.height(if (episode != null) 11.67.dp else 14.dp))
+                Spacer(Modifier.height(14.dp))
                 PhoneDetailActions(
                     work = work, episode = selectedEpisode, mediaFileId = mediaFileId, progress = progress, canDownload = canDownload,
                     posterUrl = posterUrl, launchSettings = launchSettings, onPlaybackSettings = onPlaybackSettings, onPlay = onPlay,
@@ -7715,8 +7715,8 @@ internal fun SeriesEpisodeBrowser(
         modifier = modifier
             .then(
                 if (isTelevision) {
-                    // shortcut: the web centres the first track in its scroll box, so a short stack (static seed) sits 222 dp lower than a tall one; only the short case is matched, upgrade with a clamped initial scroll.
-                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp + 16.5.dp * tabletDetail, top = 357.dp + 244.5.dp * tabletDetail)
+                    // The web centres the first track in its scroll box (a short stack sits lower than a tall one); that content-dependent offset is not reproduced, so no static-seed shortcut is applied.
+                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp + 16.5.dp * tabletDetail, top = 357.dp)
                 } else {
                     Modifier.glass(RoundedCornerShape(16.dp), WebGlass.Panel).padding(14.dp)
                 },
