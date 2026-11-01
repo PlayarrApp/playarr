@@ -191,7 +191,7 @@ internal object PlayarrLayoutExport {
         } else unique.filter { it !in nominated }
         val ordered = kept.sortedWith(compareBy({ it.y }, { it.x }, { it.json.getString("role") }, { it.json.getString("text") }, { it.w })).map { it.json }
         val doc = JSONObject()
-            .put("screen", screen).put("theme", theme).put("captureId", captureId).put("paletteDark", PlayarrWebTheme.palette.dark)
+            .put("screen", screen).put("theme", theme).put("captureId", captureId).put("route", parityCurrentRoute).put("paletteDark", PlayarrWebTheme.palette.dark)
             .put("viewport", JSONObject().put("w", r2(width * unit)).put("h", r2(height * unit)).put("dpr", 1))
             .put("clockPinned", parityClock != null).put("occluded", if (candidates) 0 else unique.size - kept.size)
             .put("elements", JSONArray().also { arr -> ordered.forEach { arr.put(it) } })

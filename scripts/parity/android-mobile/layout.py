@@ -42,15 +42,25 @@ def export_once():
         sys.exit(f"layout export for {screen} {theme} is not the one requested (id {d.get('captureId')!r}, screen {d.get('screen')!r}, theme {d.get('theme')!r})")
     return d, after
 
+# The route the app reports (its navigation state) has to be the one the requested screen lives on; otherwise the export is of another screen's tree.
+ROUTE = {"home": "home", "movies": "movies", "series": "series", "music": "music", "search": "search", "settings": "settings", "profiles": "profiles",
+         "calendar-month": "calendar", "calendar-week": "calendar", "calendar-agenda": "calendar", "calendar-link": "calendar",
+         "film-detail": "experience-detail/{workId}", "series-detail": "experience-detail/{workId}", "actions": "movies", "filters": "movies"}
+def route_ok(d):
+    want = ROUTE.get(screen) if dev == "phone" else None
+    return want is None or d.get("route") == want
+
 # Determinism guard: the compose tree can lag the frame on screen (a page still settling after navigation). The export is accepted only when two exports
 # in a row, half a second apart, describe the same elements; nothing is edited, a tree that never settles fails the capture.
 def same(x, y):
     return {k: v for k, v in x.items() if k != "captureId"} == {k: v for k, v in y.items() if k != "captureId"}
 doc, after = export_once()
 for attempt in range(8):
+    if not route_ok(doc):
+        time.sleep(1); doc, after = export_once(); continue
     time.sleep(0.5)
     again, after2 = export_once()
-    if same(doc, again) and after == after2: break
+    if same(doc, again) and after == after2 and route_ok(again): break
     doc, after = again, after2
 else:
     sys.exit(f"layout of {screen} {theme} did not settle (two exports in a row never matched)")
@@ -124,6 +134,7 @@ doc["elements"] = [e for e in doc["elements"] if id(e) not in drop]
 doc["occluded"] = len(drop)
 print("occluded", len(drop), "of", len(flagged), "flagged", file=sys.stderr)
 os.makedirs(os.path.dirname(out), exist_ok=True)
+doc.pop("route", None)
 json.dump(doc, open(out, "w"))
 # The screenshot the export was verified against (taken before and after the broadcast, byte-identical) is the one to publish with it.
 png = os.environ.get("PARITY_PNG_OUT")

@@ -1559,7 +1559,7 @@ internal fun PlayarrExperience(
     val entry by navController.currentBackStackEntryAsState()
     val currentRoute = entry?.destination?.route.orEmpty().substringBefore('?')
     var detailSectionRoute by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(currentRoute, detailSectionRoute) { parityLog("route=$currentRoute section=${detailSectionRoute.orEmpty()}") }
+    LaunchedEffect(currentRoute, detailSectionRoute) { parityCurrentRoute = currentRoute; parityLog("route=$currentRoute section=${detailSectionRoute.orEmpty()}") }
     // Detail pages highlight the section they belong to (Series for a series, etc.), as the web rail does.
     val activeNavRoute = if (currentRoute.startsWith("experience-detail")) detailSectionRoute ?: currentRoute else currentRoute
     val token by viewModel.accessToken.collectAsState()
