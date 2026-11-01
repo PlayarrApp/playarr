@@ -88,6 +88,8 @@ struct PlayarrHeaderPill: View {
     var count: Int = 0
     var iconOnly = false
     var accessibilityLabel: String?
+    /// Tablet: the web `.action-pill` is clamp(48px, 3.6vw, 62px) wide and clamp(52px, 5.2vw, 72px) tall at this viewport width.
+    var viewportWidth: CGFloat?
     let action: () -> Void
 
     @Environment(\.isFocused) private var isFocused
@@ -107,6 +109,7 @@ struct PlayarrHeaderPill: View {
             .foregroundStyle(isFocused ? PlayarrStyle.ink : PlayarrStyle.muted)
             .padding(.horizontal, 4)
             .frame(minWidth: iconOnly ? 44 : 62, minHeight: iconOnly ? 44 : 72)
+            .frame(width: viewportWidth.map { min(max(48, $0 * 0.036), 62) }, height: viewportWidth.map { min(max(52, $0 * 0.052), 72) })
             // Web `.action-pill`: 78% surface-strong over the shell (the shell action column sits outside the page fill),
             // a real button box with its own fill and 14 radius.
             .parityShape("button", name: accessibilityLabel ?? label, color: PlayarrStyle.surfaceStrong.opacity(0.78), in: RoundedRectangle(cornerRadius: 14, style: .continuous), radius: 14)

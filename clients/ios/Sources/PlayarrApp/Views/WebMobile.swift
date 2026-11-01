@@ -611,8 +611,9 @@ struct WMUnseenDot: View {
         if ParityLaunch.zeroInsets, let image = WMUnseenDotBitmap.image(scheme) {
             // The 33 pt bitmap carries the ring and shadow around the 9 pt dot; it is decoration, so it takes no part in the
             // accessibility frame of the card that holds it (the link is the card's box, as in the web).
-            Color.clear.frame(width: 9, height: 9)
-                .overlay { Image(uiImage: image).resizable().frame(width: 33, height: 33).accessibilityHidden(true) }
+            // The bitmap hangs off a 9 pt UIKit view as a sublayer, so no SwiftUI child frame (33 pt) reaches the card's
+            // accessibility frame: the link is the card's own box, as on the web.
+            WMDotLayerView(image: image).frame(width: 9, height: 9)
                 .parityBox("img", background: WM.pink, radius: 4.5)
         } else {
             WMUnseenDotVector()
@@ -623,6 +624,28 @@ struct WMUnseenDot: View {
             .parityBox("img", background: WM.pink, radius: 4.5)
         #endif
     }
+}
+
+/// A 9 x 9 pt view whose bitmap (33 x 33, centred) is a sublayer that overhangs the view; it is not an accessibility element.
+struct WMDotLayerView: UIViewRepresentable {
+    let image: UIImage
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: CGRect(x: 0, y: 0, width: 9, height: 9))
+        view.isUserInteractionEnabled = false
+        view.isAccessibilityElement = false
+        view.clipsToBounds = false
+        let layer = CALayer()
+        layer.contents = image.cgImage
+        layer.contentsScale = image.scale
+        layer.frame = CGRect(x: -12, y: -12, width: 33, height: 33)
+        view.layer.addSublayer(layer)
+        return view
+    }
+
+    func updateUIView(_ view: UIView, context: Context) {}
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIView, context: Context) -> CGSize? { CGSize(width: 9, height: 9) }
 }
 
 struct WMUnseenDotVector: View {
@@ -847,6 +870,50 @@ struct WMSearchCard: View {
 }
 
 /// `app-user-identity`-style round header button.
+/// The web Back glyph as drawn here: a 12.8 x 18 vector arrow, or in parity captures a bitmap of that vector.
+struct WMBackArrow: View {
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        #if DEBUG
+        if ParityLaunch.zeroInsets, let image = WMBackArrowBitmap.image(scheme) {
+            Image(uiImage: image).resizable().frame(width: 12.8, height: 18)
+        } else {
+            WMBackArrowVector()
+        }
+        #else
+        WMBackArrowVector()
+        #endif
+    }
+}
+
+struct WMBackArrowVector: View {
+    var body: some View {
+        Canvas { context, _ in
+            var arrow = Path()
+            arrow.move(to: CGPoint(x: 11.6, y: 9)); arrow.addLine(to: CGPoint(x: 1.4, y: 9))
+            arrow.move(to: CGPoint(x: 5.6, y: 4.8)); arrow.addLine(to: CGPoint(x: 1.4, y: 9)); arrow.addLine(to: CGPoint(x: 5.6, y: 13.2))
+            context.stroke(arrow, with: .color(WM.inkSoft), style: StrokeStyle(lineWidth: 1.3, lineCap: .round, lineJoin: .round))
+        }
+        .frame(width: 12.8, height: 18)
+    }
+}
+
+@MainActor
+enum WMBackArrowBitmap {
+    private static var cache: [Bool: UIImage] = [:]
+
+    static func image(_ scheme: ColorScheme) -> UIImage? {
+        let dark = scheme == .dark
+        if let cached = cache[dark] { return cached }
+        let renderer = ImageRenderer(content: WMBackArrowVector().environment(\.colorScheme, scheme))
+        renderer.scale = UIScreen.main.scale
+        guard let image = renderer.uiImage else { return nil }
+        cache[dark] = image
+        return image
+    }
+}
+
 struct WMHeaderCircleButton: View {
     let width: CGFloat
     let height: CGFloat
@@ -859,16 +926,11 @@ struct WMHeaderCircleButton: View {
     var body: some View {
         Button(action: action) {
             if glyph == "\u{2190}" {
-                // The design font has no arrow glyph, so it is drawn as a vector in the web glyph's 12.8 x 18 box.
-                Canvas { context, _ in
-                    var arrow = Path()
-                    arrow.move(to: CGPoint(x: 11.6, y: 9)); arrow.addLine(to: CGPoint(x: 1.4, y: 9))
-                    arrow.move(to: CGPoint(x: 5.6, y: 4.8)); arrow.addLine(to: CGPoint(x: 1.4, y: 9)); arrow.addLine(to: CGPoint(x: 5.6, y: 13.2))
-                    context.stroke(arrow, with: .color(WM.inkSoft), style: StrokeStyle(lineWidth: 1.3, lineCap: .round, lineJoin: .round))
-                }
-                .frame(width: 12.8, height: 18)
+                // The design font has no arrow glyph, so it is drawn as a vector in the web glyph's 12.8 x 18 box. Parity captures
+                // blit it from a bitmap rendered once per theme (the GPU antialiasing differs between simulator hosts).
+                WMBackArrow()
                 .offset(y: -0.6)
-                .parityBox("image")
+                .parityLayout(text: "\u{2190}", role: "text", size: 12.8, weight: 720, color: WM.inkSoft)
                 .accessibilityHidden(true)
                 .frame(width: width, height: height)
                 .parityShape(role, name: name, color: WM.chip.opacity(0.66), in: Ellipse(), radius: width == height ? width / 2 : 0)
@@ -984,6 +1046,8 @@ struct WMTitleWithDetail<Title: View>: View {
     let maxWidth: CGFloat
     var size: CGFloat = 9.92
     var gap: CGFloat = 16
+    /// Web `.page-header-detail` padding-top when wrapped (0.4rem on the library header, 6 elsewhere so far).
+    var wrappedPadTop: CGFloat = 6
     @ViewBuilder let title: () -> Title
 
     var body: some View {
@@ -1004,7 +1068,7 @@ struct WMTitleWithDetail<Title: View>: View {
                         .parityRenderedText(detail.uppercased(), role: "text", size: size, weight: 680, color: WM.ink)
                         .lineLimit(1)
                         .truncationMode(.tail)
-                        .padding(.top, 6)
+                        .padding(.top, wrappedPadTop)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .overlay(alignment: .top) { Rectangle().fill(PlayarrStyle.lineStrong).frame(height: 1) }
                 }
