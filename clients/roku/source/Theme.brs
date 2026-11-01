@@ -515,3 +515,44 @@ end function
 function WebNavHitInset() as Float
     return (67.2 - 64.0) / 2.0
 end function
+
+' .tv-directory .tv-alphabet: top clamp(214px, calc(25 * var(--viewport-unit)), 286px) + padding-top 8px (the column is unscrolled, margin-top auto
+' is 0 when the letters overflow), --viewport-unit is 1vh = 10.8 px on the 1080 px stage.
+function WebAlphabetTop() as Float
+    return WebClamp(214.0, 25.0 * 10.8, 286.0) + 8.0
+end function
+
+' ---- Left details panel (DetailsPanel: .tv-library-preview / .tv-title-panel, global.css) ----
+' The panel box starts at top: 24% of the 1080 px stage; every size below is the CSS clamp evaluated at --vw 19.2 and
+' --viewport-unit 10.8, laid out in LayoutUnits (1/64 px, floored). line-height is inherited as 1.5 unless the rule sets one.
+function WebPanelTop() as Float
+    return WebLayoutUnit(0.24 * 1080.0)
+end function
+
+' .tv-provider font-size clamp(0.58rem, 0.64 * --vw, 0.78rem) = 12.288.
+function WebPanelKickerSize() as Float
+    return WebClamp(9.28, 0.64 * WebVw(), 12.48)
+end function
+
+function WebPanelKickerLineHeight() as Float
+    return WebLayoutUnit(1.5 * WebPanelKickerSize())
+end function
+
+' Top of the title's first line box: the kicker line plus its margin-bottom clamp(18px, 2.4 * --viewport-unit, 34px).
+function WebPanelTitleLineTop() as Float
+    return WebPanelTop() + WebPanelKickerLineHeight() + WebLayoutUnit(WebClamp(18.0, 2.4 * 10.8, 34.0))
+end function
+
+' h2 line-height 0.9 of the 69.12 px title (font-size clamp(2.2rem, 3.6 * --vw, 5rem)).
+function WebPanelTitleLineHeight() as Float
+    return WebLayoutUnit(0.9 * WebClamp(35.2, 3.6 * WebVw(), 80.0))
+end function
+
+' .tv-preview-overview font-size clamp(0.64rem, 0.72 * --vw, 0.92rem) = 13.824, line-height 1.58, margin-top clamp(16px, 2 * --viewport-unit, 28px).
+function WebPanelOverviewSize() as Float
+    return WebClamp(10.24, 0.72 * WebVw(), 14.72)
+end function
+
+function WebPanelOverviewLineHeight() as Float
+    return WebLayoutUnit(1.58 * WebPanelOverviewSize())
+end function

@@ -2751,6 +2751,8 @@ end function
 sub buildAlphabetStrip()
     letters = alphabetLetterList()
     m.alphabetLabels = []
+    ' Web .tv-directory .tv-alphabet: top clamp(214px, 25 * --viewport-unit, 286px) plus its 8 px padding; the column starts unscrolled.
+    m.browseAlphabet.translation = [1858, WebAlphabetTop()]
     ' Web .tv-alphabet: 44 px letter buttons; the active letter is a filled 24 px ink circle inside a 2 px brand ring (32 px).
     m.alphabetRing = CreateObject("roSGNode", "Poster")
     m.alphabetRing.uri = "pkg:/images/round-ring-r16.9.png"
@@ -2770,7 +2772,7 @@ sub buildAlphabetStrip()
     for each letter in letters
         ' Web: a 44 px button, the letter 9.22 px, its text box 15.2 px below the button top.
         label = CreateObject("roSGNode", "WebLabel")
-        label.translation = [0, y + 16.2]
+        label.translation = [0, y + 15.2]
         label.setFields({ size: 9.22, weight: 400, width: 44, height: 12, horizAlign: "center" })
         label.text = letter
         label.color = ThemeColor("inkMuted")
@@ -2973,6 +2975,8 @@ sub updateBrowsePreview(work as Object)
     if work.genres <> invalid and work.genres.Count() > 0
         kicker = UCase(work.genres[0])
     end if
+    m.browsePreviewKind.translation = [153.6, PlayarrTextTop(WebPanelTop(), WebPanelKickerSize(), WebPanelKickerLineHeight())]
+    m.browsePreviewTitle.translation = [153.6, PlayarrTextTop(WebPanelTitleLineTop(), 69.12, WebPanelTitleLineHeight())]
     m.browsePreviewKind.spec = { text: kicker, size: 12.29, weight: 860, tracking: 0.97, role: "brandInk", upper: true }
     m.browsePreviewTitle.spec = { text: work.title, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true, aria: "heading" }
     year = ""
@@ -2986,7 +2990,7 @@ sub updateBrowsePreview(work as Object)
     ' Web flows the meta line (year in ink-soft, genres in ink-muted) and the synopsis under the title.
     titleLines = m.browsePreviewTitle.lineCount
     if titleLines < 1 then titleLines = 1
-    metaY = 303.5 + 62.208 * titleLines + 27
+    metaY = WebPanelTitleLineTop() + WebPanelTitleLineHeight() * titleLines + WebLayoutUnit(WebClamp(18.0, 2.5 * 10.8, 34.0))
     m.browsePreviewMeta.translation = [153.6, metaY]
     m.browsePreviewMeta.spec = { text: year, size: 13.06, weight: 600, tracking: 0, role: "heroSoft", width: 60, lineHeight: 18.144, maxLines: 1 }
     metaX = 153.6
@@ -2999,8 +3003,10 @@ sub updateBrowsePreview(work as Object)
     showBrowsePreviewRuntime(work.id)
     overview = work.overview
     if overview = invalid or overview = "" then overview = "No synopsis is available."
-    m.browsePreviewOverview.translation = [153.6, metaY + 41.3]
-    m.browsePreviewOverview.spec = { text: overview, size: 13.82, weight: 600, tracking: 0, role: "heroSoft", width: 336, lineHeight: 23, maxLines: 5 }
+    ' Meta line box (1.5 x 13.056), then the overview's margin-top; the overview text box sits its half-leading into its first line.
+    overviewLineTop = metaY + WebLayoutUnit(1.5 * 13.056) + WebLayoutUnit(WebClamp(16.0, 2.0 * 10.8, 28.0))
+    m.browsePreviewOverview.translation = [153.6, PlayarrTextTop(overviewLineTop, WebPanelOverviewSize(), WebPanelOverviewLineHeight())]
+    m.browsePreviewOverview.spec = { text: overview, size: WebPanelOverviewSize(), weight: 600, tracking: 0, role: "heroSoft", width: 336, lineHeight: WebPanelOverviewLineHeight(), maxLines: 5 }
     ' Defer key-art download so acceptBrowseCatalog paints the grid first.
     ' Home hero uses sync GetToFile successfully; here it must not block paint.
     if m.browseKeyArt <> invalid
@@ -7766,7 +7772,8 @@ sub layoutDetailHeader(work as Object, detail as Object)
     end for
     overview = JsonString(work.overview)
     if overview = "" then overview = "No description is available."
-    m.detailSynopsis.translation = [153.6, metaY + 37.5]
+    ' Meta line box (1.5 x 10.56), the synopsis margin-top, then the synopsis text box's half-leading into its first line.
+    m.detailSynopsis.translation = [153.6, PlayarrTextTop(metaY + WebLayoutUnit(1.5 * 10.56) + WebLayoutUnit(WebClamp(16.0, 2.0 * 10.8, 28.0)), 12.864, WebLayoutUnit(1.58 * 12.864))]
     m.detailSynopsis.spec = { text: overview, size: 12.86, weight: 400, tracking: 0, role: "inkMuted", width: 325, lineHeight: 20.33, maxLines: 5 }
     m.detailActionsTop = metaY + 37.5 + 20.33 * m.detailSynopsis.lineCount + 38
 end sub
