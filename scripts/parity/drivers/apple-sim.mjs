@@ -479,6 +479,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
             if (doc.captureID === requestID) return doc;
           } catch { /* not written yet */ }
         }
+        try { console.log(`    layout wait ended: ${JSON.stringify(state().note ?? null)}`); } catch { /* no state */ }
         return null;
       };
       // tvOS: the visibility pass hides and shows every item, and SwiftUI rasterises layers it re-creates (shadows, blurs, circle

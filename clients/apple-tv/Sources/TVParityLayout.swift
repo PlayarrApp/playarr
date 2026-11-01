@@ -82,7 +82,9 @@ final class TVParityLayoutRegistry {
                       let id = (try? String(contentsOf: url, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines),
                       !id.isEmpty, id != self.answeredRequest else { continue }
                 var previous: Data?
-                for _ in 0..<25 {
+                var unstable = 0
+                for attempt in 0..<25 {
+                    TVParityState.setNote("layout \(id): snapshot attempt \(attempt), \(self.items.count) items, unstable \(unstable)")
                     guard let data = self.snapshot(captureID: id, visibility: nil) else { try? await Task.sleep(nanoseconds: 300_000_000); continue }
                     if data == previous {
                         // A request ending "-a" is the visibility pass (it hides and shows every item, which re-renders the screen); the request
@@ -96,6 +98,7 @@ final class TVParityLayoutRegistry {
                         break
                     }
                     previous = data
+                    unstable += 1
                     try? await Task.sleep(nanoseconds: 300_000_000)
                 }
             }
@@ -151,7 +154,9 @@ final class TVParityLayoutRegistry {
             }
         }
         var result = Visibility()
-        for batch in batches {
+        let started = Date()
+        for (number, batch) in batches.enumerated() {
+            TVParityState.setNote("layout measure: batch \(number + 1) of \(batches.count), \(units.count) units, \(Int(Date().timeIntervalSince(started))) s")
             hide.hidden = Set(batch.map { units[$0].id })
             try? await Task.sleep(nanoseconds: settle)
             guard let hidden = TVParityStageRender.capture() else { hide.hidden = []; return Visibility(rendered: false) }
