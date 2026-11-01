@@ -194,7 +194,9 @@ function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }
         const r = it.rect, pts = [[r.x + r.w / 2, r.y + r.h / 2], [r.x + 0.5, r.y + 0.5], [r.x + r.w - 0.5, r.y + 0.5], [r.x + 0.5, r.y + r.h - 0.5], [r.x + r.w - 0.5, r.y + r.h - 0.5]];
         // A bitmap drawn before it over one of those points (artwork, a veil, a gradient) means the colour behind is not a flat fill: the
         // Rectangle paints something new there (a panel over the artwork), so it is a fill.
-        const bitmapUnder = (px, py) => items.some((o) => o.order < it.order && (o.kind === "poster" || (o.kind === "a11y" && o.node.tag === "Poster" && o.role !== "container")) && o.op > 0.01 && px >= o.rect.x && px <= o.rect.x + o.rect.w && py >= o.rect.y && py <= o.rect.y + o.rect.h && !/\.9\.png$/.test(o.node.attrs.uri ?? ""));
+        // A bitmap that a later opaque fill (before this Rectangle) paints over at that point is no longer on screen: it makes nothing new.
+        const covered = (o, px, py) => fills.some((f) => f.order > o.order && f.order < it.order && f.opaque && !f.dropped && px >= f.rect.x && px <= f.rect.x + f.rect.w && py >= f.rect.y && py <= f.rect.y + f.rect.h);
+        const bitmapUnder = (px, py) => items.some((o) => o.order < it.order && (o.kind === "poster" || (o.kind === "a11y" && o.node.tag === "Poster" && o.role !== "container")) && o.op > 0.01 && px >= o.rect.x && px <= o.rect.x + o.rect.w && py >= o.rect.y && py <= o.rect.y + o.rect.h && !/\.9\.png$/.test(o.node.attrs.uri ?? "") && !covered(o, px, py));
         const same = pts.every(([px, py]) => {
           if (bitmapUnder(px, py)) return false;
           const under = rgb(background({ x: px, y: py, w: 0, h: 0 }, it.order, false));
@@ -290,8 +292,9 @@ function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }
     if (face && e._source.node.tag === "Rectangle") e.radius = face.radius;
   }
   // A painted surface that another element already describes at the same box is not listed twice.
-  // (A control's own face only: an artwork image at the same box is a different paint, so its veil stays.)
-  const kept = elements.filter((e) => !(e._fill && elements.some((f) => f !== e && !f._fill && f.role !== "image" && same(f.rect, e.rect))));
+  // (A control's own face only: an artwork image at the same box is a different paint, so its veil stays; and only when that row
+  // reports the same colour, so a different surface that shares the box is never dropped as a duplicate.)
+  const kept = elements.filter((e) => !(e._fill && elements.some((f) => f !== e && !f._fill && f.role !== "image" && same(f.rect, e.rect) && f.background === e.background)));
   // Content fully covered by a later opaque surface (a fill, or a bundled opaque picture) is not on screen (a drawer over the page).
   // A surface never covers its own ancestors or descendants (nor does an unexported duplicate cover the fill of its own colour it repeats), and a rounded one is shrunk by its corner.
   const covers = [...fills.filter((f) => f.opaque), ...items.filter((it) => (it.kind === "poster" || (it.kind === "a11y" && it.role === "image" && it.node.tag === "Poster")) && it.op >= 0.99 && opaquePicture(it))].map((f) => {

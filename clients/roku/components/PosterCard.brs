@@ -119,7 +119,7 @@ sub onContentChanged()
     m.captionPrefix.visible = hasPrefix
     if hasPrefix
         m.title.setFields({ size: 11.52, tracking: -0.177 })
-        m.captionPrefix.tracking = EpisodeCodeTracking(content.captionPrefix, -0.433)
+        m.captionPrefix.tracking = 0
         m.captionPrefix.text = content.captionPrefix
         m.title.translation = [m.captionPrefix.textWidth + 8.8, m.titleY]
     else

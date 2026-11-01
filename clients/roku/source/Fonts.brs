@@ -236,12 +236,6 @@ function PlayarrFontMetaOf(font as Object) as Dynamic
     return g.fontMeta[font.uri + "|" + Str(font.size)]
 end function
 
-' The web sets an episode code ("S 01 · E 01") tighter than the plain advances: tracking in px for text that starts like one.
-function EpisodeCodeTracking(text as String, tracking as Float) as Float
-    if Left(text, 2) = "S " and Instr(1, text, "·") > 0 then return tracking
-    return 0
-end function
-
 ' Symbol glyphs the web draws from its fallback fonts (Nunito Sans has none of them): arrows, play, check, the sort chevron and a
 ' fullwidth plus. fonts/Symbols.ttf is a subset of DejaVu Sans (Bitstream Vera licence) and fonts/SymbolsCjk.otf one glyph of
 ' Noto Sans CJK (SIL OFL). fonts/SymbolsBold.ttf is the same glyphs from DejaVu Sans Bold, used for weights of 600 and up.

@@ -64,7 +64,7 @@ sub renderSettings()
         end for
         numText = num.ToStr()
         if num < 10 then numText = "0" + numText
-        pgLabel(m.pageBody, 185.6, y + 27.3, 40, 14, numText, 9.92, 760, "ink", { fitWidth: 11.9 })
+        pgLabel(m.pageBody, 185.6, y + 27.3, 40, 14, numText, 9.92, 760, "ink")
         pgLabel(m.pageBody, 245.6, y + 25.8, 330, 40, sections[i].title, 29.6, 480, "ink", { tracking: -1.038 })
         arrowRole = "inkMuted"
         arrowX = 571.2
@@ -188,20 +188,13 @@ sub pgSegmentedWide(x as Float, y as Float, h as Float, labels as Object, active
             role = "bg"
         end if
         shown = labels[i]
-        fit = segmentedFit(LCase(labels[i]))
-        pgLabel(m.pageBody, bx + (bw - fit) / 2, by + 20.2 * bh / h, fit + 4, 15, shown, 10.56, 900, role, { fitWidth: fit })
+        ' Web .tv-filter-choice-grid button: 0.66rem, weight 900, no letter-spacing; the text is centred in the cell.
+        fit = PlayarrTextWidth(shown, 10.56, 900, 0)
+        pgLabel(m.pageBody, bx + (bw - fit) / 2, by + 20.2 * bh / h, fit + 4, 15, shown, 10.56, 900, role)
         pgMark(m.pageBody, "button", labels[i], bx, by, bw, bh, 12)
         pgFocusable(cx, y, w, h, 14, action, i, true)
     end for
 end sub
-
-' Measured width of each option label in the web segmented control (text-transform lowercase, letter-spacing .05em).
-function segmentedFit(text as String) as Float
-    table = { system: 37.4, light: 26.6, dark: 25.6, thumbnails: 61.3, covers: 34.3, small: 29.7, medium: 41.6, large: 29.1 }
-    w = table[text]
-    if w = invalid then w = PlayarrTextWidth(text, 10.56, 900, 0.5)
-    return w
-end function
 
 sub panelAvatar()
     presets = ["astronaut", "cat", "dinosaur", "robot", "pirate", "alien"]
