@@ -494,6 +494,7 @@ internal enum class PlayarrString(
         "{{collection}}ที่พร้อมใช้งานจะปรากฏที่นี่หลังไลบรารีของคุณอัปเดต",
         "ライブラリが更新されると、利用可能な{{collection}}がここに表示されます。",
     ),
+    LibraryNumbersAndSymbols("Numbers and symbols", "ตัวเลขและสัญลักษณ์", "数字と記号"),
     LibraryFilters("Filters", "ตัวกรอง", "フィルター"),
     LibraryOpenWork("Open {{title}}", "เปิด {{title}}", "{{title}}を開く"),
     LibraryCloseFilters("Close filters", "ปิดตัวกรอง", "フィルターを閉じる"),

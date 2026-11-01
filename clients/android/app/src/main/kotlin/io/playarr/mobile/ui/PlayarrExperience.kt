@@ -1424,7 +1424,7 @@ internal val WebTextStyle: androidx.compose.ui.text.TextStyle
     // Chromium lays glyphs out with unhinted, fractional advances; Compose's default hints them (about 4% narrower at
     // 11 sp). The animated text motion turns hinting off and positions glyphs at subpixel offsets.
     textMotion = if (webFontFamily != null) androidx.compose.ui.text.style.TextMotion.Animated else null,
-    // The phone derives the line box from Chromium's rules per size (PlayarrWebText); the tablet keeps the plain centre.
+    // The phone and the television derive the line box from Chromium's rules per size (PlayarrWebText, CssText); the tablet keeps the plain centre.
     lineHeightStyle = if (webFontFamily != null) io.playarr.shared.designsystem.page.WebLineBox else androidx.compose.ui.text.style.LineHeightStyle(androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center, androidx.compose.ui.text.style.LineHeightStyle.Trim.None),
 )
 
@@ -1792,6 +1792,8 @@ internal fun PlayarrExperience(
         val phoneDrawerNavigationAbovePane = isPhoneDrawerNavigationAbovePane(phoneDrawerHost.activePane, activeNavRoute)
         val drawerBlurRadius = with(LocalDensity.current) { 38.dp.toPx() }
         val backgroundContent: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {
+            // Web `.page-shell` (global.css): the full-viewport section behind every page paints --surface (the clock and the navigation sit outside it, over --bg).
+            Box(if (isTelevision && !isPlayer && !isProfiles) Modifier.fillMaxSize().parityBackground("container", WebSurface) else Modifier.fillMaxSize()) {
             ExperienceNavHost(
                 navController,
                 serverUrl,
@@ -1805,6 +1807,7 @@ internal fun PlayarrExperience(
                 viewModel,
                 playerViewModel,
             )
+            }
 
             val remainingMinutes = householdRemainingMinutes(household, playarrInstant())
             if (remainingMinutes != null && !isPlayer && !isProfiles && householdBlock == null) {
@@ -2258,14 +2261,14 @@ private class TvNavMetrics(
             return TvNavMetrics(
                 left = (2.2f * vw).coerceIn(18f, 44f).dp,
                 top = ((5.2f * vu).coerceIn(34f, 66f) + 44f + (1.2f * vu).coerceIn(6.4f, 14.4f)).dp,
-                bottom = ((3.2f * vu).coerceIn(22f, 46f) - 2.3f).dp, // the version label ends 2.3 css px lower in web
+                bottom = (3.2f * vu).coerceIn(22f, 46f).dp,
                 groupGap = (1.26f * vu).coerceIn(4f, 13.6f).dp,
                 groupPadding = PaddingValues(horizontal = 6.76.dp, vertical = ((if (short) 4.48f else 6.72f) + 1f).dp),
                 linkGap = (if (short) 4f else (0.889f * vu).coerceIn(2.4f, 9.6f)).dp,
                 linkHeight = linkHeight.dp,
                 labelSize = labelSize.sp,
                 iconTop = iconTop.dp,
-                labelGap = (iconGap - 2.3f).coerceAtLeast(0f).dp, // measured: the web label sits 2.3 css px higher than the icon gap alone puts it
+                labelGap = iconGap.dp, // web `.app-nav-link` gap between the icon and the label line box
             )
         }
     }
@@ -2443,7 +2446,7 @@ private fun TvNavTile(
                         ),
                     ),
                 ),
-                modifier = Modifier.padding(top = (web?.labelGap ?: 3.3.dp), start = 4.dp, end = 4.dp),
+                modifier = Modifier.padding(top = (web?.labelGap ?: 4.8.dp), start = 4.dp, end = 4.dp),
             )
         }
     }
@@ -2478,7 +2481,7 @@ private fun ExperienceClock(modifier: Modifier = Modifier) {
             fontWeight = FontWeight(640),
             letterSpacing = (0.04f * webVw(8.32f, 0.58f, 11.52f).value).sp,
             lineHeight = (1.1f * webVw(8.32f, 0.58f, 11.52f).value).sp,
-            modifier = Modifier.offset(y = (-0.4).dp),
+            modifier = Modifier,
         )
     }
 }
@@ -4855,6 +4858,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                     // Tablet (stage-scaled canvas): the web tablet keeps 44 css px buttons from y 222 and 14.5 px from the edge, unscaled.
                     val alphaTablet = LocalStageScale.current != 1f
                     val alphaCss = if (alphaTablet) 1f / LocalStageScale.current else 1f
+                    val symbolsLabel = playarrString(PlayarrString.LibraryNumbersAndSymbols)
                     Column(
                         modifier = Modifier.align(Alignment.TopEnd)
                             .padding(top = if (alphaTablet) 222.dp * alphaCss else 278.dp, end = if (alphaTablet) 14.5.dp * alphaCss else 18.5.dp)
@@ -4875,7 +4879,9 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                                     .onFocusChanged { letterFocused = it.isFocused }
                                     .parityShape(999f)
                                     .clip(CircleShape)
-                                    .clickable { activeLetter = letter },
+                                    .clickable { activeLetter = letter }
+                                    // Web: the "#" button is labelled "Numbers and symbols", the others by their letter.
+                                    .semantics { if (letter == "#") contentDescription = symbolsLabel },
                                 contentAlignment = Alignment.Center,
                             ) {
                             val disc = WebInk.copy(alpha = 0.78f)
@@ -4892,8 +4898,8 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                                     color = if (active) WebBackground else WebInkMuted,
                                     fontSize = if (alphaTablet) (6.88f * alphaCss).sp else 9.216.sp,
                                     fontWeight = FontWeight.Normal,
-                                    // Chromium rounds the glyph box (12 px) and sets its baseline 0.5 dp higher than the unrounded 12.57 dp box Compose centres.
-                                    modifier = if (alphaTablet) Modifier else Modifier.offset(y = (-0.5).dp),
+                                    // Phone/TV: the text carries the browser's baseline itself (page Text), no offset.
+                                    modifier = if (alphaTablet) Modifier else Modifier,
                                 )
                             }
                             }
@@ -8203,6 +8209,7 @@ private fun WebSimilarTrack(
                         onClick = { onOpenWork(work.id) },
                         webTvStyle = true,
                         webTvLibrary = true,
+                        contentLabel = playarrString(PlayarrString.LibraryOpenWork, "title" to work.title), // web: aria-label "Open <title>"
                     )
                     Text(work.kind.playarrSingularLabel(), color = WebInkMuted, fontSize = 8.64.sp, lineHeight = 13.sp, maxLines = 1, modifier = Modifier.padding(top = 2.6.dp))
                 }
@@ -8252,7 +8259,7 @@ private fun WebEpisodeCard(
             .onFocusChanged { focused = it.isFocused }
             .clickable(onClick = onClick)
             // The card reads as its visible copy: number, lead and title.
-            .semantics { contentDescription = listOfNotNull(badge, lead, title).joinToString(" ") },
+            .semantics { contentDescription = exportLabel ?: listOfNotNull(badge, lead, title).joinToString(" ") },
     ) {
     Column(Modifier.fillMaxWidth().mediaCardLift(focused)) {
         WebShadowedBox(

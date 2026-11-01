@@ -655,8 +655,7 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
             val lineGap = if (phoneEntry) 1.9.dp else 2.4.dp
             Column(Modifier.weight(1f).padding(start = 14.4.dp).then(if (phoneEntry) Modifier.offset(y = (-1).dp) else if (m === TvCalendarMetrics && agenda) Modifier else Modifier)) {
                 Text(item.title, color = WebInk, fontSize = titleSp.sp, lineHeight = titleLine.sp, fontWeight = FontWeight(640), style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis,
-                    // Web TV week: the 26 px title and subtitle boxes sit 1 dp under where Compose centres the line.
-                    modifier = if (tvWeek && !agenda && LocalStageScale.current == 1f) Modifier.offset(y = 1.dp) else Modifier)
+                    modifier = Modifier)
                 Spacer(Modifier.height(lineGap))
                 if (rowSubtitle.isNotEmpty()) {
                     Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis, modifier = if (tvWeek && !agenda && LocalStageScale.current == 1f) Modifier.offset(y = 1.dp) else Modifier)
@@ -777,9 +776,9 @@ internal fun TvCalendarAgenda(
                                     contentAlignment = Alignment.CenterStart,
                                 ) {
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    // Static web refs (television): the day heading is --accent at weight 640, a plain text run.
+                                    // Web `.calendar-day h3` is --ink at weight 640; only `.is-today h3` is --accent. A plain text run.
                                     Text(
-                                        phoneCalendarDayHeading(day, locale), color = if (tablet) WebInk else io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent, fontSize = dayFont.dayHeading.sp, lineHeight = dayFont.dayHeadingLine.sp, fontWeight = FontWeight(if (tablet) 560 else 640),
+                                        phoneCalendarDayHeading(day, locale), color = if (tablet || day != today) WebInk else io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent, fontSize = dayFont.dayHeading.sp, lineHeight = dayFont.dayHeadingLine.sp, fontWeight = FontWeight(if (tablet) 560 else 640),
                                         style = WebTextStyle, modifier = if (tablet) Modifier.semantics { heading() } else Modifier,
                                     )
                                     if (day == today) CalendarTodayBadge(tv = !tablet)
