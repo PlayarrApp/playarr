@@ -149,6 +149,8 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
   const [visible, setVisible] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [focusedControl, setFocusedControl] = useState<ChromeControl | null>('play');
+  // What the native focus really is (set by the controls' own onFocus), for the retries that put it on Play.
+  const nativeControl = useRef<ChromeControl | null>(null);
   const [menu, setMenu] = useState<'quality' | 'subtitles' | 'audio' | 'playlist' | 'info' | 'cast' | null>(null);
   const [seekTarget, setSeekTarget] = useState<number | null>(null);
   const [quality, setQuality] = useState<{id: string; profile?: string}>({id: 'original'});
@@ -461,9 +463,15 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
   // The page under the player stays mounted and focusable: put focus on Play once the controls are up (the focus guide traps the D-pad).
   useEffect(() => {
     if (!visible) return undefined;
-    const timer = setTimeout(() => focusNode(playRef), 150);
+    // The engine can place focus on another control while the row mounts: retry until Play really holds it.
+    nativeControl.current = null;
+    const timers = [150, 450, 900, 1500].map((delay) =>
+      setTimeout(() => {
+        if (nativeControl.current !== 'play') focusNode(playRef);
+      }, delay),
+    );
     return () => {
-      clearTimeout(timer);
+      timers.forEach(clearTimeout);
     };
   }, [visible]);
 
@@ -527,6 +535,8 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
       return;
     }
     reveal();
+    // The web's Down from the seek bar focuses Play (the row's first control), not the nearest view below.
+    if (focusedControl === 'scrubber' && menu === null && key === 'down') setTimeout(() => focusNode(playRef), 40);
     if (focusedControl === 'scrubber' && menu === null && (key === 'left' || key === 'right')) stepSeek(key === 'right' ? 1 : -1, true);
     if (focusedControl === 'volume' && menu === null && (key === 'left' || key === 'right')) stepVolume(key === 'right' ? 1 : -1);
   });
@@ -648,6 +658,7 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
           subtitlesOn={engineState.selectedSubtitleTrackId !== null}
           focused={focusedControl}
           onFocusControl={(control) => {
+            nativeControl.current = control;
             setFocusedControl(control);
             reveal();
           }}
