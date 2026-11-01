@@ -362,14 +362,14 @@ export async function createDriver({ out } = {}) {
       return (await state()).route;
     },
     // Whether the quality, audio or subtitles panel is open (the web's .player-quality-menu): the app reports it in the state answer.
-    // Known state for the player checks, as the web's playerReady: the controls are up and Play holds the focus. The clip is paused at 2 s
-    // here (player-controls), and the raising Right of playerControls can have walked the native focus on to Mute: Left walks it back.
+    // Known state for the player checks, as the web's playerReady: the clip is playing, the controls are up and Play holds the focus.
+    // player-controls leaves the clip paused at 2 s (Play is labelled "play") and the raising Right can have walked the focus to Mute.
     async playerReady() {
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 10; i++) {
         const f = await this.focused();
         if (f?.label === "play-pause") return;
-        await this.key("left");
-        await sleep(800);
+        if (f?.label === "play") await this.key("select"); else await this.key("left");
+        await sleep(1500);
       }
       throw new Error("the Vega player did not focus play/pause");
     },
