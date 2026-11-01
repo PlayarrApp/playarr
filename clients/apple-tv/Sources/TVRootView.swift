@@ -409,6 +409,7 @@ private struct TVProductionShell<Stage: View>: View {
                     // Web restores the card that opened a detail: remember it on the push, hand it back on the pop.
                     if newPath.count > oldPath.count, case .work(let opened) = newPath.last {
                         MacFocusEngine.shared.returnWorkID = openedByLaunchArgument ? nil : opened.id
+                        MacFocusEngine.shared.returnToFirst = openedByLaunchArgument
                         openedByLaunchArgument = false
                         MacFocusEngine.shared.returnReady = false
                     } else if newPath.count < oldPath.count, newPath.isEmpty {

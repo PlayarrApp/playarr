@@ -208,6 +208,8 @@ final class MacFocusEngine {
 
     /// The work whose detail is open; its grid card takes focus back when the detail pops.
     var returnWorkID: UUID?
+    /// The detail was opened by id (no card opened it): Back lands on the grid's first card, as the web history does.
+    var returnToFirst = false
     /// Set when the detail has popped; a grid that shows again while the detail is still open must not take it.
     var returnReady = false
 

@@ -1732,8 +1732,12 @@ struct TVLibraryKindView: View {
 
     #if os(macOS)
     private func restoreOpenedCard(_ proxy: ScrollViewProxy) {
-        guard MacFocusEngine.shared.returnReady, let id = MacFocusEngine.shared.returnWorkID, items.contains(where: { $0.id == id }) else { return }
-        MacFocusEngine.shared.returnWorkID = nil
+        let engine = MacFocusEngine.shared
+        // Opened by id: Back lands on the grid's first card (web history); opened from a card: that card.
+        guard engine.returnReady, let id = engine.returnWorkID ?? (engine.returnToFirst ? items.first?.id : nil),
+              items.contains(where: { $0.id == id }) else { return }
+        engine.returnWorkID = nil
+        engine.returnToFirst = false
         NSLog("PlayarrMacTrace restore opened card index=%d", items.firstIndex(where: { $0.id == id }) ?? -1)
         proxy.scrollTo(id, anchor: .center)
         focusRequestID = id

@@ -203,11 +203,17 @@ struct TVParityLivePlayerView: View {
         }
         .task {
             guard let target = TVParityLaunch.livePlayer else { return }
+            #if DEBUG && os(macOS)
+            NSLog("PlayarrMacTrace live player route title=%@ menu=%d", target.title, target.menuOpen ? 1 : 0)
+            #endif
             if let page = try? await environment.apiClient.browseCatalog(
                 kind: .movie, genre: nil, tag: nil, sort: "title", limit: 100, offset: 0
             ), let work = page.items.first(where: { $0.title == target.title }),
                let detail = try? await environment.apiClient.fetchWork(id: work.id) {
                 mediaFileID = detail.mediaFileID
+                #if DEBUG && os(macOS)
+                NSLog("PlayarrMacTrace live player media file=%@", detail.mediaFileID?.uuidString ?? "none")
+                #endif
                 #if DEBUG && (os(tvOS) || os(macOS))
                 if let id = mediaFileID { TVParityState.setPlayerRoute(id) }
                 #endif
