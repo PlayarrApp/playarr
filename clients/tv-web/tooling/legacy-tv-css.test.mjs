@@ -21,9 +21,10 @@ test("rewrites color-mix over tokens as rgba() of token channels and keeps color
   `);
   assert.match(css, /--lc-surface-r: 27;/);
   assert.match(css, /--lc-line-a: 0\.11;/);
+  // Blink parses a colour-mix percentage as a 32-bit float, so the lowered alpha weights are the float32 values (72% is 0.72000002...).
   assert.match(
     css,
-    /background: linear-gradient\(rgba\(calc\(var\(--lc-surface-r\)\), calc\(var\(--lc-surface-g\)\), calc\(var\(--lc-surface-b\)\), calc\(var\(--lc-surface-a\) \* 0\.72\)\), transparent\)/
+    /background: linear-gradient\(rgba\(calc\(var\(--lc-surface-r\)\), calc\(var\(--lc-surface-g\)\), calc\(var\(--lc-surface-b\)\), calc\(var\(--lc-surface-a\) \* 0\.7200000286102295\)\), transparent\)/
   );
   const legacyRule = css.slice(0, css.indexOf("@supports"));
   assert.ok(!legacyRule.includes("color-mix("));
@@ -44,7 +45,7 @@ test("colorMixToChannels matches the CSS Color 5 premultiplied srgb mix for lite
 
 test("derived tokens publish channels from their own definition", () => {
   const css = addLegacyTvCssFallbacks(`.rails { --frost: color-mix(in srgb, var(--a) 40%, var(--b)); --tone: var(--ink); }`);
-  assert.match(css, /--lc-frost-a: calc\(\(var\(--lc-a-a\) \* 0\.4\) \+ \(var\(--lc-b-a\) \* 0\.6\)\)/);
+  assert.match(css, /--lc-frost-a: calc\(\(var\(--lc-a-a\) \* 0\.4000000059604645\) \+ \(var\(--lc-b-a\) \* 0\.5999999940395355\)\)/);
   assert.match(css, /--lc-tone-r: calc\(var\(--lc-ink-r\)\)/);
 });
 

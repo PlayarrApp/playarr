@@ -123,7 +123,7 @@ function mixChannels(contents) {
   if (parts.length !== 3 || !/^in\s+srgb$/i.test(parts[0])) return undefined;
   const terms = parts.slice(1).map((part) => {
     const match = part.match(/^(.*?)(?:\s+([\d.]+)%)?$/s);
-    return { colour: termChannels(match[1]), weight: match[2] === undefined ? undefined : parseFloat(match[2]) / 100 };
+    return { colour: termChannels(match[1]), weight: match[2] === undefined ? undefined : Math.fround(parseFloat(match[2]) / 100) };
   });
   if (terms.some((term) => !term.colour)) return undefined;
   let [p, q] = terms.map((term) => term.weight);
@@ -146,7 +146,9 @@ function mixChannels(contents) {
     if (isNumber(alpha)) return isNumber(premultiplied) ? round(premultiplied / alpha) : alpha === 1 ? premultiplied : `(${premultiplied} / ${alpha})`;
     return `(${premultiplied} / max(${alpha}, 0.0001))`;
   });
-  return [...colour, times(alpha, alphaScale)];
+  const mixed = times(alpha, alphaScale);
+  // Blink resolves a colour-mix percentage as a 32-bit float and rounds the alpha to a byte from that (0.7 -> 178.49999 -> 178); a double 0.7 reaches 178.5 and rounds up to 179.
+  return [...colour, isNumber(mixed) ? Math.fround(mixed) : mixed];
 }
 
 const cssNumber = (expr) => (isNumber(expr) ? String(expr) : `calc${expr.startsWith("(") ? expr : `(${expr})`}`);
