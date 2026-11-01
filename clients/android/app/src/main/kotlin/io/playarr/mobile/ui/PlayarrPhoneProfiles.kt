@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -66,7 +67,7 @@ internal fun BoxScope.PhoneProfilesChrome() {
     ) {
         Icon(
             painter = painterResource(R.drawable.playarr_mark),
-            contentDescription = "Playarr",
+            contentDescription = null,
             tint = Color.Unspecified,
             modifier = Modifier.size(30.dp).parityBox("image"),
         )
@@ -100,8 +101,8 @@ internal fun PhoneProfilesHeading(kicker: String, title: String) {
             Text(
                 title,
                 color = WebInk, fontSize = 42.9.sp, lineHeight = 40.755.sp, fontWeight = FontWeight.Medium,
-                letterSpacing = (-3.0888).sp, textAlign = TextAlign.Center, style = WebTextStyle, maxLines = 1, softWrap = false,
-                modifier = Modifier.wrapContentHeight(align = Alignment.Top, unbounded = true).offset(y = (-10).dp).semantics { heading() },
+                letterSpacing = (-3.0888).sp, style = WebTextStyle, maxLines = 1, softWrap = false,
+                modifier = Modifier.wrapContentSize(align = Alignment.TopCenter, unbounded = true).semantics { heading() },
             )
         }
     }
@@ -180,13 +181,13 @@ internal fun PhoneProfileChoice(
                 Surface(
                     onClick = onSettings, enabled = enabled, shape = CircleShape,
                     color = WebSurfaceStrong.copy(alpha = 0.64f), border = BorderStroke(1.dp, WebPillBorder),
-                    modifier = Modifier.size(44.dp).parityShape(999f),
+                    modifier = Modifier.size(44.dp).parityShape(999f).semantics { contentDescription = settingsName },
                 ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { ProfilesSettingsIcon(ProfilesBrandRose, Modifier.parityBox("image")) } }
                 onSignOut?.let { action ->
                     Surface(
                         onClick = action, enabled = enabled, shape = CircleShape,
                         color = WebSurfaceStrong.copy(alpha = 0.64f), border = BorderStroke(1.dp, WebPillBorder),
-                        modifier = Modifier.height(44.dp).parityShape(999f),
+                        modifier = Modifier.height(44.dp).parityShape(999f).semantics { contentDescription = signOutName },
                     ) {
                         Row(
                             Modifier.padding(horizontal = 17.dp),
@@ -211,6 +212,7 @@ internal fun PhoneProfileChoice(
 @Composable
 internal fun PhoneAddProfileChoice(selected: Boolean, enabled: Boolean, onFocus: () -> Unit, onClick: () -> Unit) {
     val rowTop = webPhoneInsets().asPaddingValues().calculateTopPadding().value + PHONE_PROFILES_ROW_TOP_CSS
+    val addName = playarrString(PlayarrString.ProfilesSignIn) + " " + playarrString(PlayarrString.ProfilesAddAnother)
     WebCssLayout(rowTop, listOf(0f), listOf(PHONE_PROFILE_CHOICE_HEIGHT_CSS), 0f) {
         WebCssLayout(
             rowTop, listOf(0f, 156f + 8.8f, 156f + 8.8f + 19.68f + 8.8f), listOf(156f, 19.68f, 10.08f), 0f,
@@ -222,7 +224,8 @@ internal fun PhoneAddProfileChoice(selected: Boolean, enabled: Boolean, onFocus:
                         scaleY = 1.045f
                     }
                 }
-                .clickable(enabled = enabled, onClick = onClick, role = androidx.compose.ui.semantics.Role.Button),
+                .clickable(enabled = enabled, onClick = onClick, role = androidx.compose.ui.semantics.Role.Button)
+                .semantics { contentDescription = addName },
         ) {
             PhoneProfileAvatarPlate(selected, Modifier, dashed = true) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -270,7 +273,7 @@ private fun PhoneProfileAvatarPlate(
                     // The plate's own node paints the gradient, so it is the exported container.
                     Modifier
                         .parityBox("container", radius = 999f)
-                        .background(Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)))
+                        .background(Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)), CircleShape)
                         .drawBehind {
                             val css = Math.toRadians(145.0)
                             val dx = Math.sin(css).toFloat()

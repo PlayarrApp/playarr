@@ -3918,7 +3918,7 @@ internal fun ExperienceLandscapeCard(
                 displayTitle, color = if (strongCaption) (if (webIsDark) Color.White else Color.Black) else WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
                 letterSpacing = (-0.132).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 // Web library caption: 1 px lower than before (measured against the fresh phone refs); the row gap below gives it back.
-                modifier = Modifier.padding(start = 1.9.dp - 0.3.dp, top = 11.6.dp),
+                modifier = Modifier.padding(start = 1.91.dp, top = 11.52.dp),
             )
         } else {
         Text(displayTitle, color = WebInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 7.dp))
@@ -4057,7 +4057,7 @@ internal fun LibraryResults(
         LibraryViewMode.Screen -> {
         val phoneViewportDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
         val phoneColumns = fixedColumns ?: phonePosterColumns(artworkSize, phoneViewportDp)
-        val phoneRowPitchPx = if (!isTelevision && phoneViewportDp < 540) 136f * LocalDensity.current.density else tvRowPitchPx
+        val phoneGridTopCss = webPhoneInsets().asPaddingValues().calculateTopPadding().value + PHONE_LIBRARY_GRID_TOP_CSS
         LazyVerticalGrid(
             columns = fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth) else GridCells.Fixed(phonePosterColumns(artworkSize, androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp)),
             state = gridState,
@@ -4065,7 +4065,7 @@ internal fun LibraryResults(
             modifier = Modifier.fillMaxSize().playarrEdgeFades(gridState.canScrollBackward, gridState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical, panel = if (isTelevision) null else WebBackground),
             contentPadding = screenPadding,
             horizontalArrangement = Arrangement.spacedBy(if (isTelevision) tvRail?.gap ?: 25.92.dp else 12.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 23.32.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 0.dp),
         ) {
             itemsIndexed(works, key = { _, work -> work.id }) { index, work ->
                 val openLabel = playarrString(PlayarrString.LibraryOpenWork, "title" to work.title)
@@ -4080,14 +4080,24 @@ internal fun LibraryResults(
                     modifier = (if (grid != null) Modifier.tvGridItem(grid, index) else Modifier)
                         // Web's cards are 327.17 px wide at 1080p; the grid hands out whole-pixel cells of 328 and 327, so the poster would be 1 px too tall in every other column.
                         .then(if (tvRowPitchPx > 0f) Modifier.requiredWidth(327.17.dp) else Modifier.fillMaxWidth())
-                        .then(if (phoneRowPitchPx > 0f) Modifier.layout { measurable, constraints ->
-                            // Web's rows sit 136 css px apart (fractional device pixels); Lazy grids round every row to whole pixels,
-                            // which drifts 0.3 px per row. Trim a pixel from the rows where the drift crosses one.
+                        .then(if (tvRowPitchPx > 0f) Modifier.layout { measurable, constraints ->
+                            // Web's rows sit apart by a fractional device pixel count; Lazy grids round every row to whole pixels, which drifts. Trim a pixel from the rows where the drift crosses one.
                             val placeable = measurable.measure(constraints)
                             val row = index / phoneColumns
-                            val pitch = placeable.height + (if (isTelevision) tvRowGap else 23.32.dp).roundToPx()
-                            val cut = pitch - (Math.round((row + 1) * phoneRowPitchPx) - Math.round(row * phoneRowPitchPx))
+                            val pitch = placeable.height + tvRowGap.roundToPx()
+                            val cut = pitch - (Math.round((row + 1) * tvRowPitchPx) - Math.round(row * tvRowPitchPx))
                             layout(placeable.width, placeable.height - cut) { placeable.place(0, 0) }
+                        } else Modifier)
+                        .then(if (!isTelevision && phoneViewportDp < 540) Modifier.layout { measurable, constraints ->
+                            // Web phone `.tv-title-card`: the browser snaps each box edge once, from its summed css position. Row r starts at
+                            // grid top + r * pitch; the card is PHONE_LIBRARY_CARD_CSS tall and the row's cell runs to the next row's top.
+                            val d = density
+                            val rowTop = phoneGridTopCss + (index / phoneColumns) * PHONE_LIBRARY_ROW_PITCH_CSS
+                            val top = Math.round(rowTop * d)
+                            val cardPx = Math.round((rowTop + PHONE_LIBRARY_CARD_CSS) * d) - top
+                            val cellPx = Math.round((rowTop + PHONE_LIBRARY_ROW_PITCH_CSS) * d) - top
+                            val placeable = measurable.measure(constraints.copy(minHeight = cardPx, maxHeight = cardPx))
+                            layout(placeable.width, cellPx) { placeable.place(0, 0) }
                         } else Modifier),
                     contentLabel = openLabel, // web: aria-label "Open <title>"
                     progress = progressByWork[work.id],
@@ -4195,6 +4205,11 @@ private fun LibraryCoverCard(
     }
     }
 }
+
+/** Web phone library grid: first row at 58 css px below the status inset plus the 2 px header offset (84 at a 24 px inset), cards 87.1875 art + 24.703125 copy, 24 px row gap. */
+internal const val PHONE_LIBRARY_GRID_TOP_CSS = 60f
+internal const val PHONE_LIBRARY_CARD_CSS = 155f * 9f / 16f + 24.703125f
+internal const val PHONE_LIBRARY_ROW_PITCH_CSS = PHONE_LIBRARY_CARD_CSS + 24f
 
 /**
  * Web phone poster card width (`--card-w`, #924): the viewport less the 16 dp gutter and the 52 dp letter rail pad, split
