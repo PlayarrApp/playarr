@@ -78,8 +78,28 @@ namespace Playarr.Xbox.Views
             _session?.Dispose();
             _pool?.Dispose();
             _latest = null;
-            _device ??= CreateDevice();
-            var item = GraphicsCaptureItem.CreateFromVisual(ElementCompositionPreview.GetElementVisual(root));
+            try
+            {
+                _device ??= CreateDevice();
+            }
+            catch (Exception failure)
+            {
+                throw new InvalidOperationException("d3d device: " + failure.GetType().Name + " " + failure.Message);
+            }
+
+            var visual = ElementCompositionPreview.GetElementVisual(root);
+            if (visual.Size.X < 1 || visual.Size.Y < 1)
+            {
+                // A XAML element visual reports no size until it is given one; a capture item takes its size from it.
+                visual.Size = new System.Numerics.Vector2((float)root.ActualWidth, (float)root.ActualHeight);
+            }
+
+            var item = GraphicsCaptureItem.CreateFromVisual(visual);
+            if (item.Size.Width < 1 || item.Size.Height < 1)
+            {
+                throw new InvalidOperationException($"capture item has size {item.Size.Width}x{item.Size.Height} (root {root.ActualWidth}x{root.ActualHeight})");
+            }
+
             _pool = Direct3D11CaptureFramePool.CreateFreeThreaded(_device, DirectXPixelFormat.B8G8R8A8UIntNormalized, 2, item.Size);
             _pool.FrameArrived += OnFrame;
             _session = _pool.CreateCaptureSession(item);
