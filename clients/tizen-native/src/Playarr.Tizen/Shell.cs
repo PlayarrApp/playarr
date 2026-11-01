@@ -31,6 +31,8 @@ internal sealed class Shell : View
     private readonly Stack<string> _history = new();
     private readonly Dictionary<string, object> _saved = new();
     private readonly View _chrome = new() { Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight) };
+    private readonly View _actions = new() { Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight) };
+    private List<View> _pageViews = new();
     private TextLabel? _clockTime, _clockDate;
     private float _clockLeft = 481f;
 
@@ -97,6 +99,7 @@ internal sealed class Shell : View
         tick.Tick += (_, _) => { UpdateClock(); return true; };
         tick.Start();
         Add(_chrome);
+        Add(_actions); env.ShellLayer = _actions;
     }
 
     private void BuildRail()
@@ -137,14 +140,11 @@ internal sealed class Shell : View
 
     private View AddGroup(float y, float h)
     {
-        // light: the fill is opaque (strong surface 56 % over the page surface the rail is painted on) because the box shadow would show through a translucent fill; web clips it outside the border box
-        var fill = _theme.Name == "dark" ? _theme.SurfaceStrong.Mixed(0.56f)
-            : new Rgba(_theme.SurfaceStrong.R * 0.56f + _theme.Surface.R * 0.44f, _theme.SurfaceStrong.G * 0.56f + _theme.Surface.G * 0.44f, _theme.SurfaceStrong.B * 0.56f + _theme.Surface.B * 0.44f);
+        var fill = _theme.SurfaceStrong.Mixed(0.56f); // translucent as on the web: over the page layer it is painted on, over the window colour in the layout (the rail is a sibling of the page)
         var box = Ui.Box(RailX, y, RailW, h, fill, 22);
         box.BorderlineWidth = 1;
         box.BorderlineColor = Ui.LineA(_theme, _theme.Line.A * 0.48f); // web: the line colour at 48 % of its own alpha
-        // light only: on the dark rail the web shadow (warm brown at 10 %) is not visible, and ours read as a pink halo
-        if (_theme.Name != "dark") box.BoxShadow = new Shadow(42, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.1f), new Vector2(0, 14), new Vector2(0, 0));
+        // no box shadow: NUI paints a shadow under the whole box (the web clips it outside the border box), which the translucent fill would let through
         _chrome.Add(box);
         return box;
     }
@@ -185,8 +185,10 @@ internal sealed class Shell : View
         var previousSearch = _page as SearchScreen;
         previousSearch?.OnRemoved();
         _env.SetClockX(0);
+        var oldViews = _pageViews; _pageViews = new(); _env.PageShellViews = _pageViews;
         var page = Pages.Create(_env, route);
-        if (page is null) { previousSearch?.OnAdded(); return; }
+        if (page is null) { _pageViews = oldViews; _env.PageShellViews = oldViews; previousSearch?.OnAdded(); return; }
+        foreach (var v in oldViews) { if (ReferenceEquals(v.GetParent(), _actions)) _actions.Remove(v); v.Dispose(); }
         if (push && _page is not null) { _history.Push(_page.Route); if (_page.SaveState() is { } st) _saved[_page.Route] = st; }
         if (_page is PlaylistsScreen previousPlaylists) previousPlaylists.OnRemoved();
         if (_page is PlayerScreen previousPlayer) previousPlayer.Stop(); // a route change (not Back) must stop the player and its timers before the views go: they otherwise run on disposed views and the native player crashes
