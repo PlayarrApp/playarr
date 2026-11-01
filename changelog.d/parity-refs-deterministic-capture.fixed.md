@@ -1,0 +1,1 @@
+- Reference capture is repeatable: the web driver launches Chromium with one raster thread, no partial raster and no PaintHolding, waits for fonts, decoded images and CSS background images plus two frames before each shot, and capture-refs-serial.sh captures groups one after another, each in its own cgroup.
