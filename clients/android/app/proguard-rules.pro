@@ -33,3 +33,8 @@
 -keep public class io.playarr.mobile.cast.PlayarrCastOptionsProvider {
     public <init>();
 }
+
+# Web view shell (pilot): methods the page calls through addJavascriptInterface are looked up by name at runtime.
+-keepclassmembers class io.playarr.mobile.webshell.NativePlayerBridge {
+    @android.webkit.JavascriptInterface <methods>;
+}

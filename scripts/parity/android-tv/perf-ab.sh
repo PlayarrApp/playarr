@@ -13,12 +13,12 @@
 # seeded into the WebView storage before the page boots) and its data is kept between iterations.
 set -euo pipefail
 variant=$1; iters=$2; out=$3
-case $variant in native) act=.MainActivity ;; web) act=.webshell.WebTvShellActivity ;; *) echo "variant: native|web" >&2; exit 2 ;; esac
+case $variant in native) act=io.playarr.mobile.MainActivity ;; web) act=io.playarr.mobile.webshell.WebTvShellActivity ;; *) echo "variant: native|web" >&2; exit 2 ;; esac
 here=$(cd "$(dirname "$0")" && pwd)
 eval "$(node "$here/../parity-config.mjs" --shell)"
 server=$PARITY_SERVER_URL; user=${PARITY_ACCOUNT_NAME:-parity}
-password=$(node -e 'import(process.argv[1]).then((m) => process.stdout.write(m.readSecrets().PLAYARR_PARITY_STATIC_PASSWORD ?? ""))' "$here/../dpad-account.mjs")
-pkg=io.playarr.mobile
+password=$(P="$here/../dpad-account.mjs" node -e 'import(process.env.P).then((m) => process.stdout.write(m.readSecrets().PLAYARR_PARITY_STATIC_PASSWORD ?? ""))')
+pkg=${PERF_PKG:-app.playarr.mobile}
 mkdir -p "$out"; jsonl="$out/$variant.jsonl"; : > "$jsonl"
 
 key() { adb shell input keyevent "KEYCODE_$1"; }
@@ -27,19 +27,20 @@ now_ms() { adb shell 'date +%s%3N' | tr -d '\r'; }
 wait_marker() { # <marker> <timeout s>: prints the device epoch ms of the marker line, or nothing
   local t
   for _ in $(seq 1 $(($2 * 5))); do
-    t=$(adb logcat -d -v epoch -s PlayarrPerf:I | awk -v m="$1" '$NF == m { printf "%d", $2 * 1000 }' | tail -1)
+    t=$(adb logcat -d -v epoch -s PlayarrPerf:I | awk -v m="$1" '$NF == m { printf "%d", $1 * 1000 }' | head -1)
     [ -n "$t" ] && { echo "$t"; return; }
     sleep 0.2
   done
 }
 
+adb shell cmd uimode night yes >/dev/null 2>&1 || true  # dark for both variants (the app theme follows the system; works on non-debuggable builds)
 adb shell cmd alarm set-timezone UTC >/dev/null 2>&1 || true
 adb shell settings put global window_animation_scale 1; adb shell settings put global transition_animation_scale 1; adb shell settings put global animator_duration_scale 1
 
 setup_native() {
   adb shell pm clear $pkg >/dev/null
   adb shell cmd locale set-app-locales $pkg --locales en-GB >/dev/null 2>&1 || true
-  adb shell am start -n $pkg/.MainActivity >/dev/null; sleep 10
+  adb shell am start -n $pkg/io.playarr.mobile.MainActivity >/dev/null; sleep 10
   tap 960 898; sleep 2; tap 960 445; sleep 1
   key MOVE_END; adb shell 'for i in $(seq 1 60); do input keyevent KEYCODE_DEL; done'
   adb shell input text "$server"; key TAB
@@ -47,8 +48,6 @@ setup_native() {
   adb shell 'for i in $(seq 1 40); do input keyevent KEYCODE_DEL; done'; adb shell input text "$password"; key ENTER; sleep 1
   tap 960 771; sleep 10
   adb shell am force-stop $pkg
-  # The app's own theme (debug builds only: run-as), as capture.sh sets it, matching the seeded web theme.
-  adb shell "run-as $pkg sh -c 'mkdir -p shared_prefs; echo \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\" ?><map><string name=\\\"theme\\\">Dark</string></map>\" > shared_prefs/playarr_display.xml'" || true
 }
 seed_b64() { # a fresh login per launch (access tokens last 15 minutes), as capture-web.mjs seeds it
   PERF_SERVER=$server PERF_USER=$user PERF_PASSWORD=$password node "$here/perf-seed.mjs"
@@ -67,7 +66,7 @@ start_app() {
 [ $variant = native ] && setup_native || setup_web
 
 for n in $(seq 1 "$iters"); do
-  adb shell am force-stop $pkg; sleep 2
+  adb shell am force-stop $pkg; adb shell am force-stop com.google.android.webview; sleep 2  # webview_service is counted in PSS: start each arm without a lingering one
   t0=$(now_ms)
   start=$(start_app)
   total=$(printf '%s\n' "$start" | awk '/TotalTime/ { print $2 }')
@@ -84,12 +83,18 @@ for n in $(seq 1 "$iters"); do
   seq_keys=(DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT
             DPAD_DOWN DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_DOWN DPAD_LEFT DPAD_LEFT DPAD_LEFT
             DPAD_LEFT DPAD_LEFT DPAD_UP DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_DOWN DPAD_DOWN DPAD_LEFT DPAD_LEFT DPAD_UP DPAD_UP)
+  press DPAD_CENTER; sleep 2.5                         # open the first card's title (the movie Home opens on; other cards crash the native build, see STATUS)'s detail page
+  for k in DPAD_DOWN DPAD_DOWN DPAD_RIGHT DPAD_RIGHT DPAD_LEFT DPAD_DOWN DPAD_UP DPAD_UP DPAD_RIGHT DPAD_LEFT DPAD_DOWN DPAD_UP DPAD_UP DPAD_LEFT DPAD_DOWN DPAD_UP; do press "$k"; done  # 16 presses on the detail page
+  press BACK 2>/dev/null || true; sleep 1.5  # back to Home
   for k in "${seq_keys[@]}"; do press "$k"; done      # 32 presses over Home rails
-  press DPAD_CENTER; sleep 2.5                         # open the focused title's detail page
-  for k in DPAD_DOWN DPAD_DOWN DPAD_RIGHT DPAD_RIGHT DPAD_LEFT DPAD_DOWN DPAD_UP DPAD_UP DPAD_RIGHT DPAD_LEFT DPAD_DOWN DPAD_UP DPAD_UP DPAD_LEFT DPAD_DOWN DPAD_UP; do press "$k"; done  # 16 presses
-  # 33 + 16 = 49 presses plus the next one below (Select on play) = 50.
-  mem=$(adb shell dumpsys meminfo | awk '/^Total PSS by process:/ { on = 1; next } on && /^$/ { exit } on && ($0 ~ /io\.playarr\.mobile/ || $0 ~ /webview/ || $0 ~ /chromium/ || $0 ~ /sandboxed_process/) { v = $1; gsub(/[,K]/, "", v); s += v } END { print s + 0 }')
-  # Back to the top of the detail page where the play button is the default focus, then Select.
+  # 1 + 16 + 1 + 32 = 50 presses (Select on play follows after a fresh launch).
+  [ -n "${PERF_SHOT:-}" ] && adb exec-out screencap -p > "$PERF_SHOT-$variant-$n.png"
+  mem=$(adb shell dumpsys meminfo | awk '/^Total PSS by process:/ { on = 1; next } on && /^$/ { exit } on && ($0 ~ /app\.playarr\.mobile/ || $0 ~ /webview_service/ || $0 ~ /sandboxed_process/) { v = $1; gsub(/[,K]/, "", v); s += v } END { print s + 0 }')
+  # Select to first frame on a fresh launch: Home opens on the first card (a movie), Select opens its detail page where the
+  # play button is the default focus, Select again starts playback.
+  adb shell am force-stop $pkg; sleep 2
+  start_app >/dev/null; wait_marker home_ready 60 >/dev/null; sleep 3
+  key DPAD_CENTER; sleep 3
   adb logcat -c
   tsel=$(now_ms); key DPAD_CENTER
   first=$(wait_marker first_frame 40)
