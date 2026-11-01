@@ -1,1 +1,2 @@
 - The web reference driver no longer waits for a Mute button on the Android TV and Roku user agents, whose player uses the system volume only, so the Android TV player-controls ref captures again.
+- The web reference driver recognises the TV web app's `/login/qr` route as the sign-in screen, so a private server that redirects a signed-out `/tv/login` there no longer fails the capture.

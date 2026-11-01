@@ -417,7 +417,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     // /login, not /: the deployed worker serves the marketing site at / to signed-out visitors, and a signed-in session redirects /login to the app.
     await page.goto(appUrl("/login"), { waitUntil: "load" });
     try {
-      await page.waitForFunction(() => !!document.querySelector(".app-nav-link") || !!document.querySelector("input[name=password]") || (location.pathname.startsWith("/login") || location.hash.startsWith("#/login")), null, { timeout: 30000 });
+      await page.waitForFunction(() => !!document.querySelector(".app-nav-link") || !!document.querySelector("input[name=password]") || (/\/login(\/|$)/.test(location.pathname) || location.hash.startsWith("#/login")), null, { timeout: 30000 });
     } catch (e) {
       if (e?.name !== "TimeoutError") throw e;
       throw new Error(`${web}/login did not show the Playarr web app (page "${await page.title().catch(() => "?")}" at ${page.url()}); set PLAYARR_WEB_URL to a web app build or build clients/tv-web/web/dist`);
@@ -931,7 +931,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
           // Per-server data on the calendar link panel (the URL field and the QR card encode the server address), in css px, so scorers can mask them.
           maskRects: [".calendar-subscription-url", ".calendar-link-secret > :last-child"].flatMap((q) => [...document.querySelectorAll(q)].map((e) => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((n) => Math.round(n * 10) / 10); })),
           fontsReady: document.fonts.status === "loaded",
-          signedOut: !!document.querySelector("input[name=password]") || (location.pathname.startsWith("/login") || location.hash.startsWith("#/login")),
+          signedOut: !!document.querySelector("input[name=password]") || (/\/login(\/|$)/.test(location.pathname) || location.hash.startsWith("#/login")),
         };
       });
       await guard();
