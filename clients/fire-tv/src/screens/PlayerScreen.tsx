@@ -423,6 +423,7 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
   const lastInputAt = useRef(Date.now());
   const qualityPillRef = useRef<View>(null);
   const playRef = useRef<View>(null);
+  const keyedSinceOpen = useRef(false);
   const rootRef = useRef<View>(null);
   const subtitlesRef = useRef<View>(null);
 
@@ -465,13 +466,16 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
     if (!visible) return undefined;
     // The engine can place focus on another control while the row mounts: retry until Play really holds it.
     nativeControl.current = null;
-    const timers = [150, 450, 900, 1500].map((delay) =>
-      setTimeout(() => {
-        if (nativeControl.current !== 'play') focusNode(playRef);
-      }, delay),
-    );
+    keyedSinceOpen.current = false;
+    // The engine can also move focus later (the first focusable to mount wins): until the first key, Play takes it back.
+    const timer = setInterval(() => {
+      if (keyedSinceOpen.current || nativeControl.current === 'play') return;
+      focusNode(playRef);
+    }, 150);
+    const stopTimer = setTimeout(() => clearInterval(timer), 8000);
     return () => {
-      timers.forEach(clearTimeout);
+      clearInterval(timer);
+      clearTimeout(stopTimer);
     };
   }, [visible]);
 
@@ -513,6 +517,7 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
 
   useRemoteKey((key) => {
     if (!visible) return;
+    keyedSinceOpen.current = true;
     // The dedicated Play/Pause key always toggles playback and shows the controls.
     if (key === 'playPause') {
       reveal();
