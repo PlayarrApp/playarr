@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.playarrLink
 import io.playarr.shared.designsystem.page.parityShape
 import io.playarr.shared.designsystem.page.parityBox
 import io.playarr.shared.designsystem.page.parityBackground
@@ -3309,7 +3310,7 @@ internal fun ExperienceParitySettingsScreen(
                             "${settingsSectionNumber(index)}  ${playarrString(candidate.label)}",
                             color = if (candidate == section) WebInk else WebInkMuted,
                             fontWeight = if (candidate == section) FontWeight.Bold else FontWeight.Normal,
-                            modifier = Modifier.fillMaxWidth().clickable { picked = candidate }.padding(vertical = 12.dp),
+                            modifier = Modifier.fillMaxWidth().clickable { picked = candidate }.playarrLink().padding(vertical = 12.dp),
                         )
                     }
                 }

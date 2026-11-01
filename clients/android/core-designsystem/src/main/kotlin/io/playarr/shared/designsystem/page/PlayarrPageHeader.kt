@@ -330,7 +330,7 @@ private fun PlayarrRoundBackButton(back: PlayarrBack, active: Boolean) {
                 .then(if (focused || active) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
                 
                 .parityShape(999f)
-                .semantics { contentDescription = back.label; role = Role.Button },
+                .semantics { contentDescription = back.label; role = Role.Button; playarrNavigates = true },
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text("\u2190", fontSize = (0.9f * metrics.vw).coerceIn(12.8f, 17.6f).div(metrics.stage).sp, fontWeight = FontWeight(720))

@@ -44,11 +44,10 @@ private fun cssBaselineRatio(fontPx: Float, linePx: Float, density: Float): Floa
     return ((baselineCss * density - a) / extra).coerceIn(0f, 1f)
 }
 
-/** True for the single-line phone and tablet text that takes Chromium's inline box (the css content area inside the css line box). */
+/** True for the single-line text that takes Chromium's inline box (the css content area inside the css line box). */
 @Composable
 private fun isWebLine(style: TextStyle, fontSize: TextUnit, lineHeight: TextUnit, softWrap: Boolean, maxLines: Int): Boolean {
     if (style.lineHeightStyle != WebLineBox) return false
-    if (LocalPlayarrFormFactor.current == PlayarrFormFactor.Tv) return false
     if (softWrap && maxLines != 1) return false
     val size = if (fontSize.isSpecified) fontSize else style.fontSize
     val line = if (lineHeight.isSpecified) lineHeight else style.lineHeight

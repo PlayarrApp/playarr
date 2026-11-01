@@ -575,7 +575,7 @@ private fun PhoneCalendarFact(label: String, value: @Composable () -> Unit) {
 private fun PhoneCalendarBadge(label: String, size: androidx.compose.ui.unit.TextUnit, line: androidx.compose.ui.unit.TextUnit) {
     val m = LocalCalendarMetrics.current
     Box(
-        Modifier.then(if (m === TvCalendarMetrics) Modifier.offset(y = (-3).dp) else Modifier).padding(vertical = if (size.value > 14f) 2.dp else 0.dp).height(if (m === TvCalendarMetrics) m.badgeHeight.dp else if (size.value > 14f) 19.dp else 19.2.dp)
+        Modifier.padding(vertical = if (size.value > 14f) 2.dp else 0.dp).height(if (m === TvCalendarMetrics) m.badgeHeight.dp else if (size.value > 14f) 19.dp else 19.2.dp)
             .background(Color(0xFF5B7FD1).copy(alpha = 0.24f), CircleShape).padding(horizontal = m.badgePad.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -692,10 +692,10 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
                     modifier = Modifier)
                 Spacer(Modifier.height(lineGap))
                 if (rowSubtitle.isNotEmpty()) {
-                    Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis, modifier = if (tvWeek && !agenda && LocalStageScale.current == 1f) Modifier.offset(y = 1.dp) else Modifier)
+                    Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis, modifier = Modifier)
                     Spacer(Modifier.height(lineGap))
                 }
-                Row(Modifier.then(if (m === TvCalendarMetrics) Modifier.offset(y = (-3).dp) else Modifier), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { metaTexts() }
+                Row(Modifier, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { metaTexts() }
             }
             }
         }

@@ -377,8 +377,10 @@ internal object PlayarrLayoutExport {
                         val fallbackTaller = runExtent != null && (runExtent.first > -primary.ascent || runExtent.second > primary.descent)
                         // A browser's text rect is the inline box's content area: the primary font's ascent and descent each rounded to a whole css px (the television text is laid out to that baseline by cssText).
                         val cssBox = ctx.unit == 1f
-                        val ascent = if (fallbackTaller) runExtent!!.first else if (cssBox) Math.round(-fm.ascent).toFloat() else -fm.ascent
-                        val descent = if (fallbackTaller) runExtent!!.second else if (cssBox) Math.round(fm.descent).toFloat() else fm.descent
+                        // The inline box keeps the text's primary font (the style's family), whatever font a symbol glyph inside it is drawn from: its content area comes from the layout's own paint.
+                        val primaryFm = if (cssBox) (platformLine(layout, i)?.first?.paint?.fontMetrics ?: fm) else fm
+                        val ascent = if (cssBox) Math.round(-primaryFm.ascent).toFloat() else if (fallbackTaller) runExtent!!.first else -fm.ascent
+                        val descent = if (cssBox) Math.round(primaryFm.descent).toFloat() else if (fallbackTaller) runExtent!!.second else fm.descent
                         val baseline = layout.getLineBaseline(i)
                         // The drawn ellipsis is part of the text and of the width: the platform layout's own line extent covers it, on the side of the shown characters it was drawn at.
                         val rtl = platformLine?.let { (pl, local, _) -> pl.getParagraphDirection(local) == android.text.Layout.DIR_RIGHT_TO_LEFT } ?: false
@@ -457,6 +459,7 @@ internal object PlayarrLayoutExport {
                 role == Role.Tab -> "tab"
                 role == Role.DropdownList -> "combobox"
                 role == Role.Image -> "image"
+                config.getOrNull(io.playarr.shared.designsystem.page.PlayarrNavigatesKey) == true -> "link"
                 else -> "button"
             }
             // An image the app tagged for the export and also exposes through semantics on the same node is one element: the tagged record carries the alpha.

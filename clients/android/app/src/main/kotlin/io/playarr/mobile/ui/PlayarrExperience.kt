@@ -1,6 +1,7 @@
 package io.playarr.mobile.ui
 
 import io.playarr.shared.designsystem.page.parityBackground
+import io.playarr.shared.designsystem.page.playarrLink
 import io.playarr.shared.designsystem.page.parityShape
 import io.playarr.shared.designsystem.page.parityBox
 import io.playarr.shared.designsystem.page.parityPainted
@@ -1907,9 +1908,13 @@ internal fun PlayarrExperience(
                 )
                 if (isTelevision) {
                     ShellLogo(Modifier.align(Alignment.TopStart))
-                    // Web `.app-clock` is right-aligned to x = 710.4 (its left edge moves with the text width).
-                    if (LocalStageScale.current == 1f) Box(Modifier.align(Alignment.TopStart).padding(top = 68.2.dp).width(634.dp), contentAlignment = Alignment.TopEnd) { ExperienceClock() }
-                    // Web `.app-clock` (page-layout.css): top `--page-header-top`, as tall as the 44 px page controls, its grid centred in that height, gap 0.7 rem.
+                    // Web `.app-clock` (page-layout.css): top `--page-header-top`, as tall as the page controls (`--page-control-height` clamp(44, 2.8vw, 50)), its grid centred in that height,
+                    // right edge `calc(65% + clamp(18px, 2vw, 38px))` from the viewport's right, i.e. at 35% of the width less that gap; gap 0.7rem.
+                    if (LocalStageScale.current == 1f) {
+                        val rightGap = webVw(18f, 2f, 38f)
+                        val edge = (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp * 0.35f).dp - rightGap
+                        Box(Modifier.align(Alignment.TopStart).padding(top = webVu(34f, 5.2f, 66f)).height(webVw(44f, 2.8f, 50f)).width(edge), contentAlignment = Alignment.CenterEnd) { ExperienceClock() }
+                    }
                     else Box(Modifier.align(Alignment.TopStart).padding(top = webVu(34f, 5.2f, 66f)).height((44f / LocalStageScale.current).dp).width(634.dp), contentAlignment = Alignment.CenterEnd) { ExperienceClock() }
                 }
             }
@@ -2451,6 +2456,7 @@ private fun TvNavTile(
             .then(if (entryFocus != null) Modifier.focusRequester(entryFocus) else Modifier)
             .onFocusChanged { focused = it.isFocused }
             .then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier)
+            .playarrLink()
             // RIGHT lands directly in the page's default target, as on web.
             .onPreviewKeyEvent { event ->
                 val target = contentEntry.requester
@@ -2502,7 +2508,7 @@ private fun ExperienceClock(modifier: Modifier = Modifier) {
             now = playarrNow()
         }
     }
-    Row(modifier.offset(1.dp, 0.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (LocalStageScale.current != 1f) (9.2f + 4.7f / LocalStageScale.current).dp else 9.2.dp)) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (LocalStageScale.current != 1f) (9.2f + 4.7f / LocalStageScale.current).dp else 9.2.dp)) {
         Text(
             now.format(DateTimeFormatter.ofPattern("HH:mm")),
             color = WebInk,
@@ -3839,6 +3845,7 @@ internal fun ExperienceLandscapeCard(
                     )
                 },
             )
+            .playarrLink(webTvStyle)
             .then(if (contentLabel != null) Modifier.clearAndSetSemantics { contentDescription = contentLabel } else Modifier),
     ) {
     // The lift is applied here, inside the focus target, so focus search keeps the unlifted bounds.
@@ -4038,6 +4045,7 @@ internal fun WebDetailPill(
             .parityShape(999f)
             // The glyph is decoration: the control is named by its label (or the web aria-label the caller passes).
             .semantics { contentDescription = exportLabel ?: label }
+            .playarrLink(exportRole == "link")
             .webFocusRing(focused, offset = 2.dp)
             .onFocusChanged { focused = it.isFocused }
             // The accessible name is the words alone: the decorative glyph beside them is not read.
@@ -4116,11 +4124,17 @@ internal fun LibraryResults(
     // Television: web's first column starts at x 783.4 (measured on the live grid).
     // Web `--library-rail-top` clamp(128, 15 vu, 174) less the 140 dp the header already takes, and the row gap clamp(22, 2.5 vu, 36).
     val tvGridTop = webVu(128f, 15f, 174f) - 140.dp
-    // Web's rows sit 240.33 px apart at 1080p (213.33 block + 27 gap); the grid rounds whole pixels, so the rows are trimmed below.
+    // Web `.tv-title-grid`: rows `--library-rail-top` (162 css px at 1080p) down, `gap: clamp(22, 2.5vu, 36) --card-grid-gap`. A card is the 16/9 art of `--card-w` plus its copy,
+    // every length a LayoutUnit; each row's top and bottom edge is rounded once from its summed css position (see phoneLibraryCardCss for the same block).
     val tvRowGap = webVu(22f, 2.5f, 36f)
-    val tvRowPitchPx = if (isTelevision && artworkSize == LibraryArtworkSize.Medium && LocalStageScale.current == 1f) with(LocalDensity.current) { (213.33.dp + tvRowGap).toPx() } else 0f
-    val tvRail = if (LocalStageScale.current != 1f) webLibraryRail() else null
-    val screenPadding = if (isTelevision) PaddingValues(start = tvRail?.start ?: 52.7.dp /* web's first column paints at x 783 (rounded), not 784 */, end = tvRail?.end ?: 103.3.dp, top = tvGridTop, bottom = 104.dp) else padding
+    val tvRows = isTelevision && artworkSize == LibraryArtworkSize.Medium && LocalStageScale.current == 1f
+    val tvRailCss = webLibraryRail()
+    val tvViewportCss = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.toFloat()
+    val tvCardCss = webLayoutUnit(tvRailCss.cardWidth(fixedColumns ?: 3, false).value)
+    val tvRowPitchCss = phoneLibraryCardCss(tvCardCss, tvViewportCss) + tvRowGap.value
+    val tvGridTopCss = webVu(128f, 15f, 174f).value
+    val tvRail = if (LocalStageScale.current != 1f || tvRows) tvRailCss else null
+    val screenPadding = if (isTelevision) PaddingValues(start = tvRail?.start ?: 52.7.dp, end = tvRail?.end ?: 103.3.dp, top = tvGridTop, bottom = 104.dp) else padding
     when (viewMode) {
         LibraryViewMode.Screen -> {
         val phoneViewportDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
@@ -4135,7 +4149,7 @@ internal fun LibraryResults(
             modifier = Modifier.fillMaxSize().playarrEdgeFades(gridState.canScrollBackward, gridState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical, panel = if (isTelevision) null else WebBackground),
             contentPadding = screenPadding,
             horizontalArrangement = Arrangement.spacedBy(if (isTelevision) tvRail?.gap ?: 25.92.dp else 12.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 0.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isTelevision && !tvRows) tvRowGap else 0.dp),
         ) {
             itemsIndexed(works, key = { _, work -> work.id }) { index, work ->
                 val openLabel = playarrString(PlayarrString.LibraryOpenWork, "title" to work.title)
@@ -4148,15 +4162,15 @@ internal fun LibraryResults(
                     onSelected = { onSelected(work) },
                     onClick = { onOpen(work) },
                     modifier = (if (grid != null) Modifier.tvGridItem(grid, index) else Modifier)
-                        // Web's cards are 327.17 px wide at 1080p; the grid hands out whole-pixel cells of 328 and 327, so the poster would be 1 px too tall in every other column.
-                        .then(if (tvRowPitchPx > 0f) Modifier.requiredWidth(327.17.dp) else Modifier.fillMaxWidth())
-                        .then(if (tvRowPitchPx > 0f) Modifier.layout { measurable, constraints ->
-                            // Web's rows sit apart by a fractional device pixel count; Lazy grids round every row to whole pixels, which drifts. Trim a pixel from the rows where the drift crosses one.
-                            val placeable = measurable.measure(constraints)
-                            val row = index / phoneColumns
-                            val pitch = placeable.height + tvRowGap.roundToPx()
-                            val cut = pitch - (Math.round((row + 1) * tvRowPitchPx) - Math.round(row * tvRowPitchPx))
-                            layout(placeable.width, placeable.height - cut) { placeable.place(0, 0) }
+                        .then(if (tvRows) Modifier.requiredWidth(tvCardCss.dp) else Modifier.fillMaxWidth())
+                        .then(if (tvRows) Modifier.layout { measurable, constraints ->
+                            val d = density
+                            val rowTop = tvGridTopCss + (index / phoneColumns) * tvRowPitchCss
+                            val top = Math.round(rowTop * d)
+                            val cardPx = Math.round((rowTop + tvRowPitchCss - tvRowGap.value) * d) - top
+                            val cellPx = Math.round((rowTop + tvRowPitchCss) * d) - top
+                            val placeable = measurable.measure(constraints.copy(minHeight = cardPx, maxHeight = cardPx))
+                            layout(placeable.width, cellPx) { placeable.place(0, 0) }
                         } else Modifier)
                         .then(if (!isTelevision && phoneViewportDp < 540) Modifier.layout { measurable, constraints ->
                             // Web phone `.tv-title-card`: the browser snaps each box edge once, from its summed css position. Row r starts at
@@ -8368,6 +8382,7 @@ private fun WebEpisodeCard(
             .onFocusChanged { focused = it.isFocused }
             .clickable(onClick = onClick)
             // The card reads as its visible copy: number, lead and title.
+            .playarrLink()
             .semantics { contentDescription = exportLabel ?: listOfNotNull(badge, lead, title).joinToString(" ") },
     ) {
     Column(Modifier.fillMaxWidth().mediaCardLift(focused)) {
