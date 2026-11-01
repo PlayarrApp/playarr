@@ -1,0 +1,1 @@
+- The Tizen native layout export now reports the radius each view draws (focus and active scale included), counts a drawn one-pixel rule and a shadow-only helper as visibility candidates, and measures a text box with the label's trailing letter-spacing like the browser; the shell clock centres on the header grid.
