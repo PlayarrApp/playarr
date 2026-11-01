@@ -4624,10 +4624,10 @@ private fun LibraryViewIcon(mode: LibraryViewMode, colour: Color) {
         else -> Triple(3, 4f, 13f)
     }
     val list = mode == LibraryViewMode.List
-    // A filled bar records its fill; an outlined one records that it draws a border (no fill), so the export keeps the box the app really paints.
+    // Web `.tv-view-icon i { border: 1px solid currentColor }`: every bar is an outlined box with no fill, and the browser floors a border to whole device px.
+    val borderWidth = with(LocalDensity.current) { if (tv) 1.dp else kotlin.math.floor(density).coerceAtLeast(1f).toDp() }
     val bar = Modifier.size(w.dp, h.dp).let {
-        if (list && !tv) it.parityBackground("container", colour, RoundedCornerShape(1.dp), radius = 1f)
-        else it.parityBackground("container", Color.Transparent, RoundedCornerShape(1.dp), radius = 1f, drawsBorder = true).border(1.dp, colour, RoundedCornerShape(1.dp))
+        it.parityBackground("container", Color.Transparent, RoundedCornerShape(1.dp), radius = 1f, drawsBorder = true).border(borderWidth, colour, RoundedCornerShape(1.dp))
     }
     if (list) Column(verticalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }
     else Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }

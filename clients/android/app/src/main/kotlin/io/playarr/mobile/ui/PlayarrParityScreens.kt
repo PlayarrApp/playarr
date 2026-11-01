@@ -4778,7 +4778,7 @@ private fun PhoneSettingsIndex(isAdmin: Boolean, onOpen: (SettingsSection) -> Un
     Box(Modifier.fillMaxSize().background(WebSurface)) {
         androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = rememberWebSpan(0f, 84f), bottom = 116.dp),
+            contentPadding = PaddingValues(start = rememberWebSpan(0f, 16f), end = rememberWebSpan(374f, 390f), top = rememberWebSpan(0f, 84f), bottom = 116.dp),
         ) {
             itemsIndexed(phoneSettingsIndex.filter { isAdmin || it.first != SettingsSection.RequestLatency }, key = { _, row -> row.first.name }) { index, (candidate, description) ->
                 val active = index == 0
@@ -4791,16 +4791,20 @@ private fun PhoneSettingsIndex(isAdmin: Boolean, onOpen: (SettingsSection) -> Un
                         .then(if (active) Modifier.background(WebSurfaceSoft) else Modifier)
                         .clickable { onOpen(candidate) },
                 ) {
-                Row(Modifier.fillMaxSize().padding(start = 12.dp, end = rememberWebSpan(362f, 374f), top = 16.dp, bottom = 16.dp)) {
+                // Every x edge is a css position summed from the row's 16 px page inset and snapped once: 12 padding, 44 number, the copy track, a 12 gap, the 20.8 arrow, 12 padding.
+                WebCssRow(
+                    startCss = 12f, endCss = 12f, widthsCss = listOf(44f, 257.2f, 12f, 20.8f), gapCss = 0f, originCss = 16f,
+                    modifier = Modifier.fillMaxSize().padding(top = rememberWebSpan(84f + 88f * index, 84f + 88f * index + 16f), bottom = rememberWebSpan(84f + 88f * index + 72f, 84f + 88f * index + 88f)),
+                ) {
                     Text(
                         number, color = WebInk, fontSize = 8.96.sp, lineHeight = 13.44.sp,
-                        fontWeight = FontWeight(760), style = WebTextStyle, modifier = Modifier.width(44.dp),
+                        fontWeight = FontWeight(760), style = WebTextStyle,
                     )
                     // `.settings-option-copy { display: grid; gap: 4px }` centred in the 56 px content box (88 - 2 * 16 padding): strong line 1.15 * 16,
                     // small line 1.45 * 0.68rem. The block is placed at its summed css position, each edge snapped once.
                     val rowTopCss = 84f + 88f * index
                     val copyTopCss = rowTopCss + 16f + (56f - PHONE_SETTINGS_COPY_CSS) / 2f
-                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                    Box(Modifier.fillMaxHeight()) {
                         WebCssLayout(
                             originCss = copyTopCss,
                             topsCss = listOf(0f, PHONE_SETTINGS_TITLE_CSS + 4f),
@@ -4823,8 +4827,8 @@ private fun PhoneSettingsIndex(isAdmin: Boolean, onOpen: (SettingsSection) -> Un
                             }
                         }
                     }
-                    Spacer(Modifier.width(12.dp))
-                    Box(Modifier.width(20.8.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                    Spacer(Modifier)
+                    Box(Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
                         Text(
                             "→", color = if (active) WebInk else WebInkMuted, fontSize = 20.8.sp, lineHeight = 31.2.sp, style = WebTextStyle,
                             modifier = Modifier.offset(x = if (active) 5.dp else 0.dp),

@@ -1130,10 +1130,12 @@ internal fun CalendarWeek(
     }
 }
 
-// Phone week at 390 css px (1.8436 device px per dp), measured against the web ref: heading text 4 device px lower and the first
-// card 6 device px lower than web with the old 7 dp top padding and 38 dp heading row.
-internal const val PHONE_WEEK_TOP_PAD_DP = 4.8
-internal const val PHONE_WEEK_HEADING_ROW_DP = 34.8
+// Phone week from Calendar.css: the columns start `0.75rem` below the toolbar row (the toolbar's `gap`), a day heading is an `h3` line of
+// `clamp(0.9rem, 1vw, 1.15rem)` * 1.5 (21.6 css px at 390) with `margin: 0 0 0.4rem`, the today tag (11.2 px * 1.5 + 2 * 0.1rem + 2 * 1 border = 22) makes
+// today's row 22, and `.calendar-day ul { gap: 0.85rem }` separates the entries.
+internal const val PHONE_WEEK_TOP_PAD_DP = 12f
+internal const val PHONE_WEEK_HEADING_MARGIN_DP = 6.4f
+internal const val PHONE_WEEK_ENTRY_GAP_DP = 13.6f
 internal const val PHONE_WEEK_BOTTOM_DP = 118.2
 
 @Composable
@@ -1204,7 +1206,7 @@ private fun CalendarWeekBody(
                         verticalArrangement = Arrangement.spacedBy(if (isTelevision) 6.dp else 0.dp),
                     ) {
                         if (true) {
-                            Row(Modifier.then(if (isTelevision) Modifier.offset(y = if (LocalStageScale.current == 1f) 2.dp else 3.dp) else Modifier).height(if (isTelevision) 28.dp else if (webColumn == null) PHONE_WEEK_HEADING_ROW_DP.dp else 38.dp).then(if (isTelevision) Modifier else Modifier.padding(bottom = 1.dp)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(Modifier.then(if (isTelevision) Modifier.offset(y = if (LocalStageScale.current == 1f) 2.dp else 3.dp) else Modifier).height(if (isTelevision) 28.dp else if (webColumn == null) (if (group.date == today) 22f else 21.6f).dp else 38.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
                                     phoneCalendarDayHeading(group.date, locale), color = if ((isTelevision && LocalStageScale.current == 1f) || (!isTelevision && group.date == today)) io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent else WebInk, fontSize = if (isTelevision) 18.4.sp else 14.4.sp, lineHeight = if (isTelevision) 28.sp else 21.6.sp, fontWeight = FontWeight(if (isTelevision && LocalStageScale.current != 1f) 560 else 640),
                                     style = WebTextStyle, modifier = if (isTelevision) (if (LocalStageScale.current == 1f) Modifier else Modifier.semantics { heading() }) else Modifier,
@@ -1214,6 +1216,7 @@ private fun CalendarWeekBody(
                         } else {
                             CalendarDayHeading(group.date, today, locale, isTelevision)
                         }
+                        if (!isTelevision && webColumn == null) Spacer(Modifier.height(PHONE_WEEK_HEADING_MARGIN_DP.dp))
                         if (group.entries.isEmpty()) {
                             if (isTelevision) {
                                 Text(playarrString(PlayarrString.CalendarEmptyDay), color = WebInkMuted, fontSize = if (LocalStageScale.current == 1f) 19.2.sp else 12.sp, lineHeight = if (LocalStageScale.current == 1f) 28.8.sp else androidx.compose.ui.unit.TextUnit.Unspecified, modifier = if (LocalStageScale.current == 1f) Modifier.offset(y = 1.dp) else Modifier)
@@ -1237,7 +1240,7 @@ private fun CalendarWeekBody(
                                         .calendarFocusReveal()
                                 if (true) {
                                     // Web: 6 px under the day heading, 14 px between entries (the 6 above plus 8 here).
-                                    Box(Modifier.padding(bottom = if (isTelevision) 7.dp else if (webColumn != null) 11.5.dp else 13.5.dp)) { // web tablet week: 0.5 rem list gap plus 3.5 rem-line card, 2 css px tighter than the phone's
+                                    Box(Modifier.padding(bottom = if (isTelevision) 7.dp else if (webColumn != null) 11.5.dp else PHONE_WEEK_ENTRY_GAP_DP.dp)) { // web tablet week: 0.5 rem list gap plus 3.5 rem-line card, 2 css px tighter than the phone's
                                         PhoneCalendarEntry(item, selected = item.key == selectedKey, zone = zone, onClick = { onSelect(item) }, modifier = rowModifier)
                                     }
                                 } else {
