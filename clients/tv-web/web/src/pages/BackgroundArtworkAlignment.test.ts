@@ -28,8 +28,10 @@ describe("background artwork alignment", () => {
     );
     expect(tintRule).toContain("transparent 22%, transparent 100%");
     expect(tintRule).toContain("transparent 22%, transparent 82%");
-    expect(washRule).toContain("var(--surface) 94%");
-    expect(washRule).toContain("var(--surface) 50%");
+    // Opaque exact-colour stops: translucent stops are dithered differently by Chromium 85 to 94 and 151.
+    expect(washRule).toContain("var(--surface) 0%, var(--surface) 36%, transparent 52%");
+    expect(washRule).toContain("var(--surface) 0%, transparent 17%");
+    expect(washRule).not.toContain("color-mix");
     for (const surface of ["home", "directory", "detail", "search"]) {
       expect(css.match(new RegExp(`\\.tv-${surface} \\.tv-key-art img`, "g"))).toHaveLength(1);
       expect(css.match(new RegExp(`\\.tv-${surface} \\.tv-key-art::after`, "g"))).toHaveLength(1);
