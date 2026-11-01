@@ -499,11 +499,11 @@ function WebGridColumnShift(col as Integer) as Float
     return col * (pitch - Int(pitch))
 end function
 
-' Rows advance by the web's fractional pitch but the grid places each at a whole pixel (floor); the web rounds. The card moves down one
-' pixel where the two disagree (`top` is the grid's own y, a whole pixel).
+' The grid advances each row by the whole-pixel pitch (itemSize is laid out at Int(pitch): row 3 of a 240.41 pitch sits at 720, not 721), while the web
+' places row `row` at round(row * pitch). The card moves down by the difference (the grid's own y is a whole pixel).
 function WebGridRowShift(row as Integer) as Float
     y = row * WebGridPitchY()
-    return Int(y + 0.5) - Int(y)
+    return Int(y + 0.5) - row * Int(WebGridPitchY())
 end function
 
 ' Home rail cell: the card plus the 8 px focus-ring inset PosterCard keeps on each side (cardContentInsetX) = 343. Pitch stays web card + rail gap.
