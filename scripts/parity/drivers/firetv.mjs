@@ -361,6 +361,10 @@ export async function createDriver({ out } = {}) {
     async location() {
       return (await state()).route;
     },
+    // Whether the quality, audio or subtitles panel is open (the web's .player-quality-menu): the app reports it in the state answer.
+    async panelOpen() {
+      return Boolean((await state()).panel);
+    },
     async focused() {
       // A state answer can arrive without the focus while the app is busy (a loaded host answers late): ask again before reporting none.
       for (let i = 0; i < 6; i++) {

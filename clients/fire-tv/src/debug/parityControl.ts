@@ -193,7 +193,7 @@ export function installParityControl(hooks: ParityHooks): () => void {
     setTimeout(() => {
       const nativeFocusTag = command.cmd === 'state' ? FocusManager.getFocused() : undefined;
       const focus = command.cmd === 'state' ? currentFocus() : lastFocus;
-      const state = {cmd: command.cmd, seq: command.seq ?? null, route: hooks.location(), focus, player: hooks.player(), theme: hooks.theme(), clock: isClockFrozen() ? appNow().toISOString() : null};
+      const state = {cmd: command.cmd, seq: command.seq ?? null, route: hooks.location(), focus, panel: Boolean(queries.playerMenu), player: hooks.player(), theme: hooks.theme(), clock: isClockFrozen() ? appNow().toISOString() : null};
       console.log('PARITY ' + JSON.stringify(command.cmd === 'state' ? {...state, nativeFocusTag} : state));
     }, command.cmd === 'state' ? 0 : 1500);
   };

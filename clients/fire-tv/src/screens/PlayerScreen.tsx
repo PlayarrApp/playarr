@@ -67,6 +67,7 @@ import {useApiClient} from '../api/ApiClientProvider';
 import {ensureFireTvAccessToken} from '../auth/session';
 import {useAppForeground, useRemoteKey} from '../platform';
 import {TvFocusScope, focusNode} from '../platform/focus';
+import {reportQuery} from '../debug/parityControl';
 import {useBackLayer} from '../navigation/backPolicy';
 import {DarkSurface} from '../theme/ThemeProvider';
 import {PlayerChrome, type ChromeControl} from '../player/PlayerChrome';
@@ -430,11 +431,22 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
   // Back unwinds one layer per press: an open menu closes first (its own layer), then the controls hide, then playback exits.
   useBackLayer(visible, () => {
     if (controlsRef.current) {
+      // The ref moves now, not at the next render: a second Back right behind the first must find the controls hidden.
+      controlsRef.current = false;
       setControlsVisible(false);
       return;
     }
-    void stop().then(() => onClose?.());
+    // The player leaves the route at once; the bounded save of the progress runs behind it.
+    const stopped = stop();
+    onClose?.();
+    void stopped;
   });
+
+  // The parity driver reads whether the quality, audio or subtitles panel (the web's .player-quality-menu) is open.
+  useEffect(() => {
+    reportQuery('playerMenu', menu === 'quality' || menu === 'subtitles' || menu === 'audio' ? menu : null);
+    return () => reportQuery('playerMenu', null);
+  }, [menu]);
 
   // Auto-hide after about five seconds without input while playing; never while paused or with a menu open.
   useEffect(() => {

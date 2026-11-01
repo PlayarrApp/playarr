@@ -145,6 +145,7 @@ function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>
       accessibilityLabel={props.label}
       {...lx('button', props.web ?? props.label, 50)}
       focusable={props.focusable}
+      isTVSelectable={props.focusable !== false}
       hasTVPreferredFocus={props.control === 'play'}
       onFocus={() => {
         reportFocus(props.web ?? props.label);
@@ -252,6 +253,8 @@ function VolumeSlider(props: PlayerChromeProps): React.ReactElement {
     <Pressable
       accessibilityRole="adjustable"
       accessibilityLabel="Volume"
+      focusable={false}
+      isTVSelectable={false}
       accessibilityValue={{min: 0, max: 100, now: Math.round(level * 100)}}
       {...lx('textbox', 'Volume')}
       onFocus={() => {
