@@ -56,7 +56,16 @@ def black_in_header_band(frame):
     return bool(band.any()) and band.mean() < 0.5
 
 
-bad = black_in_header_band(None) or black_tile_band(black) or solid_block(green, 16) or (
+def vm_green_bar(mask, w=24, h=4):
+    """True when a w x h rectangle is entirely the VM's pure-green fill (red 0): a tile caught part-painted can leave a
+    thin band of it under text, which none of the other signatures see."""
+    c = np.cumsum(np.cumsum(np.pad(mask, ((1, 0), (1, 0))), axis=0, dtype=np.int32), axis=1)
+    s = c[h:, w:] - c[:-h, w:] - c[h:, :-w] + c[:-h, :-w]
+    return bool((s == w * h).any())
+
+
+vm_green = (r <= 8) & (g > 140) & (g < 200) & (b > 60) & (b < g - 30)
+bad = vm_green_bar(vm_green) or black_in_header_band(None) or black_tile_band(black) or solid_block(green, 16) or (
     int(black.sum()) >= 600 and (has_run(green, 24) or has_run(green.T, 24))
 )
 sys.exit(1 if bad else 0)
