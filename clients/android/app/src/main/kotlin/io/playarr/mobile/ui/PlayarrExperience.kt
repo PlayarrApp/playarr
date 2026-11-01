@@ -3641,7 +3641,13 @@ internal fun ExperienceMediaRail(
                 val onDeck = rail.onDeckByWork[work.id]
                 val episode = onDeck?.episode
                 ExperienceLandscapeCard(
-                    modifier = if (rails != null) Modifier.tvRailItem(rails, railIndex, itemIndex) else Modifier,
+                    modifier = (if (rails != null) Modifier.tvRailItem(rails, railIndex, itemIndex) else Modifier)
+                        // `.tv-home-card > small { height: 1.3em; margin: 0.16rem 0 calc(-1.3em - 0.16rem) }` hangs below the card box, but the flex row still
+                        // lays the card out with it: the rail is taller than the card rect by the small's margin-top plus its line (6.88 px * 1.3).
+                        .then(if (!isTelevision && homeView == PlayarrHomeViewPreference.Thumbnail) Modifier.layout { measurable, constraints ->
+                            val placeable = measurable.measure(constraints)
+                            layout(placeable.width, placeable.height + (webLayoutUnit(0.16f * 16f) + webLayoutUnit(1.3f * 6.88f)).dp.roundToPx()) { placeable.placeRelative(0, 0) }
+                        } else Modifier),
                     work = work,
                     serverUrl = serverUrl,
                     accessToken = accessToken,
@@ -3889,18 +3895,22 @@ internal fun ExperienceLandscapeCard(
             Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = homeMeta.sp, lineHeight = (if (tabletHome) homeMeta * 1.3f else 13.248f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (2.56f / homeScale).dp else 2.6.dp, start = 1.9.dp))
             }
         } else if (webPhone && webHome) {
-            // Web `.tv-home-card > strong` (8.8 px / 610) and `> small` (6.88 px, 2.56 px below; it hangs under the card, so the rail gap below is shorter).
+            // Web `.tv-home-card`: the card box ends under the one title line (padding-top --card-copy-gap 0.72rem, 8.8 px / 610 at line-height 1.5, inline padding
+            // --card-copy-inset 0.12rem); the `small` (6.88 px, 2.56 px below) hangs out of that box, so the box is that tall and the small line overflows it.
             val strongInk = if (webIsDark) Color.White else Color.Black
-            Text(
-                displayTitle, color = if (strongCaption) strongInk else WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
-                letterSpacing = (-0.132).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.offset(y = 1.9.dp).padding(start = 1.9.dp, top = 9.7.dp), // offsets keep the rail height
-            )
-            Text(
-                resolvedSubtitle, color = if (strongCaption) strongInk else PlayarrWebTheme.palette.phoneInkMuted, fontSize = 6.88.sp, lineHeight = 10.32.sp,
-                style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.offset(y = 1.08.dp).padding(start = 1.9.dp, top = 2.56.dp),
-            )
+            val copyInset = webLayoutUnit(0.12f * 16f).dp
+            Column(Modifier.height(phoneLibraryCopyCss(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.toFloat()).dp).wrapContentHeight(Alignment.Top, unbounded = true)) {
+                Text(
+                    displayTitle, color = if (strongCaption) strongInk else WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
+                    letterSpacing = (-0.132).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = copyInset, top = webLayoutUnit(0.72f * 16f).dp),
+                )
+                Text(
+                    resolvedSubtitle, color = if (strongCaption) strongInk else PlayarrWebTheme.palette.phoneInkMuted, fontSize = 6.88.sp, lineHeight = 10.32.sp,
+                    style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = copyInset, top = 2.56.dp),
+                )
+            }
         } else if (webPhone && webSearch) {
             // Web `.tv-search-result` caption on phones (live dom dump): 8.8 px title at y +11.5, 6.4 px upper-case meta 2 px below.
             Text(
@@ -3918,7 +3928,7 @@ internal fun ExperienceLandscapeCard(
                 displayTitle, color = if (strongCaption) (if (webIsDark) Color.White else Color.Black) else WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
                 letterSpacing = (-0.132).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 // Web library caption: 1 px lower than before (measured against the fresh phone refs); the row gap below gives it back.
-                modifier = Modifier.padding(start = 1.9.dp - 0.3.dp, top = 11.6.dp),
+                modifier = Modifier.padding(start = webLayoutUnit(0.12f * 16f).dp, top = webLayoutUnit(0.72f * 16f).dp), // --card-copy-inset 0.12rem, --card-copy-gap 0.72rem
             )
         } else {
         Text(displayTitle, color = WebInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 7.dp))
@@ -4057,7 +4067,9 @@ internal fun LibraryResults(
         LibraryViewMode.Screen -> {
         val phoneViewportDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
         val phoneColumns = fixedColumns ?: phonePosterColumns(artworkSize, phoneViewportDp)
-        val phoneRowPitchPx = if (!isTelevision && phoneViewportDp < 540) 136f * LocalDensity.current.density else tvRowPitchPx
+        val phoneGridTopCss = PHONE_LIBRARY_GRID_TOP_CSS
+        val phoneCardCss = phoneLibraryCardCss(phonePosterCardWidth().value, phoneViewportDp.toFloat())
+        val phoneRowPitchCss = phoneCardCss + PHONE_LIBRARY_ROW_GAP_CSS
         LazyVerticalGrid(
             columns = fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth) else GridCells.Fixed(phonePosterColumns(artworkSize, androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp)),
             state = gridState,
@@ -4065,7 +4077,7 @@ internal fun LibraryResults(
             modifier = Modifier.fillMaxSize().playarrEdgeFades(gridState.canScrollBackward, gridState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical, panel = if (isTelevision) null else WebBackground),
             contentPadding = screenPadding,
             horizontalArrangement = Arrangement.spacedBy(if (isTelevision) tvRail?.gap ?: 25.92.dp else 12.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 23.32.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 0.dp),
         ) {
             itemsIndexed(works, key = { _, work -> work.id }) { index, work ->
                 val openLabel = playarrString(PlayarrString.LibraryOpenWork, "title" to work.title)
@@ -4080,14 +4092,24 @@ internal fun LibraryResults(
                     modifier = (if (grid != null) Modifier.tvGridItem(grid, index) else Modifier)
                         // Web's cards are 327.17 px wide at 1080p; the grid hands out whole-pixel cells of 328 and 327, so the poster would be 1 px too tall in every other column.
                         .then(if (tvRowPitchPx > 0f) Modifier.requiredWidth(327.17.dp) else Modifier.fillMaxWidth())
-                        .then(if (phoneRowPitchPx > 0f) Modifier.layout { measurable, constraints ->
-                            // Web's rows sit 136 css px apart (fractional device pixels); Lazy grids round every row to whole pixels,
-                            // which drifts 0.3 px per row. Trim a pixel from the rows where the drift crosses one.
+                        .then(if (tvRowPitchPx > 0f) Modifier.layout { measurable, constraints ->
+                            // Web's rows sit apart by a fractional device pixel count; Lazy grids round every row to whole pixels, which drifts. Trim a pixel from the rows where the drift crosses one.
                             val placeable = measurable.measure(constraints)
                             val row = index / phoneColumns
-                            val pitch = placeable.height + (if (isTelevision) tvRowGap else 23.32.dp).roundToPx()
-                            val cut = pitch - (Math.round((row + 1) * phoneRowPitchPx) - Math.round(row * phoneRowPitchPx))
+                            val pitch = placeable.height + tvRowGap.roundToPx()
+                            val cut = pitch - (Math.round((row + 1) * tvRowPitchPx) - Math.round(row * tvRowPitchPx))
                             layout(placeable.width, placeable.height - cut) { placeable.place(0, 0) }
+                        } else Modifier)
+                        .then(if (!isTelevision && phoneViewportDp < 540) Modifier.layout { measurable, constraints ->
+                            // Web phone `.tv-title-card`: the browser snaps each box edge once, from its summed css position. Row r starts at
+                            // grid top + r * pitch; the card is phoneCardCss tall and the row's cell runs to the next row's top.
+                            val d = density
+                            val rowTop = phoneGridTopCss + (index / phoneColumns) * phoneRowPitchCss
+                            val top = Math.round(rowTop * d)
+                            val cardPx = Math.round((rowTop + phoneCardCss) * d) - top
+                            val cellPx = Math.round((rowTop + phoneRowPitchCss) * d) - top
+                            val placeable = measurable.measure(constraints.copy(minHeight = cardPx, maxHeight = cardPx))
+                            layout(placeable.width, cellPx) { placeable.place(0, 0) }
                         } else Modifier),
                     contentLabel = openLabel, // web: aria-label "Open <title>"
                     progress = progressByWork[work.id],
@@ -4195,6 +4217,17 @@ private fun LibraryCoverCard(
     }
     }
 }
+
+/**
+ * Web phone library grid, from page-layout.css: the grid's first row sits 84 css px down (`padding: 84px ...` of the grid, measured from the page top, status inset
+ * included) and the rows are 24 px apart (`gap: 24px var(--card-grid-gap)`). A card is the art (`aspect-ratio: 16 / 9` of the card width `--card-w`) plus the copy
+ * (`.tv-title-card-copy`: `padding-top: var(--card-copy-gap)` = 0.72rem, one line of `--card-title-size` = clamp(0.55rem, 0.62vw, 0.78rem) at line-height 1.5), every length a LayoutUnit.
+ */
+internal const val PHONE_LIBRARY_GRID_TOP_CSS = 84f
+internal const val PHONE_LIBRARY_ROW_GAP_CSS = 24f
+internal fun phoneLibraryCopyCss(viewportWidthCss: Float): Float =
+    webLayoutUnit(0.72f * 16f) + webLayoutUnit(1.5f * webClamp(0.55f * 16f, 0.62f * viewportWidthCss / 100f, 0.78f * 16f))
+internal fun phoneLibraryCardCss(cardWidthCss: Float, viewportWidthCss: Float): Float = webLayoutUnit(cardWidthCss * 9f / 16f) + phoneLibraryCopyCss(viewportWidthCss)
 
 /**
  * Web phone poster card width (`--card-w`, #924): the viewport less the 16 dp gutter and the 52 dp letter rail pad, split
@@ -6812,7 +6845,7 @@ private fun PhoneVideoDetailBody(
                     modifier = Modifier,
                 )
                 Spacer(Modifier.height(10.dp))
-                // The 36.66 px line box is shorter than the 39 px glyphs: CSS lets them overflow upwards, while Compose grows
+                // The 36.66 px line box is shorter than the 39 px glyphs (Chromium floors the negative half leading, see PlayarrWebText): pin the box height, the text is placed by that line box, not shifted by a constant. Compose grows
                 // the box to the font height, so pin the height and lift the text the way CSS centres it.
                 // Web phone `.tv-detail-title`: max-width 12ch, so a long title wraps to a second 36.66 px line (the stage-scaled tablet keeps one line).
                 val phoneTitle = LocalStageScale.current == 1f
@@ -6827,12 +6860,12 @@ private fun PhoneVideoDetailBody(
                     else balanceTitleWrap(work.title, titleMaxPx) { measurer.measure(it, spacedTitleStyle).size.width }
                 }
                 var titleLines by remember(work.title) { mutableStateOf(1) }
-                Box(Modifier.height((36.66f * titleLines).dp).wrapContentHeight(align = Alignment.Top, unbounded = true)) {
+                Box(Modifier.height((webLayoutUnit(36.66f) * titleLines).dp).wrapContentHeight(align = Alignment.Top, unbounded = true)) {
                     Text(
                         shownTitle, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
                         style = WebTextStyle, maxLines = if (phoneTitle) 2 else 1, overflow = TextOverflow.Ellipsis,
                         onTextLayout = { titleLines = it.lineCount },
-                        modifier = (if (phoneTitle) Modifier.widthIn(max = titleMax) else Modifier).graphicsLayer { translationY = -9.08.dp.toPx() }.semantics { heading() },
+                        modifier = (if (phoneTitle) Modifier.widthIn(max = titleMax) else Modifier).semantics { heading() },
                     )
                 }
                 if (episode != null) {
@@ -6841,10 +6874,10 @@ private fun PhoneVideoDetailBody(
                         episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to episode.episodeNumber),
                         color = WebInkSoft, fontSize = 14.4.sp, lineHeight = 16.56.sp, fontWeight = FontWeight(570), letterSpacing = (-0.504).sp,
                         style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer { translationY = -2.04.dp.toPx() }.semantics { heading() },
+                        modifier = Modifier.semantics { heading() },
                     )
                 }
-                Spacer(Modifier.height(if (episode != null) 8.12.dp else 12.dp))
+                Spacer(Modifier.height(12.dp)) // .tv-detail-meta margin-top: 12px
                 FlowRow(Modifier, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     metaItems.forEachIndexed { index, item ->
                         Text(

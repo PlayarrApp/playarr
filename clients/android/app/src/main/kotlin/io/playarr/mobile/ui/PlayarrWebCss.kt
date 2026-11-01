@@ -113,3 +113,67 @@ internal fun WebCssRow(
         layout(total, maxH) { placed.forEach { (px, p) -> p.placeRelative(px, 0) } }
     }
 }
+
+/**
+ * Blink's LayoutUnit: layout lengths are fixed point with 6 fractional bits (1/64 css px). A css length enters layout by truncating
+ * to that grid (`0.4rem` = 6.4 is laid out as 6.390625), and every sum, share and position after that is an exact multiple of 1/64.
+ */
+internal fun webLayoutUnit(css: Float): Float = Math.floor((css * 64f).toDouble()).toFloat() / 64f
+
+/** Css `clamp(min, preferred, max)` in px, entering layout as a LayoutUnit. */
+internal fun webClamp(minCss: Float, preferredCss: Float, maxCss: Float): Float = webLayoutUnit(preferredCss.coerceIn(minCss, maxCss))
+
+/**
+ * A grid's `1fr` tracks as the browser sizes them: the free space ([availableCss], already a LayoutUnit sum) divided over [count]
+ * equal flexible tracks, each share truncated to the LayoutUnit grid (the remainder stays unallocated, as in Blink's grid track sizing).
+ * Tracks with a `minmax(0, 1fr)` minimum take the same share.
+ */
+internal fun webFrTracks(availableCss: Float, count: Int): List<Float> {
+    if (count <= 0) return emptyList()
+    val each = webLayoutUnit(webLayoutUnit(availableCss) / count)
+    return List(count) { each }
+}
+
+/** The track edges in css px: [originCss] plus the running sum of [sizesCss], every value an exact LayoutUnit sum (count + 1 edges). */
+internal fun webTrackEdges(originCss: Float, sizesCss: List<Float>): List<Float> {
+    val edges = ArrayList<Float>(sizesCss.size + 1)
+    var at = webLayoutUnit(originCss)
+    edges += at
+    for (s in sizesCss) { at += webLayoutUnit(s); edges += at }
+    return edges
+}
+
+/** Device pixel of a css edge, rounded once from its summed position (the browser's pixel snapping). */
+internal fun Density.webSnap(css: Float): Int = Math.round(css * density)
+
+/** Phone month grid (css `.calendar-month`) laid out from its CSS: the geometry [webPhoneMonth] resolves. */
+internal class WebPhoneMonth(
+    /** Header (weekday strip) height in css px: top padding 0.4rem + one 1.5 line of 0.75rem + bottom padding 0.4rem. */
+    val headerCss: Float,
+    /** The weekday label's top padding, 0.4rem as a LayoutUnit. */
+    val weekdayPadCss: Float,
+    /** Weekday line height, 1.5 * 0.75rem. */
+    val weekdayLineCss: Float,
+    /** The seven `1fr` column edges from the grid's left edge (8 values, css px relative to the grid). */
+    val columnEdgesCss: List<Float>,
+    /** The week row edges from the grid body's top (weeks + 1 values, css px relative to the body). */
+    val rowEdgesCss: List<Float>,
+)
+
+/**
+ * Resolves the phone calendar month from the css in `Calendar.css` / `page-layout.css`:
+ * `.calendar-month { min-width: 720px; display: flex; column }`, `.calendar-month-head/-row { grid-template-columns: repeat(7, minmax(0, 1fr)) }`,
+ * `.calendar-month-weekday { padding: .4rem; font-size: .75rem }` (line-height 1.5 from global.css), `.calendar-month-body { flex: 1 1 auto; display: grid;
+ * grid-template-rows: repeat(weeks, minmax(0, 1fr)) }`. [monthTopCss] is the month box's top (below the toolbar and its 0.75rem gap), [viewportHeightCss]
+ * the viewport height: the page keeps `padding-bottom: clamp(92px, 11vh, 124px)` (`--page-safe-bottom`), the body takes what is left.
+ */
+internal fun webPhoneMonth(monthTopCss: Float, viewportHeightCss: Float, weeks: Int, remPx: Float = 16f): WebPhoneMonth {
+    val pad = webLayoutUnit(0.4f * remPx)
+    val line = webLayoutUnit(1.5f * 0.75f * remPx)
+    val header = pad + line + pad
+    val bottomPad = webClamp(92f, 11f * viewportHeightCss / 100f, 124f)
+    val body = webLayoutUnit(viewportHeightCss) - bottomPad - (webLayoutUnit(monthTopCss) + header)
+    val columns = webTrackEdges(0f, webFrTracks(720f, 7))
+    val rows = webTrackEdges(0f, webFrTracks(body, weeks))
+    return WebPhoneMonth(header, pad, line, columns, rows)
+}

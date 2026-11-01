@@ -1475,9 +1475,14 @@ internal fun CalendarMonth(
     BoxWithConstraints(modifier) {
         val wide = isTelevision || maxWidth >= 840.dp
         if (!wide) {
-            // Web phone: the same month grid as on a television, 103 dp columns in a horizontally scrolling strip (measured on the live page).
-            Box(modifier.fillMaxSize().horizontalScroll(rememberScrollState())) {
-                CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.width(720.dp).height(PHONE_MONTH_STRIP_TOP_PAD.dp + rememberWebSpan(PHONE_MONTH_STRIP_TOP_CSS, PHONE_MONTH_CELLS_TOP_CSS + PHONE_MONTH_ROW_CSS * rows.size)), true, phoneStrip = true)
+            // Web phone `.calendar-month`: a 720 css px grid scrolling sideways, laid out from its css by webPhoneMonth (1/64 LayoutUnit, `1fr` tracks, page bottom padding).
+            val d = androidx.compose.ui.platform.LocalDensity.current
+            val windowHeightCss = androidx.compose.ui.platform.LocalView.current.rootView.height.let { Math.round(it / d.density).toFloat() } // a web viewport is a whole number of css px
+            var slotTopCss by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+            val month = webPhoneMonth(slotTopCss + PHONE_MONTH_BODY_GAP_CSS, windowHeightCss, rows.size)
+            Box(modifier.fillMaxSize().onGloballyPositioned { slotTopCss = it.positionInWindow().y / d.density }.horizontalScroll(rememberScrollState())) {
+                val cellsTop = slotTopCss + PHONE_MONTH_BODY_GAP_CSS + month.headerCss
+                CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.width(720.dp).height(rememberWebSpan(slotTopCss, cellsTop + month.rowEdgesCss.last())), true, phoneStrip = true, phoneMonth = month, phoneSlotTopCss = slotTopCss)
             }
             return@BoxWithConstraints
         }
@@ -1601,6 +1606,9 @@ private fun CalendarMonthChips(
     isTelevision: Boolean = false,
     /** The phone's scrolling strip: web draws three lines per cell there, with the header row 8 dp deeper. */
     phoneStrip: Boolean = false,
+    /** The phone month resolved from its css, and the page position of its slot (css px). */
+    phoneMonth: WebPhoneMonth? = null,
+    phoneSlotTopCss: Float = 0f,
     /** Tablet web at 1280 x 800: the TV cell with 7.5 px more above the lines and 14 px more under them. */
     tabletCss: Boolean = false,
 ) {
@@ -1611,7 +1619,7 @@ private fun CalendarMonthChips(
         entries.groupBy { it.date }.mapValues { (_, day) -> groupSeriesEpisodes(day.sortedBy { it.releaseAt }, zone) }
     }
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
-        val headerHeight = if (phoneStrip) rememberWebSpan(PHONE_MONTH_STRIP_TOP_CSS, PHONE_MONTH_CELLS_TOP_CSS) else if (tabletCss) 27.75.dp else if (isTelevision) 24.dp else 26.dp
+        val headerHeight = if (phoneStrip) rememberWebSpan(phoneSlotTopCss, phoneSlotTopCss + PHONE_MONTH_BODY_GAP_CSS + phoneMonth!!.headerCss) else if (tabletCss) 27.75.dp else if (isTelevision) 24.dp else 26.dp
         val cellHeight = (maxHeight - headerHeight) / rows.size
         // Web: chips that fit = (cell height - 52) / 26, between 1 and 5; when more exist the last slot is "+N more".
         // Web TV text lines: 25 dp lines above a footer with the day number and "+N more", so the count never takes a line.
@@ -1627,17 +1635,17 @@ private fun CalendarMonthChips(
         val requesters = remember(slots) { slots.map { n -> List(n) { FocusRequester() } } }
         // Web's seven `1fr` columns: each edge is the rounded cumulative position, so no column drifts (a weighted Row ends 1.6 px off).
         // Phone strip: the grid is 720 css px wide from x 16 and its edges are the browser's rounded css positions.
-        val columnEdges = IntArray(8) { if (phoneStrip) Math.round((PHONE_MONTH_GRID_LEFT_CSS + it * 720f / 7f) * androidx.compose.ui.platform.LocalDensity.current.density) - Math.round(PHONE_MONTH_GRID_LEFT_CSS * androidx.compose.ui.platform.LocalDensity.current.density) else Math.round(it * constraints.maxWidth / 7f) }
+        val columnEdges = IntArray(8) { if (phoneStrip) Math.round((PHONE_MONTH_GRID_LEFT_CSS + phoneMonth!!.columnEdgesCss[it]) * androidx.compose.ui.platform.LocalDensity.current.density) - Math.round(PHONE_MONTH_GRID_LEFT_CSS * androidx.compose.ui.platform.LocalDensity.current.density) else Math.round(it * constraints.maxWidth / 7f) }
         val columnDensity = androidx.compose.ui.platform.LocalDensity.current
         fun columnWidth(column: Int): Dp = with(columnDensity) { (columnEdges[column + 1] - columnEdges[column]).toDp() }
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth().height(headerHeight)) {
                 calendarWeekdayLabels(firstDay, locale).forEachIndexed { labelIndex, label ->
-                    Text(label.uppercase(locale), color = if (isTelevision && tabletCss) WebInkSoft else WebInkMuted, fontSize = 12.sp, letterSpacing = if (isTelevision) 0.96.sp else 1.sp, textAlign = TextAlign.Center, modifier = (if (isTelevision) Modifier.width(columnWidth(labelIndex)) else Modifier.weight(1f)).padding(top = if (phoneStrip) 19.39.dp else 0.dp).then(if (isTelevision && !tabletCss) Modifier.offset(y = (-3.6).dp) else Modifier))
+                    Text(label.uppercase(locale), color = if (isTelevision && tabletCss) WebInkSoft else WebInkMuted, fontSize = 12.sp, letterSpacing = if (isTelevision) 0.96.sp else 1.sp, textAlign = TextAlign.Center, modifier = (if (isTelevision) Modifier.width(columnWidth(labelIndex)) else Modifier.weight(1f)).padding(top = if (phoneStrip) (PHONE_MONTH_BODY_GAP_CSS + phoneMonth!!.weekdayPadCss).dp else 0.dp).then(if (isTelevision && !tabletCss && !phoneStrip) Modifier.offset(y = (-3.6).dp) else Modifier), lineHeight = if (phoneStrip) phoneMonth!!.weekdayLineCss.sp else androidx.compose.ui.unit.TextUnit.Unspecified, style = if (phoneStrip) androidx.compose.material3.LocalTextStyle.current.copy(lineHeightStyle = io.playarr.shared.designsystem.page.WebLineBox) else androidx.compose.material3.LocalTextStyle.current)
                 }
             }
             rows.forEachIndexed { rowIndex, week ->
-                Row((if (phoneStrip) Modifier.height(rememberWebSpan(PHONE_MONTH_CELLS_TOP_CSS + PHONE_MONTH_ROW_CSS * rowIndex, PHONE_MONTH_CELLS_TOP_CSS + PHONE_MONTH_ROW_CSS * (rowIndex + 1))) else Modifier.weight(1f)).fillMaxWidth()) {
+                Row((if (phoneStrip) Modifier.height(rememberWebSpan(phoneSlotTopCss + PHONE_MONTH_BODY_GAP_CSS + phoneMonth!!.headerCss + phoneMonth.rowEdgesCss[rowIndex], phoneSlotTopCss + PHONE_MONTH_BODY_GAP_CSS + phoneMonth.headerCss + phoneMonth.rowEdgesCss[rowIndex + 1])) else Modifier.weight(1f)).fillMaxWidth()) {
                     week.forEachIndexed { columnIndex, day ->
                         val cell = rowIndex * 7 + columnIndex
                         val (shown, hidden) = visible[cell]
@@ -1729,12 +1737,9 @@ private fun CalendarMonthChips(
     }
 }
 
-/** Web phone month strip, in page css px: it starts under the toolbar at 130, its day cells at 172.78 with a 115.855 pitch, from x 16. */
-private const val PHONE_MONTH_STRIP_TOP_CSS = 130f
-private const val PHONE_MONTH_CELLS_TOP_CSS = 172.78f
-private const val PHONE_MONTH_ROW_CSS = 115.855f
+/** Phone month: the page body gap above the month is 0.75rem (global.css, page body `gap`), and the grid starts at the page gutter `max(16px, safe-left, safe-right)`. */
+private const val PHONE_MONTH_BODY_GAP_CSS = 12f
 private const val PHONE_MONTH_GRID_LEFT_CSS = 16f
-private const val PHONE_MONTH_STRIP_TOP_PAD = 0
 
 /** Web `.calendar-chip`: 24 dp, 3 dp availability border, one line of title (series groups read "Title · 3x"). */
 @Composable

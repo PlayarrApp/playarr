@@ -27,16 +27,21 @@ private const val ASCENT_EM = 1.011f
 private const val DESCENT_EM = 0.353f
 
 /**
- * CSS puts half the leading above and below the content area, whose ascent and descent Chromium rounds to whole device
- * pixels. Compose splits the unrounded metrics, so this maps Chromium's baseline to a [LineHeightStyle.Alignment] ratio per size.
+ * Chromium's inline box: ascent and descent are rounded to whole css px, and the leading above the text is the half leading
+ * floored to a whole css px (`CalculateLeadingSpace`, a LayoutUnit floor), the rest goes below. Compose splits the unrounded
+ * metrics by a ratio, so this maps Chromium's baseline (css px from the line top) to a [LineHeightStyle.Alignment] ratio.
+ * [fontPx] and [linePx] are device px, [density] converts to css px (1 dp = 1 css px).
  */
-private fun cssBaselineRatio(fontPx: Float, linePx: Float): Float {
+private fun cssBaselineRatio(fontPx: Float, linePx: Float, density: Float): Float {
     val a = ASCENT_EM * fontPx
     val d = DESCENT_EM * fontPx
     val extra = linePx - (a + d)
-    if (kotlin.math.abs(extra) < 0.5f) return 0.5f
-    val baseline = (linePx - (a.roundToInt() + d.roundToInt())) / 2f + a.roundToInt()
-    return ((baseline - a) / extra).coerceIn(0f, 1f)
+    if (kotlin.math.abs(extra) < 0.05f) return 0.5f
+    val aCss = (ASCENT_EM * fontPx / density).roundToInt()
+    val dCss = (DESCENT_EM * fontPx / density).roundToInt()
+    val lineCss = linePx / density
+    val baselineCss = kotlin.math.floor((lineCss - (aCss + dCss)) / 2f) + aCss
+    return ((baselineCss * density - a) / extra).coerceIn(0f, 1f)
 }
 
 @Composable
@@ -48,7 +53,7 @@ private fun webStyle(style: TextStyle, fontSize: TextUnit, lineHeight: TextUnit)
     val size = (if (fontSize.isSpecified) fontSize else style.fontSize)
     val line = (if (lineHeight.isSpecified) lineHeight else style.lineHeight)
     if (!size.isSp || !line.isSp) return style
-    val ratio = with(density) { cssBaselineRatio(size.toPx(), line.toPx()) }
+    val ratio = with(density) { cssBaselineRatio(size.toPx(), line.toPx(), density.density) }
     return style.copy(lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment(ratio), LineHeightStyle.Trim.None))
 }
 
