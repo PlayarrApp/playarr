@@ -545,10 +545,10 @@ struct TVHomeView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: max(8, headingH - 20)) {
             Text(title)
-                .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, weight: .semibold))
-                .tracking(-0.5)
+                .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, css: TVWeb.railHeadingWeight))
+                .tracking(TVWeb.railHeadingTracking)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
-                .parityLayout(text: title, role: "heading", size: DesignTokens.Shell.railHeadingSize, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.5)
+                .parityLayout(text: title, role: "heading", size: DesignTokens.Shell.railHeadingSize, weight: Int(TVWeb.railHeadingWeight), color: DesignTokens.Color.textPrimary, tracking: TVWeb.railHeadingTracking)
             // Native tvOS card buttons + explicit FocusState. No focusScope:
             // that traps focus inside the rail and blocks Left → dock.
             ScrollView(.horizontal, showsIndicators: false) {
@@ -623,10 +623,10 @@ struct TVHomeView: View {
 
         return ZStack(alignment: .topLeading) {
             Text("Start watching")
-                .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, weight: .semibold))
-                .tracking(-0.5)
+                .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, css: TVWeb.railHeadingWeight))
+                .tracking(TVWeb.railHeadingTracking)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
-                .parityLayout(text: "Start watching", size: DesignTokens.Shell.railHeadingSize, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.5)
+                .parityLayout(text: "Start watching", size: DesignTokens.Shell.railHeadingSize, weight: Int(TVWeb.railHeadingWeight), color: DesignTokens.Color.textPrimary, tracking: TVWeb.railHeadingTracking)
                 .offset(x: x0, y: y1 - headingH)
 
             ForEach(Array(startWatching.enumerated()), id: \.element.id) { index, work in
@@ -640,10 +640,10 @@ struct TVHomeView: View {
             }
 
             Text("New movies")
-                .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, weight: .semibold))
-                .tracking(-0.5)
+                .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, css: TVWeb.railHeadingWeight))
+                .tracking(TVWeb.railHeadingTracking)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
-                .parityLayout(text: "New movies", size: DesignTokens.Shell.railHeadingSize, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.5)
+                .parityLayout(text: "New movies", size: DesignTokens.Shell.railHeadingSize, weight: Int(TVWeb.railHeadingWeight), color: DesignTokens.Color.textPrimary, tracking: TVWeb.railHeadingTracking)
                 .offset(x: x0, y: y2 - headingH)
 
             ForEach(Array(newMovies.enumerated()), id: \.element.id) { index, work in
@@ -680,10 +680,10 @@ struct TVHomeView: View {
             ForEach(Array(definitions.enumerated()), id: \.offset) { railIndex, definition in
                 let top = y0 + CGFloat(railIndex) * railPitch
                 Text(definition.title)
-                    .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, weight: .semibold))
-                    .tracking(-0.5)
+                    .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, css: TVWeb.railHeadingWeight))
+                    .tracking(TVWeb.railHeadingTracking)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: definition.title, size: DesignTokens.Shell.railHeadingSize, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.5)
+                    .parityLayout(text: definition.title, size: DesignTokens.Shell.railHeadingSize, weight: Int(TVWeb.railHeadingWeight), color: DesignTokens.Color.textPrimary, tracking: TVWeb.railHeadingTracking)
                     .offset(x: x0, y: top - headingOffset)
                 railCards(definition.works, railIndex: railIndex, top: top, x0: x0, cardPitch: cardPitch)
             }
@@ -862,10 +862,10 @@ struct TVHomeView: View {
     private func rail(title: String, works: [Work]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(title)
-                .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, weight: .semibold))
-                .tracking(-0.5)
+                .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, css: TVWeb.railHeadingWeight))
+                .tracking(TVWeb.railHeadingTracking)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
-                .parityLayout(text: title, role: "heading", size: DesignTokens.Shell.railHeadingSize, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.5)
+                .parityLayout(text: title, role: "heading", size: DesignTokens.Shell.railHeadingSize, weight: Int(TVWeb.railHeadingWeight), color: DesignTokens.Color.textPrimary, tracking: TVWeb.railHeadingTracking)
                 .padding(.leading, DesignTokens.Shell.railTrackLeftFade)
                 .padding(.bottom, 17)
             HStack(spacing: DesignTokens.Shell.homeCardGap) {
@@ -933,20 +933,21 @@ struct TVHomeCard: View {
 
             // `.tv-home-card > strong` / `small`
             Text(work.title)
-                .font(TVTheme.font(size: 11.33, weight: .semibold))
+                .font(TVTheme.font(size: TVWeb.cardTitleSize, css: TVWeb.cardTitleWeight))
+                .tracking(TVWeb.cardTitleTracking)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .lineLimit(1)
-                .parityLayout(text: work.title, size: 11.33, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary)
+                .parityLayout(text: work.title, size: TVWeb.cardTitleSize, weight: Int(TVWeb.cardTitleWeight), color: DesignTokens.Color.textPrimary, tracking: TVWeb.cardTitleTracking)
                 .frame(width: DesignTokens.Shell.homeCardWidth, height: 17, alignment: .leading)
                 .padding(.top, 10)
             Text(
                 [work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }]
                     .compactMap { $0 }.joined(separator: " · ")
             )
-                .font(TVTheme.font(size: 8.64, weight: .regular))
+                .font(TVTheme.font(size: TVWeb.cardMetaSize, css: TVWeb.regularWeight))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
                 .parityLayout(text: [work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }]
-                    .compactMap { $0 }.joined(separator: " · "), size: 8.64, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
+                    .compactMap { $0 }.joined(separator: " · "), size: TVWeb.cardMetaSize, weight: Int(TVWeb.regularWeight), color: DesignTokens.Color.textDisabled)
                 .frame(width: DesignTokens.Shell.homeCardWidth, height: 13, alignment: .leading)
                 .padding(.top, 2.5)
         }
@@ -1128,8 +1129,8 @@ struct TVHomeHeroCopy: View {
     @State private var runtime: (id: UUID, text: String?)?
 
     var body: some View {
-        let lines = TVTextWrap.lines(work.title, weight: 560, size: 69.12, kern: -4.98, width: 379.5)
-        let metaY = 303.5 + 62.2 * CGFloat(max(1, lines.count)) + 22.6
+        let lines = TVTextWrap.lines(work.title, weight: TVWeb.titleWeight, size: TVWeb.titleSize, kern: TVWeb.titleTracking, width: TVWeb.titleWrapWidth)
+        let metaY = 303.5 + TVWeb.titleLine * CGFloat(max(1, lines.count)) + 22.6
         let meta = runtime?.id == work.id ? runtime?.text : nil
         let overviewY = meta == nil ? metaY : metaY + 18 + 22.9
         ZStack(alignment: .topLeading) {
@@ -1140,7 +1141,7 @@ struct TVHomeHeroCopy: View {
                 .parityLayout(text: [work.kind.rawValue, work.genres.first].compactMap { $0 }.joined(separator: " \u{00B7} ").uppercased(), size: 12.29, weight: Int(860), color: DesignTokens.Stage.brandInk, tracking: 0.98)
                 .placed(x: 153.6, y: 259.2, w: 455, h: 18.4)
             TVHeroTitle(title: work.title)
-                .placed(x: 153.6, y: 303.5, w: 379.5, h: 62.2 * CGFloat(max(1, lines.count)), alignment: .topLeading)
+                .placed(x: 153.6, y: 303.5, w: TVWeb.titleWrapWidth, h: TVWeb.titleLine * CGFloat(max(1, lines.count)), alignment: .topLeading)
             if let meta {
                 Text(meta)
                     .font(TVTheme.font(size: 12.864, css: 600))
@@ -1465,7 +1466,7 @@ struct TVSearchView: View {
     private func searchPreview(_ work: Work) -> some View {
         let year = TVWebFormat.year(work.releaseDate)
         let kind = work.kind.rawValue.capitalized
-        let lines = TVTextWrap.lines(work.title, weight: 560, size: 49.92, kern: -3, width: 420).count
+        let lines = TVTextWrap.lines(work.title, weight: TVWeb.panelTitleWeight, size: 49.92, kern: -3, width: 420).count
         let metaY = 330.9 + 47.4 * CGFloat(max(1, lines)) + 27
         let soft = DesignTokens.Stage.detailsSoft
         return ZStack(alignment: .topLeading) {
@@ -1476,11 +1477,11 @@ struct TVSearchView: View {
                 .parityLayout(text: [kind, year].compactMap { $0 }.joined(separator: " \u{00B7} ").uppercased(), size: TVWeb.kickerSize, weight: Int(TVWeb.detailsKickerWeight), color: DesignTokens.Stage.brandInk, tracking: TVWeb.kickerTracking)
                 .placed(x: 153.6, y: 286.6, w: 544, h: 18.4)
             Text.parityWrapped(work.title)
-                .font(TVTheme.font(size: 49.92, css: 560))
+                .font(TVTheme.font(size: 49.92, css: TVWeb.panelTitleWeight))
                 .tracking(-3)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .lineLimit(2)
-                .parityLayout(text: work.title, size: 49.92, weight: Int(560), color: DesignTokens.Color.textPrimary, tracking: -3)
+                .parityLayout(text: work.title, size: 49.92, weight: Int(TVWeb.panelTitleWeight), color: DesignTokens.Color.textPrimary, tracking: -3)
                 .frame(width: 420, alignment: .topLeading)
                 .placed(x: 153.6, y: 330.9, w: 420, h: 47.4 * CGFloat(max(1, lines)), alignment: .topLeading)
             HStack(spacing: 12.8) {

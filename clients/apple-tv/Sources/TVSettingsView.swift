@@ -124,10 +124,10 @@ struct TVSettingsView: View {
         case 0:
             ZStack(alignment: .topLeading) {
                 Text("Colour theme")
-                    .font(TVTheme.font(size: 26.4, weight: .medium))
+                    .font(TVTheme.font(size: 26.4, css: TVWeb.panelTitleWeight))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: "Colour theme", role: "heading", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
+                    .parityLayout(text: "Colour theme", role: "heading", size: 26.4, weight: Int(TVWeb.panelTitleWeight), color: DesignTokens.Color.textPrimary, tracking: -0.92)
                     .placed(x: 0, y: 210, w: 995, h: 39.6)
                 choice(["System", "Light", "Dark"], selected: displayPreferences.themePreference == .system ? 0 : (displayPreferences.themePreference == .light ? 1 : 2), widths: [342.08, 342.08, 342.08], y: 265.8) { index in
                     displayPreferences.themePreference = [.system, .light, .dark][index]
@@ -137,10 +137,10 @@ struct TVSettingsView: View {
                     .frame(width: 1046, height: 1)
                     .offset(y: 352.5)
                 Text("Home screen artwork")
-                    .font(TVTheme.font(size: 26.4, weight: .medium))
+                    .font(TVTheme.font(size: 26.4, css: TVWeb.panelTitleWeight))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: "Home screen artwork", role: "heading", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
+                    .parityLayout(text: "Home screen artwork", role: "heading", size: 26.4, weight: Int(TVWeb.panelTitleWeight), color: DesignTokens.Color.textPrimary, tracking: -0.92)
                     .placed(x: 0, y: 383.8, w: 995, h: 39.6)
                 Text("Show portrait covers instead of wide media thumbnails on the home screen.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))
@@ -156,10 +156,10 @@ struct TVSettingsView: View {
                     .offset(y: 552.5)
                 // Web Appearance > Artwork size: one size for all artwork (Home, Library, Search and more).
                 Text("Artwork size")
-                    .font(TVTheme.font(size: 26.4, weight: .medium))
+                    .font(TVTheme.font(size: 26.4, css: TVWeb.panelTitleWeight))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: "Artwork size", role: "heading", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
+                    .parityLayout(text: "Artwork size", role: "heading", size: 26.4, weight: Int(TVWeb.panelTitleWeight), color: DesignTokens.Color.textPrimary, tracking: -0.92)
                     .placed(x: 0, y: 583.8, w: 995, h: 39.6)
                 Text("Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))

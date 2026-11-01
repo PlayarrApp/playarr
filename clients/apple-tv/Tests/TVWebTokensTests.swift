@@ -17,4 +17,14 @@ final class TVWebTokensTests: XCTestCase {
         // `--dp-soft` in the dark theme is #dad6d7.
         XCTAssertEqual(TVWeb.mix(0xf4f0f1, 88, 0x1b181b), 0xdad6d7)
     }
+
+    func testDetailAndRailTypeFollowTheStylesheet() {
+        XCTAssertEqual(TVWeb.titleSize, 69.12, accuracy: 0.0001)
+        XCTAssertEqual(TVWeb.titleTracking, -4.97664, accuracy: 0.0001)
+        XCTAssertEqual(TVWeb.episodeTitleSize, 21.12, accuracy: 0.0001)
+        XCTAssertEqual(TVWeb.detailMetaLineSize, 10.56, accuracy: 0.0001)
+        XCTAssertEqual(TVWeb.synopsisSize, 12.864, accuracy: 0.0001)
+        XCTAssertEqual(TVWeb.railHeadingSize, 17.664, accuracy: 0.0001)
+        XCTAssertEqual(TVWeb.railHeadingWeight, 610)
+    }
 }

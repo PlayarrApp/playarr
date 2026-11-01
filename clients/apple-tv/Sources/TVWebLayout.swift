@@ -463,25 +463,25 @@ struct TVStageWash: View {
 /// The big title of Home, Library and detail: wraps at 379.5 like the web and keeps 62.2px lines.
 struct TVHeroTitle: View {
     var title: String
-    var cssWeight: CGFloat = 560
+    var cssWeight: CGFloat = TVWeb.titleWeight
     var role = "heading"
 
     var body: some View {
         #if os(macOS)
-        let lines = TVTextWrap.lines(title, weight: cssWeight, size: 69.12, kern: -4.98, width: 379.5, balanced: true)
+        let lines = TVTextWrap.lines(title, weight: cssWeight, size: TVWeb.titleSize, kern: TVWeb.titleTracking, width: TVWeb.titleWrapWidth, balanced: true)
         #else
-        let lines = TVTextWrap.lines(title, weight: cssWeight, size: 69.12, kern: -4.98, width: 379.5)
+        let lines = TVTextWrap.lines(title, weight: cssWeight, size: TVWeb.titleSize, kern: TVWeb.titleTracking, width: TVWeb.titleWrapWidth)
         #endif
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                 Text(line)
-                    .font(TVTheme.font(size: 69.12, css: cssWeight))
-                    .tracking(-4.98)
+                    .font(TVTheme.font(size: TVWeb.titleSize, css: cssWeight))
+                    .tracking(TVWeb.titleTracking)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
-                    .parityLayout(text: line, role: role, size: 69.12, weight: Int(cssWeight), color: DesignTokens.Color.textPrimary, tracking: -4.98)
+                    .parityLayout(text: line, role: role, size: TVWeb.titleSize, weight: Int(cssWeight), color: DesignTokens.Color.textPrimary, tracking: TVWeb.titleTracking)
                     .fixedSize()
-                    .frame(width: 379.5, height: 62.2, alignment: .leading)
+                    .frame(width: TVWeb.titleWrapWidth, height: TVWeb.titleLine, alignment: .leading)
             }
         }
     }

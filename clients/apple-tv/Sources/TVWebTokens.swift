@@ -97,4 +97,45 @@ enum TVWeb {
     /// The back arrow is a `.btn` link: `font-weight: 720` (global.css `.btn`); its size is `.tv-page-back { font-size: clamp(0.8rem, 0.9 * var(--vw), 1.1rem) }`.
     static let backArrowWeight: CGFloat = 720
     static let backArrowSize: CGFloat = clamp(0.8 * rem, 0.9 * vw, 1.1 * rem)
+
+    // MARK: Hero title and detail copy (global.css `.tv-detail-copy`)
+
+    /// `.tv-detail-title { font-size: clamp(2.2rem, 3.6 * var(--vw), 5rem); font-weight: 560; letter-spacing: -0.072em; line-height: 0.9; max-width: 9ch }`.
+    static let titleSize: CGFloat = clamp(2.2 * rem, 3.6 * vw, 5 * rem)
+    static let titleWeight: CGFloat = 560
+    static let titleTracking: CGFloat = -0.072 * titleSize
+    static let titleLine: CGFloat = layoutUnit(0.9 * titleSize)
+    /// `.tv-detail-copy { left: max(clamp(102px, 8 * var(--vw), 160px), nav clearance) }`; the title wraps at `max-width: 9ch`.
+    static let copyLeft: CGFloat = clamp(102, 8 * vw, 160)
+    static let titleWrapWidth: CGFloat = 379.5
+
+    /// `.tv-detail-copy h2:not(.tv-detail-title) { font-size: clamp(0.88rem, 1.1 * var(--vw), 1.45rem); font-weight: 570; letter-spacing: -0.035em }`.
+    static let episodeTitleSize: CGFloat = clamp(0.88 * rem, 1.1 * vw, 1.45 * rem)
+    static let episodeTitleWeight: CGFloat = 570
+    static let episodeTitleTracking: CGFloat = -0.035 * episodeTitleSize
+
+    /// `.tv-detail-meta { font-size: clamp(0.48rem, 0.55 * var(--vw), 0.68rem); gap: 0.4rem 0.85rem }`, `span:first-child { font-weight: 680 }`.
+    static let detailMetaLineSize: CGFloat = clamp(0.48 * rem, 0.55 * vw, 0.68 * rem)
+    static let detailMetaGap: CGFloat = 0.85 * rem
+    static let detailMetaLeadWeight: CGFloat = 680
+    static let regularWeight: CGFloat = 400
+
+    /// `.tv-detail-synopsis { font-size: clamp(0.58rem, 0.67 * var(--vw), 0.84rem); line-height: 1.58 }`.
+    static let synopsisSize: CGFloat = clamp(0.58 * rem, 0.67 * vw, 0.84 * rem)
+    static let synopsisLine: CGFloat = layoutUnit(1.58 * synopsisSize)
+
+    /// `.tv-detail-kicker { font-size: clamp(0.58rem, 0.64 * var(--vw), 0.78rem); font-weight: 820; letter-spacing: 0.08em }`.
+    static let detailKickerWeight820: CGFloat = 820
+    /// `.details-panel.is-flow .details-panel-title { font-weight: 560 }` and `.tv-episode-art > strong { font-weight: 560 }`.
+    static let panelTitleWeight: CGFloat = 560
+    static let episodeNumberWeight: CGFloat = 560
+
+    /// `.tv-media-track-heading h2 { font-size: clamp(0.76rem, 0.92 * var(--vw), 1.18rem); font-weight: 610; letter-spacing: -0.03em }` (rail headings).
+    static let railHeadingSize: CGFloat = clamp(0.76 * rem, 0.92 * vw, 1.18 * rem)
+    static let railHeadingWeight: CGFloat = 610
+    static let railHeadingTracking: CGFloat = -0.03 * railHeadingSize
+    /// `.tv-home-card > strong { letter-spacing: -0.015em }`.
+    static let cardTitleTracking: CGFloat = -0.015 * cardTitleSize
+    /// `.tv-empty-state-copy strong { font-weight: 650 }` (page and empty-state headings).
+    static let emptyStateWeight: CGFloat = 650
 }

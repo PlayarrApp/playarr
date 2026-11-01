@@ -598,8 +598,8 @@ struct TVCalendarView: View {
     /// and the server's actions.
     private func agendaDetail(_ entry: CalendarEntry, item: CalendarItem, today: String, model: CalendarViewModel) -> some View {
         let title = Self.title(of: item)
-        let lines = max(1, TVTextWrap.lines(title, weight: 560, size: 69.12, kern: -4.98, width: 379.5).count)
-        let metaY = 307.5 + 62.2 * CGFloat(lines) + 27
+        let lines = max(1, TVTextWrap.lines(title, weight: TVWeb.titleWeight, size: TVWeb.titleSize, kern: TVWeb.titleTracking, width: TVWeb.titleWrapWidth).count)
+        let metaY = 307.5 + TVWeb.titleLine * CGFloat(lines) + 27
         let code = item.entries.count > 1 ? "\(item.entries.count) episodes" : Self.episodeCode(entry)
         let codeLine = [code, item.entries.count > 1 ? nil : (entry.subtitle ?? "TBA")].compactMap { $0 }.joined(separator: " \u{00B7} ")
         let when = entry.releaseAt.map { Self.format($0, "EEEE, d MMMM yyyy 'at' HH:mm") }
@@ -613,7 +613,7 @@ struct TVCalendarView: View {
                 .parityLayout(text: "\(Self.kindLabel(entry)) \u{00B7} \(Self.releaseLabel(entry))".uppercased(), size: TVWeb.kickerSize, weight: Int(TVWeb.detailsKickerWeight), color: DesignTokens.Stage.brandInk, tracking: 0.98)
                 .placed(x: 153.6, y: 263.2, w: 455, h: 18.4)
             TVHeroTitle(title: title, role: "text")
-                .placed(x: 153.6, y: 307.5, w: 379.5, h: 62.2 * CGFloat(lines), alignment: .topLeading)
+                .placed(x: 153.6, y: 307.5, w: TVWeb.titleWrapWidth, h: TVWeb.titleLine * CGFloat(lines), alignment: .topLeading)
             HStack(spacing: 12.8) {
                 Text(codeLine)
                     .parityLayout(text: codeLine, size: TVWeb.detailsMetaSize, weight: Int(TVWeb.detailsTextWeight), color: soft)

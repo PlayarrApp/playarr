@@ -231,11 +231,11 @@ enum DesignTokens {
         /// intact while still wrapping "Lane" onto a third line.
         static let featureTitleMaxWidth: CGFloat = 455
         // Overview: clamp(0.58rem, 0.67vw, 0.84rem) → ~13.
-        static let featureOverviewSize: CGFloat = 13
+        static let featureOverviewSize: CGFloat = TVWeb.synopsisSize
         /// SPA overview `max-width: 42ch` at small body size ≈ 300.
         static let featureOverviewMaxWidth: CGFloat = 300
         // Rail heading: clamp(0.76rem, 0.92vw, 1.18rem) → ~18.
-        static let railHeadingSize: CGFloat = 18
+        static let railHeadingSize: CGFloat = TVWeb.railHeadingSize
         // SPA `.tv-key-art > span` watermark: top 28%, left 18%, max 34vw,
         // font-size clamp(3rem, 7vw, 9rem) → 134 @ 1920, weight 760, opacity 0.22,
         // line-height 0.82.
