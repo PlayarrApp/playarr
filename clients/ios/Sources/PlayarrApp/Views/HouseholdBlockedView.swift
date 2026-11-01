@@ -13,7 +13,7 @@ struct HouseholdBlockedView: View {
     /// its right, then two outlined pill buttons (numbers from the web layout).
     var body: some View {
         ZStack(alignment: .topLeading) {
-            WM.page.ignoresSafeArea()
+            WMPageFill()
             WMEmptyStateRow(
                 title: HouseholdCopy.title(for: block),
                 description: HouseholdCopy.description(for: block, formattedUntil: HouseholdFormat.instant(block.until)),
@@ -45,7 +45,7 @@ struct HouseholdBlockedView: View {
             .offset(x: -35, y: 20)
             .allowsHitTesting(false)
         }
-        .background(WM.page.ignoresSafeArea())
+        .background(WMPageFill())
         .accessibilityElement(children: .contain)
     }
 
@@ -57,7 +57,7 @@ struct HouseholdBlockedView: View {
                 .frame(width: width, height: 48)
                 .overlay(Capsule().strokeBorder(WM.ink.opacity(0.9), lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 
     private func note(_ text: String, color: Color) -> some View {

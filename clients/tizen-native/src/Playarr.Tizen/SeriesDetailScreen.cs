@@ -229,7 +229,7 @@ internal sealed class SeriesDetailScreen : IPage
         foreach (var c in _copy.Children.ToArray()) { _copy.Remove(c); c.Dispose(); }
         var w = _detail!.Work;
         var code = $"S{season.Season.SeasonNumber:00} · E{ep.Episode.EpisodeNumber:00}";
-        _copy.Add(Sem.Tag(Ui.Text(code, 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f), "text", $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}"));
+        _copy.Add(Sem.Tag(Ui.Text(code, 153.6f, 259.2f, 12.288f, 820, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f), "text", $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}"));
         var lines = Ui.Paragraph(_copy, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5, balance: true, role: "heading");
         var bas = 303.5f + 62.208f * lines;
         _copy.Add(Sem.Tag(Ui.Text(ep.Episode.Title ?? "", 153.6f, bas + 18.7f, 21.12f, 570, _t.InkSoft, 312, 24.288f, spacing: -0.74f), "heading"));
@@ -282,7 +282,7 @@ internal sealed class SeriesDetailScreen : IPage
 
     private void Pill(int slotIndex, View parent, string text, string glyph, float x, float y, float w, bool primary, string label, Action select, string name)
     {
-        var bg = primary ? _t.Ink : new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f);
+        var bg = primary ? _t.Ink : _t.SurfaceStrong.Mixed(0.78f);
         var box = Ui.Box(x, y, w, 64, bg, 32);
         if (!primary) { box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.075f); }
         var gw = GlyphWidth(glyph); var tsize = primary ? 11.904f : 11.136f; var textW = Ui.TextWidth(text, tsize, 700, 0); var startX = (w - (gw + 8.8f + textW)) / 2;
@@ -312,7 +312,7 @@ internal sealed class SeriesDetailScreen : IPage
 
     private void Toast(string text)
     {
-        var toast = Ui.Box(560, 960, 800, 56, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.96f), 28);
+        var toast = Ui.Box(560, 960, 800, 56, _t.SurfaceStrong.Mixed(0.96f), 28);
         toast.Add(Ui.Text(text, 0, 14, 14, 600, _t.Ink, 800, 28, HorizontalAlignment.Center));
         _root.Add(toast);
         var timer = new global::Tizen.NUI.Timer(2500);

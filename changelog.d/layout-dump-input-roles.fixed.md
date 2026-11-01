@@ -1,0 +1,1 @@
+- The parity layout dump names inputs by their implicit ARIA role (searchbox, slider, spinbutton, textbox), names whole-content controls and role=img/dialog elements, and drops the trailing letter-spacing from text run rects, so the web refs match what native clients draw.

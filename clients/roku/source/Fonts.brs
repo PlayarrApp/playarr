@@ -27,15 +27,35 @@ function PlayarrBandFor(size as Integer) as String
     return "d"
 end function
 
+' The (weight -> bands) cut at the web's own weights; keep equal to EXACT in scripts/make_font_data.py. The 100-step instances exist in every band.
+function PlayarrExactBands() as Object
+    return { "300": "d", "400": "ab", "480": "c", "500": "d", "560": "bcd", "570": "b", "580": "c", "590": "c", "600": "b", "610": "ab", "640": "ab", "650": "b", "680": "ab", "690": "a", "700": "ab", "720": "abc", "750": "b", "760": "ab", "820": "a", "860": "a", "900": "ab" }
+end function
+
+' The weight the Label really draws for a web weight at a pixel size: the instance cut at the web's own weight when the package has one
+' (fonts/NunitoSans-<weight>-<band>.ttf, scripts/make_font_data.py EXACT), otherwise the nearest hundred.
+function PlayarrDrawnWeight(weight as Integer, size as Integer) as Integer
+    g = GetGlobalAA()
+    key = "playarrDrawn_" + weight.ToStr() + "_" + PlayarrBandFor(size)
+    if g[key] <> invalid then return g[key]
+    drawn = PlayarrInstanceWeight(weight)
+    bands = PlayarrExactBands()[weight.ToStr()]
+    if bands <> invalid and Instr(1, bands, PlayarrBandFor(size)) > 0 then drawn = weight
+    if drawn <> weight and weight mod 100 = 0 then drawn = weight
+    g[key] = drawn
+    return drawn
+end function
+
 function PlayarrFontPath(weight as Integer, mono = false as Boolean, size = 0 as Integer) as String
     if mono
         if weight >= 600 then return "pkg:/fonts/JetBrainsMono-700.ttf"
         return "pkg:/fonts/JetBrainsMono-400.ttf"
     end if
-    return "pkg:/fonts/NunitoSans-" + PlayarrInstanceWeight(weight).ToStr() + "-" + PlayarrBandFor(size) + ".ttf"
+    return "pkg:/fonts/NunitoSans-" + PlayarrDrawnWeight(weight, size).ToStr() + "-" + PlayarrBandFor(size) + ".ttf"
 end function
 
-' A Font node takes an integer size: a fractional web size rounds to the nearest pixel (within the scorer's 0.5 px).
+' A Font node takes an integer size: the font is cut at the nearest whole pixel and a Label scales it to the web's fractional size
+' (PlayarrScaleFor), so the glyphs are the web's size to the hundredth.
 function PlayarrMakeFont(weight as Integer, size as Float, mono = false as Boolean) as Object
     key = "playarrFont_" + weight.ToStr() + "_" + Str(size) + "_" + mono.ToStr()
     g = GetGlobalAA()
@@ -47,6 +67,13 @@ function PlayarrMakeFont(weight as Integer, size as Float, mono = false as Boole
     if g.fontMeta = invalid then g.fontMeta = {}
     g.fontMeta[font.uri + "|" + Str(font.size)] = { px: size, weight: weight }
     return font
+end function
+
+' Scale of a Label drawn with PlayarrMakeFont(weight, size): web size / the whole-pixel size of its Font node.
+function PlayarrScaleFor(size as Float) as Float
+    n = Int(size + 0.5)
+    if n < 1 then return 1.0
+    return size / n
 end function
 
 ' Advance data of one instance (fonts/NunitoSans-<weight>.json: advances and pair kerning in units of 1000 per em).
@@ -252,4 +279,10 @@ function PlayarrSymbolWeight(ch as String, weight as Integer) as Integer
     if ch = "＋" then return 400
     if weight >= 600 then return 700
     return 400
+end function
+
+' The height of a line of Nunito Sans text on the web: Blink rounds the font's ascent (1.011 em) and descent (0.353 em, the hhea values
+' of the variable font; the bundled instances keep the ascent and carry banded descents) to whole pixels and adds them.
+function PlayarrContentHeight(size as Float) as Float
+    return Int(1.011 * size + 0.5) + Int(0.353 * size + 0.5)
 end function

@@ -83,7 +83,8 @@ directory, and `PARITY_EMULATOR_LOCK` pointing at the flock file shared with the
 
 - Web refs swapped on 31 Oct 2026. The Tizen native refs are now the tv-webos user-agent packaged-bundle capture (`web-refs.json`), repeatable across three captures on one web build, Chromium and static server; they replace the earlier xbox-UA capture. The two differ only in the nav-rail shadow, by at most 6 levels per channel and about 1 level in green and blue, over roughly 28,000 pixels per light screen. The `.app-nav-group` rule is `box-shadow: 0 14px 42px #3826211a` in both bundles and the native rail uses those values, so nothing was tuned to the capture. Scored on the new refs, the previously published captures and the r10 captures are equal on every screen except player-controls, which rises.
 
-- Player stand-in frame. The player-controls capture does not carry the video plane, so the driver supplies the clip's paused frame and `PlayerScreen.ShowStandInFrame` puts it behind the controls as a plain image; the player does not decode it. The seek bar's buffered range is a staged segment at 35 % white spanning the full track width, because the web capture plays the whole clip through first and so shows it fully buffered. It is not read from the player. The player-controls frame and its layout are therefore staged for those two items (and the hold at exactly 2.000 s is the app's own `t=2000&hold=2000` mode, as above).
+- Player stand-in frame. The player-controls capture does not carry the video plane, so the driver supplies the clip's paused frame and `PlayerScreen.ShowStandInFrame` puts it behind the controls as a plain image; the player does not decode it (the live root stays transparent for the video plane, so no black root is added for capture). The seek bar's buffered layer (web `.player-seek-buffered`, drawn from the video element's buffered ranges) is drawn from the Tizen player's `BufferingProgressChanged`, not a fixed segment; the web capture plays the whole clip first, so what it shows is full buffering and the native bar is only as wide as the player reports. The audio, subtitle and playlist buttons take their name, dimming and focusability from the playback info (audio and subtitle tracks, the selected ones) and the queue (the file being played); previous and next need a queue of more than one. The position shown is the decoder's, read back after the hold to exactly 2.000 s.
+- Player tools not wired. The quality button (the web shows it on Samsung) and the playlist button have no action yet: the native quality menu and queue panel are not built. They are drawn and focusable but their callbacks do nothing. Audio, subtitle, previous and next take their names, opacity and focus from the real PlaybackInfo tracks and queue. The audio button is enabled only for an HLS session with a track: a direct stream is one muxed source the Tizen player cannot switch tracks on, so it reads "Audio: Unavailable" and is dimmed, as the web capture does for the same clip.
 - Visibility is measured, but with limits. A candidate counts as visible only when pixels inside its own box change by 16 levels or more (`VISIBLE_DELTA`) when it is hidden, so a change below 16 levels (a very faint fill or shadow) reads as invisible. Candidates hidden together keep 3 px of clear space (`PAD`); a shadow or antialiased edge wider than that can bleed into a neighbour's box. Pixels that differ between two grabs of the unchanged screen are ignored, so a real change confined to such pixels is missed. A painted container that fails the first pass gets a second pass that hides its whole subtree, so a container whose fill sits entirely under its children counts as visible through them.
 - Transform limit. The exporter folds a view's `Scale` (about its centre unless `PositionUsesPivotPoint`) into the rect; it does not model rotation or any other transform, and a focus scale is left out of `fontSize` while the rect carries it (docs/parity/LAYOUT.md).
 - Background limit. Fills come from `BackgroundColor`, composited over the real backgrounds above them. A `BackgroundImage`, a gradient or a scrim image is not exported as a fill (generated gradients are treated as translucent and never hide what is under them), and an `ImageView` never reports a fill, so a native element that gets its look from an image has no `background` value.
@@ -162,6 +163,23 @@ python3 scripts/parity/tizen-webos/logserver.py <netlog dir>/log.txt &      # ho
 PARITY_NETLOG=<netlog dir> node scripts/parity/tizen-webos/signin-tizen.mjs   # once per install
 TIZEN_OUT=<legend dir>/tizen PARITY_NETLOG=<netlog dir> scripts/parity/tizen-webos/run-tizen.sh
 ```
+
+### Chromium stand-in raster mode
+
+The Tizen 6.5 row (Chromium 85, cand `tizen65`) runs the emulated web bundle in a Chromium 85 build started by
+`scripts/parity/tizen-webos/launch-chromium.sh` (`CHROME_BIN`, `PROFILE_DIR`, `URL`, `DISPLAY`, optional `UA`; the webOS
+stand-in can reuse it with its own UA). The default is CPU raster (`--disable-gpu --num-raster-threads=1`), which is what
+the web references use (Chromium 151, software raster) and is byte-deterministic between twin runs.
+
+GPU raster over SwiftShader (`RASTER=gpu`: `--use-gl=swiftshader --ignore-gpu-blocklist --enable-gpu-rasterization`) was
+evaluated on 1 Nov 2026 and is not adopted. It changes the harness engine, not the app. Measured on Chromium 85 against the
+software-raster web refs: the `.tv-stage-wash` overlay renders the token colour exactly (the CPU path loses one level to
+the 8 bit quantisation of a premultiplied alpha gradient), and the Tizen 6.5 row rose from 73.65 to 78.57 (overall 43.86 to
+44.12); calendar-week (dark, light) and calendar-month (light) dipped. Two runs with this helper were byte-identical; a run
+made with an earlier hand-written launch line differed in 52 px of one screen. It stays opt-in because the adoption
+condition "real Tizen 6.5 TVs rasterise on the GPU" has no evidence: no Samsung or Chromium document states it for the
+web engine and no `chrome://gpu` output from a Tizen device exists. On webOS (Chromium 94) the same flags only cut the
+differing pixels from 65.9 % to 39.9 %. Revisit when device evidence exists.
 
 ### webOS documented exceptions (not chased)
 

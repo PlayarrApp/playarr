@@ -107,7 +107,9 @@ struct PlayarrHeaderPill: View {
             .foregroundStyle(isFocused ? PlayarrStyle.ink : PlayarrStyle.muted)
             .padding(.horizontal, 4)
             .frame(minWidth: iconOnly ? 44 : 62, minHeight: iconOnly ? 44 : 72)
-            .background(PlayarrStyle.surfaceStrong.opacity(0.78), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            // Web `.action-pill`: 78% surface-strong over the shell (the shell action column sits outside the page fill),
+            // a real button box with its own fill and 14 radius.
+            .parityShape("button", name: accessibilityLabel ?? label, color: PlayarrStyle.surfaceStrong.opacity(0.78), in: RoundedRectangle(cornerRadius: 14, style: .continuous), radius: 14)
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(PlayarrStyle.lineStrong.opacity(0.68), lineWidth: 1)
             }
@@ -129,7 +131,8 @@ struct PlayarrHeaderPill: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
+        .parityFill(WM.shell) // the header actions sit over the shell colour, not the page fill
         .accessibilityLabel(accessibilityLabel ?? label)
     }
 }

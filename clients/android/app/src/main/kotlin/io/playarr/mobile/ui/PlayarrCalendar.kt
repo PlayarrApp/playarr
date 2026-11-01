@@ -23,6 +23,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.composed
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.withStyle
@@ -82,7 +85,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import io.playarr.shared.designsystem.page.Surface
-import androidx.compose.material3.Text
+import io.playarr.shared.designsystem.page.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -376,9 +379,9 @@ private fun PhoneCalendarHeader(state: CalendarUiState, locale: Locale, holder: 
     // The static web refs (2026-10-24, focus dropped before every shot) draw no Today ring on open, so the ring flag starts off
     // (the earlier live refs showed web's focus ring on Today until the first toolbar action).
     var todayRing by remember { mutableStateOf(false) }
-    Row(
-        Modifier.fillMaxWidth().height(44.dp).offset(y = if (state.mode == CalendarViewMode.Agenda) (-18.5).dp else 0.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically,
+    WebCssEndRow(
+        gapCss = 8f, heightCss = 44f,
+        modifier = Modifier.fillMaxWidth().offset(y = if (state.mode == CalendarViewMode.Agenda) (-18.5).dp else 0.dp),
     ) {
         PhoneCalendarToolbarPill(title, { todayRing = false; onJump() }, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         PhoneCalendarRound(Modifier, "\u2190", playarrString(PlayarrString.CalendarPrevious)) { todayRing = false; holder.previous() }
@@ -697,7 +700,8 @@ internal fun TvCalendarAgenda(
     val stagedConfig = androidx.compose.ui.platform.LocalConfiguration.current
     UnstagedForWebCssPx {
     androidx.compose.runtime.CompositionLocalProvider(LocalCalendarMetrics provides (if (tablet) PhoneCalendarMetrics else TvCalendarMetrics), LocalCalendarToday provides today, LocalCalendarTabletAgenda provides tablet) {
-        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+        val agendaOrigin = remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().onGloballyPositioned { agendaOrigin.value = it.positionInWindow() }) {
             // Web: the date range lives in the header group; the details panel takes the library stage (eyebrow at y 259)
             // and the day list starts under the header. Both panes end at the bottom of the screen.
             val detailsTop = if (tablet) 294.3.dp else 264.dp
@@ -705,6 +709,8 @@ internal fun TvCalendarAgenda(
             val listStart = if (tablet) 534.dp else 783.dp
             // Tablet web: the list ends at x 1193, clear of the right action column (measured on the 1280 x 800 static refs).
             val listWidth = if (tablet) (maxWidth - listStart - 87.dp) else 1033.4.dp
+            // Web `ListPanel` (.tv-library-grid-panel): the right 65% carries the library frost gradient, full height; the pinned day headings paint the same frost over it.
+            if (!tablet) Box(Modifier.offset(x = maxWidth * 0.35f).width(maxWidth * 0.65f).fillMaxHeight().background(webRailSurfaceBrush()))
             val dayFont = LocalCalendarMetrics.current
             val detailScroll = rememberScrollState()
             // The details are the library hero: keep them on the stage (1920 values); only the day list is in css px.
@@ -761,13 +767,20 @@ internal fun TvCalendarAgenda(
                         if (day != null) {
                             item(key = "day-$day") {
                                 // Web: the day heading is one block as wide as the list that holds its date and its Today badge.
-                                Row(Modifier.fillMaxWidth().padding(top = if (index > 0) (if (tablet) 25.dp else 26.dp) else 0.dp, bottom = if (tablet) 43.dp else if (index > 0) 40.dp else 39.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                // Web `.calendar-day > h3`: a 2.75rem box carrying the panel frost (fixed to the viewport) over the page base.
+                                val headingGap = if (tablet) 0f else AGENDA_HEADING_HEIGHT - dayFont.dayHeadingLine
+                                Box(
+                                    Modifier.fillMaxWidth().padding(top = if (index > 0) (if (tablet) 25.dp else 26.dp) else 0.dp, bottom = if (tablet) 43.dp else (if (index > 0) 40f else 39f).minus(headingGap).dp)
+                                        .then(if (tablet) Modifier else Modifier.height(AGENDA_HEADING_HEIGHT.dp).agendaHeadingFrost(agendaOrigin.value, maxWidth.value).semantics { heading() }),
+                                ) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     // Static web refs (television): the day heading is --accent at weight 640, a plain text run.
                                     Text(
                                         phoneCalendarDayHeading(day, locale), color = if (tablet) WebInk else io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent, fontSize = dayFont.dayHeading.sp, lineHeight = dayFont.dayHeadingLine.sp, fontWeight = FontWeight(if (tablet) 560 else 640),
                                         style = WebTextStyle, modifier = if (tablet) Modifier.semantics { heading() } else Modifier,
                                     )
                                     if (day == today) CalendarTodayBadge(tv = !tablet)
+                                }
                                 }
                             }
                         } else if (item != null) {
@@ -1462,9 +1475,14 @@ internal fun CalendarMonth(
     BoxWithConstraints(modifier) {
         val wide = isTelevision || maxWidth >= 840.dp
         if (!wide) {
-            // Web phone: the same month grid as on a television, 103 dp columns in a horizontally scrolling strip (measured on the live page).
-            Box(modifier.fillMaxSize().horizontalScroll(rememberScrollState())) {
-                CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.width(721.dp).height(34.dp + 117.5.dp * rows.size).padding(top = 8.dp), true, phoneStrip = true)
+            // Web phone `.calendar-month`: a 720 css px grid scrolling sideways, laid out from its css by webPhoneMonth (1/64 LayoutUnit, `1fr` tracks, page bottom padding).
+            val d = androidx.compose.ui.platform.LocalDensity.current
+            val windowHeightCss = androidx.compose.ui.platform.LocalView.current.rootView.height.let { Math.round(it / d.density).toFloat() } // a web viewport is a whole number of css px
+            var slotTopCss by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+            val month = webPhoneMonth(slotTopCss + PHONE_MONTH_BODY_GAP_CSS, windowHeightCss, rows.size)
+            Box(modifier.fillMaxSize().onGloballyPositioned { slotTopCss = it.positionInWindow().y / d.density }.horizontalScroll(rememberScrollState())) {
+                val cellsTop = slotTopCss + PHONE_MONTH_BODY_GAP_CSS + month.headerCss
+                CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.width(720.dp).height(rememberWebSpan(slotTopCss, cellsTop + month.rowEdgesCss.last())), true, phoneStrip = true, phoneMonth = month, phoneSlotTopCss = slotTopCss)
             }
             return@BoxWithConstraints
         }
@@ -1588,6 +1606,9 @@ private fun CalendarMonthChips(
     isTelevision: Boolean = false,
     /** The phone's scrolling strip: web draws three lines per cell there, with the header row 8 dp deeper. */
     phoneStrip: Boolean = false,
+    /** The phone month resolved from its css, and the page position of its slot (css px). */
+    phoneMonth: WebPhoneMonth? = null,
+    phoneSlotTopCss: Float = 0f,
     /** Tablet web at 1280 x 800: the TV cell with 7.5 px more above the lines and 14 px more under them. */
     tabletCss: Boolean = false,
 ) {
@@ -1598,7 +1619,7 @@ private fun CalendarMonthChips(
         entries.groupBy { it.date }.mapValues { (_, day) -> groupSeriesEpisodes(day.sortedBy { it.releaseAt }, zone) }
     }
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
-        val headerHeight = if (phoneStrip) 34.dp else if (tabletCss) 27.75.dp else if (isTelevision) 24.dp else 26.dp
+        val headerHeight = if (phoneStrip) rememberWebSpan(phoneSlotTopCss, phoneSlotTopCss + PHONE_MONTH_BODY_GAP_CSS + phoneMonth!!.headerCss) else if (tabletCss) 27.75.dp else if (isTelevision) 24.dp else 26.dp
         val cellHeight = (maxHeight - headerHeight) / rows.size
         // Web: chips that fit = (cell height - 52) / 26, between 1 and 5; when more exist the last slot is "+N more".
         // Web TV text lines: 25 dp lines above a footer with the day number and "+N more", so the count never takes a line.
@@ -1613,17 +1634,18 @@ private fun CalendarMonthChips(
         val slots = remember(visible) { visible.map { (shown, hidden) -> shown.size + if (hidden > 0) 1 else 0 } }
         val requesters = remember(slots) { slots.map { n -> List(n) { FocusRequester() } } }
         // Web's seven `1fr` columns: each edge is the rounded cumulative position, so no column drifts (a weighted Row ends 1.6 px off).
-        val columnEdges = IntArray(8) { Math.round(it * constraints.maxWidth / 7f) }
+        // Phone strip: the grid is 720 css px wide from x 16 and its edges are the browser's rounded css positions.
+        val columnEdges = IntArray(8) { if (phoneStrip) Math.round((PHONE_MONTH_GRID_LEFT_CSS + phoneMonth!!.columnEdgesCss[it]) * androidx.compose.ui.platform.LocalDensity.current.density) - Math.round(PHONE_MONTH_GRID_LEFT_CSS * androidx.compose.ui.platform.LocalDensity.current.density) else Math.round(it * constraints.maxWidth / 7f) }
         val columnDensity = androidx.compose.ui.platform.LocalDensity.current
         fun columnWidth(column: Int): Dp = with(columnDensity) { (columnEdges[column + 1] - columnEdges[column]).toDp() }
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth().height(headerHeight)) {
                 calendarWeekdayLabels(firstDay, locale).forEachIndexed { labelIndex, label ->
-                    Text(label.uppercase(locale), color = if (isTelevision && tabletCss) WebInkSoft else WebInkMuted, fontSize = 12.sp, letterSpacing = if (isTelevision) 0.96.sp else 1.sp, textAlign = TextAlign.Center, modifier = (if (isTelevision) Modifier.width(columnWidth(labelIndex)) else Modifier.weight(1f)).padding(top = if (phoneStrip) 7.dp else 0.dp).then(if (isTelevision && !tabletCss) Modifier.offset(y = (-3.6).dp) else Modifier))
+                    Text(label.uppercase(locale), color = if (isTelevision && tabletCss) WebInkSoft else WebInkMuted, fontSize = 12.sp, letterSpacing = if (isTelevision) 0.96.sp else 1.sp, textAlign = TextAlign.Center, modifier = (if (isTelevision) Modifier.width(columnWidth(labelIndex)) else Modifier.weight(1f)).padding(top = if (phoneStrip) (PHONE_MONTH_BODY_GAP_CSS + phoneMonth!!.weekdayPadCss).dp else 0.dp).then(if (isTelevision && !tabletCss && !phoneStrip) Modifier.offset(y = (-3.6).dp) else Modifier), lineHeight = if (phoneStrip) phoneMonth!!.weekdayLineCss.sp else androidx.compose.ui.unit.TextUnit.Unspecified, style = if (phoneStrip) androidx.compose.material3.LocalTextStyle.current.copy(lineHeightStyle = io.playarr.shared.designsystem.page.WebLineBox) else androidx.compose.material3.LocalTextStyle.current)
                 }
             }
             rows.forEachIndexed { rowIndex, week ->
-                Row(Modifier.weight(1f).fillMaxWidth()) {
+                Row((if (phoneStrip) Modifier.height(rememberWebSpan(phoneSlotTopCss + PHONE_MONTH_BODY_GAP_CSS + phoneMonth!!.headerCss + phoneMonth.rowEdgesCss[rowIndex], phoneSlotTopCss + PHONE_MONTH_BODY_GAP_CSS + phoneMonth.headerCss + phoneMonth.rowEdgesCss[rowIndex + 1])) else Modifier.weight(1f)).fillMaxWidth()) {
                     week.forEachIndexed { columnIndex, day ->
                         val cell = rowIndex * 7 + columnIndex
                         val (shown, hidden) = visible[cell]
@@ -1650,7 +1672,7 @@ private fun CalendarMonthChips(
                                 Column(Modifier.weight(1f)) {
                                     shown.forEachIndexed { slot, item ->
                                         CalendarLine(
-                                            item, calendarItemTone(item, today, zone), onClick = { onSelect(item) }, inMonth = inMonth,
+                                            item, calendarItemTone(item, today, zone), onClick = { onSelect(item) }, inMonth = inMonth, tvGlyphLift = !phoneStrip && !tabletCss,
                                             modifier = Modifier.weight(1f).wrapContentHeight(Alignment.Top).focusRequester(requesters[cell][slot]).calendarDpad(handleKey(slot)).calendarFocusReveal(),
                                         )
                                     }
@@ -1714,6 +1736,10 @@ private fun CalendarMonthChips(
         }
     }
 }
+
+/** Phone month: the page body gap above the month is 0.75rem (global.css, page body `gap`), and the grid starts at the page gutter `max(16px, safe-left, safe-right)`. */
+private const val PHONE_MONTH_BODY_GAP_CSS = 12f
+private const val PHONE_MONTH_GRID_LEFT_CSS = 16f
 
 /** Web `.calendar-chip`: 24 dp, 3 dp availability border, one line of title (series groups read "Title · 3x"). */
 @Composable
@@ -2220,7 +2246,7 @@ internal fun calendarRangeLabelShort(mode: CalendarViewMode, anchor: LocalDate, 
 
 /** Web `.calendar-line`: a 25 dp row, a 9 dp dot in the tone colour, the 12.48 px title (a group is bold, "Title · 2×"). */
 @Composable
-private fun CalendarLine(item: CalendarItem, tone: CalendarPillTone, onClick: () -> Unit, modifier: Modifier = Modifier, inMonth: Boolean = true) {
+private fun CalendarLine(item: CalendarItem, tone: CalendarPillTone, onClick: () -> Unit, modifier: Modifier = Modifier, inMonth: Boolean = true, tvGlyphLift: Boolean = false) {
     val source = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(4.dp)
     val label = when (item) {
@@ -2250,8 +2276,9 @@ private fun CalendarLine(item: CalendarItem, tone: CalendarPillTone, onClick: ()
         Box(Modifier.size(8.8.dp).parityBackground("container", dot, CircleShape, radius = 999f))
         Text(
             label, color = WebInk, fontSize = 12.48.sp, lineHeight = 14.976.sp, fontWeight = if (item is CalendarItem.Series) FontWeight(680) else FontWeight.Normal,
-            // Web sets the 17 px glyph box 12.5 px under the chip's top; Compose's centred line sits 1.9 dp lower.
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 7.dp).offset(y = (-2).dp),
+            // Web TV sets the 17 px glyph box 12.5 px under the chip's top; Compose's centred line sits 1.9 dp lower. Phone and tablet keep the
+            // centred line (their web glyph box sits 12.5 px under the chip top too, and the unshifted line is 0.9 px off, not 1.9).
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 7.dp).then(if (tvGlyphLift) Modifier.offset(y = (-2).dp) else Modifier),
         )
     }
 }
@@ -2267,3 +2294,34 @@ private fun calendarEntryToneLabel(item: CalendarItem, zone: ZoneId): String = p
         CalendarPillTone.Neutral -> PlayarrString.CalendarPillNotTracked
     },
 )
+
+/** Web `--agenda-heading-h` (2.75rem): the pinned day heading box. */
+private const val AGENDA_HEADING_HEIGHT = 44f
+
+/**
+ * Web `.calendar-agenda-content .calendar-day > h3` background: the library panel's left-to-right frost
+ * (`--agenda-panel-frost`, stops over `--tv-rail-frost` = surface-soft 44% (dark) / 48% (light) mixed into surface-strong),
+ * `background-attachment: fixed`, sized 65vw x 100vh at right top, over `--agenda-heading-base` (bg in dark, surface in light).
+ * [origin] is the agenda container's window position, so the gradient stays anchored to the viewport as the row moves.
+ */
+private fun Modifier.agendaHeadingFrost(origin: androidx.compose.ui.geometry.Offset, viewportWidth: Float): Modifier = composed {
+    val position = remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    val dark = webIsDark
+    val base = if (dark) WebBackground else WebSurface
+    val frost = androidx.compose.ui.graphics.lerp(WebSurfaceStrong, WebSurfaceSoft, if (dark) 0.44f else 0.48f)
+    val stops = if (dark) listOf(0f to 0f, 0.12f to 0.72f, 0.34f to 0.90f, 0.62f to 0.97f, 1f to 1f)
+    else listOf(0f to 0f, 0.12f to 0.68f, 0.34f to 0.88f, 0.62f to 0.96f, 1f to 1f)
+    this
+        .onGloballyPositioned { position.value = it.positionInWindow() - origin }
+        .drawBehind {
+            val left = viewportWidth * 0.35f * density - position.value.x
+            val right = viewportWidth * density - position.value.x
+            drawRect(base)
+            drawRect(
+                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                    colorStops = stops.map { (at, alpha) -> at to frost.copy(alpha = alpha) }.toTypedArray(),
+                    startX = left, endX = right,
+                ),
+            )
+        }
+}

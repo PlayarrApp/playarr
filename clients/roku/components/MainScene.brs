@@ -426,7 +426,6 @@ sub init()
     m.avatarCustomUri = ""
     m.userAvatar = m.top.findNode("userAvatar")
     m.userAvatarBg = m.top.findNode("userAvatarBg")
-    m.userAvatarBg.id = "a11y|container|10|"
     m.userAvatarCustomMask = m.top.findNode("userAvatarCustomMask")
     m.userAvatarCustom = m.top.findNode("userAvatarCustom")
     applyShellAvatar()
@@ -2147,9 +2146,15 @@ sub applyShellAvatar()
         m.userAvatarCustom.uri = m.avatarCustomUri
         m.userAvatarCustomMask.visible = true
         m.userAvatar.uri = ""
+        m.userAvatarBg.uri = ""
+        m.userAvatarBg.id = "userAvatarBg"
     else
         m.userAvatarCustomMask.visible = false
-        m.userAvatar.uri = "pkg:/images/avatar-" + currentAvatarPresetId(m.profileId) + ".png"
+        preset = currentAvatarPresetId(m.profileId)
+        ' The disc is a painted bitmap of its own (the web's rounded avatar container); the mascot image sits on it.
+        m.userAvatarBg.uri = "pkg:/images/avatar-bg-" + preset + ".png"
+        m.userAvatarBg.id = "a11y|container|10|"
+        m.userAvatar.uri = "pkg:/images/avatar-" + preset + ".png"
     end if
 end sub
 
@@ -2912,7 +2917,7 @@ sub applyBrowseView()
         m.browseGrid.itemSize = [210.7, 349]
         m.browseGrid.itemSpacing = [0, 0]
         ' The cards reserve the focus lift and ring inside the cell (8 px sides, 15 px top), so the grid sits that far out.
-        m.browseGrid.translation = [775.4, 139]
+        m.browseGrid.translation = [WebGridLeft(), 139]
     else if m.browseView = "list"
         ' Web list view: a 173 x 97 thumbnail with the title and genre line beside it, 122 px apart.
         m.browseGrid.numColumns = 1
@@ -2922,7 +2927,7 @@ sub applyBrowseView()
         m.browseGrid.translation = [792, 157]
     else
         applyBrowseArtworkSize()
-        m.browseGrid.translation = [775.4, 139]
+        m.browseGrid.translation = [WebGridLeft(), 139]
     end if
 end sub
 
@@ -2940,7 +2945,7 @@ sub applyBrowseArtworkSize()
     else
         m.browseGrid.numColumns = 3
         m.browseGrid.numRows = 4
-        m.browseGrid.itemSize = [353.5, 240.5]
+        m.browseGrid.itemSize = [WebGridPitchX(), WebGridPitchY()]
         m.browseGrid.itemSpacing = [0, 0]
     end if
 end sub
@@ -2952,7 +2957,8 @@ end sub
 function browseCardScale() as Float
     if m.browseArtworkSize = "small" then return 240.0 / 220.0
     if m.browseArtworkSize = "large" then return 480.0 / 220.0
-    return 327.2 / 220.0
+    ' PosterCard is authored at 220 px wide; the web card is --card-w (WebCardWidth in Theme.brs).
+    return WebCardWidth() / 220.0
 end function
 
 ' Mirrors web Library.tsx aside.tv-library-preview + TvStageShell key art.
@@ -3129,8 +3135,13 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
         ' The browse grid sits 8 px higher and each card 8 px lower in its cell: the lift and ring are not clipped at the top row.
         item.AddField("padTop", "float", false)
         if grid.id = "browseGrid" then item.padTop = 8
-        ' Web rows sit 240.33 px apart and the grid takes whole pixels: from the third row the card is 1 px lower (tops 162, 402, 643, 883).
-        if grid.id = "browseGrid" and m.browseArtworkSize <> "small" and m.browseArtworkSize <> "large" and artIndex >= 2 * m.browseGrid.numColumns then item.padTop = 9
+        ' Web rows sit WebGridPitchY apart and the grid places each at a whole pixel (floor), the web rounds: shift the card where they differ.
+        ' Columns are one whole-pixel pitch apart, so each card moves right by its column's remainder.
+        item.AddField("colShift", "float", false)
+        if grid.id = "browseGrid" and m.browseArtworkSize <> "small" and m.browseArtworkSize <> "large"
+            item.padTop = item.padTop + WebGridRowShift(Int(artIndex / m.browseGrid.numColumns))
+            item.colShift = WebGridColumnShift(artIndex mod m.browseGrid.numColumns)
+        end if
         ' Screen view reserves the focus lift, ring and glow overflow inside the grid's clip (8 px sides, 15 px top, grid shifted to match).
         if grid.id = "browseGrid" and (m.browseView = "screen" or m.browseView = "cover")
             item.AddField("focusRingOutsideArt", "boolean", false)
@@ -3167,7 +3178,7 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
             x = m.browseGrid.translation[0] + 8 + column * (m.browseGrid.itemSize[0] + m.browseGrid.itemSpacing[0])
             y = m.browseGrid.translation[1] + 15 + rowIndex * (m.browseGrid.itemSize[1] + m.browseGrid.itemSpacing[1]) + item.padTop
             artWidth = 220 * cardScale
-            artHeight = 124 * cardScale
+            artHeight = artWidth * 9 / 16
             slot = m.artActiveScope + "-r" + rowIndex.ToStr() + "-c" + column.ToStr()
             if artRectVisible(x, y, artWidth, artHeight)
                 addPosterArtTelemetry(item, m.artActiveGeneration, m.artActiveScope, slot, 0)
@@ -3208,9 +3219,9 @@ sub onBrowseItemFocused(event as Object)
     ' Web keeps the focused row 70 px clear of the bottom edge once the grid scrolls (its rows then sit 56 px higher).
     if m.browseView = "screen"
         if Int(itemIndex / m.browseGrid.numColumns) >= 4
-            m.browseGrid.translation = [775.4, 83]
+            m.browseGrid.translation = [WebGridLeft(), 83]
         else
-            m.browseGrid.translation = [775.4, 139]
+            m.browseGrid.translation = [WebGridLeft(), 139]
         end if
     end if
     moreAvailable = m.browseTotal = invalid or m.browseItems.Count() < m.browseTotal
@@ -4016,8 +4027,9 @@ function createHomeRail(contentTarget as Object) as Object
     ' card's lifted/scaled outer ring. The extra item height contains the
     ' full shadow canvas below the art, so its blur fades before the RowList
     ' clip instead of ending at the old 262 px row boundary.
-    row.rowItemSize = [[343, 320]]
-    row.rowItemSpacing = [[9, 0]]
+    row.rowItemSize = [[WebRailCellWidth(), 320]]
+    ' Rail pitch = web card (--card-w) + .tv-home-rail gap (WebRailGap) = 352.13; the row item is WebRailCellWidth (card plus the focus-ring inset).
+    row.rowItemSpacing = [[WebCardWidth() + WebRailGap() - WebRailCellWidth(), 0]]
     row.rowHeights = [320]
     row.showRowLabel = false
     row.focusXOffset = [96]
@@ -4504,11 +4516,11 @@ sub finishHomeLoad()
             rail.row.itemSize = [1232, 423]
             rail.row.rowHeights = [423]
         else
-            rail.row.rowItemSize = [[343, 320]]
+            rail.row.rowItemSize = [[WebRailCellWidth(), 320]]
             rail.row.itemSize = [1232, 320]
             rail.row.rowHeights = [320]
         end if
-        buildRailContent(rail.row, rail.works, isActiveRail, 1.4864, m.artActiveGeneration, "home", railIndex)
+        buildRailContent(rail.row, rail.works, isActiveRail, WebCardWidth() / 220.0, m.artActiveGeneration, "home", railIndex)
         m.visibleRails.Push({ row: rail.row, works: rail.works, first: 0, col: 0, last: 0, jumping: -1, rightAligned: false })
         ' Rails sit 366 px apart (web .tv-home-rail rhythm with the 327 px cards); 470 px with covers.
         y += homeRailPitch()
@@ -4780,7 +4792,7 @@ function moveHomeFocus(delta as Integer) as Boolean
     if oldIndex >= 0 and oldIndex < m.visibleRails.Count()
         oldRail = m.visibleRails[oldIndex]
         oldRail.row.SetFocus(false)
-        buildRailContent(oldRail.row, oldRail.works, false, 1.4864)
+        buildRailContent(oldRail.row, oldRail.works, false, WebCardWidth() / 220.0)
     end if
     m.homeFocusIndex = newIndex
     newRail = m.visibleRails[newIndex]
@@ -4797,7 +4809,7 @@ function moveHomeFocus(delta as Integer) as Boolean
         newRail.last = desired
         newRail.row.jumpToRowItem = [0, desired]
     end if
-    buildRailContent(newRail.row, newRail.works, true, 1.4864)
+    buildRailContent(newRail.row, newRail.works, true, WebCardWidth() / 220.0)
     newRail.row.SetFocus(true)
     if desired = 0 and m.homeLeftProxy <> invalid then m.homeLeftProxy.SetFocus(true)
     scrollHomeToFocusedRail()
@@ -5179,7 +5191,7 @@ sub renderNavDockFocus()
             hl = m.navHighlights[i].translation
             ' The chip (active or focused) is the link's drawn box; an idle item has only its 64 px hit box.
             m.navHits[i].visible = not showChip
-            m.navHits[i].setFields({ translation: [hl[0] + 1.8, hl[1] + 0.8], width: 64, height: 64 })
+            m.navHits[i].setFields({ translation: [hl[0] + WebNavHitInset(), hl[1] + WebNavHitInset()], width: 64, height: 64 })
             base = m.navIcons[i].translation
             if showChip
                 m.navIcons[i].opacity = 1
@@ -5794,9 +5806,10 @@ end sub
 ' See buildDetailChaptersRail's comment for why moveDetailFocus (below)
 ' needs to rebuild this rail's content on every focus transition too.
 sub buildDetailSimilarRail(isActive as Boolean)
-    m.detailSimilar.rowItemSize = [[327.2, 270]]
-    m.detailSimilar.rowItemSpacing = [[24.8, 0]]
-    buildRailContent(m.detailSimilar, m.similarWorks, isActive, 327.2 / 220.0)
+    ' Web card --card-w and .tv-home-rail gap (Theme.brs WebCardWidth, WebRailGap).
+    m.detailSimilar.rowItemSize = [[WebCardWidth(), 270]]
+    m.detailSimilar.rowItemSpacing = [[WebRailGap(), 0]]
+    buildRailContent(m.detailSimilar, m.similarWorks, isActive, WebCardWidth() / 220.0)
     row = m.detailSimilar.content.GetChild(0)
     if row <> invalid
         row.title = "Similar Titles"

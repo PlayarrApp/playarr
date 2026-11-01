@@ -261,7 +261,9 @@ export struct Stage {
    * transparent at its left edge. Home (62%) and Library (`.tv-library-grid-panel`, 65%) ask for it (`railFrost`). */
   @Builder
   private railFrostLayer(): void {
-    if (this.railFrost) {
+    // A scrolling rails box carries its own frost as its background (web: the frost and the edge-fade mask are on the same
+    // scroller, so the bottom/top fade dims the frost too).
+    if (this.railFrost && !this.scrollRails) {
       Row()
         .width(`${this.railFrostWidthPct}%`)
         .height('100%')
@@ -344,6 +346,7 @@ export struct Stage {
       .align(Alignment.TopStart)
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.None)
+      .linearGradient({ angle: HORIZONTAL_ANGLE, colors: this.railFrost ? railFrostColors() : [['rgba(0, 0, 0, 0)', 0], ['rgba(0, 0, 0, 0)', 1]] })
       .overlay(this.railsEdgeMask(), { align: Alignment.TopStart })
       .blendMode(BlendMode.SRC_OVER, BlendApplyType.OFFSCREEN)
       .onScroll((_x: number, _y: number) => {

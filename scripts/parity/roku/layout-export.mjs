@@ -65,6 +65,9 @@ export function measureTree(root) {
     if (clip && (clip.w <= 0 || clip.h <= 0)) return;
     const bounds = nums(a.bounds);
     let rect = bounds && bounds[2] > 0 && bounds[3] > 0 ? mapRect(M, bounds) : null;
+    // The device reports a Rectangle that has children over the union of its children (the page body fill holds every screen): its own
+    // painted area cannot exceed the screen, which is where the fill is read.
+    if (rect && node.tag === "Rectangle" && node.children.length) { rect = intersect(rect, { x: 0, y: 0, w: 1920, h: 1080 }); if (rect.w <= 0 || rect.h <= 0) rect = null; }
     if (rect && clip) { rect = intersect(rect, clip); if (rect.w <= 0 || rect.h <= 0) rect = null; }
     const base = { chain, parent, scaleX: M.sx * (nums(a.scale)?.[0] ?? 1), scaleY: M.sy * (nums(a.scale)?.[1] ?? 1) };
     const sem = /^(a11y|hit)\|(\w+)\|([\d.]+)(?:@([0-9a-f]{8})(~\d+)?)?\|(.*)$/s.exec(a.name ?? "");
@@ -189,11 +192,16 @@ function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }
       if (it.node.tag === "Rectangle" && it.node.attrs.color && !it.node.children.length && !(it.kind === "a11y" && CONTROL_ROLES.has(it.role))) {
         const al = alphaOf(it.node.attrs.color) * it.op, c = rgb(it.node.attrs.color);
         const r = it.rect, pts = [[r.x + r.w / 2, r.y + r.h / 2], [r.x + 0.5, r.y + 0.5], [r.x + r.w - 0.5, r.y + 0.5], [r.x + 0.5, r.y + r.h - 0.5], [r.x + r.w - 0.5, r.y + r.h - 0.5]];
+        // A bitmap drawn before it over one of those points (artwork, a veil, a gradient) means the colour behind is not a flat fill: the
+        // Rectangle paints something new there (a panel over the artwork), so it is a fill.
+        const bitmapUnder = (px, py) => items.some((o) => o.order < it.order && (o.kind === "poster" || (o.kind === "a11y" && o.node.tag === "Poster" && o.role !== "container")) && o.op > 0.01 && px >= o.rect.x && px <= o.rect.x + o.rect.w && py >= o.rect.y && py <= o.rect.y + o.rect.h && !/\.9\.png$/.test(o.node.attrs.uri ?? ""));
         const same = pts.every(([px, py]) => {
+          if (bitmapUnder(px, py)) return false;
           const under = rgb(background({ x: px, y: py, w: 0, h: 0 }, it.order, false));
           return toHex(c.map((v, k) => v * al + under[k] * (1 - al))) === toHex(under);
         });
-        if (same && fills.length) { it.dropped = true; continue; }
+        // It is not exported, but it is still painted: it keeps hiding what lies beneath it (and the colour behind later elements is unchanged).
+        if (same && fills.length) it.dropped = true;
       }
       it.opaque = alphaOf(it.node.attrs.color) * it.op >= 0.99;
       fills.push(it);
@@ -263,7 +271,7 @@ function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }
       textElement([it], { size: null, weight: null }, it.node.attrs.text, it.order);
     } else if (it.kind === "a11y") {
       // A radius is the corner of the mask the app drew, scaled with the node, never above half the box; an unpainted hit box has no corner.
-      const painted = it.node.tag === "Poster" || alphaOf(it.node.attrs.color) > 0;
+      const painted = it.node.tag === "Poster" || (it.node.tag === "Rectangle" && alphaOf(it.node.attrs.color) > 0);
       const radius = painted ? Math.min(it.radius * it.scaleX, it.rect.w / 2, it.rect.h / 2) : 0;
       push({ text: it.text, role: it.role === "fill" ? "container" : it.role, _fill: it.role === "fill", rect: it.rect, color: null, background: background(it.rect, it.order, true, it.chain), fontSize: null, fontWeight: null, ...(radius ? { radius: r2(radius) } : {}), ...opacityOf(it.op) });
     } else if (it.kind === "video") {
@@ -282,14 +290,15 @@ function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }
     if (face && e._source.node.tag === "Rectangle") e.radius = face.radius;
   }
   // A painted surface that another element already describes at the same box is not listed twice.
-  const kept = elements.filter((e) => !(e._fill && elements.some((f) => f !== e && !f._fill && same(f.rect, e.rect))));
+  // (A control's own face only: an artwork image at the same box is a different paint, so its veil stays.)
+  const kept = elements.filter((e) => !(e._fill && elements.some((f) => f !== e && !f._fill && f.role !== "image" && same(f.rect, e.rect))));
   // Content fully covered by a later opaque surface (a fill, or a bundled opaque picture) is not on screen (a drawer over the page).
-  // A surface never covers its own ancestors or descendants, and a rounded one is shrunk by its corner.
+  // A surface never covers its own ancestors or descendants (nor does an unexported duplicate cover the fill of its own colour it repeats), and a rounded one is shrunk by its corner.
   const covers = [...fills.filter((f) => f.opaque), ...items.filter((it) => (it.kind === "poster" || (it.kind === "a11y" && it.role === "image" && it.node.tag === "Poster")) && it.op >= 0.99 && opaquePicture(it))].map((f) => {
     const r = f.kind === "a11y" && f.node.tag === "Poster" && f.role !== "image" ? Math.min(f.radius * f.scaleX, f.rect.w / 2, f.rect.h / 2) : 0;
-    return { order: f.order, node: f.node, chain: f.chain, rect: { x: f.rect.x + r, y: f.rect.y + r, w: f.rect.w - 2 * r, h: f.rect.h - 2 * r } };
+    return { order: f.order, node: f.node, chain: f.chain, dropped: !!f.dropped, rect: { x: f.rect.x + r, y: f.rect.y + r, w: f.rect.w - 2 * r, h: f.rect.h - 2 * r } };
   });
-  const visible = kept.filter((e) => !covers.some((f) => f.order > e._order && !e._source.chain.includes(f.node) && !f.chain.includes(e._source.node) && f.rect.x <= e.rect.x + 0.01 && f.rect.y <= e.rect.y + 0.01 && f.rect.x + f.rect.w >= e.rect.x + e.rect.w - 0.01 && f.rect.y + f.rect.h >= e.rect.y + e.rect.h - 0.01));
+  const visible = kept.filter((e) => !covers.some((f) => f.order > e._order && !e._source.chain.includes(f.node) && !f.chain.includes(e._source.node) && !(f.dropped && e._source.node.tag === "Rectangle" && e._source.node.attrs.color === f.node.attrs.color) && f.rect.x <= e.rect.x + 0.01 && f.rect.y <= e.rect.y + 0.01 && f.rect.x + f.rect.w >= e.rect.x + e.rect.w - 0.01 && f.rect.y + f.rect.h >= e.rect.y + e.rect.h - 0.01));
   for (const e of visible) { delete e._source; delete e._fill; }
   for (const e of visible) delete e._order;
   return { screen, theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: !!clockPinned, occluded: kept.length - visible.length + hiddenByVideo, elements: visible };

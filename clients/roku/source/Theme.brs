@@ -415,3 +415,103 @@ sub A11yStamp(node as Object, force = false as Boolean, baked = -1 as Integer)
     end for
     node.id = "a11y|" + parts[1] + "|" + radius + "@" + hex + suffix + "|" + name
 end sub
+
+' ---- Web card geometry at the Roku stage (1920 x 1080, zoom 1) ----
+' Source: clients/tv-web/web/src/styles/page-layout.css (:root card tokens) and global.css (.tv-home-rail).
+' Nothing here is fitted: each value is the CSS formula evaluated with --vw = 1920 / 100.
+
+' CSS clamp(lo, v, hi).
+function WebClamp(lo as Float, v as Float, hi as Float) as Float
+    if v < lo then return lo
+    if v > hi then return hi
+    return v
+end function
+
+' Blink lays boxes out in LayoutUnit, 1/64 px, rounded down (layout/layout_unit.h), so a laid-out width or gap is the CSS
+' value floored to 1/64 px. Radii are computed style values and stay unsnapped.
+function WebLayoutUnit(v as Float) as Float
+    return Int(v * 64.0) / 64.0
+end function
+
+' --vw on the 1920 px stage (tvStageScale.ts: viewport width / zoom / 100, zoom 1 at 1080 px high).
+function WebVw() as Float
+    return 1920.0 / 100.0
+end function
+
+' --card-radius: clamp(8px, calc(0.65 * var(--vw)), 13px) = 12.48.
+function WebCardRadius() as Float
+    return WebClamp(8.0, 0.65 * WebVw(), 13.0)
+end function
+
+' .tv-home-rail gap: clamp(14px, calc(1.3 * var(--vw)), 26px) = 24.953125 (LayoutUnit).
+function WebRailGap() as Float
+    return WebLayoutUnit(WebClamp(14.0, 1.3 * WebVw(), 26.0))
+end function
+
+' --card-w (page-layout.css): (--card-rail-vw * --vw - --card-pad-left - --card-pad-right - (--card-cols - 1) * --card-grid-gap) / --card-cols
+' with --card-rail-vw 62, --card-cols 3, --card-grid-gap clamp(14px, 1.35 * --vw, 28px),
+' --card-pad-left = --library-rail-left = clamp(28px, 2.8 * --vw, 54px) (no safe inset on the Roku stage),
+' --card-pad-right = --library-rail-right = --directory-controls-edge (clamp(5px, 0.65 * --vw, 14px))
+'   + max(--directory-controls-width (clamp(48px, 3.6 * --vw, 62px)), --directory-alphabet-width 56px)
+'   + --directory-controls-gap (clamp(18px, 1.5 * --vw, 30px)). Result 327.17.
+function WebCardGridGapCss() as Float
+    return WebClamp(14.0, 1.35 * WebVw(), 28.0)
+end function
+
+' The laid-out grid gap (LayoutUnit floor of the CSS value).
+function WebCardGridGap() as Float
+    return WebLayoutUnit(WebCardGridGapCss())
+end function
+
+function WebCardWidth() as Float
+    vw = WebVw()
+    padLeft = WebClamp(28.0, 2.8 * vw, 54.0)
+    controlsWidth = WebClamp(48.0, 3.6 * vw, 62.0)
+    if controlsWidth < 56.0 then controlsWidth = 56.0
+    padRight = WebClamp(5.0, 0.65 * vw, 14.0) + controlsWidth + WebClamp(18.0, 1.5 * vw, 30.0)
+    cols = 3.0
+    return WebLayoutUnit((62.0 * vw - padLeft - padRight - (cols - 1.0) * WebCardGridGapCss()) / cols)
+end function
+
+' Left edge of the first grid card minus the 8 px grid inset: the stage rail starts at (100 - --card-rail-vw 62) vw = 38 vw
+' (page-layout.css) and the card column starts --card-pad-left (--library-rail-left, clamp(28px, 2.8 * --vw, 54px)) inside it.
+function WebGridLeft() as Float
+    return 38.0 * WebVw() + WebClamp(28.0, 2.8 * WebVw(), 54.0) - 8.0
+end function
+
+' ---- Browse grid pitch (page-layout.css .tv-title-grid-content) ----
+' Column pitch: card + --card-grid-gap (laid-out values).
+function WebGridPitchX() as Float
+    return WebCardWidth() + WebCardGridGap()
+end function
+
+' Row pitch: the card (16:9 art, --card-copy-gap 0.72rem, then the title line: --card-title-size clamp(0.55rem, 0.62 * --vw, 0.78rem) at the
+' inherited line-height 1.5) plus the grid row gap clamp(22px, 2.5 * --viewport-unit, 36px) (--viewport-unit is 1vh = 10.8 px).
+function WebGridPitchY() as Float
+    titleSize = WebClamp(8.8, 0.62 * WebVw(), 12.48)
+    return WebCardWidth() * 9.0 / 16.0 + 0.72 * 16.0 + 1.5 * titleSize + WebClamp(22.0, 2.5 * 10.8, 36.0)
+end function
+
+' MarkupGrid advances its columns by a whole-pixel pitch (a 353.08 px itemSize lays out at 353), so column `col` lands short of its web
+' x by col * (pitch - whole pitch). The card is moved inside its cell by that amount.
+function WebGridColumnShift(col as Integer) as Float
+    pitch = WebGridPitchX()
+    return col * (pitch - Int(pitch))
+end function
+
+' The grid advances each row by the whole-pixel pitch (itemSize is laid out at Int(pitch): row 3 of a 240.41 pitch sits at 720, not 721), while the web
+' places row `row` at round(row * pitch). The card moves down by the difference (the grid's own y is a whole pixel).
+function WebGridRowShift(row as Integer) as Float
+    y = row * WebGridPitchY()
+    return Int(y + 0.5) - row * Int(WebGridPitchY())
+end function
+
+' Home rail cell: the card plus the 8 px focus-ring inset PosterCard keeps on each side (cardContentInsetX) = 343. Pitch stays web card + rail gap.
+function WebRailCellWidth() as Float
+    return Int(WebCardWidth() + 0.5) + 16.0
+end function
+
+' The nav link is a 64 px box centred in its 67.2 px dock item (.app-nav item box minus the link box, halved), the same inset on both axes.
+function WebNavHitInset() as Float
+    return (67.2 - 64.0) / 2.0
+end function

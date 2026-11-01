@@ -120,6 +120,7 @@ function pgRadiusFor(h as Float, r as Float) as Integer
     if r >= 82 then return 82
     if r = 29 and h >= 56 and h <= 60 then return 29
     if r >= 25 then return 25
+    if r = 14 then return 14
     if r >= 12 then return 12
     return 6
 end function
@@ -132,6 +133,7 @@ function pgRound(parent as Object, x as Float, y as Float, w as Float, h as Floa
     if w < smallest then smallest = w
     if radius = 82 and smallest < 160 then radius = 25
     if radius = 25 and smallest < 49 then radius = 12
+    if radius = 14 and smallest < 29 then radius = 12
     if radius = 12 and smallest < 23 then radius = 6
     name = "round"
     if outline then name = "round-outline"
@@ -146,6 +148,19 @@ function pgRound(parent as Object, x as Float, y as Float, w as Float, h as Floa
         poster.id = "a11y|fill|" + radius.ToStr() + "|"
         A11yStamp(poster, true)
     end if
+    parent.AppendChild(poster)
+    return poster
+end function
+
+' A box drawn as its 1 px border only (a 9-patch with square corners), tinted by `role`.
+function pgOutlineBox(parent as Object, x as Float, y as Float, w as Float, h as Float, role as String) as Object
+    poster = CreateObject("roSGNode", "Poster")
+    poster.uri = "pkg:/images/square-outline.9.png"
+    poster.translation = [x, y]
+    poster.width = w
+    poster.height = h
+    poster.blendColor = ThemeColor(role)
+    ThemeSetRole(poster, role)
     parent.AppendChild(poster)
     return poster
 end function
@@ -2305,11 +2320,15 @@ sub renderCalendarMonth(entries as Object)
         y = gy + Int(i / 7) * ch
         if Mid(day, 6, 2) <> monthOf then pgRect(m.pageBody, x, y, cw, ch, "ink", 12).id = "a11y|container|0|"
     end for
-    for rr = 0 to rows
-        pgRect(m.pageBody, gx, gy + rr * ch, cw * 7, 1, "line")
-    end for
-    for c = 0 to 7
-        pgRect(m.pageBody, gx + c * cw, gy, 1, ch * rows, "line")
+    ' Each day cell is a box with its own 1 px border (web .calendar-month-cell): a bordered container, no corner.
+    for i = 0 to days - 1
+        ' Edges land on whole pixels, as the web snaps a border: two neighbours show two adjacent 1 px borders.
+        bx0 = Int(gx + (i mod 7) * cw + 0.5)
+        bx1 = Int(gx + ((i mod 7) + 1) * cw + 0.5)
+        by0 = Int(gy + Int(i / 7) * ch + 0.5)
+        by1 = Int(gy + (Int(i / 7) + 1) * ch + 0.5)
+        cellBox = pgOutlineBox(m.pageBody, bx0, by0, bx1 - bx0, by1 - by0, "line")
+        cellBox.id = "a11y|container|0|"
     end for
     firstStop = m.pageItems.Count()
     weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -2361,6 +2380,7 @@ sub renderCalendarMonth(entries as Object)
         ' A day with chips is reached through its chips; an empty day keeps the whole-cell stop that opens it in the agenda.
         if shown = 0
             if day = today then todayIdx = m.pageItems.Count()
+            pgHit(m.pageBody, "button", weekdays[calWeekday(day)] + " " + Val(Mid(day, 9, 2)).ToStr() + " " + calendarMonthName(Val(Mid(day, 6, 2)), false), x + 1, y + 1, cw - 1, ch - 1, 0)
             pgFocusable(x + 1, y + 1, cw - 1, ch - 1, 6, "cell", day)
         end if
     end for

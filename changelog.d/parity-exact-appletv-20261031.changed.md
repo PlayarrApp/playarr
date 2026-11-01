@@ -1,0 +1,1 @@
+- `scripts/appletv-parity-suite.mjs` and `scripts/appletv-parity-ae0.sh` now compare exact RGBA bytes with zero tolerance (shared `scripts/parity/exact-pixels.mjs`); the `PARITY_TOLERANCE_PCT` setting and pixelmatch use are gone.

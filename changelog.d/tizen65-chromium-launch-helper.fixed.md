@@ -1,0 +1,1 @@
+- Tizen 6.5 and webOS parity stand-ins share one Chromium launch helper (CPU raster by default, GPU raster opt-in), and the raster evaluation is written up in the device docs.

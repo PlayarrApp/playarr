@@ -4,20 +4,20 @@ import SwiftUI
 import UIKit
 
 enum PlayarrStyle {
-    static let background = adaptive(light: (0.961, 0.953, 0.949), dark: (0.082, 0.074, 0.082))
-    static let surface = adaptive(light: (0.985, 0.980, 0.976), dark: (0.106, 0.094, 0.106))
-    static let surfaceStrong = adaptive(light: (1, 1, 1), dark: (0.129, 0.114, 0.129))
-    static let ink = adaptive(light: (0.220, 0.149, 0.129), dark: (0.957, 0.941, 0.945))
-    static let inkSoft = adaptive(light: (0.404, 0.349, 0.380), dark: (0.773, 0.722, 0.741))
-    static let muted = adaptive(light: (0.647, 0.588, 0.620), dark: (0.533, 0.478, 0.510))
+    static let background = adaptive(light: (245 / 255, 243 / 255, 242 / 255), dark: (21 / 255, 19 / 255, 21 / 255))
+    static let surface = adaptive(light: (251 / 255, 250 / 255, 249 / 255), dark: (27 / 255, 24 / 255, 27 / 255))
+    static let surfaceStrong = adaptive(light: (1, 1, 1), dark: (33 / 255, 29 / 255, 33 / 255))
+    static let ink = adaptive(light: (56 / 255, 38 / 255, 33 / 255), dark: (244 / 255, 240 / 255, 241 / 255))
+    static let inkSoft = adaptive(light: (103 / 255, 89 / 255, 97 / 255), dark: (197 / 255, 184 / 255, 189 / 255))
+    static let muted = adaptive(light: (165 / 255, 150 / 255, 158 / 255), dark: (136 / 255, 122 / 255, 130 / 255))
     static let pink = Color(red: 0.812, green: 0.192, blue: 0.341)
-    static let brandInk = adaptive(light: (0.510, 0.118, 0.212), dark: (0.918, 0.651, 0.714))
-    static let accent = adaptive(light: (0.404, 0.349, 0.380), dark: (0.875, 0.863, 0.867))
-    static let onAccent = adaptive(light: (1, 1, 1), dark: (0.129, 0.114, 0.129))
-    static let line = adaptive(light: (0.220, 0.149, 0.129), dark: (0.875, 0.863, 0.867)).opacity(0.14)
-    static let lineStrong = adaptive(light: (0.220, 0.149, 0.129), dark: (0.875, 0.863, 0.867)).opacity(0.28)
-    static let danger = adaptive(light: (0.659, 0.275, 0.298), dark: (0.933, 0.573, 0.592))
-    static let navBackground = adaptive(light: (1, 1, 1), dark: (0.129, 0.114, 0.129)).opacity(0.88)
+    static let brandInk = adaptive(light: (130 / 255, 30 / 255, 54 / 255), dark: (234 / 255, 166 / 255, 182 / 255))
+    static let accent = adaptive(light: (103 / 255, 89 / 255, 97 / 255), dark: (223 / 255, 220 / 255, 221 / 255))
+    static let onAccent = adaptive(light: (1, 1, 1), dark: (33 / 255, 29 / 255, 33 / 255))
+    static let line = adaptive(light: (56 / 255, 38 / 255, 33 / 255), dark: (223 / 255, 220 / 255, 221 / 255)).opacity(0.14)
+    static let lineStrong = adaptive(light: (56 / 255, 38 / 255, 33 / 255), dark: (223 / 255, 220 / 255, 221 / 255)).opacity(0.28)
+    static let danger = adaptive(light: (168 / 255, 70 / 255, 76 / 255), dark: (238 / 255, 146 / 255, 151 / 255))
+    static let navBackground = adaptive(light: (1, 1, 1), dark: (33 / 255, 29 / 255, 33 / 255)).opacity(0.88)
     static let cornerRadius: CGFloat = 22
 
     private static func adaptive(
@@ -51,6 +51,7 @@ struct PlayarrLogo: View {
             .resizable()
             .scaledToFit()
         .frame(width: size, height: size)
+        .parityToggle()
         .accessibilityLabel("Playarr")
     }
 }
@@ -179,12 +180,25 @@ struct PlayarrProfileAvatar: View {
                     .resizable()
                     .scaledToFill()
             } else {
-                WMAvatarPresetView(presetID: presetID, size: size)
+                preset
             }
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
         .accessibilityLabel("\(userName ?? "Playarr") avatar")
+    }
+
+    /// Parity captures blit the preset drawn once as a bitmap (the vector eyes and strokes antialias a little differently per run).
+    @ViewBuilder private var preset: some View {
+        #if DEBUG
+        if ParityLaunch.zeroInsets, let image = WMAvatarBitmap.image(presetID: presetID, size: size) {
+            Image(uiImage: image).resizable().frame(width: size, height: size)
+        } else {
+            WMAvatarPresetView(presetID: presetID, size: size)
+        }
+        #else
+        WMAvatarPresetView(presetID: presetID, size: size)
+        #endif
     }
 
     private var customImage: UIImage? {
@@ -290,7 +304,7 @@ struct PlayarrMediaCard: View {
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: matchesWebScreenGrid ? 8.88 : min(13, max(8, width * 0.058)), style: .continuous))
                 .parityBox("container", background: WM.artFill, radius: matchesWebScreenGrid ? 8.88 : min(13, max(8, width * 0.058)))
-                .scaleEffect(focused ? LibraryFocusMetrics.tabletArtworkScale : 1)
+                .parityScale(focused ? LibraryFocusMetrics.tabletArtworkScale : 1)
                 .shadow(color: PlayarrStyle.ink.opacity(0.1), radius: 17, y: 6)
                 .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focused ? 0.3 : 0), radius: focused ? 24 : 0, y: focused ? 12 : 0)
                 .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focused ? 0.2 : 0), radius: focused ? 10 : 0, y: focused ? 5 : 0)
@@ -395,7 +409,7 @@ struct PlayarrFailureView: View {
                 .foregroundStyle(PlayarrStyle.inkSoft)
                 .multilineTextAlignment(.center)
             Button("Try again", action: retry)
-                .buttonStyle(PlayarrPrimaryButtonStyle())
+                .parityButtonStyle(PlayarrPrimaryButtonStyle())
         }
         .padding(30)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -457,3 +471,20 @@ enum PlayarrArtworkPrefs {
     /// Web `--card-size-step`: small +1 column, large -1.
     static func columnStep(_ size: String) -> Int { size == "small" ? 1 : size == "large" ? -1 : 0 }
 }
+
+#if DEBUG
+@MainActor
+enum WMAvatarBitmap {
+    private static var cache: [String: UIImage] = [:]
+
+    static func image(presetID: String, size: CGFloat) -> UIImage? {
+        let key = "\(presetID)|\(size)"
+        if let cached = cache[key] { return cached }
+        let renderer = ImageRenderer(content: WMAvatarPresetView(presetID: presetID, size: size).frame(width: size, height: size))
+        renderer.scale = UIScreen.main.scale
+        guard let image = renderer.uiImage else { return nil }
+        cache[key] = image
+        return image
+    }
+}
+#endif

@@ -238,6 +238,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   const webBase = new URL(web).pathname.replace(/\/$/, "");
   // Packaged TV platforms (PLAYARR_WEB_HASH=1, bundles built with their platform define) route through the URL hash: /tv/#/movies.
   const hashMode = env.PLAYARR_WEB_HASH === "1";
+  // The player shows no Mute button where the volume is the system's: packaged TVs (hash routing) and the Android TV and Roku user agents (usesSystemVolumeOnly in PlayerSurface).
+  const systemVolume = hashMode || /PlayarrAndroidTV\/|PlayarrRoku\//.test(env.PLAYARR_WEB_USER_AGENT ?? (env.PLAYARR_WEB_MOBILE === "1" ? "" : "PlayarrAndroidTV/"));
   const appUrl = (p) => (hashMode ? `${web}/#${p}` : web + p);
   const appPath = (url) => { if (hashMode) { const h = new URL(url).hash; return h.startsWith("#/") ? h.slice(1).replace(/[?].*$/, "") : "/"; } const p = new URL(url).pathname; return webBase && (p === webBase || p.startsWith(`${webBase}/`)) ? p.slice(webBase.length) || "/" : p; };
   const configuredSecrets = secrets ?? (env.PLAYARR_DEVICE_TEST_SERVER_URL ? {
@@ -266,6 +268,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   const deviceScaleFactor = positiveNumber("PLAYARR_WEB_VIEWPORT_DPR", mobile ? 3 : 1);
   let cdp, browser, ctx, page, theme = "dark", session, detailActionRequired = false, fixedNow = null, disableAnimations = false, pinnedZone = null, pinnedLocale = null;
   let manualLoginStarted = false, manualLoginSucceeded = false; // session: this run's own storage state, in memory
+  let avatarSynced = false; // the profile-avatar sync answered for the current document
   let networkFlaps = 0; // requests Chrome aborted because the host's network interfaces changed
   const apiErrors = []; // failing /api/ responses of the current page, named in the error-page failure
   let drainApiErrors = async () => {};
@@ -338,6 +341,14 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       }
     }
     await labelled("loading placeholders gone", () => page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true]"), null, { timeout: 20000 }));
+    // the shell's avatar sync (see the response listener): wait for its answer, then for the re-render
+    if (await page.evaluate(() => !!document.querySelector(".app-nav-link"))) {
+      const t0 = Date.now();
+      while (!avatarSynced) {
+        if (Date.now() - t0 > 20000) throw new Error("readiness timeout: the profile avatar sync never answered");
+        await page.waitForTimeout(100);
+      }
+    }
     await drainApiErrors();
     assertNoApiErrors(apiErrors);
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -394,6 +405,11 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     });
     page = await ctx.newPage();
     page.on?.("requestfailed", (r) => { if (r.failure()?.errorText === "net::ERR_NETWORK_CHANGED") networkFlaps += 1; });
+    // The shell syncs the account's profile avatar after it mounts (GET /api/v1/users/me/profile-avatar): until that answer is back the nav rail and profile
+    // chip draw the generated default preset, not the server's choice. settle() waits for the answer so a shot never races it.
+    avatarSynced = false;
+    page.on?.("request", (request) => { if (request.isNavigationRequest() && request.frame() === page.mainFrame()) avatarSynced = false; }); // a real document load only: a pushState route change keeps the answered sync
+    page.on?.("response", (response) => { if (/\/api\/v1\/users\/me\/profile-avatar$/.test(new URL(response.url()).pathname) && response.request().method() === "GET" && response.status() < 500) avatarSynced = true; });
     apiErrors.length = 0;
     manualLoginStarted = false;
     manualLoginSucceeded = false;
@@ -401,7 +417,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     // /login, not /: the deployed worker serves the marketing site at / to signed-out visitors, and a signed-in session redirects /login to the app.
     await page.goto(appUrl("/login"), { waitUntil: "load" });
     try {
-      await page.waitForFunction(() => !!document.querySelector(".app-nav-link") || !!document.querySelector("input[name=password]") || (location.pathname.startsWith("/login") || location.hash.startsWith("#/login")), null, { timeout: 30000 });
+      await page.waitForFunction(() => !!document.querySelector(".app-nav-link") || !!document.querySelector("input[name=password]") || (/\/login(\/|$)/.test(location.pathname) || location.hash.startsWith("#/login")), null, { timeout: 30000 });
     } catch (e) {
       if (e?.name !== "TimeoutError") throw e;
       throw new Error(`${web}/login did not show the Playarr web app (page "${await page.title().catch(() => "?")}" at ${page.url()}); set PLAYARR_WEB_URL to a web app build or build clients/tv-web/web/dist`);
@@ -825,7 +841,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
         tick();
       }));
       // The time label follows timeupdate events and can still show the pre-seek second, and the mute button the muted state: wait for 0:02 and an unmuted player. A packaged TV (hash routing) has system volume only: no Mute button to wait for.
-      await page.waitForFunction((system) => /(^|[^\d:])0:02(?![\d:])/.test(document.querySelector(".player-controls")?.textContent?.replace(/\s+/g, " ") ?? "") && document.querySelector("video")?.muted === false && (system || !!document.querySelector(".player-controls [aria-label='Mute'],.player-controls [title='Mute']")), hashMode, { timeout: 10000, polling: 100 });
+      await page.waitForFunction((system) => /(^|[^\d:])0:02(?![\d:])/.test(document.querySelector(".player-controls")?.textContent?.replace(/\s+/g, " ") ?? "") && document.querySelector("video")?.muted === false && (system || !!document.querySelector(".player-controls [aria-label='Mute'],.player-controls [title='Mute']")), systemVolume, { timeout: 10000, polling: 100 });
       await page.waitForTimeout(600); // the player moves focus to play/pause on a timer: let it, then drop it
       await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
       await guard();
@@ -915,7 +931,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
           // Per-server data on the calendar link panel (the URL field and the QR card encode the server address), in css px, so scorers can mask them.
           maskRects: [".calendar-subscription-url", ".calendar-link-secret > :last-child"].flatMap((q) => [...document.querySelectorAll(q)].map((e) => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((n) => Math.round(n * 10) / 10); })),
           fontsReady: document.fonts.status === "loaded",
-          signedOut: !!document.querySelector("input[name=password]") || (location.pathname.startsWith("/login") || location.hash.startsWith("#/login")),
+          signedOut: !!document.querySelector("input[name=password]") || (/\/login(\/|$)/.test(location.pathname) || location.hash.startsWith("#/login")),
         };
       });
       await guard();

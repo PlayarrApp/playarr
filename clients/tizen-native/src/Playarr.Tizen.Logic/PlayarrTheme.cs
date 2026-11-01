@@ -5,6 +5,8 @@ public readonly record struct Rgba(float R, float G, float B, float A = 1f)
 {
     public static Rgba Hex(uint rgb, float a = 1f) => new(((rgb >> 16) & 255) / 255f, ((rgb >> 8) & 255) / 255f, (rgb & 255) / 255f, a);
     public static Rgba Of(int r, int g, int b, float a = 1f) => new(r / 255f, g / 255f, b / 255f, a);
+    /// <summary>This colour at <paramref name="alpha"/> (the web writes it color-mix(in srgb, X p%, transparent)).</summary>
+    public Rgba Mixed(float alpha) => new(R, G, B, alpha);
 }
 
 /// <summary>The web design tokens (clients/tv-web/web/src/styles/global.css :root and [data-theme=dark]). Web is the source of truth.</summary>

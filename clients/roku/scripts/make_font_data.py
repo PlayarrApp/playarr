@@ -25,6 +25,10 @@ from fontTools.varLib import instancer
 BANDS = (("a", 105), ("b", 220), ("c", 280), ("d", 325))
 WEIGHTS = (300, 400, 500, 600, 700, 800, 900)
 CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,:;'’‘-–—·•!?()[]&/+%#@\"“”…←→×°$*_=<>|~\\^{}"
+# The exact web weights (global.css font-weight, a variable font) the screens use, by size band: the channel draws these
+# at the weight the web CSS sets instead of the nearest 100 (source/Fonts.brs PlayarrFontPath looks for these first).
+EXACT = {300: "d", 400: "ab", 480: "c", 500: "d", 560: "bcd", 570: "b", 580: "c", 590: "c", 600: "b", 610: "ab", 640: "ab", 650: "b", 680: "ab", 690: "a",
+         700: "ab", 720: "abc", 750: "b", 760: "ab", 820: "a", 860: "a", 900: "ab"}
 out = Path(__file__).resolve().parents[1] / "fonts"
 src = sys.argv[1]
 face = hb.Face(hb.Blob.from_file_path(src))
@@ -39,14 +43,17 @@ def width(text: str) -> int:
     return sum(p.x_advance for p in buf.glyph_positions)
 
 
-for weight in WEIGHTS:
+for weight in sorted(set(WEIGHTS) | set(EXACT)):
     instance = instancer.instantiateVariableFont(TTFont(src), {"wght": weight})
     # Roku sizes a Label by the Windows metrics; a browser uses the typographic ones (USE_TYPO_METRICS). Make them agree so a Label's
     # line box is the one the web font sets.
     instance["OS/2"].usWinAscent = instance["OS/2"].sTypoAscender
     instance["OS/2"].usWinDescent = -instance["OS/2"].sTypoDescender
-    instance.save(out / f"NunitoSans-{weight}.ttf")
+    if weight in WEIGHTS:
+        instance.save(out / f"NunitoSans-{weight}.ttf")
     for band, descent in BANDS:
+        if weight not in WEIGHTS and band not in EXACT[weight]:
+            continue
         cut = copy.deepcopy(instance)
         cut["OS/2"].usWinDescent = descent
         cut["OS/2"].sTypoDescender = -descent

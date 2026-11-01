@@ -1,0 +1,1 @@
+- Android phone profiles row and calendar month strip are laid out at the web css positions (device-pixel snapped once per edge), and the series detail copy rows sit at the web rect tops.

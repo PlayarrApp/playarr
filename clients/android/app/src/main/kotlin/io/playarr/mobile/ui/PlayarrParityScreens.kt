@@ -38,6 +38,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -95,7 +96,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import io.playarr.shared.designsystem.page.Surface
-import androidx.compose.material3.Text
+import io.playarr.shared.designsystem.page.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -2140,10 +2141,9 @@ private fun MobileProfilesStage(
         PhoneProfilesHeading(playarrString(PlayarrString.ProfilesTitle), playarrString(PlayarrString.ProfilesHeading))
         // `.profiles-row`: from inset + 150 px down, scrolls sideways and clips what grows past its top edge.
         Box(Modifier.fillMaxSize().padding(top = topInset + 150.dp).clipToBounds()) {
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()).padding(start = 28.dp, end = 28.dp, top = 18.dp),
-                horizontalArrangement = Arrangement.spacedBy(22.dp),
-                verticalAlignment = Alignment.Top,
+            WebCssRow(
+                28f, 28f, listOf(156f), 22f,
+                Modifier.horizontalScroll(rememberScrollState()).padding(top = 18.dp),
             ) {
                 profiles.forEach { profile ->
                     PhoneProfileChoice(
@@ -4768,13 +4768,17 @@ private fun Throwable.playarrServerConnectionMessage(): PlayarrMessage = when (t
 internal fun phoneSettingsRowHeightPx(index: Int, density: Float): Float =
     (Math.round((index + 1) * 88f * density) - Math.round(index * 88f * density)).toFloat()
 
+private const val PHONE_SETTINGS_TITLE_CSS = 18.4f
+private const val PHONE_SETTINGS_SMALL_CSS = 15.776f
+private const val PHONE_SETTINGS_COPY_CSS = PHONE_SETTINGS_TITLE_CSS + 4f + PHONE_SETTINGS_SMALL_CSS
+
 /** Web mobile `.settings-options-list`: numbered rows 88 px tall, the first one drawn selected. */
 @Composable
 private fun PhoneSettingsIndex(isAdmin: Boolean, onOpen: (SettingsSection) -> Unit) {
     Box(Modifier.fillMaxSize().background(WebSurface)) {
         androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 83.4.dp, bottom = 116.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = rememberWebSpan(0f, 84f), bottom = 116.dp),
         ) {
             itemsIndexed(phoneSettingsIndex.filter { isAdmin || it.first != SettingsSection.RequestLatency }, key = { _, row -> row.first.name }) { index, (candidate, description) ->
                 val active = index == 0
@@ -4787,23 +4791,37 @@ private fun PhoneSettingsIndex(isAdmin: Boolean, onOpen: (SettingsSection) -> Un
                         .then(if (active) Modifier.background(WebSurfaceSoft) else Modifier)
                         .clickable { onOpen(candidate) },
                 ) {
-                Row(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 16.dp)) {
+                Row(Modifier.fillMaxSize().padding(start = 12.dp, end = rememberWebSpan(362f, 374f), top = 16.dp, bottom = 16.dp)) {
                     Text(
                         number, color = WebInk, fontSize = 8.96.sp, lineHeight = 13.44.sp,
                         fontWeight = FontWeight(760), style = WebTextStyle, modifier = Modifier.width(44.dp),
                     )
-                    Column(Modifier.weight(1f).fillMaxHeight().padding(bottom = 1.4.dp), verticalArrangement = Arrangement.Center) {
-                        Text(
-                            playarrString(candidate.label), color = WebInk, fontSize = 16.sp, lineHeight = 18.4.sp,
-                            fontWeight = FontWeight(480), letterSpacing = (-0.56).sp, style = WebTextStyle, maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        )
-                        Spacer(Modifier.height(2.1.dp))
-                        Text(
-                            playarrString(description), color = WebInk, fontSize = 10.88.sp, lineHeight = 15.776.sp,
-                            style = WebTextStyle, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            modifier = Modifier.offset(y = (-1).dp),
-                        )
+                    // `.settings-option-copy { display: grid; gap: 4px }` centred in the 56 px content box (88 - 2 * 16 padding): strong line 1.15 * 16,
+                    // small line 1.45 * 0.68rem. The block is placed at its summed css position, each edge snapped once.
+                    val rowTopCss = 84f + 88f * index
+                    val copyTopCss = rowTopCss + 16f + (56f - PHONE_SETTINGS_COPY_CSS) / 2f
+                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                        WebCssLayout(
+                            originCss = copyTopCss,
+                            topsCss = listOf(0f, PHONE_SETTINGS_TITLE_CSS + 4f),
+                            heightsCss = listOf(PHONE_SETTINGS_TITLE_CSS, PHONE_SETTINGS_SMALL_CSS),
+                            gapCss = 0f,
+                            modifier = Modifier.padding(top = rememberWebSpan(rowTopCss + 16f, copyTopCss)),
+                        ) {
+                            Box(Modifier.wrapContentHeight(Alignment.Top, unbounded = true)) {
+                            Text(
+                                playarrString(candidate.label), color = WebInk, fontSize = 16.sp, lineHeight = 18.4.sp,
+                                fontWeight = FontWeight(480), letterSpacing = (-0.56).sp, style = WebTextStyle, maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                            }
+                            Box(Modifier.wrapContentHeight(Alignment.Top, unbounded = true)) {
+                            Text(
+                                playarrString(description), color = WebInk, fontSize = 10.88.sp, lineHeight = 15.776.sp,
+                                style = WebTextStyle, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                            }
+                        }
                     }
                     Spacer(Modifier.width(12.dp))
                     Box(Modifier.width(20.8.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {

@@ -82,6 +82,10 @@ sub onSpecChange()
                     last = Right(word, 1)
                     parts = [{ text: Left(word, Len(word) - 1), x: parts[0].x, tail: false }, { text: last, x: advanceOf(Left(line, j)) - advanceOf(last), tail: true }]
                 end if
+                for each pp in parts
+                    pp.last = false
+                end for
+                parts[parts.Count() - 1].last = true
                 for each part in parts
                 piece = part.text
                 x = part.x
@@ -89,11 +93,17 @@ sub onSpecChange()
                 glyph.font = font
                 glyph.width = 0
                 glyph.height = 0
+                ' A single line is as tall as the web's text box (rounded ascent plus descent). The Label is scaled to the web's fractional
+                ' size, so its own height is that box divided by the scale; the glyphs stay top-aligned where they were.
+                if lines.Count() = 1 and spec.symbol <> true then glyph.height = PlayarrContentHeight(size) / PlayarrScaleFor(size)
+                ' The Font node is a whole pixel size: scale the Label to the web's fractional size about its top-left corner.
+                glyph.scaleRotateCenter = [0, 0]
+                glyph.scale = [PlayarrScaleFor(size), PlayarrScaleFor(size)]
                 if spec.symbol = true
                     glyph.font = PlayarrSymbolFont(piece, size, weight)
                 end if
                 ' The font actually drawn (the bundled instance's weight, the integer pixel size the Font node takes), readable through ECP query/app-ui (node names are printed; fonts are not).
-                drawnWeight = PlayarrInstanceWeight(weight)
+                drawnWeight = PlayarrDrawnWeight(weight, Int(size + 0.5))
                 if spec.symbol = true then drawnWeight = PlayarrSymbolWeight(piece, weight)
                 glyph.id = "f" + Str(drawnWeight).Trim() + "s" + Str(Int(size + 0.5)).Trim()
                 ' Untracked text is set a word per Label, tracked text a character per Label: the export joins words with a space and characters directly.
@@ -119,6 +129,12 @@ sub onSpecChange()
                     ThemeSetRole(glyph, spec.role)
                 end if
                 glyph.translation = [lineOffset + x, lineIndex * lineHeight]
+                ' The last Label of a line ends where the web's run ends: the box the firmware lays out for it (its real bounding rect, at the
+                ' web's fractional scale) is set so that its right edge is the web's advance end of the line.
+                if j = total and spec.symbol <> true and part.last = true
+                    boxWidth = glyph.boundingRect().width * PlayarrScaleFor(size)
+                    glyph.translation = [lineOffset + x + advanceOf(piece) - boxWidth, lineIndex * lineHeight]
+                end if
                 glyph.visible = true
                 end for
                 i = j + 1

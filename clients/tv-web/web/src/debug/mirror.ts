@@ -8,6 +8,7 @@ import { focusInfo, selectorFor, visibleText } from "./mirrorSnapshot";
 import { mirrorCaptureGeometry } from "./mirrorCaptureGeometry";
 import { withCollapsingTrackHeights } from "./mirrorTrackHeights";
 import { inlineArtwork } from "./mirrorArtwork";
+import { newReuseState, pageSignature, recordRender, canReuseImage } from "./mirrorFrameReuse";
 import { DEFAULT_MAX_FRAMES, DEFAULT_MAX_HEAP_MB, frameBudgetSpent, heapGuardTripped, nextIntervalMs, readHeap } from "./mirrorGuard";
 import { localeTagFor } from "../lib/i18n/languages";
 import {
@@ -44,22 +45,68 @@ function readToken(): string | null {
   }
 }
 
-// html-to-image's toPng/toJpeg leave the canvas (8 MB at 1920x1080) and the SVG image behind for the garbage collector, which
-// barely runs because the JS heap stays tiny: the TV browser's native memory grew about 17 MB per frame until the TV hung.
-// Render to a canvas ourselves, read it out and shrink it to nothing at once.
+// html-to-image's toPng/toJpeg load the SVG through a fresh <img> with a multi-megabyte data: URL every frame. Chromium keeps each
+// of those as a cached resource (the URL is unique per frame), which grew the renderer by about 12 MB per frame until the TV hung.
+// Load the same SVG from a blob: URL that is revoked at once, into one reused <img> and one reused canvas, read the frame out and
+// shrink the canvas to nothing so no frame data outlives its frame.
+let frameImg: HTMLImageElement | null = null;
+let frameCanvas: HTMLCanvasElement | null = null;
+// Newer Chromium taints a canvas that drew an SVG loaded from a blob: URL, so the frame cannot be read out. Once that happens the page
+// loads the SVG from a data: URL instead (it costs more memory per render, which is why unchanged pages are not rendered again).
+let frameViaDataUrl = false;
+
 async function renderFrame(
-  toCanvas: (node: HTMLElement, options: HtmlToImageOptions) => Promise<HTMLCanvasElement>,
+  toSvg: (node: HTMLElement, options: HtmlToImageOptions) => Promise<string>,
   node: HTMLElement,
   png: boolean,
   options: HtmlToImageOptions,
 ): Promise<string> {
-  const canvas = await toCanvas(node, options);
-  try {
-    return png ? canvas.toDataURL() : canvas.toDataURL("image/jpeg", options.quality || 1);
-  } finally {
-    canvas.width = 0;
-    canvas.height = 0;
+  const width = options.width ?? 0;
+  const height = options.height ?? 0;
+  const ratio = options.pixelRatio ?? 1;
+  const svg = await toSvg(node, options);
+  const svgText = decodeURIComponent(svg.slice(svg.indexOf(",") + 1));
+  const img = (frameImg ??= new Image());
+  const load = async (url: string): Promise<void> => {
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("frame image failed to load"));
+      img.src = url;
+    });
+  };
+  const draw = (): string => {
+    const canvas = (frameCanvas ??= document.createElement("canvas"));
+    try {
+      canvas.width = width * ratio;
+      canvas.height = height * ratio;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("no 2d canvas context");
+      ctx.fillStyle = options.backgroundColor ?? "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return png ? canvas.toDataURL() : canvas.toDataURL("image/jpeg", options.quality || 1);
+    } finally {
+      canvas.width = 0;
+      canvas.height = 0;
+      img.removeAttribute("src");
+    }
+  };
+  if (!frameViaDataUrl) {
+    const url = URL.createObjectURL(new Blob([svgText], { type: "image/svg+xml" }));
+    try {
+      await load(url);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+    try {
+      return draw();
+    } catch (err) {
+      if (!(err instanceof DOMException && err.name === "SecurityError")) throw err;
+      frameViaDataUrl = true;
+    }
   }
+  await load(svg);
+  return draw();
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
@@ -221,6 +268,9 @@ export function startDebugMirror(): void {
   let stopped = false; // set by the memory guard: no further captures from this page
   const maxFrames = Number(new URLSearchParams(window.location.search).get("mirrorMaxFrames")) || DEFAULT_MAX_FRAMES;
   let captured = 0;
+  const reuse = newReuseState();
+  let receiverNeedsImage = false; // the receiver had no picture to reuse (it restarted): render and upload the next one
+  (window as unknown as { __mirrorRendered?: number }).__mirrorRendered = 0; // renders, as against frames that reused a picture
   const maxHeapMb = Number(new URLSearchParams(window.location.search).get("mirrorMaxHeapMb")) || DEFAULT_MAX_HEAP_MB;
 
   // Identity heartbeat from a Web Worker, so rendering (which blocks this thread for seconds) cannot starve it. The page re-verifies the
@@ -311,6 +361,7 @@ export function startDebugMirror(): void {
     try {
       const started = realNow();
       let image: string | null = null;
+      let imageUnchanged = false; // the receiver keeps the last picture: an unchanged page posts the state without uploading it again
       let captureError: string | null = null;
       let initialIdentity: MirrorIdentity | null = null;
       let restoreArtwork: () => void = () => undefined;
@@ -323,98 +374,107 @@ export function startDebugMirror(): void {
           stopped = true;
           throw new Error(`memory guard: JS heap ${heap?.usedMb} MB (limit ${maxHeapMb} MB); capture stopped, reload the page`);
         }
-        if (frameBudgetSpent(captured, maxFrames)) {
-          stopped = true;
-          throw new Error(`memory guard: ${captured} frames captured by this page load (limit ${maxFrames}); reload the page`);
-        }
-        captured += 1;
-        const { toCanvas, getFontEmbedCSS } = await withTimeout(import("html-to-image"), 10000, "html-to-image import");
-        // The TV stage scale (tvStageScale.ts) zooms <html> on most platforms, which html-to-image does
-        // not see. VIDAA instead transforms <body>; clear only that transform on the cloned body so the
-        // logical stage is rendered once at the requested output density.
-        const zoom = parseFloat(document.documentElement.style.getPropertyValue("--stage-zoom")) || 1;
-        const hasStageBodyTransform = Boolean(document.body.style.transform && zoom !== 1);
-        const geometry = mirrorCaptureGeometry(
-          // With the stage transform window.innerWidth/Height are already stage pixels (tvStageScale.ts); the geometry wants the real viewport.
-          hasStageBodyTransform ? window.innerWidth * zoom : window.innerWidth,
-          hasStageBodyTransform ? window.innerHeight * zoom : window.innerHeight,
-          zoom, TARGET_WIDTH, hasStageBodyTransform);
-        const stageW = geometry.width;
-        const stageH = geometry.height;
-        const bg = window.getComputedStyle(document.body).backgroundColor || "#000";
-        // The browser itself renders the SVG foreignObject, so modern CSS (color-mix and so on) is drawn faithfully.
-        if (fontCss === null) {
-          // Embedding fonts on every frame is what made renders crawl on the TV: do it once.
-          try {
-            fontCss = await withTimeout(getFontEmbedCSS(document.body), 20000, "font embed");
-          } catch (err) {
-            fontCss = "";
-            errors.push("font embed: " + String((err as Error).message).slice(0, 120));
+        // An unchanged page tells the receiver to keep its last picture: every render loads a fresh SVG image that the browser keeps in native memory.
+        const signature = pageSignature();
+        const reuseLast = !mirrorFlag("mirrorAlwaysRender") && !receiverNeedsImage && canReuseImage(reuse, signature, realNow());
+        if (reuseLast) {
+          imageUnchanged = true;
+        } else {
+          if (frameBudgetSpent(captured, maxFrames)) {
+            stopped = true;
+            throw new Error(`memory guard: ${captured} frames captured by this page load (limit ${maxFrames}); reload the page`);
           }
-        }
-        const visibleImages = Array.from(document.body.querySelectorAll<HTMLImageElement>("img")).filter((img) => {
-          const r = img.getBoundingClientRect();
-          return r.width > 0 && r.height > 0 && r.left < stageW && r.top < stageH && r.right > 0 && r.bottom > 0;
-        });
-        if (!mirrorFlag("mirrorNoArt")) restoreArtwork = await withTimeout(inlineArtwork(visibleImages, window.location.origin, token, artworkCache), 20000, "artwork inline");
-        await Promise.all(visibleImages.map((img) => img.decode().catch(() => undefined)));
-        // html-to-image clones without scroll offsets, so a rail the page has scrolled (Home, the library grid) would be drawn
-        // unscrolled. Tag every scrolled container and let the embedded CSS translate its children by the offset.
-        const scrolled = Array.from(document.body.querySelectorAll<HTMLElement>("*")).filter((e) => e.scrollTop > 0 || e.scrollLeft > 0);
-        let scrollCss = "";
-        // Engines without the individual `translate` property (Chromium before 104, Tizen 6.5) get a transform per child instead,
-        // composed in front of the child's own computed transform.
-        const hasTranslateProperty = typeof CSS !== "undefined" && CSS.supports("translate", "1px");
-        let childId = 0;
-        scrolled.forEach((e, i) => {
-          e.setAttribute("data-mirror-scroll", String(i));
-          if (hasTranslateProperty) {
-            scrollCss += `[data-mirror-scroll="${i}"]>*{translate:${-e.scrollLeft}px ${-e.scrollTop}px !important}\n`;
-            return;
+          captured += 1;
+        (window as unknown as { __mirrorRendered: number }).__mirrorRendered = captured;
+          const { toSvg, getFontEmbedCSS } = await withTimeout(import("html-to-image"), 10000, "html-to-image import");
+          // The TV stage scale (tvStageScale.ts) zooms <html> on most platforms, which html-to-image does
+          // not see. VIDAA instead transforms <body>; clear only that transform on the cloned body so the
+          // logical stage is rendered once at the requested output density.
+          const zoom = parseFloat(document.documentElement.style.getPropertyValue("--stage-zoom")) || 1;
+          const hasStageBodyTransform = Boolean(document.body.style.transform && zoom !== 1);
+          const geometry = mirrorCaptureGeometry(
+            // With the stage transform window.innerWidth/Height are already stage pixels (tvStageScale.ts); the geometry wants the real viewport.
+            hasStageBodyTransform ? window.innerWidth * zoom : window.innerWidth,
+            hasStageBodyTransform ? window.innerHeight * zoom : window.innerHeight,
+            zoom, TARGET_WIDTH, hasStageBodyTransform);
+          const stageW = geometry.width;
+          const stageH = geometry.height;
+          const bg = window.getComputedStyle(document.body).backgroundColor || "#000";
+          // The browser itself renders the SVG foreignObject, so modern CSS (color-mix and so on) is drawn faithfully.
+          if (fontCss === null) {
+            // Embedding fonts on every frame is what made renders crawl on the TV: do it once.
+            try {
+              fontCss = await withTimeout(getFontEmbedCSS(document.body), 20000, "font embed");
+            } catch (err) {
+              fontCss = "";
+              errors.push("font embed: " + String((err as Error).message).slice(0, 120));
+            }
           }
-          for (const child of Array.from(e.children)) {
-            const own = window.getComputedStyle(child).transform;
-            child.setAttribute("data-mirror-scroll-child", String(childId));
-            scrollCss += `[data-mirror-scroll-child="${childId}"]{transform:translate(${-e.scrollLeft}px,${-e.scrollTop}px)${own && own !== "none" ? ` ${own}` : ""} !important}\n`;
-            childId += 1;
-          }
-        });
-        image = await withTimeout(
-          withCollapsingTrackHeights(() => renderFrame(toCanvas, document.body, usePng, {
-            // The clone loses ::-webkit-scrollbar rules (pseudo-elements are not copied), so overflow containers would draw
-            // native scrollbars the TV does not show: hide them in the rendered copy.
-            // ?mirrorGeo=1 turns hinting off (geometricPrecision). Measured on the TV: it scored 0.02 to 0.2 lower than the default on settings, month and agenda.
-            fontEmbedCSS: `${fontCss}\n${mirrorFlag("mirrorGeo") ? "*{text-rendering:geometricPrecision!important}\n" : ""}*::-webkit-scrollbar{display:none}*{scrollbar-width:none}\n${scrollCss}`,
-            // Cross-origin media (posters, video) would stall or taint the render: leave it out.
-            filter: (node) => {
-              // Skip what lies past the right or bottom edge (long rails and grids): the TV needs far
-              // less time to render, and nothing visible moves because earlier siblings stay put.
-              if (node instanceof HTMLElement && node !== document.body) {
-                const r = node.getBoundingClientRect();
-                if (r.width > 0 && r.height > 0 && (r.left >= stageW || r.top >= stageH)) return false;
-              }
-              if (node instanceof HTMLVideoElement) return false;
-              if (node instanceof HTMLImageElement && node.src && !node.src.startsWith("data:")) {
-                try {
-                  return new URL(node.src, window.location.href).origin === window.location.origin;
-                } catch {
-                  return false;
+          const visibleImages = Array.from(document.body.querySelectorAll<HTMLImageElement>("img")).filter((img) => {
+            const r = img.getBoundingClientRect();
+            return r.width > 0 && r.height > 0 && r.left < stageW && r.top < stageH && r.right > 0 && r.bottom > 0;
+          });
+          if (!mirrorFlag("mirrorNoArt")) restoreArtwork = await withTimeout(inlineArtwork(visibleImages, window.location.origin, token, artworkCache), 20000, "artwork inline");
+          await Promise.all(visibleImages.map((img) => img.decode().catch(() => undefined)));
+          // html-to-image clones without scroll offsets, so a rail the page has scrolled (Home, the library grid) would be drawn
+          // unscrolled. Tag every scrolled container and let the embedded CSS translate its children by the offset.
+          const scrolled = Array.from(document.body.querySelectorAll<HTMLElement>("*")).filter((e) => e.scrollTop > 0 || e.scrollLeft > 0);
+          let scrollCss = "";
+          // Engines without the individual `translate` property (Chromium before 104, Tizen 6.5) get a transform per child instead,
+          // composed in front of the child's own computed transform.
+          const hasTranslateProperty = typeof CSS !== "undefined" && CSS.supports("translate", "1px");
+          let childId = 0;
+          scrolled.forEach((e, i) => {
+            e.setAttribute("data-mirror-scroll", String(i));
+            if (hasTranslateProperty) {
+              scrollCss += `[data-mirror-scroll="${i}"]>*{translate:${-e.scrollLeft}px ${-e.scrollTop}px !important}\n`;
+              return;
+            }
+            for (const child of Array.from(e.children)) {
+              const own = window.getComputedStyle(child).transform;
+              child.setAttribute("data-mirror-scroll-child", String(childId));
+              scrollCss += `[data-mirror-scroll-child="${childId}"]{transform:translate(${-e.scrollLeft}px,${-e.scrollTop}px)${own && own !== "none" ? ` ${own}` : ""} !important}\n`;
+              childId += 1;
+            }
+          });
+          image = await withTimeout(
+            withCollapsingTrackHeights(() => renderFrame(toSvg, document.body, usePng, {
+              // The clone loses ::-webkit-scrollbar rules (pseudo-elements are not copied), so overflow containers would draw
+              // native scrollbars the TV does not show: hide them in the rendered copy.
+              // ?mirrorGeo=1 turns hinting off (geometricPrecision). Measured on the TV: it scored 0.02 to 0.2 lower than the default on settings, month and agenda.
+              fontEmbedCSS: `${fontCss}\n${mirrorFlag("mirrorGeo") ? "*{text-rendering:geometricPrecision!important}\n" : ""}*::-webkit-scrollbar{display:none}*{scrollbar-width:none}\n${scrollCss}`,
+              // Cross-origin media (posters, video) would stall or taint the render: leave it out.
+              filter: (node: Node) => {
+                // Skip what lies past the right or bottom edge (long rails and grids): the TV needs far
+                // less time to render, and nothing visible moves because earlier siblings stay put.
+                if (node instanceof HTMLElement && node !== document.body) {
+                  const r = node.getBoundingClientRect();
+                  if (r.width > 0 && r.height > 0 && (r.left >= stageW || r.top >= stageH)) return false;
                 }
-              }
-              return true;
-            },
-            pixelRatio: geometry.pixelRatio,
-            ...(geometry.cloneStyle ? { style: geometry.cloneStyle } : {}),
-            quality: 0.92,
-            width: stageW,
-            height: stageH,
-            backgroundColor: bg,
-            cacheBust: false,
-            imagePlaceholder: "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==",
-          })),
-          60000,
-          "html-to-image render",
-        ).finally(() => scrolled.forEach((e) => e.removeAttribute("data-mirror-scroll")));
+                if (node instanceof HTMLVideoElement) return false;
+                if (node instanceof HTMLImageElement && node.src && !node.src.startsWith("data:")) {
+                  try {
+                    return new URL(node.src, window.location.href).origin === window.location.origin;
+                  } catch {
+                    return false;
+                  }
+                }
+                return true;
+              },
+              pixelRatio: geometry.pixelRatio,
+              ...(geometry.cloneStyle ? { style: geometry.cloneStyle } : {}),
+              quality: 0.92,
+              width: stageW,
+              height: stageH,
+              backgroundColor: bg,
+              cacheBust: false,
+              imagePlaceholder: "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==",
+            })),
+            60000,
+            "html-to-image render",
+          ).finally(() => scrolled.forEach((e) => e.removeAttribute("data-mirror-scroll")));
+          recordRender(reuse, signature, image !== null, realNow());
+        }
       } catch (err) {
         captureError = String((err && (err as Error).message) || err).slice(0, 300);
       } finally {
@@ -438,6 +498,7 @@ export function startDebugMirror(): void {
         captureError,
         probe: probeFontSizes(),
         image,
+        imageUnchanged,
       };
       let currentIdentity = initialIdentity;
       if (initialIdentity?.status === "ok") {
@@ -458,11 +519,12 @@ export function startDebugMirror(): void {
         // Keep this allow-list explicit. The internal selected profile and credentials never enter a frame.
         const payload = mirrorFramePayload(body, currentIdentity);
         try {
-          await fetchWithTimeout(`${endpoint}?t=${encodeURIComponent(token)}`, {
+          const response = await fetchWithTimeout(`${endpoint}?t=${encodeURIComponent(token)}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           }, 5000);
+          receiverNeedsImage = (await response.json().catch(() => null))?.needImage === true;
         } catch {
           // receiver unreachable: try again on the next tick
         }
