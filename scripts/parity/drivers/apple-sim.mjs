@@ -406,7 +406,12 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       }
       if (mac) collectMacFocusKeyLog();
     },
-    async location() { await sleep(300); return state().route ?? "/"; },
+    async location() {
+      await sleep(300);
+      const s = state();
+      if (mac && s.note && !/^\/player/.test(s.route ?? "/")) console.log(`    app note: ${String(s.note).slice(0, 300)}`);
+      return s.route ?? "/";
+    },
     // The Mac's focus settles a moment after a key (the layer settle step): wait up to 4 s for a focused item, never report an empty
     // answer straight away. Bounded, so a screen that really has no focus still ends the check.
     async focused() {
