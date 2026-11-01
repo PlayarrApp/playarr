@@ -228,6 +228,29 @@ export async function clickIfPresent(locator) {
   if (await locator.count()) await locator.click();
 }
 
+// Raster flags for a repeatable reference: one raster thread and whole-tile repaint keep gradient, backdrop-filter and image tiles from
+// depending on thread scheduling; PaintHolding off stops the compositor holding the previous frame. Software raster stays as before.
+export const DETERMINISTIC_RASTER_ARGS = ["--num-raster-threads=1", "--disable-partial-raster", "--disable-features=PaintHolding"];
+
+// Fonts ready, every <img> and CSS background image in the viewport decoded, then two frames, so a shot never catches a half-decoded tile.
+export const settleDecodedPaint = () => (async () => {
+  await document.fonts.ready;
+  const urls = new Set();
+  const inView = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth; };
+  const jobs = [];
+  for (const el of document.querySelectorAll("*")) {
+    if (!inView(el)) continue;
+    if (el instanceof HTMLImageElement) jobs.push(el.decode().catch(() => {}));
+    for (const pseudo of [null, "::before", "::after"]) {
+      const bg = getComputedStyle(el, pseudo).backgroundImage;
+      for (const m of bg.matchAll(/url\((['"]?)(.*?)\1\)/g)) urls.add(new URL(m[2], location.href).href);
+    }
+  }
+  for (const u of urls) { const img = new Image(); img.src = u; jobs.push(img.decode().catch(() => {})); }
+  await Promise.all(jobs);
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+})();
+
 export async function createDriver({ playwright = chromium, secrets } = {}) {
   const env = process.env;
   const distDir = env.PLAYARR_WEB_DIST ?? join(dirname(fileURLToPath(import.meta.url)), "../../../clients/tv-web/web/dist");
@@ -466,6 +489,9 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     if (["/movies", "/series", "/music"].includes(path)) {
       await page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 });
     }
+    // The focused film's runtime fills in when its detail request lands (LibraryPreview, Home hero): a shot taken before it drops the "1 min" span.
+    if (path === "/movies") await page.waitForSelector(".tv-library-preview [data-detail-field=runtime]", { timeout: 30000 });
+    if (path === "/") await page.waitForSelector("[data-detail-field=runtime]", { timeout: 8000 }).catch((e) => { if (e?.name !== "TimeoutError") throw e; }); // a series or music first card has no runtime
     if (path === "/calendar") await page.waitForSelector(".calendar-page", { timeout: 30000 });
     if (path === "/search") await page.waitForSelector(".tv-search-results-grid:visible, .tv-empty-state:visible, .tv-search-prompt:visible", { timeout: 30000 }); // :visible, as the phone layout also renders a hidden prompt
     if (path.startsWith("/movies/") || path.startsWith("/series/")) await waitForDetailReady({ requireHeroAction: detailActionRequired });
@@ -705,7 +731,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       return `${info.sha}@${info.builtAt}`;
     },
     waitReady,
-    async start() { browser = await playwright.launch(env.PARITY_CHROME ? { executablePath: env.PARITY_CHROME } : {}); await open(); await guard(); },
+    async start() { browser = await playwright.launch({ ...(env.PARITY_CHROME ? { executablePath: env.PARITY_CHROME } : {}), args: DETERMINISTIC_RASTER_ARGS }); await open(); await guard(); },
     async stop() { await browser?.close(); await localWeb?.close(); },
     async setTheme(t) { await guard(); if (t !== theme) { theme = t; await open(); } },
     // TV Home proves first-card focus and the Left/Right nav round trip. Mobile Home waits for populated content and settles without TV focus keys.
@@ -805,6 +831,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       // A detail page opens at its top. On a phone the focus-scroll to the first episode card can land late and leave the page scrolled
       // (a different frame per run), so the capture returns every scrolled box to the top first.
       if (detailRoute) await page.evaluate(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; });
+      await page.evaluate(settleDecodedPaint);
       if (disableAnimations) {
         await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         await guard();
