@@ -233,13 +233,8 @@ namespace Playarr.Xbox.Views
             Candidates.Add(new Candidate(owner, box, item));
         }
 
-        private static async Task<(byte[] Pixels, int Width, int Height)> GrabAsync(FrameworkElement root)
-        {
-            var bitmap = new RenderTargetBitmap();
-            await bitmap.RenderAsync(root, 1920, 1080);
-            var buffer = await bitmap.GetPixelsAsync();
-            return (buffer.ToArray(), bitmap.PixelWidth, bitmap.PixelHeight);
-        }
+        /// <summary>The composed frame of the window (the compositor's output, as the screenshot shows it), not a XAML re-render.</summary>
+        private static Task<(byte[] Pixels, int Width, int Height)> GrabAsync(FrameworkElement root) => ScreenGrab.GrabAsync(root);
 
         /// <summary>Hides only what the element itself draws (its fill, or the element for a leaf) and returns the undo.</summary>
         private static Action Hide(FrameworkElement owner)
@@ -326,23 +321,6 @@ namespace Playarr.Xbox.Views
         /// <summary>Per-element evidence of the last visibility pass (diagnosis only, not part of the schema).</summary>
         private static List<string> VisibilityLog = new();
 
-        private static string ArtLast = string.Empty;
-
-        /// <summary>Diagnosis: the box as rows of luminance characters.</summary>
-        private static string Art(byte[] px, int width, int x0, int y0, int x1, int y1)
-        {
-            var sb = new System.Text.StringBuilder();
-            var lo = 255; var hi = 0;
-            for (var y = y0; y < y1; y++) for (var x = x0; x < x1; x++) { var i = (y * width + x) * 4; var l = (px[i] + px[i + 1] + px[i + 2]) / 3; lo = Math.Min(lo, l); hi = Math.Max(hi, l); }
-            for (var y = y0; y < y1; y++)
-            {
-                for (var x = x0; x < x1; x++) { var i = (y * width + x) * 4; var l = (px[i] + px[i + 1] + px[i + 2]) / 3; sb.Append(" .:-=+*#%@"[hi == lo ? 0 : (l - lo) * 9 / (hi - lo)]); }
-                sb.Append('/');
-            }
-
-            return sb.ToString();
-        }
-
         private static bool PixelEqual(byte[] a, byte[] b, int i) => a[i] == b[i] && a[i + 1] == b[i + 1] && a[i + 2] == b[i + 2];
 
         // Video needs no mask: a pixel that changes between the base and re-show frames (a playing picture) is never evidence,
@@ -372,14 +350,13 @@ namespace Playarr.Xbox.Views
             var (before, width, height) = await GrabAsync(root);
             var hidden = new HashSet<object>();
             var log = new List<string>();
-            var diagnosed = 0;
-            var diagnosedLow = 0;
+                        var frameScale = width / 1920.0; // boxes are in 1920x1080 layout pixels; the composed frame may be smaller or larger
             foreach (var candidate in Candidates)
             {
-                var x0 = Math.Max(0, (int)Math.Floor(candidate.Box.X));
-                var y0 = Math.Max(0, (int)Math.Floor(candidate.Box.Y));
-                var x1 = Math.Min(width, (int)Math.Ceiling(candidate.Box.Right));
-                var y1 = Math.Min(height, (int)Math.Ceiling(candidate.Box.Bottom));
+                var x0 = Math.Max(0, (int)Math.Floor(candidate.Box.X * frameScale));
+                var y0 = Math.Max(0, (int)Math.Floor(candidate.Box.Y * frameScale));
+                var x1 = Math.Min(width, (int)Math.Ceiling(candidate.Box.Right * frameScale));
+                var y1 = Math.Min(height, (int)Math.Ceiling(candidate.Box.Bottom * frameScale));
                 if (x1 <= x0 || y1 <= y0)
                 {
                     hidden.Add(candidate.Item);
@@ -445,60 +422,9 @@ namespace Playarr.Xbox.Views
                     }
                 }
 
-                var ancestorNote = string.Empty;
-                if (rawHide == 0 && candidate.Owner is TextBlock && ((colours.Count <= 3 ? diagnosedLow++ < 2 : diagnosed++ < 4)) && (x1 - x0) * (y1 - y0) <= 4000)
-                {
-                    ancestorNote += $" text={((TextBlock)candidate.Owner).Text} art0=" + Art(before, width, x0, y0, x1, y1);
-                    DependencyObject? up = candidate.Owner;
-                    for (var depth = 1; depth <= 10 && up != null; depth++)
-                    {
-                        up = VisualTreeHelper.GetParent(up);
-                        if (up is not UIElement ancestor)
-                        {
-                            break;
-                        }
-
-                        var was = ancestor.Opacity;
-                        ancestor.Opacity = 0;
-                        int moved;
-                        try
-                        {
-                            await FramesAsync(2);
-                            var ghost = (await GrabAsync(root)).Pixels;
-                            ArtLast = Art(ghost, width, x0, y0, x1, y1);
-                            moved = 0;
-                            for (var y = y0; y < y1; y++)
-                            {
-                                for (var x = x0; x < x1; x++)
-                                {
-                                    var i = (y * width + x) * 4;
-                                    moved += PixelEqual(ghost, before, i) ? 0 : 1;
-                                }
-                            }
-                        }
-                        finally
-                        {
-                            ancestor.Opacity = was;
-                        }
-
-                        if (depth == 1)
-                        {
-                            ancestorNote += " art_a1=" + ArtLast;
-                        }
-
-                        await FramesAsync(2);
-                        var fe = ancestor as FrameworkElement;
-                        ancestorNote += $" [a{depth} m={moved} {(ancestor is Panel ? "P" : ancestor is Border ? "B" : ancestor is ContentPresenter ? "CP" : ancestor is Control ? "C" : ancestor is ScrollViewer ? "SV" : "E")} {Math.Round(fe?.ActualWidth ?? 0)}x{Math.Round(fe?.ActualHeight ?? 0)} cache={(ancestor.CacheMode != null)} clip={(ancestor.Clip != null)} eff={(ancestor.Projection != null || ancestor.RenderTransform != null)}]";
-                        if (moved > 0)
-                        {
-                            break;
-                        }
-                    }
-                }
-
                 var changed = rounds[0] > 0 && rounds[1] > 0; // an unplayed second round stays 0
                 var focusable = !changed && IsFocusableAndOnTop(candidate.Owner, candidate.Box);
-                log.Add($"#{log.Count} {Math.Round(candidate.Box.X)},{Math.Round(candidate.Box.Y)} {Math.Round(candidate.Box.Width)}x{Math.Round(candidate.Box.Height)} r1={rounds[0]} r2={rounds[1]} h={rawHide} u={unstable} o={candidate.Owner.Opacity:0.##} {(changed ? "visible" : focusable ? "focusable" : "covered")} d={colours.Count}{ancestorNote}");
+                log.Add($"#{log.Count} {Math.Round(candidate.Box.X)},{Math.Round(candidate.Box.Y)} {Math.Round(candidate.Box.Width)}x{Math.Round(candidate.Box.Height)} r1={rounds[0]} r2={rounds[1]} h={rawHide} u={unstable} o={candidate.Owner.Opacity:0.##} {(changed ? "visible" : focusable ? "focusable" : "covered")} d={colours.Count}");
                 if (!changed && !focusable)
                 {
                     hidden.Add(candidate.Item);
