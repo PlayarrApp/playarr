@@ -12,9 +12,9 @@ cd "$here"
 eval "$(node parity-config.mjs --shell)"
 export PLAYARR_WEB_USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64; Xbox; Xbox One) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edge/44.18363.8131"
 export PLAYARR_WEB_PLAYBACK_QUERY='{"containers":"mp4,m4v,mov,mkv,ts,mp3,m4a,flac","video_codecs":"h264,hevc","audio_codecs":"aac,eac3,ac3,mp3,flac,opus,pcm_s16le,pcm_s24le","hdr":"hdr10,hlg","max_bit_depth":10,"video_profiles":"hevc:main 10","max_width":3840,"max_height":2160,"max_fps":60,"max_bitrate_bps":25000000,"max_channels":6,"passthrough":"eac3,ac3"}'
-checks=player-initial-focus,player-right,player-right-3,player-right-end,player-left-edge,player-up-seek,player-up-down,player-ok-toggle,player-panel-open,player-panel-close,player-back,player-back-back
+checks=player-initial-focus,player-right,player-right-3,player-right-end,player-left-edge,player-up-seek,player-up-down,player-ok-toggle,player-panel-open,player-panel-close,player-back,player-back-back  # the player-* entries copied into the Fire TV reference
 mkdir -p "$out"
-node suite-run.mjs --driver ./drivers/web.mjs --player --reference --only dpad --checks "$checks" --out "$out"
+node suite-run.mjs --driver ./drivers/web.mjs --player --reference --only dpad --out "$out"
 node -e '
 const fs = require("fs");
 const base = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));

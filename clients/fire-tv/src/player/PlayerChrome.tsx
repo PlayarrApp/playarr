@@ -120,8 +120,8 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
           </T>
         </View>
 
-        {/* The group at the web's positions (64 px buttons 77.59 px apart). Mute, the volume slider and Fullscreen are drawn as in the web's xbox layout reference, but the web D-pad session (Android TV user agent, usesSystemVolumeOnly) hides them from the control row because the remote owns the volume, as the Fire TV remote does: they are drawn and never focused. */}
-        <RoundButton icon={props.muted || props.volume === 0 ? 'volumeOff' : 'volume'} label={props.muted ? 'Unmute' : 'Mute'} web={props.muted ? 'Unmute' : 'Mute'} size={64} x={374.77} y={958} iconSize={20} control="mute" {...props} onPress={props.onToggleMute} bare focusable={false} />
+        {/* The group at the web's positions (64 px buttons 77.59 px apart). Mute and Fullscreen are in the control row as in the web's xbox user-agent session; the volume slider is not focusable there. */}
+        <RoundButton icon={props.muted || props.volume === 0 ? 'volumeOff' : 'volume'} label={props.muted ? 'Unmute' : 'Mute'} web={props.muted ? 'Unmute' : 'Mute'} size={64} x={374.77} y={958} iconSize={20} control="mute" {...props} onPress={props.onToggleMute} bare />
         <VolumeSlider {...props} />
         <RoundButton icon="audio" label={`Audio: ${props.audioLabel ?? 'Unavailable'}`} size={64} x={1223.98} y={958} iconSize={20} control="audio" {...props} onPress={props.onOpenAudio} bare focusable={props.audioLabel !== null} dim={props.audioLabel === null} />
         <RoundButton icon="subtitles" label="Subtitles" web={`Subtitles: ${props.subtitlesOn ? 'On' : 'Off'}`} size={64} x={1301.58} y={958} iconSize={20} control="subtitles" focusable={props.hasSubtitles} {...props} nodeRef={props.subtitlesRef} onPress={props.onOpenSubtitles} dim={!props.subtitlesOn} />
@@ -129,7 +129,7 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
         <QualityPill {...props} />
         <RoundButton icon="info" label="Info and playback health" size={64} x={1630.81} y={958} iconSize={20} control="info" {...props} onPress={props.onOpenInfo} bare />
         <RoundButton icon="cast" label="Play on another device" size={64} x={1708.41} y={958} iconSize={20} control="cast" {...props} onPress={props.onOpenCast} bare />
-        <RoundButton icon="fullscreen" label="Enter fullscreen" size={64} x={1786} y={958} iconSize={20} control="fullscreen" {...props} onPress={props.onToggleFullscreen} bare focusable={false} />
+        <RoundButton icon="fullscreen" label="Enter fullscreen" size={64} x={1786} y={958} iconSize={20} control="fullscreen" {...props} onPress={props.onToggleFullscreen} bare />
       </Animated.View>
     </View>
   );

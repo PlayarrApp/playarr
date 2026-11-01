@@ -427,6 +427,13 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
   const rootRef = useRef<View>(null);
   const subtitlesRef = useRef<View>(null);
 
+  // Hiding the controls must not take focus away from Play: a Back with nothing focused is not delivered to the layer below.
+  useEffect(() => {
+    if (!visible || controlsVisible) return undefined;
+    const timer = setTimeout(() => focusNode(playRef), 60);
+    return () => clearTimeout(timer);
+  }, [visible, controlsVisible]);
+
   const reveal = useCallback(() => {
     lastInputAt.current = Date.now();
     setControlsVisible(true);
@@ -532,6 +539,9 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
     if (key === 'back' || key === 'menu') return;
     // The first input with the controls hidden only reveals them: it must not pause, seek or activate anything.
     if (!controlsRef.current) {
+      // The native focus engine still walks on this key although the controls are hidden; the web keeps focus where it was.
+      const held = nativeControl.current;
+      if (held === 'play' || held === null) setTimeout(() => focusNode(playRef), 60);
       swallowPress.current = true;
       setTimeout(() => {
         swallowPress.current = false;
