@@ -100,8 +100,8 @@ export function measureTree(root) {
 }
 
 const fontOf = (name = "") => {
-  const m = /^f(\d+)s([\d.]+)~([wct])(?:\|(\w+))?$/.exec(name);
-  return m ? { weight: Number(m[1]), size: Number(m[2]), words: m[3] === "w", tail: m[3] === "t", role: m[4] ?? "text" } : null;
+  const m = /^f(\d+)s([\d.]+)~([wct])(_?)(?:\|(\w+))?$/.exec(name);
+  return m ? { weight: Number(m[1]), size: Number(m[2]), words: m[3] === "w", tail: m[3] === "t", spaceBefore: m[4] === "_", role: m[5] ?? "text" } : null;
 };
 
 export function buildLayoutDocument(appUiXml, { screen, theme, clockPinned }) {
@@ -249,17 +249,12 @@ function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }
         if (last && Math.abs(l.rect.y - last[0].rect.y) < font.size * 0.5) last.push(l); else lines.push([l]);
       }
       for (const line of lines) {
-        // Words are one Label each (a space between them); characters are one Label each, and a space is where the real gap between two
-        // neighbours is wider than the run's usual gap by a space's width.
-        const gaps = line.slice(1).map((l, i) => l.rect.x - (line[i].rect.x + line[i].rect.w)).sort((a, b) => a - b);
-        const usual = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 0;
+        // The app stamps a Label that follows a space in its own string; the Labels hold no spaces, so the text is rebuilt from that
+        // stamp, never from the size of the gaps.
         let text = "";
         let prev = null;
         for (const l of line) {
-          if (prev) {
-            const gap = l.rect.x - (prev.rect.x + prev.rect.w);
-            if (!fontOf(l.node.attrs.name).tail && (font.words || gap - usual > font.size * 0.12)) text += " ";
-          }
+          if (prev && fontOf(l.node.attrs.name).spaceBefore) text += " ";
           text += l.node.attrs.text;
           prev = l;
         }
