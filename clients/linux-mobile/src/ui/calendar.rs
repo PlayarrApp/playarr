@@ -801,6 +801,14 @@ impl Cal {
         } else {
             self.page.remove_css_class("pa-agenda-bg");
         }
+        // The web paints the rail surface only behind the agenda; month and week sit on the plain page surface.
+        if let Some(scroll) = self.page.ancestor(gtk4::ScrolledWindow::static_type()) {
+            if v == View::Agenda {
+                scroll.add_css_class("pa-rail-surface");
+            } else {
+                scroll.remove_css_class("pa-rail-surface");
+            }
+        }
         // The web fades the month's right edge as well; only the week list also fades its bottom.
         for (i, f) in self.fades.iter().enumerate() {
             f.set_visible(week || (i == 1 && v == View::Month));
@@ -1014,7 +1022,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     cal.refresh();
     // The web's rail surface is the page's own background (`.tv-rail-surface` on the calendar's panel).
     scroll.add_css_class("pa-transparent");
-    scroll.add_css_class("pa-rail-surface");
+    scroll.add_css_class("pa-rail-surface"); // opens on the agenda; `set_view` drops it for month and week
     scroll.upcast()
 }
 
