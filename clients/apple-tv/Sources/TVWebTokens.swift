@@ -71,11 +71,17 @@ enum TVWeb {
     static let gridLeft: CGFloat = railLeft + cardPadLeft
     /// Left edge of column `index` at medium.
     static func gridColumnLeft(_ index: Int) -> CGFloat { gridLeft + CGFloat(index) * cardPitch() }
-    /// The part of column `column`'s CSS x that a layout snapped to whole points drops: `gridLeft + column * (width + gap)`
-    /// minus its integer part. Cards and their children are offset by it so they sit where the 1/64 px LayoutUnit puts them.
-    static func fractionalColumnOffset(column: Int, width: CGFloat, gap: CGFloat) -> CGFloat {
+    /// Blink paints a box at its LayoutUnit rect snapped to the device pixel grid (left = round(x), right = round(x + width));
+    /// `getBoundingClientRect` keeps the fraction, and the layout scorer compares the same whole device pixels. The grid floors
+    /// each column's origin to a whole point, so cards move by `round(x) - floor(x)` to sit on the snapped pixel.
+    static func snappedColumnOffset(column: Int, width: CGFloat, gap: CGFloat) -> CGFloat {
         let x = gridLeft + CGFloat(column) * (width + gap)
-        return x - x.rounded(.down)
+        return x.rounded() - x.rounded(.down)
+    }
+    /// The snapped paint width of column `column`: `round(x + width) - round(x)` (327 or 328 at medium, 327.17 wide in CSS).
+    static func snappedColumnWidth(column: Int, width: CGFloat, gap: CGFloat) -> CGFloat {
+        let x = gridLeft + CGFloat(column) * (width + gap)
+        return (x + width).rounded() - x.rounded()
     }
     /// `.tv-home-rail { gap: clamp(14px, calc(1.3 * var(--vw)), 26px) }`.
     static let homeRailGap: CGFloat = layoutUnit(clamp(14, 1.3 * vw, 26))

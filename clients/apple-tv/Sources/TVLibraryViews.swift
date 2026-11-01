@@ -2068,11 +2068,13 @@ struct TVLibraryKindView: View {
                     if view == "list" {
                         libraryRow(work)
                     } else {
-                        libraryCard(work: work, width: cardW, artHeight: artH, showTitle: true, artIncludesDot: false,
+                        // The grid floors each column's origin to a whole point; Blink lays the column out at its 1/64 px LayoutUnit
+                        // (`grid-template-columns: repeat(n, var(--card-w))` with the CSS gap) and paints the box snapped to the
+                        // device pixel grid (left round(x), right round(x + w)). Card and art take that snapped rect.
+                        libraryCard(work: work, width: TVWeb.snappedColumnWidth(column: index % cols, width: cardW, gap: gap),
+                                    artHeight: artH, showTitle: true, artIncludesDot: false,
                                     gridPosition: TVParityGridPosition(itemIndex: index, columns: cols))
-                            // The grid snaps each column's origin down to a whole point; Blink keeps the 1/64 px LayoutUnit
-                            // (`grid-template-columns: repeat(n, var(--card-w))` with the CSS gap). The remainder goes back here.
-                            .offset(x: TVWeb.fractionalColumnOffset(column: index % cols, width: cardW, gap: gap))
+                            .offset(x: TVWeb.snappedColumnOffset(column: index % cols, width: cardW, gap: gap))
                     }
                 }
             }

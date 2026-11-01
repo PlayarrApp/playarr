@@ -11,9 +11,11 @@ final class TVWebTokensTests: XCTestCase {
         XCTAssertEqual(TVWeb.cardRadius, 12.48, accuracy: 0.0001)
     }
 
-    func testSnappedColumnRemainderRestoresTheLayoutUnit() {
+    func testSnappedColumnMatchesBlinkPixelSnapping() {
         let gap = TVWeb.layoutUnit(TVWeb.cardGap)
-        XCTAssertEqual(TVWeb.fractionalColumnOffset(column: 2, width: TVWeb.cardWidthMedium, gap: gap), 0.515625, accuracy: 0.0001)
+        // Column 2: x 1489.52 snaps to 1490 (floor 1489), right 1816.69 snaps to 1817, so the box is 327 wide.
+        XCTAssertEqual(TVWeb.snappedColumnOffset(column: 2, width: TVWeb.cardWidthMedium, gap: gap), 1, accuracy: 0.0001)
+        XCTAssertEqual(TVWeb.snappedColumnWidth(column: 2, width: TVWeb.cardWidthMedium, gap: gap), 327, accuracy: 0.0001)
     }
 
     func testDetailsPanelTypeAndInk() {
