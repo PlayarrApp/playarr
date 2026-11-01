@@ -286,3 +286,10 @@ end function
 function PlayarrContentHeight(size as Float) as Float
     return Int(1.011 * size + 0.5) + Int(0.353 * size + 0.5)
 end function
+
+' Top of the text box Blink gives a line of Nunito Sans: the line box top plus the half-leading, (line-height - content height) / 2
+' floored to whole pixels (FontHeight::AddLeading), where the content height is PlayarrContentHeight. A text node that is
+' positioned by its text box (a TrackedText, a WebLabel) is placed at this value instead of a hand-set offset.
+function PlayarrTextTop(lineTop as Float, size as Float, lineHeight as Float) as Float
+    return lineTop + Int((lineHeight - PlayarrContentHeight(size)) / 2)
+end function
