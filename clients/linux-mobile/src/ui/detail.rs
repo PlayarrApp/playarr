@@ -348,49 +348,25 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         .css_classes(["pa-display"])
         .xalign(0.0)
         .build();
-    // The web's title box is 12ch (about 245 css px): break the title there. GTK cannot cap a label's width.
-    let wrapped = wrap_title(&title_label, &w.title, 245);
-    let two = wrapped.contains('\n');
-    // A two-line title sits 5 px higher than a one-line one.
-    gap(
-        &body,
-        if film {
-            4
-        } else if two {
-            9
-        } else {
-            10
-        },
-    );
+    // The web title is 12ch wide (global.css, phone .tv-detail-title) with line-height 0.94: wrap by the same rule.
+    let wrapped = wrap_title(&title_label, &w.title);
+    gap(&body, 10);
     title_label.set_label(&wrapped);
-    if two {
-        title_label.add_css_class("two");
-        // The web sets the title at line-height 0.94; GTK's CSS line-height does not reach wrapped Pango lines.
-        let attrs = gtk4::pango::AttrList::new();
-        attrs.insert(gtk4::pango::AttrFloat::new_line_height(0.70));
-        title_label.set_attributes(Some(&attrs));
-    }
+    title_label.set_attributes(Some(&title_attrs(&title_label)));
     body.append(&title_label);
-    gap(
-        &body,
-        if film {
-            5
-        } else if two {
-            7
-        } else {
-            11
-        },
-    );
+    // The episode heading has margin-top 8 px, the meta row 12 px (phone .tv-detail-copy h2 / .tv-detail-meta).
+    gap(&body, if film { 12 } else { 8 });
     if let Some((_, e)) = &focus_ep {
-        body.append(
-            &gtk4::Label::builder()
-                .label(e.episode.title.clone().unwrap_or_default())
-                .accessible_role(gtk4::AccessibleRole::Heading)
-                .css_classes(["pa-ep-heading"])
-                .xalign(0.0)
-                .build(),
-        );
-        gap(&body, 10);
+        let heading = gtk4::Label::builder()
+            .label(e.episode.title.clone().unwrap_or_default())
+            .accessible_role(gtk4::AccessibleRole::Heading)
+            .css_classes(["pa-ep-heading"])
+            .xalign(0.0)
+            .build();
+        // Phone `.tv-detail-copy h2`: 0.9rem (14.4 px) at line-height 1.15.
+        heading.set_attributes(Some(&line_height_attrs(&heading, 1.15, 14.4)));
+        body.append(&heading);
+        gap(&body, 12);
     }
     let mut meta: Vec<(String, bool)> = Vec::new();
     if let Some((s, e)) = &focus_ep {
@@ -871,32 +847,71 @@ fn season_rail(
     col
 }
 
-/// `text` with a line break wherever a line would pass `max_px` css pixels at `label`'s font.
-fn wrap_title(label: &gtk4::Label, text: &str, max_px: i32) -> String {
+/// Title font size and letter spacing (css px): phone `clamp(2rem, 10vw, 3.5rem)` at 360 px, `-0.072em`, line-height 0.94.
+const TITLE_PX: f64 = 36.0;
+const TITLE_SPACING_PX: f64 = -0.072 * TITLE_PX;
+const TITLE_LINE_HEIGHT: f64 = 0.94;
+
+/// The title's Pango line-height factor: GTK's CSS line-height does not reach wrapped Pango lines, so the css
+/// line box (0.94 of the font size) is divided by the font's natural line height.
+fn title_attrs(label: &gtk4::Label) -> gtk4::pango::AttrList {
+    line_height_attrs(label, TITLE_LINE_HEIGHT, TITLE_PX)
+}
+
+/// A Pango line-height factor that gives `label` a css line box of `line_height` times `px`.
+fn line_height_attrs(label: &gtk4::Label, line_height: f64, px: f64) -> gtk4::pango::AttrList {
+    let layout = label.create_pango_layout(Some("0"));
+    let natural = f64::from(layout.extents().1.height()) / f64::from(gtk4::pango::SCALE);
+    let attrs = gtk4::pango::AttrList::new();
+    attrs.insert(gtk4::pango::AttrFloat::new_line_height(
+        (line_height * px / natural) as f32 as f64,
+    ));
+    attrs
+}
+
+/// `text` with a line break wherever a line would pass the title box: `max-width: 12ch`, the advance of "0".
+fn wrap_title(label: &gtk4::Label, text: &str) -> String {
     let layout = label.create_pango_layout(None);
-    // The layout is made before the style's -2.6 px letter spacing applies, so take it off per character.
+    // The layout is made before the style's letter spacing applies: add it per character, as Blink does.
     let width = |t: &str| {
         layout.set_text(t);
-        layout.pixel_size().0 - (t.chars().count() as f64 * 2.6) as i32
+        f64::from(layout.size().0) / f64::from(gtk4::pango::SCALE) + t.chars().count() as f64 * TITLE_SPACING_PX
     };
-    let mut out = String::new();
-    let mut line = String::new();
-    for word in text.split_whitespace() {
-        let next = if line.is_empty() {
-            word.to_string()
-        } else {
-            format!("{line} {word}")
-        };
-        if !line.is_empty() && width(&next) > max_px {
-            out.push_str(&line);
-            out.push('\n');
-            line = word.to_string();
-        } else {
-            line = next;
+    // `ch` is the glyph advance without letter spacing.
+    let max = 12.0 * (width("0") - TITLE_SPACING_PX);
+    let lines_at = |limit: f64| {
+        let mut lines: Vec<String> = Vec::new();
+        let mut line = String::new();
+        for word in text.split_whitespace() {
+            let next = if line.is_empty() {
+                word.to_string()
+            } else {
+                format!("{line} {word}")
+            };
+            if !line.is_empty() && width(&next) > limit {
+                lines.push(std::mem::replace(&mut line, word.to_string()));
+            } else {
+                line = next;
+            }
         }
+        lines.push(line);
+        lines
+    };
+    let greedy = lines_at(max);
+    // `text-wrap: balance`: the narrowest box that keeps the line count.
+    let (mut lo, mut hi) = (0.0, max);
+    if greedy.len() > 1 {
+        for _ in 0..24 {
+            let mid = (lo + hi) / 2.0;
+            if lines_at(mid).len() <= greedy.len() {
+                hi = mid;
+            } else {
+                lo = mid;
+            }
+        }
+        return lines_at(hi).join("\n");
     }
-    out.push_str(&line);
-    out
+    greedy.join("\n")
 }
 
 /// Heading and count over a rail, as the season rails have them.
