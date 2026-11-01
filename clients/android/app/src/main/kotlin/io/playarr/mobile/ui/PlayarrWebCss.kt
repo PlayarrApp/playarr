@@ -57,3 +57,27 @@ internal fun WebCssLayout(
 
 /** Web phone `.drawer-body` top in css px: 20 padding, 47.36 header (10.56 kicker, 3.2, 33.6 title), 23.66 gap (2.8 vu), 4 body padding. */
 internal const val PHONE_DRAWER_BODY_TOP_CSS = 95.02f
+
+/**
+ * A one-line row whose children are as wide as their content, packed against the right edge with a css [gapCss] between them, each
+ * [heightCss] tall and centred in the row. Edges are summed in css px and every edge snapped to a device pixel once, as the browser does;
+ * a Compose row would round each child width and gap on its own and drift a pixel from the web edges.
+ */
+@Composable
+internal fun WebCssEndRow(gapCss: Float, heightCss: Float, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    androidx.compose.ui.layout.Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val d = density
+        val widthsCss = measurables.map { it.maxIntrinsicWidth(Math.round(heightCss * d)) / d }
+        val rowH = Math.round(heightCss * d)
+        var right = constraints.maxWidth / d
+        val placed = ArrayList<Pair<Int, androidx.compose.ui.layout.Placeable>>()
+        for (i in measurables.indices.reversed()) {
+            val l = right - widthsCss[i]
+            val x0 = Math.round(l * d)
+            val x1 = Math.round(right * d)
+            placed.add(0, x0 to measurables[i].measure(androidx.compose.ui.unit.Constraints.fixed(x1 - x0, rowH)))
+            right = l - gapCss
+        }
+        layout(constraints.maxWidth, rowH) { placed.forEach { (x, p) -> p.placeRelative(x, 0) } }
+    }
+}
