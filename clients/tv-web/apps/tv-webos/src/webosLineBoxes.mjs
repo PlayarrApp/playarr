@@ -19,6 +19,20 @@ export function countLines(rects) {
   return tops.length;
 }
 
+/**
+ * True when a one-line box is exactly as tall as the engine's truncated line box, so its height comes from its text and not from a size the web set.
+ * @param {number} contentHeight the box's content height in CSS px
+ * @param {number} lineHeight the computed (fractional) line height
+ */
+export function isContentSized(contentHeight, lineHeight) {
+  return Math.abs(contentHeight - Math.floor(lineHeight)) < 0.5;
+}
+
+/** @param {CSSStyleDeclaration} cs vertical padding and border of an element */
+function boxPadding(cs) {
+  return parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+}
+
 /** @param {string} userAgent */
 export function needsLineBoxFix(userAgent) {
   const m = /Chrome\/(\d+)/.exec(userAgent);
@@ -59,14 +73,13 @@ export function installLineBoxFix(win, options = {}) {
       const range = doc.createRange();
       range.selectNodeContents(el);
       let lines = countLines([...range.getClientRects()]);
-      // Single-line ellipsis labels sit in boxes the web sizes itself (the line box overflows them): leave those alone.
-      if (lines < 2 && cs.textOverflow === "ellipsis") return null;
+      const box = cs.boxSizing === "border-box" ? boxPadding(cs) : 0;
+      // Single-line ellipsis labels in a box the web sizes itself (the line box overflows it) are left alone. A label that is only as tall as its own
+      // truncated line box (a flex item centred in a row, a card's name) is a content-sized box: it gets the web line height like any other text.
+      if (lines < 2 && cs.textOverflow === "ellipsis" && !isContentSized(el.getBoundingClientRect().height - boxPadding(cs), lh)) return null;
       // A clamped block shows at most N lines however many the hidden text would wrap to.
       const clamp = parseInt(cs.getPropertyValue("-webkit-line-clamp"), 10);
       if (Number.isFinite(clamp) && clamp > 0) lines = Math.min(lines, clamp);
-      const box = cs.boxSizing === "border-box"
-        ? parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)
-        : 0;
       // The block's own minimum (a clamp() height on a button) must keep winning over the line-box minimum.
       // The nearest whole pixel pitch (only a leaf: nothing inside inherits the length), the surplus handed back through the end margin.
       const pitch = options.roundPitch && lines > 1 && el.childElementCount === 0 && Math.round(lh) > lh ? Math.round(lh) : 0;
