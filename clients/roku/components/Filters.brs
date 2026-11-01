@@ -88,19 +88,17 @@ sub filtersRender()
         filtersViewTile(g, 1606 + 92 * i, names[i], m.browseView = views[i], i, views[i])
     end for
     filtersHeading(g, 276.1, "SORT BY")
-    filtersChoice(g, 1605.5, 302, 131, "Title", 22.8, m.browseSort = "title", 1, 0)
-    filtersChoice(g, 1744, 302, 130, "Date Added", 58.7, m.browseSort = "date_added", 1, 1)
+    filtersChoice(g, 1605.5, 302, 131, "Title", PlayarrTextWidth("Title", 10.56, 680, 0), m.browseSort = "title", 1, 0)
+    filtersChoice(g, 1744, 302, 130, "Date Added", PlayarrTextWidth("Date Added", 10.56, 680, 0), m.browseSort = "date_added", 1, 1)
     filtersHeading(g, 388.7, "ORDER")
     ascText = "A-Z"
     descText = "Z-A"
-    ascW = 19.0
-    descW = 18.4
     if m.browseSort = "date_added"
         ascText = "Oldest first"
         descText = "Newest first"
-        ascW = PlayarrTextWidth(ascText, 10.56, 680, 0.11)
-        descW = PlayarrTextWidth(descText, 10.56, 680, 0.11)
     end if
+    ascW = PlayarrTextWidth(ascText, 10.56, 680, 0)
+    descW = PlayarrTextWidth(descText, 10.56, 680, 0)
     filtersChoice(g, 1605.5, 415, 131, ascText, ascW, m.browseOrder = "asc", 2, 0)
     filtersChoice(g, 1744, 415, 130, descText, descW, m.browseOrder = "desc", 2, 1)
     facets = { audio: [], subtitle: [] }
@@ -165,14 +163,13 @@ sub filtersViewTile(g as Object, x as Float, name as String, chosen as Boolean, 
         gy = cy + s * (uy - cy)
         pgTag(pgRound(g, gx, gy, uw * s, uh * s, 1, role), "container", 1)
     end for
-    tw = 18.8
-    if kind = "screen" then tw = 34.5
-    if kind = "cover" then tw = 29.1
+    ' Web tile label: 0.66rem, weight 900, no letter-spacing, centred; its width is the font's advances.
+    tw = PlayarrTextWidth(name, 10.56, 900, 0)
     tx = cx - tw / 2
     ty = 220.8
     tgx = cx + s * (tx - cx)
     tgy = cy + s * (ty - cy)
-    l = pgLabel(g, tgx, tgy, tw * s + 4, 15 * s, name, 10.56 * s, 900, role, { fitWidth: tw * s })
+    l = pgLabel(g, tgx, tgy, tw * s + 4, 15 * s, name, 10.56 * s, 900, role)
     m.filtersFocus.Push({ row: 0, col: col, x: x, y: 189.8, w: 84, h: 56 })
 end sub
 
@@ -195,7 +192,7 @@ sub filtersChoice(g as Object, x as Float, y as Float, w as Float, text as Strin
     end if
     tx = cx - tw * s / 2
     ty = y + 20.4 - 7.5 * (s - 1)
-    l = pgLabel(g, tx, ty, tw * s + 4, 15 * s, text, 10.56 * s, 680, role, { fitWidth: tw * s })
+    l = pgLabel(g, tx, ty, tw * s + 4, 15 * s, text, 10.56 * s, 680, role)
     m.filtersFocus.Push({ row: row, col: col, x: x, y: y, w: w, h: 56 })
 end sub
 

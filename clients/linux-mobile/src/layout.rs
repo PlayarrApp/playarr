@@ -250,13 +250,30 @@ fn rgba(c: &gdk::RGBA) -> [f32; 4] {
     [c.red(), c.green(), c.blue(), c.alpha()]
 }
 
-fn over(top: [f32; 4], under: [f32; 3]) -> [f32; 3] {
-    let a = top[3];
-    [
-        top[0] * a + under[0] * (1.0 - a),
-        top[1] * a + under[1] * (1.0 - a),
-        top[2] * a + under[2] * (1.0 - a),
-    ]
+/// A background colour as the layout document defines it: sRGB channels in 0..255, every ancestor fill composited over white.
+type Bg = [f64; 3];
+
+/// One composite step over the colour behind (every ancestor fill composited over white, in 0..255). The fill's channels are
+/// the 8-bit values it was declared with and its alpha is the declared one.
+fn over(top: [f32; 4], under: Bg) -> Bg {
+    let a = (f64::from(top[3]) * 1000.0).round() / 1000.0;
+    let ch = |v: f32| {
+        let t = f64::from(v) * 255.0;
+        if (t - t.round()).abs() < 0.01 {
+            t.round()
+        } else {
+            t
+        }
+    };
+    let mix = |i: usize| ch(top[i]) * a + under[i] * (1.0 - a);
+    [mix(0), mix(1), mix(2)]
+}
+
+/// The `#rrggbb` of a background, rounded once to 8 bits. A channel exactly between two values reads as the lower one, which
+/// is what GTK's renderer draws for it (surface #211d21 at 70 % over #1b181b is drawn #1f1b1f, its green 27.5 drawing as 27).
+fn hex_bg(c: Bg) -> String {
+    let b = |v: f64| (v - 0.5 - 1.0e-6).ceil().clamp(0.0, 255.0) as u8;
+    format!("#{:02x}{:02x}{:02x}", b(c[0]), b(c[1]), b(c[2]))
 }
 
 impl Fill {
@@ -394,7 +411,7 @@ impl Walk<'_> {
         c[2] > 0.0 && c[3] > 0.0
     }
 
-    fn visit(&mut self, w: &gtk4::Widget, clip: Rect, inherited: f32, parent_bg: [f32; 3]) {
+    fn visit(&mut self, w: &gtk4::Widget, clip: Rect, inherited: f32, parent_bg: Bg) {
         if !w.is_mapped() || !w.is_visible() {
             return;
         }
@@ -458,9 +475,9 @@ impl Walk<'_> {
         clip: Rect,
         inherited: f32,
         factor: f32,
-        parent_bg: [f32; 3],
+        parent_bg: Bg,
         lp: &Paints,
-    ) -> (bool, [f32; 3]) {
+    ) -> (bool, Bg) {
         let own = lp
             .fills
             .iter()
@@ -487,11 +504,11 @@ impl Walk<'_> {
                 .find(|(cb, r)| *r > 0.0 && near(*cb, b, 0.55))
                 .map(|(_, r)| *r);
         }
-        let base = |role: &str, text: &str, rect: Rect, opacity: f32, bgc: [f32; 3]| {
+        let base = |role: &str, text: &str, rect: Rect, opacity: f32, bgc: Bg| {
             let mut el = json!({
                 "text": text, "role": role,
                 "rect": {"x": rect[0], "y": rect[1], "w": rect[2], "h": rect[3]},
-                "color": Value::Null, "background": hex([bgc[0], bgc[1], bgc[2], 1.0], false),
+                "color": Value::Null, "background": hex_bg(bgc),
                 "fontSize": Value::Null, "fontWeight": Value::Null,
             });
             if (opacity - 1.0).abs() > 0.004 {
@@ -518,12 +535,6 @@ impl Walk<'_> {
             // One record per shaped style run (a run holds one font and one colour); neighbours on a line with the same
             // colour are one record. Text is each run's own, the ellipsis run reading as the ellipsis.
             let mut recs: Vec<(Rect, String, [f32; 4], f32)> = Vec::new();
-            // A text box is the CSS content area of the element's own (first available) font: its ascent and descent
-            // around the baseline, whichever face draws a glyph. The web sizes the box of a glyph that comes from a
-            // fallback face (an arrow, a play triangle) this way; Pango's run rectangle carries the fallback face's smaller
-            // ascent and descent instead, which is the named font difference.
-            let ctx = layout.context();
-            let primary = ctx.metrics(ctx.font_description().as_ref(), None);
             let mut it = layout.iter();
             loop {
                 if let Some(run) = it.run_readonly() {
@@ -552,19 +563,12 @@ impl Walk<'_> {
                         }
                     }
                     // The label's real transform to the root (an ancestor's CSS scale is part of it), applied to the run's
-                    // logical rectangle exactly as Pango laid it out (a fallback face keeps its own extents).
-                    let (top, height) =
-                        if item.analysis().flags() & PANGO_FLAG_IS_ELLIPSIS != 0 || primary.height() <= 0 {
-                            (lg.y(), lg.height())
-                        } else {
-                            let base = it.baseline();
-                            (base - primary.ascent(), primary.ascent() + primary.descent())
-                        };
+                    // logical rectangle exactly as Pango measured it; the run's own vertical extent is exported as it is.
                     let local = graphene::Rect::new(
                         ox as f32 + x0 as f32 / s,
-                        oy as f32 + top as f32 / s,
+                        oy as f32 + lg.y() as f32 / s,
                         (x1 - x0) as f32 / s,
-                        height as f32 / s,
+                        lg.height() as f32 / s,
                     );
                     let r = match w.compute_transform(self.root) {
                         Some(t) => to_root(&t, &local),
@@ -712,6 +716,33 @@ impl Walk<'_> {
     }
 }
 
+/// The text a label displays: the laid-out runs in order, the ellipsis run reading as the ellipsis. A label that is not
+/// ellipsized shows its whole text; the web names a control by what it displays (innerText), ellipsis included.
+fn shown_text(l: &gtk4::Label) -> String {
+    let layout = l.layout();
+    if !layout.is_ellipsized() {
+        return l.text().to_string();
+    }
+    let text = layout.text().to_string();
+    let mut out = String::new();
+    let mut it = layout.iter();
+    loop {
+        if let Some(run) = it.run_readonly() {
+            let item = run.item();
+            if item.analysis().flags() & PANGO_FLAG_IS_ELLIPSIS != 0 {
+                out.push('\u{2026}');
+            } else {
+                let o = item.offset() as usize;
+                out.push_str(text.get(o..o + item.length() as usize).unwrap_or(""));
+            }
+        }
+        if !it.next_run() {
+            break;
+        }
+    }
+    out
+}
+
 /// The text of the labels inside a control, the name a screen reader falls back to.
 fn child_text(w: &gtk4::Widget) -> String {
     let mut parts = Vec::new();
@@ -722,7 +753,7 @@ fn child_text(w: &gtk4::Widget) -> String {
         }
         if let Some(l) = n.downcast_ref::<gtk4::Label>() {
             if !l.text().is_empty() && !is_decorative(&n) {
-                parts.push(l.text().to_string());
+                parts.push(shown_text(l));
             }
             continue;
         }
@@ -869,7 +900,7 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
         viewport,
         items: Vec::new(),
     };
-    walk.visit(root, [-1.0e6, -1.0e6, 2.0e6, 2.0e6], 1.0, [1.0, 1.0, 1.0]);
+    walk.visit(root, [-1.0e6, -1.0e6, 2.0e6, 2.0e6], 1.0, [255.0, 255.0, 255.0]);
     // Occlusion as the web scorer samples it: nine points of the visible box; hidden when each lies under a later box
     // that paints (alpha of 0.5 or more) and is not part of the element.
     let n = walk.items.len();
@@ -941,10 +972,18 @@ mod tests {
     use gtk4::AccessibleRole as R;
 
     #[test]
+    fn a_translucent_fill_composites_as_the_renderer_draws_it() {
+        // Surface #211d21 at 70 % over the page #1b181b: the green channel is exactly 27.5, which GTK draws as 27 (#1f1b1f).
+        let under = [27.0, 24.0, 27.0];
+        let fill = [33.0 / 255.0, 29.0 / 255.0, 33.0 / 255.0, 0.7];
+        assert_eq!(hex_bg(over(fill, under)), "#1f1b1f");
+        // An opaque fill replaces what is under it.
+        assert_eq!(hex_bg(over([1.0, 1.0, 1.0, 1.0], under)), "#ffffff");
+    }
+
+    // GTK must only be used from the thread that initialised it, and the test harness runs each test on its own thread, so the
+    // two GTK checks run in sequence inside `gtk_checks` (two tests initialising GTK on two threads crashed with SIGSEGV).
     fn same_native_role_exports_same_role() {
-        if gtk4::init().is_err() {
-            return;
-        }
         let a = gtk4::Box::builder().accessible_role(R::Group).build();
         let b = gtk4::Frame::builder().accessible_role(R::Group).build();
         let c = gtk4::Box::builder().accessible_role(R::Generic).build();
@@ -983,10 +1022,15 @@ mod tests {
     }
 
     #[test]
-    fn a_failed_probe_render_is_an_error_not_a_blank_frame() {
+    fn gtk_checks() {
         if gtk4::init().is_err() {
             return;
         }
+        same_native_role_exports_same_role();
+        a_failed_probe_render_is_an_error_not_a_blank_frame();
+    }
+
+    fn a_failed_probe_render_is_an_error_not_a_blank_frame() {
         // Never shown, so it has no size and no renderer: a render must fail, and the visibility check with it.
         let root = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         assert!(render(root.upcast_ref()).is_err());

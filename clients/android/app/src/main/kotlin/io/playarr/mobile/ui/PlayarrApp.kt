@@ -491,15 +491,16 @@ fun PlayarrApp(
         }
     }
     val stage: @Composable (@Composable () -> Unit) -> Unit = { content ->
-        if (stageScale == 1f && !isTelevision) CompositionLocalProvider(
+        if (stageScale == 1f && !isTelevision) {
             // A web viewport is a whole number of css px wide (390 for this phone), so css px is the physical width over that
             // whole width; the platform's density rounds to a dpi and leaves it 0.01 % off, which flips half-pixel edges.
-            androidx.compose.ui.platform.LocalDensity provides webViewportDensity(
+            val cssDensity = webViewportDensity(
                 androidx.compose.ui.platform.LocalContext.current.resources.displayMetrics.widthPixels,
                 androidx.compose.ui.platform.LocalDensity.current,
-            ),
-            content = content,
-        ) else if (stageScale == 1f) content() else CompositionLocalProvider(
+            )
+            androidx.compose.runtime.SideEffect { PlayarrLayoutExport.cssDensity = cssDensity.density }
+            CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides cssDensity, content = content)
+        } else if (stageScale == 1f) content() else CompositionLocalProvider(
             androidx.compose.ui.platform.LocalDensity provides stageDensity,
             androidx.compose.ui.platform.LocalConfiguration provides stageConfiguration,
             LocalStageScale provides stageScale,

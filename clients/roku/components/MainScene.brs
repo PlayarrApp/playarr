@@ -62,7 +62,7 @@ sub init()
     end if
     if m.profilesTitle <> invalid
         m.profilesTitle.ObserveField("textWidth", "centerProfilesTitle")
-        m.profilesTitle.spec = { text: "Who’s watching?", size: 80.64, weight: 500, tracking: -5.812, role: "ink", aria: "heading" }
+        m.profilesTitle.spec = { text: "Who’s watching?", size: 80.64, weight: 500, tracking: -5.806, role: "ink", aria: "heading" }
     end if
     m.profileActionsGroup = m.top.findNode("profileActionsGroup")
     m.profilesSettingsBtn = m.top.findNode("profilesSettingsBtn")
@@ -2751,6 +2751,8 @@ end function
 sub buildAlphabetStrip()
     letters = alphabetLetterList()
     m.alphabetLabels = []
+    ' Web .tv-directory .tv-alphabet: top clamp(214px, 25 * --viewport-unit, 286px) plus its 8 px padding; the column starts unscrolled.
+    m.browseAlphabet.translation = [1858, WebAlphabetTop()]
     ' Web .tv-alphabet: 44 px letter buttons; the active letter is a filled 24 px ink circle inside a 2 px brand ring (32 px).
     m.alphabetRing = CreateObject("roSGNode", "Poster")
     m.alphabetRing.uri = "pkg:/images/round-ring-r16.9.png"
@@ -2770,7 +2772,7 @@ sub buildAlphabetStrip()
     for each letter in letters
         ' Web: a 44 px button, the letter 9.22 px, its text box 15.2 px below the button top.
         label = CreateObject("roSGNode", "WebLabel")
-        label.translation = [0, y + 16.2]
+        label.translation = [0, y + 15.2]
         label.setFields({ size: 9.22, weight: 400, width: 44, height: 12, horizAlign: "center" })
         label.text = letter
         label.color = ThemeColor("inkMuted")
@@ -2973,8 +2975,10 @@ sub updateBrowsePreview(work as Object)
     if work.genres <> invalid and work.genres.Count() > 0
         kicker = UCase(work.genres[0])
     end if
+    m.browsePreviewKind.translation = [153.6, PlayarrTextTop(WebPanelTop(), WebPanelKickerSize(), WebPanelKickerLineHeight())]
+    m.browsePreviewTitle.translation = [153.6, PlayarrTextTop(WebPanelTitleLineTop(), 69.12, WebPanelTitleLineHeight())]
     m.browsePreviewKind.spec = { text: kicker, size: 12.29, weight: 860, tracking: 0.97, role: "brandInk", upper: true }
-    m.browsePreviewTitle.spec = { text: work.title, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true, aria: "heading" }
+    m.browsePreviewTitle.spec = { text: work.title, size: 69.12, weight: 560, tracking: -0.072 * 69.12, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true, aria: "heading" }
     year = ""
     ' Web LibraryPreview: release year only (never the added date).
     if work.release_date <> invalid and work.release_date.Len() >= 4 then year = work.release_date.Left(4)
@@ -2986,7 +2990,7 @@ sub updateBrowsePreview(work as Object)
     ' Web flows the meta line (year in ink-soft, genres in ink-muted) and the synopsis under the title.
     titleLines = m.browsePreviewTitle.lineCount
     if titleLines < 1 then titleLines = 1
-    metaY = 303.5 + 62.208 * titleLines + 27
+    metaY = WebPanelTitleLineTop() + WebPanelTitleLineHeight() * titleLines + WebLayoutUnit(WebClamp(18.0, 2.5 * 10.8, 34.0))
     m.browsePreviewMeta.translation = [153.6, metaY]
     m.browsePreviewMeta.spec = { text: year, size: 13.06, weight: 600, tracking: 0, role: "heroSoft", width: 60, lineHeight: 18.144, maxLines: 1 }
     metaX = 153.6
@@ -2999,8 +3003,10 @@ sub updateBrowsePreview(work as Object)
     showBrowsePreviewRuntime(work.id)
     overview = work.overview
     if overview = invalid or overview = "" then overview = "No synopsis is available."
-    m.browsePreviewOverview.translation = [153.6, metaY + 41.3]
-    m.browsePreviewOverview.spec = { text: overview, size: 13.82, weight: 600, tracking: 0, role: "heroSoft", width: 336, lineHeight: 23, maxLines: 5 }
+    ' Meta line box (1.5 x 13.056), then the overview's margin-top; the overview text box sits its half-leading into its first line.
+    overviewLineTop = metaY + WebLayoutUnit(1.5 * 13.056) + WebLayoutUnit(WebClamp(16.0, 2.0 * 10.8, 28.0))
+    m.browsePreviewOverview.translation = [153.6, PlayarrTextTop(overviewLineTop, WebPanelOverviewSize(), WebPanelOverviewLineHeight())]
+    m.browsePreviewOverview.spec = { text: overview, size: WebPanelOverviewSize(), weight: 600, tracking: 0, role: "heroSoft", width: 336, lineHeight: WebPanelOverviewLineHeight(), maxLines: 5 }
     ' Defer key-art download so acceptBrowseCatalog paints the grid first.
     ' Home hero uses sync GetToFile successfully; here it must not block paint.
     if m.browseKeyArt <> invalid
@@ -3053,18 +3059,19 @@ sub onBrowseKeyArtTimer()
         emitArtStatus(m.artActiveGeneration, m.artActiveScope, m.artActiveScope + "-preview", "pending", m.browseArtTelemetryVersion)
         sampleBrowseKeyArtStatus()
     end if
-    fade = 0.4
+    ' Web .tv-key-art img opacity (dark 0.72, light 0.24). The server bakes its own opacity into the stage PNG's alpha (dark 0.72,
+    ' light 0.4; style.rs STAGE_DARK / STAGE_LIGHT), so the Poster opacity is the CSS value over the baked one. No veil.
+    baked = 1.0
     web = 0.72
     if Instr(1, uri, "style=stage-light") > 0
-        fade = 0.15
+        baked = 0.4
         web = 0.24
     else if Instr(1, uri, "style=stage") > 0
-        fade = 0.15
+        baked = 0.72
     end if
-    m.browseKeyArt.opacity = web
-    veil = Int((1 - fade / web) * 255 + 0.5)
-    m.browseKeyArtVeil.color = ThemeColor("surface", veil)
-    ThemeSetRole(m.browseKeyArtVeil, "surface", veil)
+    m.browseKeyArt.opacity = web / baked
+    m.browseKeyArtVeil.color = ThemeColor("surface", 0)
+    ThemeSetRole(m.browseKeyArtVeil, "surface", 0)
     m.browseKeyArt.visible = true
     m.browseKeyArtFade.visible = true
 end sub
@@ -3998,10 +4005,6 @@ function createHomeRail(contentTarget as Object) as Object
     ' Rail heading matches Web's uniform .tv-rail h2 typography; focus changes the card, not the heading.
     title = CreateObject("roSGNode", "TrackedText")
     title.translation = [0, -21]
-    ' Fresh 1920x1080 r11 Web glyph bounds are about 4% wider for both
-    ' Home rail headings. Widen only the tracked heading group so its font
-    ' size, line height, tracking and vertical alignment stay unchanged.
-    title.scale = [1.04, 1]
     group.AppendChild(title)
 
     row = CreateObject("roSGNode", "RowList")
@@ -4747,7 +4750,7 @@ end sub
 ' Home headings keep the same Web typography regardless of which rail owns card focus.
 sub setRailTitle(rail as Object)
     if rail.label = invalid then return
-    rail.title.spec = { text: rail.label, size: 17.66, weight: 610, tracking: -0.53, role: "ink", aria: "heading" }
+    rail.title.spec = { text: rail.label, size: 17.66, weight: 610, tracking: -0.03 * 17.66, role: "ink", aria: "heading" }
     rail.title.translation = [0, -19.9]
 end sub
 
@@ -5191,7 +5194,7 @@ sub renderNavDockFocus()
             hl = m.navHighlights[i].translation
             ' The chip (active or focused) is the link's drawn box; an idle item has only its 64 px hit box.
             m.navHits[i].visible = not showChip
-            m.navHits[i].setFields({ translation: [hl[0] + 1.8, hl[1] + 0.8], width: 64, height: 64 })
+            m.navHits[i].setFields({ translation: [hl[0] + WebNavHitInset(), hl[1] + WebNavHitInset()], width: 64, height: 64 })
             base = m.navIcons[i].translation
             if showChip
                 m.navIcons[i].opacity = 1
@@ -6145,7 +6148,7 @@ sub updateSeriesEpisodeHeader()
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 10.56, weight: parts[i].weight, tracking: EpisodeCodeTracking(parts[i].text, -0.494), role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 10.56, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else
@@ -7757,7 +7760,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 10.56, weight: parts[i].weight, tracking: EpisodeCodeTracking(parts[i].text, -0.494), role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 10.56, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else
@@ -7766,7 +7769,8 @@ sub layoutDetailHeader(work as Object, detail as Object)
     end for
     overview = JsonString(work.overview)
     if overview = "" then overview = "No description is available."
-    m.detailSynopsis.translation = [153.6, metaY + 37.5]
+    ' Meta line box (1.5 x 10.56), the synopsis margin-top, then the synopsis text box's half-leading into its first line.
+    m.detailSynopsis.translation = [153.6, PlayarrTextTop(metaY + WebLayoutUnit(1.5 * 10.56) + WebLayoutUnit(WebClamp(16.0, 2.0 * 10.8, 28.0)), 12.864, WebLayoutUnit(1.58 * 12.864))]
     m.detailSynopsis.spec = { text: overview, size: 12.86, weight: 400, tracking: 0, role: "inkMuted", width: 325, lineHeight: 20.33, maxLines: 5 }
     m.detailActionsTop = metaY + 37.5 + 20.33 * m.detailSynopsis.lineCount + 38
 end sub
@@ -7784,7 +7788,7 @@ end function
 sub setDetailRailHead(slot as Integer, y as Float, title as String, caption as String)
     head = m.detailHeads[slot]
     head.title.translation = [0, y]
-    head.title.spec = { text: title, size: 17.66, weight: 610, tracking: -0.534, role: "ink", aria: "heading" }
+    head.title.spec = { text: title, size: 17.66, weight: 610, tracking: -0.03 * 17.66, role: "ink", aria: "heading" }
     head.sub.translation = [0, y + 29.5]
     head.sub.spec = { text: caption, size: 9.98, weight: 400, tracking: 0, role: "inkMuted" }
     head.title.visible = true

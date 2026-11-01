@@ -102,7 +102,7 @@ pub fn css(dark: bool) -> String {
             ".pa-key-art.soft { opacity: 0.13; }\n.pa-page.pa-profiles-bg { background: radial-gradient(circle at 50% 48%, alpha(@pa_brand, 0.13), alpha(@pa_brand, 0) 34%), #151315; }\n"
         } else {
             // The light Profiles page is a flat #f5f3f2 (web), its top-bar dropdowns the same.
-            ".pa-page.pa-profiles-bg { background: radial-gradient(circle at 50% 48%, alpha(@pa_brand, 0.13), alpha(@pa_brand, 0) 34%), #f5f3f2; }\n.pa-topbar dropdown.pa-dropdown > button { background: #f5f3f2; }\n.pa-mcell.outside { background: #efeeed; }\n.pa-key-art.soft { opacity: 0.08; }\n.pa-avatar-ring.current { box-shadow: 0 0 0 4px rgba(194, 47, 82, 0.42), 0 16px 44px rgba(56, 38, 33, 0.2); }\n.pa-khero-edge { background: linear-gradient(90deg, alpha(@pa_bg, 0.6), alpha(@pa_bg, 0) 75%), linear-gradient(90deg, alpha(@pa_bg, 0) 72%, @pa_bg 100%); }\n.pa-key-wash.pa-home-wash { background: linear-gradient(to bottom, alpha(@pa_bg, 0) 72px, @pa_bg 122px); }\nprogressbar.pa-progress { background: #e5e3e4; }\n.pa-rail-frost { background: linear-gradient(to right, alpha(@pa_frost, 0) 0%, alpha(@pa_frost, 0.68) 12%, alpha(@pa_frost, 0.88) 34%, alpha(@pa_frost, 0.96) 62%, @pa_frost 100%); }\n"
+            ".pa-page.pa-profiles-bg { background: radial-gradient(circle at 50% 48%, alpha(@pa_brand, 0.13), alpha(@pa_brand, 0) 34%), #f5f3f2; }\n.pa-topbar dropdown.pa-dropdown > button { background: #f5f3f2; }\n.pa-mcell.outside { background: #efeeed; }\n.pa-key-art.soft { opacity: 0.08; }\n.pa-avatar-ring.current { box-shadow: 0 0 0 4px rgba(194, 47, 82, 0.42), 0 16px 44px rgba(56, 38, 33, 0.2); }\n.pa-khero-edge { background: linear-gradient(90deg, alpha(@pa_bg, 0.6), alpha(@pa_bg, 0) 75%), linear-gradient(90deg, alpha(@pa_bg, 0) 72%, @pa_bg 100%); }\n.pa-key-wash.pa-home-wash { background: linear-gradient(to bottom, alpha(@pa_bg, 0) 72px, @pa_bg 122px); }\nprogressbar.pa-progress { background: #e5e3e4; }\n"
         };
     let hero = format!(
         ".pa-khero-fade {{ background: {edge}; }}\n{hard}.pa-key-art.pa-khero {{ opacity: {}; filter: {}; }}\n",
@@ -119,7 +119,13 @@ pub fn css(dark: bool) -> String {
     } else {
         "button.pa-entry.have { border-left-color: #224c3a; }\n.pa-dot.have { background: #224c3a; }\n.pa-chip-status.ok { color: @pa_ink; border-color: alpha(#224c3a, 0.65); background: alpha(#224c3a, 0.16); }\n.pa-agenda-bg { background: none; }\n"
     };
-    defs + &hero + include_str!("../data/style.css") + have + &cover
+    // The web's library rail surface (`.tv-rail-surface`): a sideways ramp of the frost colour in dark; on a phone the light theme's later rule makes it a flat 96 % surface.
+    let rail = if dark {
+        ".pa-rail-surface, scrolledwindow.pa-transparent.pa-rail-surface { background: linear-gradient(90deg, alpha(@pa_frost, 0) 0%, alpha(@pa_frost, 0.72) 12%, alpha(@pa_frost, 0.9) 34%, alpha(@pa_frost, 0.97) 62%, @pa_frost 100%); }\n"
+    } else {
+        ".pa-rail-surface, scrolledwindow.pa-transparent.pa-rail-surface { background: alpha(@pa_surface, 0.96); }\n"
+    };
+    defs + &hero + include_str!("../data/style.css") + have + &cover + rail
 }
 
 thread_local! {

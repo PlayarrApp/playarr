@@ -136,25 +136,25 @@ function PlayarrIsMonoLabel(id as String) as Boolean
     return id = "pairingCode"
 end function
 
-' The web type of labels declared in XML, by id: CSS px size, weight and letter-spacing (px) read from the web layout dump
+' The web type of labels declared in XML, by id: CSS px size, weight and letter-spacing (`tracking` in px, or `em` as the CSS em value, resolved against the size) from the web CSS
 ' (docs/parity/LAYOUT.md). A label without an entry keeps the size its `scale` implies.
 function PlayarrTypeFor(scope as String, id as String) as Dynamic
     g = GetGlobalAA()
     if g.typeTable = invalid
         g.typeTable = {
-            clockTime: { size: 17.28, weight: 760, tracking: -0.526 }
-            clockDate: { size: 11.14, weight: 640, tracking: 0.435 }
+            clockTime: { size: 17.28, weight: 760, em: -0.03 }
+            clockDate: { size: 11.14, weight: 640, em: 0.04 }
             profileLabel: { size: 8.83, weight: 680, tracking: 0.31, role: "inkMuted" }
-            userVersion: { size: 8, weight: 700, tracking: 1.358, role: "ink" }
+            userVersion: { size: 8, weight: 700, em: 0.04, role: "ink" }
             "TvStage.stageMetaLabel": { size: 12.86, weight: 600, tracking: 0, role: "heroSoft" }
             "ProfileAvatar.name": { size: 17.28, weight: 680, tracking: 0 }
-            "ProfileAvatar.status": { size: 9.41, weight: 690, tracking: 0.413, role: "inkMuted" }
+            "ProfileAvatar.status": { size: 9.41, weight: 690, em: 0.045, role: "inkMuted" }
             profilesThemeLabel: { size: 11.52, weight: 720, tracking: 0 }
             profilesLangLabel: { size: 11.52, weight: 720, tracking: 0 }
             searchEmptyHint: { size: 13.82, weight: 400, tracking: 0, role: "inkMuted", lineHeight: 22.4 }
             searchFieldLabel: { size: 17.66, weight: 400, tracking: 0, role: "inkMuted" }
-            searchEmptyLabel: { size: 16.9, weight: 650, tracking: -0.349, role: "ink" }
-            "PosterCard.title": { size: 11.9, weight: 610, tracking: -0.183 }
+            searchEmptyLabel: { size: 16.9, weight: 650, em: -0.02, role: "ink" }
+            "PosterCard.title": { size: 11.9, weight: 610, em: -0.015 }
             "PosterCard.kind": { size: 8.83, weight: 400, tracking: 0 }
         }
     end if
@@ -191,7 +191,7 @@ function PlayarrFontifyLabel(label as Object, scope = "" as String, weight = -1 
     if typed <> invalid
         size = typed.size
         weight = typed.weight
-        tracking = typed.tracking
+        if typed.em <> invalid then tracking = typed.em * typed.size else tracking = typed.tracking
         if typed.lineHeight <> invalid then web.lineHeight = typed.lineHeight
     end if
     web.setFields({ size: size, weight: weight, tracking: tracking, width: newW, height: label.height * sx, horizAlign: label.horizAlign, vertAlign: label.vertAlign, wrap: label.wrap, maxLines: label.maxLines, visible: label.visible, opacity: label.opacity })
@@ -236,12 +236,6 @@ function PlayarrFontMetaOf(font as Object) as Dynamic
     return g.fontMeta[font.uri + "|" + Str(font.size)]
 end function
 
-' The web sets an episode code ("S 01 · E 01") tighter than the plain advances: tracking in px for text that starts like one.
-function EpisodeCodeTracking(text as String, tracking as Float) as Float
-    if Left(text, 2) = "S " and Instr(1, text, "·") > 0 then return tracking
-    return 0
-end function
-
 ' Symbol glyphs the web draws from its fallback fonts (Nunito Sans has none of them): arrows, play, check, the sort chevron and a
 ' fullwidth plus. fonts/Symbols.ttf is a subset of DejaVu Sans (Bitstream Vera licence) and fonts/SymbolsCjk.otf one glyph of
 ' Noto Sans CJK (SIL OFL). fonts/SymbolsBold.ttf is the same glyphs from DejaVu Sans Bold, used for weights of 600 and up.
@@ -279,4 +273,18 @@ function PlayarrSymbolWeight(ch as String, weight as Integer) as Integer
     if ch = "＋" then return 400
     if weight >= 600 then return 700
     return 400
+end function
+
+' CSS layout input only (where a text node is drawn): the height Blink gives a line of Nunito Sans. It is never assigned to a Label and the
+' exporter does not use it; exported text boxes are the bounds the Roku lays out. Blink rounds the font's ascent (1.011 em) and descent (0.353 em, the hhea values
+' of the variable font; the bundled instances keep the ascent and carry banded descents) to whole pixels and adds them.
+function PlayarrContentHeight(size as Float) as Float
+    return Int(1.011 * size + 0.5) + Int(0.353 * size + 0.5)
+end function
+
+' Top of the text box Blink gives a line of Nunito Sans: the line box top plus the half-leading, (line-height - content height) / 2
+' floored to whole pixels (FontHeight::AddLeading), where the content height is PlayarrContentHeight. A text node that is
+' positioned by its text box (a TrackedText, a WebLabel) is placed at this value instead of a hand-set offset.
+function PlayarrTextTop(lineTop as Float, size as Float, lineHeight as Float) as Float
+    return lineTop + Int((lineHeight - PlayarrContentHeight(size)) / 2)
 end function

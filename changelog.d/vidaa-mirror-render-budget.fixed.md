@@ -1,0 +1,1 @@
+- The VIDAA debug mirror now stops rendering after 40 frames per page load instead of 120, the budget derived from the measured 25 MB of native renderer memory each render keeps, so an actively driven page can no longer grow the TV browser toward a hang.

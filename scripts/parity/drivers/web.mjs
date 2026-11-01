@@ -9,6 +9,7 @@ import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import { chromium } from "playwright-core";
 import { dumpLayout } from "../layout-dump.mjs";
 import { assertAllowedDeviceTestUsername, assertDeviceTestPage, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl, trustedLoginUsername } from "../device-test-guard.mjs";
@@ -229,6 +230,36 @@ export async function clickIfPresent(locator) {
   if (await locator.count()) await locator.click();
 }
 
+// Raster flags for a repeatable reference: one raster thread and whole-tile repaint keep gradient, backdrop-filter and image tiles from
+// depending on thread scheduling; PaintHolding off stops the compositor holding the previous frame. Software raster stays as before.
+export const DETERMINISTIC_RASTER_ARGS = ["--num-raster-threads=1", "--disable-partial-raster", "--disable-features=PaintHolding"];
+
+// Fonts ready, every <img> and CSS background image in the viewport decoded, then two frames, so a shot never catches a half-decoded tile.
+export const settleDecodedPaint = () => (async () => {
+  await document.fonts.ready;
+  // A shot taken after earlier layouts depends on the history of the page (nav label tops moved a device pixel, button text a half CSS pixel, between
+  // identical runs: proved with a before/after screenshot of one page). Hiding and showing the root forces one full style, layout and paint pass from
+  // nothing, so the frame is a function of the DOM only. Scroll offsets are restored; focus survives (checked: activeElement is unchanged).
+  const scrolls = [...document.querySelectorAll("*")].filter((e) => e.scrollTop || e.scrollLeft).map((e) => [e, e.scrollLeft, e.scrollTop]);
+  const root = document.documentElement;
+  root.style.display = "none"; void root.offsetHeight; root.style.display = ""; void root.offsetHeight;
+  for (const [e, x, y] of scrolls) { e.scrollLeft = x; e.scrollTop = y; }
+  const urls = new Set();
+  const inView = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth; };
+  const jobs = [];
+  for (const el of document.querySelectorAll("*")) {
+    if (!inView(el)) continue;
+    if (el instanceof HTMLImageElement) jobs.push(el.decode().catch(() => {}));
+    for (const pseudo of [null, "::before", "::after"]) {
+      const bg = getComputedStyle(el, pseudo).backgroundImage;
+      for (const m of bg.matchAll(/url\((['"]?)(.*?)\1\)/g)) urls.add(new URL(m[2], location.href).href);
+    }
+  }
+  for (const u of urls) { const img = new Image(); img.src = u; jobs.push(img.decode().catch(() => {})); }
+  await Promise.all(jobs);
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+})();
+
 export async function createDriver({ playwright = chromium, secrets } = {}) {
   const env = process.env;
   const distDir = env.PLAYARR_WEB_DIST ?? join(dirname(fileURLToPath(import.meta.url)), "../../../clients/tv-web/web/dist");
@@ -238,6 +269,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   const webBase = new URL(web).pathname.replace(/\/$/, "");
   // Packaged TV platforms (PLAYARR_WEB_HASH=1, bundles built with their platform define) route through the URL hash: /tv/#/movies.
   const hashMode = env.PLAYARR_WEB_HASH === "1";
+  // The player shows no Mute button where the volume is the system's: packaged TVs (hash routing) and the Android TV and Roku user agents (usesSystemVolumeOnly in PlayerSurface).
+  const systemVolume = hashMode || /PlayarrAndroidTV\/|PlayarrRoku\//.test(env.PLAYARR_WEB_USER_AGENT ?? (env.PLAYARR_WEB_MOBILE === "1" ? "" : "PlayarrAndroidTV/"));
   const appUrl = (p) => (hashMode ? `${web}/#${p}` : web + p);
   const appPath = (url) => { if (hashMode) { const h = new URL(url).hash; return h.startsWith("#/") ? h.slice(1).replace(/[?].*$/, "") : "/"; } const p = new URL(url).pathname; return webBase && (p === webBase || p.startsWith(`${webBase}/`)) ? p.slice(webBase.length) || "/" : p; };
   const configuredSecrets = secrets ?? (env.PLAYARR_DEVICE_TEST_SERVER_URL ? {
@@ -266,6 +299,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   const deviceScaleFactor = positiveNumber("PLAYARR_WEB_VIEWPORT_DPR", mobile ? 3 : 1);
   let cdp, browser, ctx, page, theme = "dark", session, detailActionRequired = false, fixedNow = null, disableAnimations = false, pinnedZone = null, pinnedLocale = null;
   let manualLoginStarted = false, manualLoginSucceeded = false; // session: this run's own storage state, in memory
+  let capsCanDownload = null; // the answer of GET /users/me/capabilities for the current document (null until it arrives)
   let avatarSynced = false; // the profile-avatar sync answered for the current document
   let networkFlaps = 0; // requests Chrome aborted because the host's network interfaces changed
   const apiErrors = []; // failing /api/ responses of the current page, named in the error-page failure
@@ -322,6 +356,14 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     }
   };
   const labelled = async (what, wait) => { try { return await wait(); } catch (e) { if (e?.name === "TimeoutError") { const bad = await page.evaluate(() => [...document.images].filter((i) => i.getBoundingClientRect().width > 0 && !(i.complete && i.naturalWidth > 0)).map((i) => { try { return `${i.complete ? "broken" : "loading"} ${i.loading} ${new URL(i.currentSrc || i.src).pathname.slice(0, 50)}`; } catch { return "?"; } }).slice(0, 4)).catch(() => []); throw new Error(`readiness timeout: ${what}${bad.length ? ` (${bad.join(", ")})` : ""}`); } throw e; } };
+  // A reload starts the app with no input mode; the key presses that brought the page here had set body[data-input-mode=remote], which switches
+  // the nav rail, nav pill and filter button from backdrop-filter glass to flat translucency (the shipped TV behaviour). Without restoring it a
+  // retried load shot the glass variant, one load in five (proved: the mode was null exactly in the differing movies shots).
+  const reloadKeepingInputMode = async (options) => {
+    const mode = await page.evaluate(() => document.body?.dataset.inputMode ?? null);
+    await page.reload(options);
+    if (mode) await page.evaluate((m) => { document.body.dataset.inputMode = m; }, mode);
+  };
   const settle = async () => {
     await page.evaluate(() => document.fonts.ready);
     await labelled("visible images loaded", () => page.waitForFunction(() => [...document.images].filter((i) => {
@@ -334,7 +376,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       const runtime = () => page.waitForFunction(() => !!document.querySelector("[data-detail-field=runtime]"), null, { timeout: 8000 }).then(() => true, () => false);
       for (let tries = 0; !(await runtime()); tries++) {
         if (tries >= 3) throw new Error("readiness timeout: the Movies preview never showed its runtime");
-        await page.reload({ waitUntil: "load" });
+        await reloadKeepingInputMode({ waitUntil: "load" });
         await labelled("library grid", () => page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 }));
       }
     }
@@ -346,6 +388,14 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
         if (Date.now() - t0 > 20000) throw new Error("readiness timeout: the profile avatar sync never answered");
         await page.waitForTimeout(100);
       }
+      // The Downloads nav entry appears only after the capabilities answer and the storage probe resolve (DownloadsProvider): a shot before them
+      // lacks a whole nav item (a webOS series-detail twin differed by it). Wait for the answer, then for the entry when the grant is true.
+      const t1 = Date.now();
+      while (capsCanDownload === null) {
+        if (Date.now() - t1 > 20000) throw new Error("readiness timeout: the capabilities request never answered");
+        await page.waitForTimeout(100);
+      }
+      if (capsCanDownload === true) await page.waitForSelector('.app-nav-link[href*="downloads"]', { timeout: 10000 }).catch((e) => { if (e?.name !== "TimeoutError") throw e; }); // never appears when the browser has no download storage: the same in every run
     }
     await drainApiErrors();
     assertNoApiErrors(apiErrors);
@@ -405,8 +455,9 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     page.on?.("requestfailed", (r) => { if (r.failure()?.errorText === "net::ERR_NETWORK_CHANGED") networkFlaps += 1; });
     // The shell syncs the account's profile avatar after it mounts (GET /api/v1/users/me/profile-avatar): until that answer is back the nav rail and profile
     // chip draw the generated default preset, not the server's choice. settle() waits for the answer so a shot never races it.
-    avatarSynced = false;
-    page.on?.("request", (request) => { if (request.isNavigationRequest() && request.frame() === page.mainFrame()) avatarSynced = false; }); // a real document load only: a pushState route change keeps the answered sync
+    avatarSynced = false; capsCanDownload = null;
+    page.on?.("request", (request) => { if (request.isNavigationRequest() && request.frame() === page.mainFrame()) { avatarSynced = false; capsCanDownload = null; } });
+    page.on?.("response", async (response) => { try { if (/\/api\/v1\/users\/me\/capabilities$/.test(new URL(response.url()).pathname) && response.request().method() === "GET") capsCanDownload = response.status() < 300 ? (await response.json()).can_download === true : false; } catch { /* body gone with the page */ } }); // a real document load only: a pushState route change keeps the answered sync
     page.on?.("response", (response) => { if (/\/api\/v1\/users\/me\/profile-avatar$/.test(new URL(response.url()).pathname) && response.request().method() === "GET" && response.status() < 500) avatarSynced = true; });
     apiErrors.length = 0;
     manualLoginStarted = false;
@@ -415,7 +466,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     // /login, not /: the deployed worker serves the marketing site at / to signed-out visitors, and a signed-in session redirects /login to the app.
     await page.goto(appUrl("/login"), { waitUntil: "load" });
     try {
-      await page.waitForFunction(() => !!document.querySelector(".app-nav-link") || !!document.querySelector("input[name=password]") || (location.pathname.startsWith("/login") || location.hash.startsWith("#/login")), null, { timeout: 30000 });
+      await page.waitForFunction(() => !!document.querySelector(".app-nav-link") || !!document.querySelector("input[name=password]") || (/\/login(\/|$)/.test(location.pathname) || location.hash.startsWith("#/login")), null, { timeout: 30000 });
     } catch (e) {
       if (e?.name !== "TimeoutError") throw e;
       throw new Error(`${web}/login did not show the Playarr web app (page "${await page.title().catch(() => "?")}" at ${page.url()}); set PLAYARR_WEB_URL to a web app build or build clients/tv-web/web/dist`);
@@ -529,6 +580,18 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
         return performance.now() - w.__previewSeen.since > 1500;
       }, null, { timeout: 30000, polling: 100 });
     }
+    // The focused film's runtime fills in when its detail request lands (LibraryPreview, Home hero): a shot taken before it drops the "1 min" span.
+    // The app can drop the answer of that request when the Home page's controller is released as the library mounts (the response is 200 and the span never appears), so the wait is short and a reload retries it.
+    if (path === "/movies" && await page.locator(".tv-library-preview").isVisible()) {
+      for (let attempt = 1; ; attempt++) {
+        try { await page.waitForSelector(".tv-library-preview [data-detail-field=runtime]", { timeout: 8000 }); break; } catch (e) {
+          if (e?.name !== "TimeoutError" || attempt >= 3) throw e;
+          await reloadKeepingInputMode();
+          await page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 });
+        }
+      }
+    }
+    if (path === "/") await page.waitForSelector("[data-detail-field=runtime]", { timeout: 8000 }).catch((e) => { if (e?.name !== "TimeoutError") throw e; }); // a series or music first card has no runtime
     if (path === "/calendar") await page.waitForSelector(".calendar-page", { timeout: 30000 });
     if (path === "/search") await page.waitForSelector(".tv-search-results-grid:visible, .tv-empty-state:visible, .tv-search-prompt:visible", { timeout: 30000 }); // :visible, as the phone layout also renders a hidden prompt
     if (path.startsWith("/movies/") || path.startsWith("/series/")) await waitForDetailReady({ requireHeroAction: detailActionRequired });
@@ -771,7 +834,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     },
     waitReady,
     get page() { return page; }, // for DOM dumps (android-mobile/domdump.mjs)
-    async start() { browser = await playwright.launch(env.PARITY_CHROME ? { executablePath: env.PARITY_CHROME } : {}); await open(); await guard(); },
+    async start() { browser = await playwright.launch({ ...(env.PARITY_CHROME ? { executablePath: env.PARITY_CHROME } : {}), args: DETERMINISTIC_RASTER_ARGS }); await open(); await guard(); },
     async stop() { await browser?.close(); await localWeb?.close(); },
     async setTheme(t) { await guard(); if (t !== theme) { theme = t; await open(); } },
     // TV Home proves first-card focus and the Left/Right nav round trip. Mobile Home waits for populated content and settles without TV focus keys.
@@ -839,7 +902,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
         tick();
       }));
       // The time label follows timeupdate events and can still show the pre-seek second, and the mute button the muted state: wait for 0:02 and an unmuted player. A packaged TV (hash routing) has system volume only: no Mute button to wait for.
-      await page.waitForFunction((system) => /(^|[^\d:])0:02(?![\d:])/.test(document.querySelector(".player-controls")?.textContent?.replace(/\s+/g, " ") ?? "") && document.querySelector("video")?.muted === false && (system || !!document.querySelector(".player-controls [aria-label='Mute'],.player-controls [title='Mute']")), hashMode, { timeout: 10000, polling: 100 });
+      await page.waitForFunction((system) => /(^|[^\d:])0:02(?![\d:])/.test(document.querySelector(".player-controls")?.textContent?.replace(/\s+/g, " ") ?? "") && document.querySelector("video")?.muted === false && (system || !!document.querySelector(".player-controls [aria-label='Mute'],.player-controls [title='Mute']")), systemVolume, { timeout: 10000, polling: 100 });
       await page.waitForTimeout(600); // the player moves focus to play/pause on a timer: let it, then drop it
       await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
       await guard();
@@ -898,6 +961,9 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       // A detail page opens at its top. On a phone the focus-scroll to the first episode card can land late and leave the page scrolled
       // (a different frame per run), so the capture returns every scrolled box to the top first.
       if (detailRoute) await page.evaluate(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; });
+      // Backdrop art cross-fades (CrossfadeArt): until the older layer is gone and none is pending, the backdrop-filter surfaces (nav rail, filter button) blur a different mix.
+      await page.waitForFunction(() => document.querySelectorAll(".tv-key-art-layer").length <= 1 && !document.querySelector(".tv-key-art-layer.is-pending"), null, { timeout: 20000, polling: 100 });
+      await page.evaluate(settleDecodedPaint);
       if (disableAnimations) {
         await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         await guard();
@@ -929,7 +995,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
           // Per-server data on the calendar link panel (the URL field and the QR card encode the server address), in css px, so scorers can mask them.
           maskRects: [".calendar-subscription-url", ".calendar-link-secret > :last-child"].flatMap((q) => [...document.querySelectorAll(q)].map((e) => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((n) => Math.round(n * 10) / 10); })),
           fontsReady: document.fonts.status === "loaded",
-          signedOut: !!document.querySelector("input[name=password]") || (location.pathname.startsWith("/login") || location.hash.startsWith("#/login")),
+          signedOut: !!document.querySelector("input[name=password]") || (/\/login(\/|$)/.test(location.pathname) || location.hash.startsWith("#/login")),
         };
       });
       await guard();

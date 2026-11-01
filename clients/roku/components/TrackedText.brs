@@ -82,6 +82,10 @@ sub onSpecChange()
                     last = Right(word, 1)
                     parts = [{ text: Left(word, Len(word) - 1), x: parts[0].x, tail: false }, { text: last, x: advanceOf(Left(line, j)) - advanceOf(last), tail: true }]
                 end if
+                for each pp in parts
+                    pp.last = false
+                end for
+                parts[parts.Count() - 1].last = true
                 for each part in parts
                 piece = part.text
                 x = part.x
@@ -89,6 +93,7 @@ sub onSpecChange()
                 glyph.font = font
                 glyph.width = 0
                 glyph.height = 0
+                ' The Label keeps the height the firmware lays out for its glyph run; nothing here prescribes a box, the export reads what is drawn.
                 ' The Font node is a whole pixel size: scale the Label to the web's fractional size about its top-left corner.
                 glyph.scaleRotateCenter = [0, 0]
                 glyph.scale = [PlayarrScaleFor(size), PlayarrScaleFor(size)]
@@ -107,6 +112,8 @@ sub onSpecChange()
                 else
                     glyph.id = glyph.id + "~c"
                 end if
+                ' A space in the app's own string before this Label is stamped (`_`): the Labels hold no spaces, so the export cannot recover them from gaps.
+                if i > 1 and not part.tail and Mid(line, i - 1, 1) = " " then glyph.id = glyph.id + "_"
                 role = "text"
                 if spec.aria <> invalid and spec.aria <> "" then role = spec.aria
                 if role <> "text" then glyph.id = glyph.id + "|" + role
@@ -122,6 +129,12 @@ sub onSpecChange()
                     ThemeSetRole(glyph, spec.role)
                 end if
                 glyph.translation = [lineOffset + x, lineIndex * lineHeight]
+                ' The last Label of a line ends where the web's run ends: the box the firmware lays out for it (its real bounding rect, at the
+                ' web's fractional scale) is set so that its right edge is the web's advance end of the line.
+                if j = total and spec.symbol <> true and part.last = true
+                    boxWidth = glyph.boundingRect().width * PlayarrScaleFor(size)
+                    glyph.translation = [lineOffset + x + advanceOf(piece) - boxWidth, lineIndex * lineHeight]
+                end if
                 glyph.visible = true
                 end for
                 i = j + 1

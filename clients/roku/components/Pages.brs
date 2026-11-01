@@ -82,7 +82,6 @@ function pgLabel(parent as Object, x as Float, y as Float, w as Float, h as Floa
         if opts.tracking <> invalid then label.tracking = opts.tracking
         if opts.aria <> invalid then label.aria = opts.aria
         if opts.radius <> invalid then label.radius = opts.radius
-        if opts.fitWidth <> invalid then label.fitWidth = opts.fitWidth
     end if
     label.text = text
     parent.AppendChild(label)
@@ -120,6 +119,7 @@ function pgRadiusFor(h as Float, r as Float) as Integer
     if r >= 82 then return 82
     if r = 29 and h >= 56 and h <= 60 then return 29
     if r >= 25 then return 25
+    if r = 14 then return 14
     if r >= 12 then return 12
     return 6
 end function
@@ -132,6 +132,7 @@ function pgRound(parent as Object, x as Float, y as Float, w as Float, h as Floa
     if w < smallest then smallest = w
     if radius = 82 and smallest < 160 then radius = 25
     if radius = 25 and smallest < 49 then radius = 12
+    if radius = 14 and smallest < 29 then radius = 12
     if radius = 12 and smallest < 23 then radius = 6
     name = "round"
     if outline then name = "round-outline"
@@ -2142,7 +2143,7 @@ sub renderCalendarAgenda(entries as Object)
     pgTrackedText(m.pageHead, 153.6, 264.2, 0, UCase(calendarKindLabel(selected) + " · " + calendarReleaseLabel(selected)), 12.29, 860, 0.97, "brandInk", true)
     stageTitle = CreateObject("roSGNode", "TrackedText")
     stageTitle.translation = [153.6, 292.5]
-    stageTitle.spec = { text: selected.title, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true, aria: "text" }
+    stageTitle.spec = { text: selected.title, size: 69.12, weight: 560, tracking: -0.072 * 69.12, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true, aria: "text" }
     m.pageHead.AppendChild(stageTitle)
     titleLines = stageTitle.lineCount
     if titleLines < 1 then titleLines = 1
@@ -2219,8 +2220,8 @@ sub renderCalendarAgenda(entries as Object)
             headLabel = pgLabel(hg, 783.4, ay + 9.2, 0, 25, calendarDayHeading(edt, false), 18.4, 640, headRole, { aria: "heading" })
             if day = today
                 hx = 783.4 + headLabel.textWidth + 18.5
-                pgRound(hg, hx - 9.35, ay + 10.1, 61, 22, 11, "lineStrong", -1, true)
-                tl = pgLabel(hg, hx, ay + 13.6, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3 })
+                pgRound(hg, hx - 9, ay + 10.1, PlayarrTextWidth("TODAY", 11.2, 640, 0.896) + 18, 22, 11, "lineStrong", -1, true)
+                tl = pgLabel(hg, hx, ay + 13.6, 0, 15, "TODAY", 11.2, 640, "accent", { tracking: 0.896 })
             end if
             m.agendaDays.Push({ group: hg, y: ay, endY: ay + 44 })
             ay = ay + 76
@@ -2378,6 +2379,7 @@ sub renderCalendarMonth(entries as Object)
         ' A day with chips is reached through its chips; an empty day keeps the whole-cell stop that opens it in the agenda.
         if shown = 0
             if day = today then todayIdx = m.pageItems.Count()
+            pgHit(m.pageBody, "button", weekdays[calWeekday(day)] + " " + Val(Mid(day, 9, 2)).ToStr() + " " + calendarMonthName(Val(Mid(day, 6, 2)), false), x + 1, y + 1, cw - 1, ch - 1, 0)
             pgFocusable(x + 1, y + 1, cw - 1, ch - 1, 6, "cell", day)
         end if
     end for
@@ -2444,8 +2446,8 @@ sub renderCalendarWeek(entries as Object)
         if day = today
             ' Web's TODAY chip beside the day heading.
             hx = x + headLabel.textWidth + 18.5
-            pgRound(m.pageBody, hx - 9.35, 175.5, 61, 22, 11, "lineStrong", -1, true)
-            tl = pgLabel(m.pageBody, hx, 179.4, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3 })
+            pgRound(m.pageBody, hx - 9, 175.5, PlayarrTextWidth("TODAY", 11.2, 640, 0.896) + 18, 22, 11, "lineStrong", -1, true)
+            tl = pgLabel(m.pageBody, hx, 179.4, 0, 15, "TODAY", 11.2, 640, "accent", { tracking: 0.896 })
         end if
         list = byDay[day]
         y = 208.0

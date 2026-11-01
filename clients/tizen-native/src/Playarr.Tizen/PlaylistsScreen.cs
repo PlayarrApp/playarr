@@ -178,7 +178,7 @@ internal sealed class PlaylistsScreen : IPage
         var ring = Ring.Make(62, 72, 14, new Rgba(1, 1, 1));
         ring.Show(false);
         tile.Add(ring);
-        _root.Add(tile);
+        _env.AddShellView(tile);
         _directoryActionViews.Add(tile);
         _directoryActions.Add(new Focusable
         {
@@ -695,7 +695,7 @@ internal sealed class PlaylistsScreen : IPage
         var ring = Ring.Make(width, height, 14, new Rgba(1, 1, 1));
         ring.Show(false);
         tile.Add(ring);
-        parent.Add(tile);
+        _env.AddShellView(tile); parent = _env.ShellLayer!; // the action column belongs to the shell, not to the page
         var target = new Focusable
         {
             Rect = () => new Box(x, y, width, height),

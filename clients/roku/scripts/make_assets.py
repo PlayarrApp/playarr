@@ -495,7 +495,22 @@ def clients_grid_assets() -> None:
     mask_circle("clients-focus-ring.png", 230, stroke=3)
 
 
+def episode_wash() -> None:
+    """.tv-episode-art::after: linear-gradient(135deg, rgba(0,0,0,0.05), rgba(0,0,0,0.48)) over the 16:9 art box.
+
+    At 135deg the gradient position of a pixel is (x + y) / (w + h); the card art is always 16:9, so one bitmap is scaled to fit.
+    """
+    width, height = 320, 180
+    pixels = bytearray()
+    for y in range(height):
+        for x in range(width):
+            t = (x + 0.5 + y + 0.5) / (width + height)
+            pixels += bytes((0, 0, 0, round((0.05 + (0.48 - 0.05) * t) * 255)))
+    Image.frombytes("RGBA", (width, height), bytes(pixels)).save(IMAGES / "episode-wash.png")
+
+
 def main() -> None:
+    episode_wash()
     Image.new("RGBA", (4, 4), (0, 0, 0, 0)).save(IMAGES / "clear.png")  # the search field draws its own pill
     avatars()
     profile_visual_assets()
@@ -509,6 +524,8 @@ def main() -> None:
         nine_patch(f"round-r{r}", r)
         nine_patch(f"round-outline-r{r}", r, 1.2)
     square_outline("square-outline")  # the calendar month's day cells: 1 px border, no corner
+    nine_patch("round-r14", 14)  # the 14 px buttons and tiles (web --radius 0.875rem)
+    nine_patch("round-outline-r14", 14, 1.2)
     nine_patch("round-r29", 29)  # the 58 px pills (calendar agenda actions): web's radius is half the height
     nine_patch("round-outline-r29", 29, 1.2)
     nine_patch("round-r38", 38)

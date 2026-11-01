@@ -118,12 +118,12 @@ sub onContentChanged()
     hasPrefix = content.captionPrefix <> invalid and content.captionPrefix <> ""
     m.captionPrefix.visible = hasPrefix
     if hasPrefix
-        m.title.setFields({ size: 11.52, tracking: -0.177 })
-        m.captionPrefix.tracking = EpisodeCodeTracking(content.captionPrefix, -0.433)
+        m.title.setFields({ size: 11.52, tracking: -0.015 * 11.52 })
+        m.captionPrefix.tracking = 0
         m.captionPrefix.text = content.captionPrefix
         m.title.translation = [m.captionPrefix.textWidth + 8.8, m.titleY]
     else
-        m.title.setFields({ size: 11.9, tracking: -0.183 })
+        m.title.setFields({ size: 11.9, tracking: -0.015 * 11.9 })
         m.title.translation = [m.cardTitleX, m.titleY]
     end if
     clampCardTitle(content.title, hasPrefix)
@@ -256,9 +256,11 @@ sub onFocusChanged()
     artScale = 1 + (effective * cardFocusScale())
     m.liftInterp.key = [0, 1]
     m.liftInterp.keyValue = [m.cardRoot.translation, [m.cardContentInsetX, m.padTop + m.cardContentInsetY + liftY]]
-    ' Web grid cards: the art rises a further 5 px beyond the card (measured: ring box 5 px higher than the card lift alone gives).
+    ' Web grid cards: the whole card is translateY(-5px) scale(1.015) about its centre (cardRoot carries the 5 px lift), then the art scales
+    ' 1.025 about its own centre. The card scale moves the art centre by (1.015 - 1) x (art centre - card centre) = 0.015 x -29.38 / 2, where
+    ' 29.38 px is the caption block under the art (the same pivot the caption uses below).
     artExtra = 0
-    if not m.homeCardFocusStyle and m.cardScaleValue > 1 then artExtra = -5 * effective
+    if not m.homeCardFocusStyle and m.cardScaleValue > 1 then artExtra = 0.015 * (-29.38 / 2) * effective
     m.artLiftInterp.key = [0, 1]
     m.artLiftInterp.keyValue = [m.artGroup.translation, [0, artExtra]]
     m.scaleInterp.key = [0, 1]
@@ -279,7 +281,7 @@ end function
 ' so identify their focus style explicitly instead of inferring it from cardScale. The shadow bitmaps carry the web shadows.
 function cardFocusLift() as Float
     if m.homeCardFocusStyle then return 6
-    if m.cardScaleValue > 1 then return 7
+    if m.cardScaleValue > 1 then return 5
     return 6
 end function
 
@@ -478,7 +480,7 @@ sub applyCaptionFocus()
         k = 1 + 0.015 * effective
         cx = m.cardArtW / 2
         cy = (m.posterBg.height + 29.38) / 2
-        lift = -5 * effective
+        lift = 0
         m.title.scale = [k, k]
         m.title.translation = [cx + (m.cardTitleX - cx) * k, cy + (m.titleY - cy) * k + lift]
         m.kind.scale = [k, k]
@@ -498,8 +500,8 @@ sub nameCard(content as Object, circle as Boolean, hasNumber as Boolean)
     else
         linkName = "Open " + content.title
     end if
+    ' The link is a Group around the art and caption: it paints no corner of its own, so it declares none (the art container carries the mask).
     linkRadius = 0
-    if content.gridCard = true then linkRadius = 12
     m.cardBody.id = "a11y|link|" + linkRadius.ToStr() + "|" + linkName
     m.posterBg.id = "a11y|container|" + m.top.findNode("cornerTL").width.ToStr() + "|"
     m.unwatchedBadge.id = "a11y|img|6.5|"

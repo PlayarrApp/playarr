@@ -37,13 +37,12 @@ button.pa-card, button.pa-card:hover, button.pa-card:active { background: transp
 button.pa-card:focus-visible .pa-rail-title { font-size: 22px; font-weight: 400; color: @pa_ink; }
 
 /* Floating bottom navigation (web: 340 x 58, radius 20, 42 x 46 tiles) */
-.pa-nav { background: alpha(@pa_surface_strong, 0.88); border-radius: 20px; border: none; box-shadow: 0 10px 40px @pa_shadow; padding: 6px 0; }
+.pa-nav { background: alpha(@pa_surface_strong, 0.88); border-radius: 20px; border: none; box-shadow: 0 14px 40px rgba(31, 14, 20, 0.2); padding: 6px 0; }
 .pa-nav viewport { background: transparent; }
-/* The web's tiles carry a 14px radius even at rest; a faint wash gives the rounded box something to paint (a transparent tile
-   has nothing for the clip to hold, so GTK drops it). */
-button.pa-navbtn { background: alpha(@pa_ink, 0.008); border: none; box-shadow: none; border-radius: 14px; min-width: 42px; min-height: 46px; padding: 0; }
+/* The web's tiles carry a 14px radius and paint nothing at rest. */
+button.pa-navbtn { background: none; border: none; box-shadow: none; border-radius: 14px; min-width: 42px; min-height: 46px; padding: 0; }
 button.pa-navbtn.active { background: @pa_ink; }
-.pa-nav-avatar { border-radius: 999px; background: alpha(@pa_ink, 0.008); }
+.pa-nav-avatar { border-radius: 999px; background: none; }
 .pa-pagehead { font-size: 30px; font-weight: 300; color: @pa_ink; }
 
 /* Detail */
@@ -109,7 +108,7 @@ button.pa-hbtn.square { border-radius: 14px; }
 .pa-key-edge { background: linear-gradient(90deg, alpha(@pa_bg, 0.54), alpha(@pa_bg, 0)), linear-gradient(90deg, alpha(@pa_bg, 0) 72%, @pa_bg 100%); }
 scrolledwindow.pa-transparent, scrolledwindow.pa-transparent viewport { background: transparent; }
 .pa-rail-title { font-size: 16px; font-weight: 610; letter-spacing: -0.48px; }
-.pa-search { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 999px; min-height: 58px; padding: 0; box-shadow: none; color: @pa_ink; }
+.pa-search { background: alpha(@pa_surface_strong, 0.88); border: 1px solid alpha(@pa_line_strong, 0.76); border-radius: 999px; min-height: 58px; padding: 0; box-shadow: none; color: @pa_ink; }
 .pa-search text { color: @pa_ink; }
 entry.pa-search-input { background: none; border: none; box-shadow: none; outline: none; min-height: 0; padding: 0; color: @pa_ink; }
 entry.pa-search-input text placeholder, entry.pa-search-input placeholder { color: @pa_muted; font-size: 12.48px; opacity: 1; }
@@ -177,7 +176,7 @@ button.pa-pref:first-child { background: @pa_soft; }
 .pa-search:focus-within { outline: none; }
 
 /* Detail, measured from the web (360 px viewport) */
-.pa-display { font-size: 36px; font-weight: 560; letter-spacing: -2.74px; }
+.pa-display { font-size: 36px; font-weight: 560; letter-spacing: -2.592px; }
 .pa-kicker { font-size: 10.56px; letter-spacing: 0.8448px; }
 .pa-meta { font-size: 10.24px; color: @pa_muted; }
 .pa-overview { font-size: 11.52px; line-height: 1.06; color: @pa_muted; }
@@ -218,8 +217,8 @@ button.pa-entry.week.missing { border-left-color: @pa_brand_ink; }
 .pa-thumb-img { border-radius: 6px; }
 
 /* Drawers, measured from the web */
-.pa-panel { background: alpha(@pa_surface_strong, 0.975); }
-.pa-panel.filters { background: alpha(@pa_surface_strong, 0.995); }
+/* The web Drawer: `color-mix(in srgb, var(--surface-strong) 94%, transparent)`. */
+.pa-panel { background: alpha(@pa_surface_strong, 0.94); }
 button.pa-close.ring { outline: 2px solid @pa_ring; outline-offset: 2px; }
 .pa-panel-kicker { font-size: 7.04px; font-weight: 720; letter-spacing: 0.5632px; color: @pa_muted; }
 .pa-panel-title { font-size: 22.4px; font-weight: 590; letter-spacing: -1.3px; }
@@ -240,10 +239,10 @@ button.pa-pill.small { font-size: 7.68px; padding: 0 20px; }
 dropdown.pa-dropdown > button { background: @pa_bg; border: 1px solid @pa_line; border-radius: 12px; font-size: 11.52px; font-weight: 720; min-height: 0; padding-top: 0; padding-bottom: 0; }
 
 /* Letter rail (web phone: 16 px column of 27 letters, 8.96 px bold) */
-button.pa-letter { background: alpha(@pa_ink, 0.008); border: none; box-shadow: none; padding: 0; min-width: 0; min-height: 0; border-radius: 999px; }
+button.pa-letter { background: none; border: none; box-shadow: none; padding: 0; min-width: 0; min-height: 0; border-radius: 999px; }
 .pa-letter-label { font-size: 8.96px; font-weight: 700; color: @pa_muted; border-radius: 999px; min-width: 18px; min-height: 17px; margin-top: 1px; }
 .pa-letter-label.active { background: @pa_ink; color: @pa_body; box-shadow: 0 0 0 6px #cf3157, 0 0 0 4px @pa_on_accent, 0 0 0 2px @pa_ink; }
-.pa-back-arrow { font-size: 13.2px; font-weight: 720; color: @pa_ink_soft; }
+.pa-back-arrow { font-size: 12.8px; font-weight: 720; color: @pa_ink_soft; }
 .pa-hbtn.ring { outline: 2px solid @pa_ring; outline-offset: 3px; }
 .pa-row-glyph { color: #cf3157; font-size: 19.52px; font-weight: 400; min-height: 27px; margin-top: 2px; }
 .pa-meta-flow flowboxchild { padding: 0; }
@@ -331,10 +330,8 @@ button.pa-pref:first-child .pa-pref-arrow { color: @pa_ink; }
 .pa-cap-title.lead, .pa-cap-meta.lead { color: @pa_lead; }
 .pa-dd-caret { font-size: 8.96px; font-weight: 680; color: @pa_muted; margin-bottom: 2px; }
 dropdown.pa-dropdown > button > box { border-spacing: 9.6px; }
-.pa-profile-name, .pa-tiny { font-kerning: none; }
-.pa-profile-name { letter-spacing: 0.16px; }
-.pa-profile-name.pa-add-label { letter-spacing: 0; color: @pa_ink_soft; opacity: 1; }
-.pa-tiny.watching { letter-spacing: 0.44px; }
+
+.pa-profile-name.pa-add-label { color: @pa_ink_soft; opacity: 1; }
 .pa-profile-actions button.pa-pill.small { padding: 0 16px; }
 button.pa-pill.small.pa-clients-link { padding: 0 16px; }
 /* The web draws its symbol glyphs from DejaVu Sans, its arrows full-width from a CJK font and the open circle from a
@@ -344,10 +341,7 @@ button.pa-pill.small.pa-clients-link { padding: 0 16px; }
 .pa-row-glyph.circle { font-family: "Nunito Sans", "Adwaita Mono", "Liberation Mono"; }
 .pa-back-arrow, .pa-pill-arrow, .pa-cal-arrow, .pa-pref-arrow { font-family: "Nunito Sans", "Droid Sans Fallback", "Noto Sans CJK JP"; }
 .pa-glyph.play { font-size: 9.52px; color: @pa_body; }
-.pa-display.two { letter-spacing: -2.85px; }
 .pa-cal-arrow { margin-left: 2px; margin-bottom: 2px; }
-.pa-seg-tile { font-kerning: none; }
-.pa-seg-tile.wide { letter-spacing: 0.15px; }
 .pa-pref-arrow { margin-bottom: 2px; margin-top: 0; }
 button.pa-entry:not(.week).nosub { padding-bottom: 3.5px; }
 button.pa-entry:not(.week).nosub .pa-entry-metarow { margin-top: 2px; }
@@ -367,8 +361,8 @@ button.pa-entry:not(.week).nosub { padding-bottom: 6.8px; }
 
 /* Unfilled controls still clip to their corner radius, which is how a drawn box reports it. */
 
-/* The web's .tv-home-rails surface (dark 72/90/97 %, light 68/88/96 % of the frost colour at 12/34/62 %). */
-.pa-rail-frost { background: linear-gradient(to right, alpha(@pa_frost, 0) 0%, alpha(@pa_frost, 0.72) 12%, alpha(@pa_frost, 0.9) 34%, alpha(@pa_frost, 0.97) 62%, @pa_frost 100%); }
+/* The web phone's .tv-home-rails surface: `linear-gradient(180deg, transparent, var(--surface) 8%)` over the rails box (both themes). */
+.pa-rail-frost { background: linear-gradient(180deg, alpha(@pa_surface, 0), @pa_surface 8%); }
 
 /* The web's watch bar: a 3 px opaque track with the watched share as a square brand box. */
 progressbar.pa-progress { background: #5a5559; border-radius: 0; min-height: 3px; padding: 0; }
@@ -392,7 +386,7 @@ button.pa-entry.week { padding-top: 10px; padding-bottom: 8px; }
 .pa-seg-tile:checked { transform: scale(1.025); }
 
 .pa-today-chip { margin-left: -2px; margin-top: -1px; margin-bottom: 1px; }
-button.pa-mline { background: alpha(@pa_ink, 0.008); border-radius: 4px; }
+button.pa-mline { background: none; border-radius: 4px; }
 .pa-chip-status, button.pa-entry .pa-chip-status.agenda { border-radius: 11px; }
 
 .pa-cl-text { font-size: 9.92px; font-weight: 400; color: @pa_muted; }
@@ -401,3 +395,5 @@ button.pa-mline { background: alpha(@pa_ink, 0.008); border-radius: 4px; }
 entry.pa-cl-url { background: @pa_bg; border: 1px solid @pa_line; border-radius: 8px; min-height: 42px; padding: 0 12px; margin-top: 12px; font-family: monospace; font-size: 14.2px; color: @pa_ink; box-shadow: none; }
 button.pa-cl-copy { background: @pa_accent; color: @pa_on_accent; border: none; border-radius: 22px; min-height: 44px; min-width: 92px; padding: 0; margin-top: 9.6px; font-size: 11.52px; font-weight: 720; box-shadow: none; }
 .pa-cl-qr { background: #ffffff; border-radius: 18px; margin-top: 9.6px; margin-bottom: 2px; }
+/* The web phone shows no scrollbar; GTK's overlay indicator fades in and out on its own timer, which made captures differ by a 4 px strip. */
+.pa-page scrollbar.overlay-indicator { opacity: 0; }

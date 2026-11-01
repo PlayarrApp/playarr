@@ -234,7 +234,7 @@ struct ProfilesView: View {
                 .overlay(Capsule().stroke(WM.line.opacity(0.08), lineWidth: 1))
                 .wmChipShadow()
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .offset(x: 295, y: 782)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -268,7 +268,7 @@ struct ProfilesView: View {
                 }
                 .frame(width: column, height: column)
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .disabled(viewModel.switching)
             WMText(profile.displayName, 13.12, 680, lh: 19.68)
                 .frame(width: column).padding(.top, namePad)
@@ -288,7 +288,7 @@ struct ProfilesView: View {
                             .overlay(Circle().stroke(WM.line.opacity(0.08), lineWidth: 1))
                             .wmChipShadow()
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                     Button {
                         Task { try? await viewModel.environment.signOut() }
                     } label: {
@@ -302,7 +302,7 @@ struct ProfilesView: View {
                         .overlay(Capsule().stroke(WM.line.opacity(0.08), lineWidth: 1))
                         .wmChipShadow()
                     }
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                 }
                 .padding(.top, 24.7).padding(.leading, centredActions ? 0 : 9)
                 .frame(width: column, alignment: centredActions ? .center : .leading)
@@ -341,7 +341,7 @@ struct ProfilesView: View {
             }
             .frame(width: size, alignment: .top)
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .padding(.top, top)
     }
 
@@ -397,7 +397,7 @@ struct ProfilesView: View {
                     .overlay(Capsule().stroke(WM.line.opacity(0.08), lineWidth: 1))
                     .wmChipShadow()
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .offset(x: 41, y: 949)
         }
         .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)

@@ -429,6 +429,14 @@ internal val WebAccent get() = PlayarrWebTheme.palette.accent
 internal val WebPink get() = WebAccent
 
 /** Clears the series' remembered resume answers (web "Ask again"); provided by the detail screen. */
+/** Network fetches and parsing leave Main on at most two shared workers: more threads only add per-thread allocator arenas (memory). */
+private val PlayarrFetchDispatcher = Dispatchers.Default.limitedParallelism(2)
+/** Detail page Play pill focus hooks: negotiate the playback info early (web's dwell prefetch) and release it when focus leaves. */
+internal class PlayarrPlayPrewarm(val prewarm: (String, PlayarrPlaybackLaunchSettings?) -> Unit, val release: (String) -> Unit)
+internal val LocalPlayPrewarm = androidx.compose.runtime.staticCompositionLocalOf<PlayarrPlayPrewarm?> { null }
+private const val PREWARM_RELEASE_GRACE_MS = 2_000L
+/** Focus dwell before the playback info is negotiated, so a D-pad pass over Play opens no session. */
+private const val PLAY_PREWARM_DWELL_MS = 250L
 internal val LocalResumeAskAgain = androidx.compose.runtime.staticCompositionLocalOf<((String) -> Unit)?> { null }
 
 /**
@@ -840,7 +848,7 @@ internal class PlayarrExperienceViewModel @Inject constructor(
     fun refreshProgress() {
         viewModelScope.launch {
             progressStamp.begin()
-            runCatching { api.listWatchProgress() }.getOrNull()?.let {
+            withContext(PlayarrFetchDispatcher) { runCatching { api.listWatchProgress() }.getOrNull() }?.let {
                 _progress.value = it
                 _progressLoaded.value = true
             }
@@ -857,6 +865,10 @@ internal class PlayarrExperienceViewModel @Inject constructor(
     val accessToken = tokenStore.accessToken.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val currentUserId = tokenStore.currentUserId.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val currentUserName = tokenStore.currentUserName.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** The user whose session the first loads below ran with (the saved one), read once the store answers. */
+    private val initialLoadUserId = viewModelScope.async { tokenStore.currentUserId.first() }
+    private var initialLoadPending = true
 
     init {
         loadAvailableKinds()
@@ -922,7 +934,9 @@ internal class PlayarrExperienceViewModel @Inject constructor(
     }
 
     private fun launchHome(silent: Boolean): Job {
+        // Fetch and parse on Default: Main is busy composing Home's first frame; only the state writes below go back to Main.
         return viewModelScope.launch {
+            android.os.Trace.beginSection("pl:launchHome_start"); android.os.Trace.endSection()
             homeStamp.begin()
             if (!silent) _home.value = ExperienceLoad.Loading
             val progressRequest = async { runCatching { api.listWatchProgress() }.getOrNull() }
@@ -980,16 +994,41 @@ internal class PlayarrExperienceViewModel @Inject constructor(
                     }
                 }
             val onDeck = (fromRows + fromPlans).awaitAll().filterNotNull()
-            _progress.value = progress
-            if (progressRows != null) _progressLoaded.value = true
-            homeByKind = byKind
-            homeOnDeck = onDeck
-            serverRails = railsRequest.await()
-            _home.value = ExperienceLoad.Ready(buildPlayarrHomeRails(byKind, onDeck, serverRails))
+            val rails = railsRequest.await()
+            android.os.Trace.beginSection("pl:launchHome_fetched"); android.os.Trace.endSection()
+            val ready = android.os.Trace.beginSection("pl:buildHomeRails").let {
+                try { ExperienceLoad.Ready(buildPlayarrHomeRails(byKind, onDeck, rails)) } finally { android.os.Trace.endSection() }
+            }
+            withContext(Dispatchers.Main.immediate) {
+                android.os.Trace.beginSection("pl:home_state_set"); android.os.Trace.endSection()
+                _progress.value = progress
+                if (progressRows != null) _progressLoaded.value = true
+                homeByKind = byKind
+                homeOnDeck = onDeck
+                serverRails = rails
+                _home.value = ready
+            }
         }
     }
 
-    fun reloadForProfile() {
+    /**
+     * The signed-in user changed (or appeared). The first user the screen sees is normally the saved session whose data the
+     * ViewModel's own initial loads already fetch: loading it all a second time only competes with Home's first paint.
+     */
+    fun reloadForProfile(userId: String) {
+        viewModelScope.launch {
+            if (initialLoadPending) {
+                initialLoadPending = false
+                if (initialLoadUserId.await() == userId) {
+                    refreshProfileAvatar()
+                    return@launch
+                }
+            }
+            reloadForProfileNow()
+        }
+    }
+
+    private fun reloadForProfileNow() {
         // Libraries a screen has already asked for are reloaded for the new profile; otherwise a library opened as the
         // first screen (a restored route) was left without data.
         val openLibraries = (libraryJobs.keys + _libraries.value.keys).toSet()
@@ -1559,7 +1598,7 @@ internal fun PlayarrExperience(
     val entry by navController.currentBackStackEntryAsState()
     val currentRoute = entry?.destination?.route.orEmpty().substringBefore('?')
     var detailSectionRoute by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(currentRoute, detailSectionRoute) { parityLog("route=$currentRoute section=${detailSectionRoute.orEmpty()}") }
+    LaunchedEffect(currentRoute, detailSectionRoute) { parityCurrentRoute = currentRoute; parityLog("route=$currentRoute section=${detailSectionRoute.orEmpty()}") }
     // Detail pages highlight the section they belong to (Series for a series, etc.), as the web rail does.
     val activeNavRoute = if (currentRoute.startsWith("experience-detail")) detailSectionRoute ?: currentRoute else currentRoute
     val token by viewModel.accessToken.collectAsState()
@@ -1601,7 +1640,7 @@ internal fun PlayarrExperience(
         }
     }
     LaunchedEffect(currentUserId) {
-        if (currentUserId != null) viewModel.reloadForProfile()
+        currentUserId?.let(viewModel::reloadForProfile)
     }
     val household by viewModel.household.collectAsState()
     val householdBlock = householdBlockState(household)
@@ -2615,6 +2654,14 @@ private fun ExperienceNavHost(
     // Debug parity launches on a detail route sit on top of Movies (on Home), as web's Back from a deep-linked film does.
     val detailOnHome = parityRoute != null && initialRoute.startsWith("experience-detail")
     if (detailOnHome) LaunchedEffect(Unit) { navController.navigate("movies"); navController.navigate(initialRoute) }
+    val playerDefaultsForPrewarm = LocalPlayarrDisplayPreferences.current.playerDefaults
+    val playPrewarm = remember(playerViewModel, playerDefaultsForPrewarm) {
+        PlayarrPlayPrewarm(
+            prewarm = { id, settings -> playerViewModel.prewarmNext(id, playerDefaultsForPrewarm, settings) },
+            release = playerViewModel::releasePrewarmLater,
+        )
+    }
+    CompositionLocalProvider(LocalPlayPrewarm provides playPrewarm) {
     NavHost(navController, startDestination = if (detailOnHome) "home" else initialRoute, modifier = Modifier.fillMaxSize()) {
         composable("home") {
             ExperienceOnlineGate(isOnline, isTelevision, "home") {
@@ -2877,6 +2924,7 @@ private fun ExperienceNavHost(
             }
         }
     }
+    }
 }
 
 internal fun restorableExperienceRoute(
@@ -3051,6 +3099,13 @@ private fun ExperienceHomeScreen(
                 return
             }
             val allWorks = current.value.flatMap(HomeRail::works)
+            // Marker for the device performance A/B (scripts/parity/android-tv/perf-ab.sh): Home content is on screen.
+            LaunchedEffect(Unit) {
+                withFrameNanos { }
+                withFrameNanos { }
+                android.os.Trace.beginSection("pl:home_ready"); android.os.Trace.endSection()
+                android.util.Log.i("PlayarrPerf", "home_ready")
+            }
             val selectedId = savedSelectedId?.takeIf { id -> allWorks.any { it.id == id } } ?: allWorks.first().id
             val activeRailKey = savedRailKey?.takeIf { key -> current.value.any { it.key == key } } ?: current.value.first().key
             var contextWork by remember { mutableStateOf<Work?>(null) }
@@ -3644,7 +3699,13 @@ internal fun ExperienceMediaRail(
                 val onDeck = rail.onDeckByWork[work.id]
                 val episode = onDeck?.episode
                 ExperienceLandscapeCard(
-                    modifier = if (rails != null) Modifier.tvRailItem(rails, railIndex, itemIndex) else Modifier,
+                    modifier = (if (rails != null) Modifier.tvRailItem(rails, railIndex, itemIndex) else Modifier)
+                        // `.tv-home-card > small { height: 1.3em; margin: 0.16rem 0 calc(-1.3em - 0.16rem) }` hangs below the card box, but the flex row still
+                        // lays the card out with it: the rail is taller than the card rect by the small's margin-top plus its line (6.88 px * 1.3).
+                        .then(if (!isTelevision && homeView == PlayarrHomeViewPreference.Thumbnail) Modifier.layout { measurable, constraints ->
+                            val placeable = measurable.measure(constraints)
+                            layout(placeable.width, placeable.height + (webLayoutUnit(0.16f * 16f) + webLayoutUnit(1.3f * 6.88f)).dp.roundToPx()) { placeable.placeRelative(0, 0) }
+                        } else Modifier),
                     work = work,
                     serverUrl = serverUrl,
                     accessToken = accessToken,
@@ -3892,18 +3953,22 @@ internal fun ExperienceLandscapeCard(
             Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = homeMeta.sp, lineHeight = (if (tabletHome) homeMeta * 1.3f else 13.248f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (2.56f / homeScale).dp else 2.6.dp, start = 1.9.dp))
             }
         } else if (webPhone && webHome) {
-            // Web `.tv-home-card > strong` (8.8 px / 610) and `> small` (6.88 px, 2.56 px below; it hangs under the card, so the rail gap below is shorter).
+            // Web `.tv-home-card`: the card box ends under the one title line (padding-top --card-copy-gap 0.72rem, 8.8 px / 610 at line-height 1.5, inline padding
+            // --card-copy-inset 0.12rem); the `small` (6.88 px, 2.56 px below) hangs out of that box, so the box is that tall and the small line overflows it.
             val strongInk = if (webIsDark) Color.White else Color.Black
-            Text(
-                displayTitle, color = if (strongCaption) strongInk else WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
-                letterSpacing = (-0.132).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.offset(y = 1.9.dp).padding(start = 1.9.dp, top = 9.7.dp), // offsets keep the rail height
-            )
-            Text(
-                resolvedSubtitle, color = if (strongCaption) strongInk else PlayarrWebTheme.palette.phoneInkMuted, fontSize = 6.88.sp, lineHeight = 10.32.sp,
-                style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.offset(y = 1.08.dp).padding(start = 1.9.dp, top = 2.56.dp),
-            )
+            val copyInset = webLayoutUnit(0.12f * 16f).dp
+            Column(Modifier.height(phoneLibraryCopyCss(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.toFloat()).dp).wrapContentHeight(Alignment.Top, unbounded = true)) {
+                Text(
+                    displayTitle, color = if (strongCaption) strongInk else WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
+                    letterSpacing = (-0.132).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = copyInset, top = webLayoutUnit(0.72f * 16f).dp),
+                )
+                Text(
+                    resolvedSubtitle, color = if (strongCaption) strongInk else PlayarrWebTheme.palette.phoneInkMuted, fontSize = 6.88.sp, lineHeight = 10.32.sp,
+                    style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = copyInset, top = 2.56.dp),
+                )
+            }
         } else if (webPhone && webSearch) {
             // Web `.tv-search-result` caption on phones (live dom dump): 8.8 px title at y +11.5, 6.4 px upper-case meta 2 px below.
             Text(
@@ -3921,7 +3986,7 @@ internal fun ExperienceLandscapeCard(
                 displayTitle, color = if (strongCaption) (if (webIsDark) Color.White else Color.Black) else WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
                 letterSpacing = (-0.132).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 // Web library caption: 1 px lower than before (measured against the fresh phone refs); the row gap below gives it back.
-                modifier = Modifier.padding(start = 1.9.dp - 0.3.dp, top = 11.6.dp),
+                modifier = Modifier.padding(start = webLayoutUnit(0.12f * 16f).dp, top = webLayoutUnit(0.72f * 16f).dp), // --card-copy-inset 0.12rem, --card-copy-gap 0.72rem
             )
         } else {
         Text(displayTitle, color = WebInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 7.dp))
@@ -4060,7 +4125,9 @@ internal fun LibraryResults(
         LibraryViewMode.Screen -> {
         val phoneViewportDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
         val phoneColumns = fixedColumns ?: phonePosterColumns(artworkSize, phoneViewportDp)
-        val phoneRowPitchPx = if (!isTelevision && phoneViewportDp < 540) 136f * LocalDensity.current.density else tvRowPitchPx
+        val phoneGridTopCss = PHONE_LIBRARY_GRID_TOP_CSS
+        val phoneCardCss = phoneLibraryCardCss(phonePosterCardWidth().value, phoneViewportDp.toFloat())
+        val phoneRowPitchCss = phoneCardCss + PHONE_LIBRARY_ROW_GAP_CSS
         LazyVerticalGrid(
             columns = fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth) else GridCells.Fixed(phonePosterColumns(artworkSize, androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp)),
             state = gridState,
@@ -4068,7 +4135,7 @@ internal fun LibraryResults(
             modifier = Modifier.fillMaxSize().playarrEdgeFades(gridState.canScrollBackward, gridState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical, panel = if (isTelevision) null else WebBackground),
             contentPadding = screenPadding,
             horizontalArrangement = Arrangement.spacedBy(if (isTelevision) tvRail?.gap ?: 25.92.dp else 12.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 23.32.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 0.dp),
         ) {
             itemsIndexed(works, key = { _, work -> work.id }) { index, work ->
                 val openLabel = playarrString(PlayarrString.LibraryOpenWork, "title" to work.title)
@@ -4083,14 +4150,24 @@ internal fun LibraryResults(
                     modifier = (if (grid != null) Modifier.tvGridItem(grid, index) else Modifier)
                         // Web's cards are 327.17 px wide at 1080p; the grid hands out whole-pixel cells of 328 and 327, so the poster would be 1 px too tall in every other column.
                         .then(if (tvRowPitchPx > 0f) Modifier.requiredWidth(327.17.dp) else Modifier.fillMaxWidth())
-                        .then(if (phoneRowPitchPx > 0f) Modifier.layout { measurable, constraints ->
-                            // Web's rows sit 136 css px apart (fractional device pixels); Lazy grids round every row to whole pixels,
-                            // which drifts 0.3 px per row. Trim a pixel from the rows where the drift crosses one.
+                        .then(if (tvRowPitchPx > 0f) Modifier.layout { measurable, constraints ->
+                            // Web's rows sit apart by a fractional device pixel count; Lazy grids round every row to whole pixels, which drifts. Trim a pixel from the rows where the drift crosses one.
                             val placeable = measurable.measure(constraints)
                             val row = index / phoneColumns
-                            val pitch = placeable.height + (if (isTelevision) tvRowGap else 23.32.dp).roundToPx()
-                            val cut = pitch - (Math.round((row + 1) * phoneRowPitchPx) - Math.round(row * phoneRowPitchPx))
+                            val pitch = placeable.height + tvRowGap.roundToPx()
+                            val cut = pitch - (Math.round((row + 1) * tvRowPitchPx) - Math.round(row * tvRowPitchPx))
                             layout(placeable.width, placeable.height - cut) { placeable.place(0, 0) }
+                        } else Modifier)
+                        .then(if (!isTelevision && phoneViewportDp < 540) Modifier.layout { measurable, constraints ->
+                            // Web phone `.tv-title-card`: the browser snaps each box edge once, from its summed css position. Row r starts at
+                            // grid top + r * pitch; the card is phoneCardCss tall and the row's cell runs to the next row's top.
+                            val d = density
+                            val rowTop = phoneGridTopCss + (index / phoneColumns) * phoneRowPitchCss
+                            val top = Math.round(rowTop * d)
+                            val cardPx = Math.round((rowTop + phoneCardCss) * d) - top
+                            val cellPx = Math.round((rowTop + phoneRowPitchCss) * d) - top
+                            val placeable = measurable.measure(constraints.copy(minHeight = cardPx, maxHeight = cardPx))
+                            layout(placeable.width, cellPx) { placeable.place(0, 0) }
                         } else Modifier),
                     contentLabel = openLabel, // web: aria-label "Open <title>"
                     progress = progressByWork[work.id],
@@ -4198,6 +4275,17 @@ private fun LibraryCoverCard(
     }
     }
 }
+
+/**
+ * Web phone library grid, from page-layout.css: the grid's first row sits 84 css px down (`padding: 84px ...` of the grid, measured from the page top, status inset
+ * included) and the rows are 24 px apart (`gap: 24px var(--card-grid-gap)`). A card is the art (`aspect-ratio: 16 / 9` of the card width `--card-w`) plus the copy
+ * (`.tv-title-card-copy`: `padding-top: var(--card-copy-gap)` = 0.72rem, one line of `--card-title-size` = clamp(0.55rem, 0.62vw, 0.78rem) at line-height 1.5), every length a LayoutUnit.
+ */
+internal const val PHONE_LIBRARY_GRID_TOP_CSS = 84f
+internal const val PHONE_LIBRARY_ROW_GAP_CSS = 24f
+internal fun phoneLibraryCopyCss(viewportWidthCss: Float): Float =
+    webLayoutUnit(0.72f * 16f) + webLayoutUnit(1.5f * webClamp(0.55f * 16f, 0.62f * viewportWidthCss / 100f, 0.78f * 16f))
+internal fun phoneLibraryCardCss(cardWidthCss: Float, viewportWidthCss: Float): Float = webLayoutUnit(cardWidthCss * 9f / 16f) + phoneLibraryCopyCss(viewportWidthCss)
 
 /**
  * Web phone poster card width (`--card-w`, #924): the viewport less the 16 dp gutter and the 52 dp letter rail pad, split
@@ -4594,10 +4682,10 @@ private fun LibraryViewIcon(mode: LibraryViewMode, colour: Color) {
         else -> Triple(3, 4f, 13f)
     }
     val list = mode == LibraryViewMode.List
-    // A filled bar records its fill; an outlined one records that it draws a border (no fill), so the export keeps the box the app really paints.
+    // Web `.tv-view-icon i { border: 1px solid currentColor }`: every bar is an outlined box with no fill, and the browser floors a border to whole device px.
+    val borderWidth = with(LocalDensity.current) { if (tv) 1.dp else kotlin.math.floor(density).coerceAtLeast(1f).toDp() }
     val bar = Modifier.size(w.dp, h.dp).let {
-        if (list && !tv) it.parityBackground("container", colour, RoundedCornerShape(1.dp), radius = 1f)
-        else it.parityBackground("container", Color.Transparent, RoundedCornerShape(1.dp), radius = 1f, drawsBorder = true).border(1.dp, colour, RoundedCornerShape(1.dp))
+        it.parityBackground("container", Color.Transparent, RoundedCornerShape(1.dp), radius = 1f, drawsBorder = true).border(borderWidth, colour, RoundedCornerShape(1.dp))
     }
     if (list) Column(verticalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }
     else Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }
@@ -4785,7 +4873,7 @@ private fun ExperienceLibraryScreen(
                 Column(
                     modifier = Modifier
                         .then(if (isTelevision) Modifier.width(1190.4.dp).fillMaxHeight().align(Alignment.CenterEnd).parityBox("container") else Modifier.fillMaxSize())
-                        .background(if (isTelevision) webRailSurfaceBrush() else Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)))
+                        .then(if (isTelevision) Modifier.background(webRailSurfaceBrush()) else Modifier)
                         .windowInsetsPadding(if (isTelevision) WindowInsets(0) else webPhoneBodyInsets())
                         .padding(top = if (isTelevision) 76.dp else 0.dp),
                 ) {
@@ -6818,7 +6906,7 @@ private fun PhoneVideoDetailBody(
                     modifier = Modifier,
                 )
                 Spacer(Modifier.height(10.dp))
-                // The 36.66 px line box is shorter than the 39 px glyphs: CSS lets them overflow upwards, while Compose grows
+                // The 36.66 px line box is shorter than the 39 px glyphs (Chromium floors the negative half leading, see PlayarrWebText): pin the box height, the text is placed by that line box, not shifted by a constant. Compose grows
                 // the box to the font height, so pin the height and lift the text the way CSS centres it.
                 // Web phone `.tv-detail-title`: max-width 12ch, so a long title wraps to a second 36.66 px line (the stage-scaled tablet keeps one line).
                 val phoneTitle = LocalStageScale.current == 1f
@@ -6833,12 +6921,12 @@ private fun PhoneVideoDetailBody(
                     else balanceTitleWrap(work.title, titleMaxPx) { measurer.measure(it, spacedTitleStyle).size.width }
                 }
                 var titleLines by remember(work.title) { mutableStateOf(1) }
-                Box(Modifier.height((36.66f * titleLines).dp).wrapContentHeight(align = Alignment.Top, unbounded = true)) {
+                Box(Modifier.height((webLayoutUnit(36.66f) * titleLines).dp).wrapContentHeight(align = Alignment.Top, unbounded = true)) {
                     Text(
                         shownTitle, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
                         style = WebTextStyle, maxLines = if (phoneTitle) 2 else 1, overflow = TextOverflow.Ellipsis,
                         onTextLayout = { titleLines = it.lineCount },
-                        modifier = (if (phoneTitle) Modifier.widthIn(max = titleMax) else Modifier).graphicsLayer { translationY = -10.4.dp.toPx() }.semantics { heading() },
+                        modifier = (if (phoneTitle) Modifier.widthIn(max = titleMax) else Modifier).semantics { heading() },
                     )
                 }
                 if (episode != null) {
@@ -6847,11 +6935,11 @@ private fun PhoneVideoDetailBody(
                         episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to episode.episodeNumber),
                         color = WebInkSoft, fontSize = 14.4.sp, lineHeight = 16.56.sp, fontWeight = FontWeight(570), letterSpacing = (-0.504).sp,
                         style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer { translationY = -1.15.dp.toPx() }.semantics { heading() },
+                        modifier = Modifier.semantics { heading() },
                     )
                 }
-                Spacer(Modifier.height(if (episode != null) 6.9.dp else 12.dp))
-                FlowRow(Modifier.offset(y = (-1.3).dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Spacer(Modifier.height(12.dp)) // .tv-detail-meta margin-top: 12px
+                FlowRow(Modifier, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     metaItems.forEachIndexed { index, item ->
                         Text(
                             item, color = if (index == 0) WebInkSoft else PlayarrWebTheme.palette.phoneInkMuted, fontSize = 10.24.sp, lineHeight = 15.36.sp,
@@ -6871,7 +6959,7 @@ private fun PhoneVideoDetailBody(
                     Spacer(Modifier.height(10.dp))
                 }
                 WebClampedText(synopsis, color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 11.52.sp, lineHeight = 16.704.sp, fontWeight = FontWeight.Normal, style = WebTextStyle, maxLines = 3, modifier = Modifier, minLines = if (episode != null) 3 else 1)
-                Spacer(Modifier.height(if (episode != null) 11.67.dp else 14.dp))
+                Spacer(Modifier.height(14.dp))
                 PhoneDetailActions(
                     work = work, episode = selectedEpisode, mediaFileId = mediaFileId, progress = progress, canDownload = canDownload,
                     posterUrl = posterUrl, launchSettings = launchSettings, onPlaybackSettings = onPlaybackSettings, onPlay = onPlay,
@@ -7396,6 +7484,27 @@ private fun VideoDetailActions(
         } else {
             playarrString(PlayarrString.DetailPlay)
         }
+        // Web dwell prefetch: negotiate the playback info shortly after Play gains focus so Select only prepares the player.
+        // Only the plain Play of a film or episode (no custom launch settings, no stacked chooser) is the request play() makes.
+        val playPrewarm = LocalPlayPrewarm.current
+        // A film's launch settings arrive with its playback options (a separate request): negotiating before they are known
+        // would open a second session once they land (the two requests differ), so wait for them.
+        val settingsPending = work.kind == WorkKind.Movie && episode == null && onPlaybackSettings == null
+        val prewarmTarget = if (settingsPending || (smartPlan != null && smartPlan.isStacked)) null
+            else smartPlan?.target?.mediaFileId?.let { it to null } ?: (mediaFileId to launchSettings)
+        var playFocused by remember { mutableStateOf(false) }
+        if (playPrewarm != null && prewarmTarget != null) {
+            LaunchedEffect(playFocused, prewarmTarget) {
+                if (playFocused) {
+                    kotlinx.coroutines.delay(PLAY_PREWARM_DWELL_MS)
+                    playPrewarm.prewarm(prewarmTarget.first, prewarmTarget.second)
+                }
+            }
+            DisposableEffect(playFocused, prewarmTarget.first) {
+                onDispose { if (playFocused) playPrewarm.release(prewarmTarget.first) }
+            }
+        }
+        val prewarmFocus = Modifier.onFocusChanged { playFocused = it.hasFocus }
         val playPill: @Composable () -> Unit = {
             WebDetailPill(
                 label = playLabel,
@@ -7413,7 +7522,7 @@ private fun VideoDetailActions(
                 },
                 exportLabel = smartDescription ?: "Play $title",
                 exportRole = if (work.kind == WorkKind.Movie && episode == null) "link" else "button",
-                modifier = Modifier.focusRequester(playFocus).then(
+                modifier = Modifier.focusRequester(playFocus).then(prewarmFocus).then(
                     if (smartDescription != null) Modifier.semantics { contentDescription = smartDescription } else Modifier,
                 ),
             )
@@ -7688,8 +7797,8 @@ internal fun SeriesEpisodeBrowser(
         modifier = modifier
             .then(
                 if (isTelevision) {
-                    // shortcut: the web centres the first track in its scroll box, so a short stack (static seed) sits 222 dp lower than a tall one; only the short case is matched, upgrade with a clamped initial scroll.
-                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp + 16.5.dp * tabletDetail, top = 357.dp + 244.5.dp * tabletDetail)
+                    // The web centres the first track in its scroll box (a short stack sits lower than a tall one); that content-dependent offset is not reproduced, so no static-seed shortcut is applied.
+                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp + 16.5.dp * tabletDetail, top = 357.dp)
                 } else {
                     Modifier.glass(RoundedCornerShape(16.dp), WebGlass.Panel).padding(14.dp)
                 },
@@ -9288,12 +9397,13 @@ internal class ExperiencePlayerViewModel @Inject constructor(
             return
         }
         activeRequest = request
+        android.os.Trace.beginSection("pl:play_entered"); android.os.Trace.endSection()
         prepareJob?.cancel()
         switchJob?.cancel()
         prepareJob = viewModelScope.launch {
             // The saved position and the server lookup are independent network calls: start both now, not one after the other.
-            val progressCall = async { runCatching { api.getWatchProgress(mediaFileId) }.getOrNull() }
-            val serverCall = async { runCatching { serverAccessResolver.forMedia(mediaFileId).serverUrl }.getOrNull() }
+            val progressCall = async(PlayarrFetchDispatcher) { runCatching { api.getWatchProgress(mediaFileId) }.getOrNull() }
+            val serverCall = async(PlayarrFetchDispatcher) { runCatching { serverAccessResolver.forMedia(mediaFileId).serverUrl }.getOrNull() }
             if (activeMediaFileId != null) persistProgress(ensureCompletion = true)
             closeActiveSessionAndWait(PlaybackStopReason.UserStopped)
             activeMediaFileId = mediaFileId
@@ -9340,17 +9450,19 @@ internal class ExperiencePlayerViewModel @Inject constructor(
 
             val selectedQuality = launchSettings?.qualityId ?: parsePlayarrQualityDefault(defaults.qualityId)
             val prewarmed = takePrewarm(mediaFileId, resumePosition, launchSettings)
-            _state.value = when (val result = prewarmed ?: getPlaybackInfo(
-                mediaFileId = mediaFileId,
-                containers = playarrAndroidContainers,
-                videoCodecs = playarrAndroidVideoCodecs,
-                audioCodecs = playarrAndroidAudioCodecs,
-                profile = launchSettings?.profile ?: selectedQuality.takeUnless { it == "original" },
-                forceTranscode = launchSettings?.forceTranscode ?: (selectedQuality != "original"),
-                startPositionMs = resumePosition,
-                audioStreamIndex = launchSettings?.audioStreamIndex,
-                ignoreSavedPreferences = launchSettings == null && selectedQuality == "original",
-            )) {
+            _state.value = when (val result = prewarmed ?: withContext(PlayarrFetchDispatcher) {
+                getPlaybackInfo(
+                    mediaFileId = mediaFileId,
+                    containers = playarrAndroidContainers,
+                    videoCodecs = playarrAndroidVideoCodecs,
+                    audioCodecs = playarrAndroidAudioCodecs,
+                    profile = launchSettings?.profile ?: selectedQuality.takeUnless { it == "original" },
+                    forceTranscode = launchSettings?.forceTranscode ?: (selectedQuality != "original"),
+                    startPositionMs = resumePosition,
+                    audioStreamIndex = launchSettings?.audioStreamIndex,
+                    ignoreSavedPreferences = launchSettings == null && selectedQuality == "original",
+                )
+            }) {
                 is PlayarrResult.Success -> {
                     prepareNegotiatedPlayback(
                         result.value,
@@ -9394,9 +9506,10 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         val result: PlayarrResult<PlaybackInfoResponse>?,
     )
 
-    private class PlayarrPrewarm(val mediaFileId: String, val deferred: kotlinx.coroutines.Deferred<PlayarrPrewarmed>)
+    private class PlayarrPrewarm(val mediaFileId: String, val launchSettings: PlayarrPlaybackLaunchSettings?, val deferred: kotlinx.coroutines.Deferred<PlayarrPrewarmed>)
 
     private var prewarm: PlayarrPrewarm? = null
+    private var prewarmEpoch = 0
 
     /**
      * During the up-next countdown (never before STATE_ENDED, so it cannot
@@ -9405,17 +9518,19 @@ internal class ExperiencePlayerViewModel @Inject constructor(
      * opens the new item's own fresh session; [play] consumes it, anything
      * else closes it ([discardPrewarm]). Local downloads need no negotiation.
      */
-    fun prewarmNext(mediaFileId: String, defaults: PlayarrPlayerDefaults) {
-        if (prewarm?.mediaFileId == mediaFileId) return
+    fun prewarmNext(mediaFileId: String, defaults: PlayarrPlayerDefaults, launchSettings: PlayarrPlaybackLaunchSettings? = null) {
+        prewarmEpoch++
+        if (prewarm?.mediaFileId == mediaFileId && prewarm?.launchSettings == launchSettings) return
         if (castingMediaFileId.value != null) return
         discardPrewarm()
-        val deferred = viewModelScope.async {
+        val deferred = viewModelScope.async(PlayarrFetchDispatcher) {
             val resume = runCatching { api.getWatchProgress(mediaFileId) }.getOrNull()
                 ?.takeIf { it.state == WatchState.PartWatched }?.positionMs ?: 0L
             if (runCatching { downloadRepository.localFile(mediaFileId) }.getOrNull() != null) {
                 return@async PlayarrPrewarmed(resume, null)
             }
-            val quality = parsePlayarrQualityDefault(defaults.qualityId)
+            // The same request play() makes for these launch settings.
+            val quality = launchSettings?.qualityId ?: parsePlayarrQualityDefault(defaults.qualityId)
             PlayarrPrewarmed(
                 resume,
                 getPlaybackInfo(
@@ -9423,15 +9538,28 @@ internal class ExperiencePlayerViewModel @Inject constructor(
                     containers = playarrAndroidContainers,
                     videoCodecs = playarrAndroidVideoCodecs,
                     audioCodecs = playarrAndroidAudioCodecs,
-                    profile = quality.takeUnless { it == "original" },
-                    forceTranscode = quality != "original",
+                    profile = launchSettings?.profile ?: quality.takeUnless { it == "original" },
+                    forceTranscode = launchSettings?.forceTranscode ?: (quality != "original"),
                     startPositionMs = resume,
-                    audioStreamIndex = null,
-                    ignoreSavedPreferences = quality == "original",
+                    audioStreamIndex = launchSettings?.audioStreamIndex,
+                    ignoreSavedPreferences = launchSettings == null && quality == "original",
                 ),
             )
         }
-        prewarm = PlayarrPrewarm(mediaFileId, deferred)
+        prewarm = PlayarrPrewarm(mediaFileId, launchSettings, deferred)
+    }
+
+    /**
+     * The Play pill lost focus or left the screen: close its negotiation unless play() takes it. Select navigates away in the
+     * same frame, so the release waits for play() to claim it first.
+     */
+    fun releasePrewarmLater(mediaFileId: String) {
+        val epoch = prewarmEpoch
+        viewModelScope.launch {
+            delay(PREWARM_RELEASE_GRACE_MS)
+            // A re-focus (the pill briefly loses focus while the page lays out again) asks for it again and keeps it.
+            if (prewarm?.mediaFileId == mediaFileId && prewarmEpoch == epoch) discardPrewarm()
+        }
     }
 
     /** Drops an unused prewarmed negotiation and closes the session it opened. */
@@ -9456,7 +9584,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         val got = runCatching { pending.deferred.await() }.getOrNull()
         val result = got?.result
         if (got != null && result is PlayarrResult.Success &&
-            playarrPrewarmUsable(pending.mediaFileId, got.resumePositionMs, mediaFileId, resumePositionMs, launchSettings != null)
+            playarrPrewarmUsable(pending.mediaFileId, got.resumePositionMs, mediaFileId, resumePositionMs, pending.launchSettings != launchSettings)
         ) {
             Log.i(PLAYBACK_STATS_TAG, "event=prewarm_used media_file_id=$mediaFileId")
             return result
@@ -9628,6 +9756,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         val selectedAudioLanguage = playback.audioTracks
             .firstOrNull { it.id == playback.selectedAudioTrackId }
             ?.language
+        android.os.Trace.beginSection("pl:player_prepare"); android.os.Trace.endSection()
         player.prepare(
             resolvePlayarrPlaybackUrl(activeServerUrl, playback.url),
             if (playback.mode == io.playarr.shared.data.model.PlaybackMode.Hls) StreamFormat.Hls else StreamFormat.Direct,
@@ -11035,9 +11164,12 @@ private fun rememberPlayarrNowPlayingArtwork(work: Work?, fallbackServerUrl: Str
             .apply { if (!token.isNullOrBlank()) httpHeaders(NetworkHeaders.Builder().set("Authorization", "Bearer $token").build()) }
             .build()
         val image = (coil3.SingletonImageLoader.get(context).execute(request) as? coil3.request.SuccessResult)?.image ?: return@LaunchedEffect
-        bytes = runCatching {
-            java.io.ByteArrayOutputStream().also { image.toBitmap().compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, it) }.toByteArray()
-        }.getOrNull()
+        // Reading a hardware bitmap back and encoding it took ~120 ms on Main right as playback starts: do it off the UI thread.
+        bytes = withContext(Dispatchers.Default) {
+            runCatching {
+                java.io.ByteArrayOutputStream().also { image.toBitmap().compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, it) }.toByteArray()
+            }.getOrNull()
+        }
     }
     return bytes
 }

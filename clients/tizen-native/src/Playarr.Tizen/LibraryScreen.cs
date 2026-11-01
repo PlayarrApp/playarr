@@ -94,7 +94,7 @@ internal sealed class LibraryScreen : IPage
         _tile = tile; Sem.Tag(tile, "button", "Filters");
         tile.Add(Ui.Text("Filters", 0, 44.6f, 8.256f, 700, _t.InkMuted, 62, 12.384f, HorizontalAlignment.Center, spacing: 0.165f));
         var ring = Ring.Make(62, 72, 14, new Rgba(1, 1, 1)); ring.Show(false); tile.Add(ring);
-        _root.Add(tile);
+        _env.AddShellView(tile);
         _side.Add(new Focusable { Rect = () => new Box(1845.5f, 151.2f, 62, 72), Label = "filters", Style = f => ring.Show(f), Select = OpenFilters });
         // A-Z rail
         var y = 295.2f;

@@ -1,0 +1,1 @@
+- Tizen native: the light rail groups draw their web fill over the page layer again (pixels) while the layout export reports the web fill over the shell, the shell action tiles report their fill over the window colour as the web does, and the details-panel and calendar kickers use the web weight 860 (detail kickers 820).
