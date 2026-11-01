@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.composed
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
@@ -379,9 +380,13 @@ private fun PhoneCalendarHeader(state: CalendarUiState, locale: Locale, holder: 
     // The static web refs (2026-10-24, focus dropped before every shot) draw no Today ring on open, so the ring flag starts off
     // (the earlier live refs showed web's focus ring on Today until the first toolbar action).
     var todayRing by remember { mutableStateOf(false) }
+    // The agenda toolbar is fixed at its css top: shifted by the difference to the position the scaffold flowed it to, read at run time.
+    val toolbarDensity = androidx.compose.ui.platform.LocalDensity.current
+    var toolbarTopPx by remember { mutableStateOf<Float?>(null) }
     WebCssEndRow(
         gapCss = 8f, heightCss = 44f,
-        modifier = Modifier.fillMaxWidth().offset(y = if (state.mode == CalendarViewMode.Agenda) (-18.5).dp else 0.dp),
+        modifier = Modifier.fillMaxWidth().onGloballyPositioned { toolbarTopPx = it.positionInRoot().y }
+            .offset { androidx.compose.ui.unit.IntOffset(0, if (state.mode == CalendarViewMode.Agenda) toolbarTopPx?.let { (AGENDA_NAV_TOP_CSS * toolbarDensity.density - it).toInt() } ?: 0 else 0) },
     ) {
         PhoneCalendarToolbarPill(title, { todayRing = false; onJump() }, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         PhoneCalendarRound(Modifier, "\u2190", playarrString(PlayarrString.CalendarPrevious)) { todayRing = false; holder.previous() }
@@ -448,33 +453,50 @@ private fun PhoneCalendarAgenda(
     modifier: Modifier,
 ) {
     val dayItems = remember(groups, zone) { groups.map { groupSeriesEpisodes(it.entries, zone) } }
-    // Web `.calendar-entry` is width 100% of a grid track that sizes to the widest nowrap entry on the page, never narrower than the page.
-    AgendaEntryWidth(modifier.offset(y = (-15).dp), dayItems.flatten(), zone) { entryWidth ->
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp)) {
+    // Web phone `.tv-title-grid-content.calendar-agenda-content`: padding-top --library-rail-top (nav top 14 + 54, + 44 control + 8 = 120),
+    // each day an `h3` of --agenda-heading-h (2.75rem) with margin 0, its `ul` pushed down by --agenda-glow-room (0.75rem) and spaced by
+    // 0.85rem, days spaced by the 2rem `.calendar-days` gap. The entries take their own height from their content.
+    val rem = 16f
+    val headingH = webLayoutUnit(2.75f * rem).dp
+    val glowRoom = webLayoutUnit(0.75f * rem).dp
+    val entryGap = webLayoutUnit(0.85f * rem).dp
+    val dayGap = webLayoutUnit(2f * rem).dp
+    // The web list is a scroller from the screen top whose first row sits at --library-rail-top: this container sits wherever the scaffold flows it, so it is
+    // shifted by the difference between that css top and the position it really has (read at run time, not stored).
+    val listDensity = androidx.compose.ui.platform.LocalDensity.current
+    var flowTopPx by remember { mutableStateOf<Float?>(null) }
+    AgendaEntryWidth(modifier.onGloballyPositioned { flowTopPx = it.positionInRoot().y }.offset { androidx.compose.ui.unit.IntOffset(0, flowTopPx?.let { (AGENDA_LIST_TOP_CSS * listDensity.density - it).toInt() } ?: 0) }, dayItems.flatten(), zone) { entryWidth ->
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 96.dp)) {
         if (loading) {
             items(3) { Column(Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) { PlayarrSkeleton(Modifier.width(180.dp).height(18.dp)); Spacer(Modifier.height(8.dp)); CalendarRowSkeleton() } }
         } else {
             groups.forEachIndexed { index, group ->
                 item(key = "day-${group.date}") {
-                    // Web `.calendar-day h2`: 44 px tall, 14.4 px / 640, the TODAY tag beside today's date.
-                    Row(Modifier.padding(top = if (index == 0) 0.dp else 18.5.dp).height(44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Web `.calendar-day h3`: 44 px tall (agenda heading), 14.4 px / 640, the TODAY tag beside today's date.
+                    if (index > 0) Spacer(Modifier.height(dayGap))
+                    Row(Modifier.height(headingH), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
-                            phoneCalendarDayHeading(group.date, locale), color = if (group.date == today) WebInk.copy(alpha = 0.9f) else WebInk, fontSize = 14.4.sp, lineHeight = 21.6.sp, fontWeight = FontWeight(640),
+                            phoneCalendarDayHeading(group.date, locale), color = if (group.date == today) io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent else WebInk, fontSize = 14.4.sp, lineHeight = 21.6.sp, fontWeight = FontWeight(640),
                             style = WebTextStyle, modifier = Modifier,
                         )
                         if (group.date == today) CalendarTodayBadge()
                     }
-                    Spacer(Modifier.height(13.dp))
+                    Spacer(Modifier.height(glowRoom))
                 }
-                items(dayItems[index], key = { "${group.date}-${it.key}" }) { item ->
+                itemsIndexed(dayItems[index], key = { _, it -> "${group.date}-${it.key}" }) { ei, item ->
+                    if (ei > 0) Spacer(Modifier.height(entryGap))
                     PhoneCalendarEntry(item, selected = false, zone = zone, onClick = { onSelect(item) }, modifier = Modifier.wrapContentWidth(Alignment.Start, unbounded = true).requiredWidth(entryWidth), agenda = true)
-                    Spacer(Modifier.height(13.5.dp))
                 }
             }
         }
     }
     }
 }
+
+/** Css top of the agenda day list: `--library-rail-top` = nav top (14 inset + 54) + 44 control + 8. */
+private const val AGENDA_LIST_TOP_CSS = 120f
+/** Web phone agenda toolbar is `position: fixed` at `--mobile-top-inset + 54` = 68 css px. */
+private const val AGENDA_NAV_TOP_CSS = 68f
 
 /** Lays out [content] with the width the widest of [items] needs on one line, or the available width when that is larger. */
 @Composable
@@ -611,7 +633,7 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
     val fill = WebSurfaceStrong
     Surface(
         // Material's clickable Surface paints a focus state layer (a fill); web's focus state is the ring alone.
-        modifier = modifier.padding(start = 0.dp, end = 0.dp).fillMaxWidth().then(if (m === TvCalendarMetrics && wrapTitles) Modifier.heightIn(min = m.entryHeight.dp) else Modifier.height((if (wrapTitles) 87f else if (m === TvCalendarMetrics && agenda && rowSubtitle.isEmpty()) 78f else if ((m === TvCalendarMetrics || (m === PhoneCalendarMetrics && LocalStageScale.current == 1f)) && rowSubtitle.isEmpty()) 76.5f else if (LocalCalendarTabletAgenda.current) 89.9f else m.entryHeight).dp)).calendarClick(remember { MutableInteractionSource() }, onClick).parityShape(m.entryRadius).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
+        modifier = modifier.padding(start = 0.dp, end = 0.dp).fillMaxWidth().then(if (agenda && m === PhoneCalendarMetrics && !wrapTitles) Modifier.heightIn(min = 64.dp) else if (m === TvCalendarMetrics && wrapTitles) Modifier.heightIn(min = m.entryHeight.dp) else Modifier.height((if (wrapTitles) 87f else if (m === TvCalendarMetrics && agenda && rowSubtitle.isEmpty()) 78f else if ((m === TvCalendarMetrics || (m === PhoneCalendarMetrics && LocalStageScale.current == 1f)) && rowSubtitle.isEmpty()) 76.5f else if (LocalCalendarTabletAgenda.current) 89.9f else m.entryHeight).dp)).calendarClick(remember { MutableInteractionSource() }, onClick).parityShape(m.entryRadius).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
             if (selected) {
                 // `.calendar-entry.is-selected`: a 4 px left border and 1 px borders in ink, plus a 1 px inset ring, so the
                 // padding box has a rounder inner left edge than the outer shape.
@@ -643,16 +665,28 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
         shape = shape, color = if (selected) Color.Transparent else fill,
         border = if (selected) null else BorderStroke(1.dp, WebPillBorder),
     ) {
+        // Web `.calendar-entry` (phone agenda): 1 px border + 0.5rem padding = 9 px above and below, 4 px left border + 0.75rem padding = 16 px at the start,
+        // `align-items: center`, height from its content (min-height 64): nothing here is a stored entry height.
+        val phoneAgenda = agenda && m === PhoneCalendarMetrics
         Row(
-            Modifier.padding(start = if (selected) 16.dp else 15.6.dp, end = 12.dp),
+            if (phoneAgenda) Modifier.padding(start = 16.dp, end = 12.dp, top = 9.dp, bottom = 9.dp) else Modifier.padding(start = if (selected) 16.dp else 15.6.dp, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (measureOnly) Spacer(Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp))
             else CalendarPoster(entry.posterUrl, Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp), measuredRadius = 6f, clip = RoundedCornerShape(6.dp))
-            // Phone agenda only (static refs; the week keeps its pitch): the lines sit 1.9 dp apart, not 2.4, and the block 1 dp higher than the row centre gives.
-            val phoneEntry = agenda && m === PhoneCalendarMetrics
-            val lineGap = if (phoneEntry) 1.9.dp else 2.4.dp
-            Column(Modifier.weight(1f).padding(start = 14.4.dp).then(if (phoneEntry) Modifier.offset(y = (-1).dp) else if (m === TvCalendarMetrics && agenda) Modifier else Modifier)) {
+            val lineGap = if (phoneAgenda) webLayoutUnit(0.15f * 16f).dp else 2.4.dp
+            val metaTexts: @Composable () -> Unit = {
+                Text(time, color = WebInkMuted, fontSize = (if (tvWeek) 12.8f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
+                Text(calendarReleaseTypeLabel(entry.releaseType), color = WebInkMuted, fontSize = (if (tvWeek) 12.8f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
+                Text(
+                    if (kind == CalendarMediaKind.Episode) playarrString(PlayarrString.CalendarDetailKindEpisode) else kind?.let { calendarKindLabel(it) } ?: entry.mediaKind,
+                    color = WebInkMuted, fontSize = (if (tvWeek) 12.8f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle, modifier = Modifier,
+                )
+                if (m === TvCalendarMetrics) Box(Modifier.offset(y = 3.dp)) { CalendarTonePill(calendarItemTone(item, LocalCalendarToday.current, zone)) }
+                else CalendarTonePill(calendarItemTone(item, LocalCalendarToday.current, zone), phone = true)
+            }
+            run {
+            Column(Modifier.weight(1f).padding(start = 14.4.dp)) {
                 Text(item.title, color = WebInk, fontSize = titleSp.sp, lineHeight = titleLine.sp, fontWeight = FontWeight(640), style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis,
                     // Web TV week: the 26 px title and subtitle boxes sit 1 dp under where Compose centres the line.
                     modifier = if (tvWeek && !agenda && LocalStageScale.current == 1f) Modifier.offset(y = 1.dp) else Modifier)
@@ -661,16 +695,8 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
                     Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis, modifier = if (tvWeek && !agenda && LocalStageScale.current == 1f) Modifier.offset(y = 1.dp) else Modifier)
                     Spacer(Modifier.height(lineGap))
                 }
-                Row(Modifier.then(if (m === TvCalendarMetrics) Modifier.offset(y = (-3).dp) else Modifier), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(time, color = WebInkMuted, fontSize = (if (tvWeek) 12.8f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
-                    Text(calendarReleaseTypeLabel(entry.releaseType), color = WebInkMuted, fontSize = (if (tvWeek) 12.8f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
-                    Text(
-                        if (kind == CalendarMediaKind.Episode) playarrString(PlayarrString.CalendarDetailKindEpisode) else kind?.let { calendarKindLabel(it) } ?: entry.mediaKind,
-                        color = WebInkMuted, fontSize = (if (tvWeek) 12.8f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle, modifier = Modifier,
-                    )
-                    if (m === TvCalendarMetrics) Box(Modifier.offset(y = 3.dp)) { CalendarTonePill(calendarItemTone(item, LocalCalendarToday.current, zone)) }
-                    else CalendarTonePill(calendarItemTone(item, LocalCalendarToday.current, zone), phone = true)
-                }
+                Row(Modifier.then(if (m === TvCalendarMetrics) Modifier.offset(y = (-3).dp) else Modifier), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { metaTexts() }
+            }
             }
         }
     }
@@ -1153,7 +1179,8 @@ private fun CalendarWeekBody(
     topPad: androidx.compose.ui.unit.Dp?,
 ) {
     // Web TV week: 438 dp day columns 19 dp apart, the agenda's entry cards and day headings.
-    val columnWidth = webColumn ?: if (isTelevision) 440.dp else 320.dp
+    // Phone `.calendar-week-scroll .calendar-day { flex-basis: calc(82 * var(--vw)) }` at 390 css px, a LayoutUnit.
+    val columnWidth = webColumn ?: if (isTelevision) 440.dp else webLayoutUnit(0.82f * 390f).dp
     val skeletonDays = remember(groups) { if (groups.isEmpty()) 7 else groups.size }
     val dayItems = remember(groups, zone) { groups.map { groupSeriesEpisodes(it.entries, zone) } }
     val counts = remember(dayItems) { dayItems.map { it.size } }
@@ -2124,7 +2151,7 @@ private fun CalendarTonePill(tone: CalendarPillTone, phone: Boolean = false) {
     )
     // Web `.calendar-pill`: one span that owns the fill, border and padding of its text, so the text node paints its own pill.
     Text(label, color = WebInk, fontSize = if (phone) 10.24.sp else 13.44.sp, lineHeight = if (phone) 14.336.sp else 18.8.sp, fontWeight = FontWeight(750), style = WebTextStyle, maxLines = 1,
-        modifier = Modifier.parityBackground("textfill", androidx.compose.ui.graphics.lerp(WebSurface, toneColour, 0.14f), CircleShape, radius = 999f)
+        modifier = Modifier.parityBackground("textfill", androidx.compose.ui.graphics.lerp(io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.surface, toneColour, 0.14f), CircleShape, radius = 999f, drawsBorder = true)
             .border(1.dp, toneColour.copy(alpha = 0.6f), CircleShape)
             .padding(horizontal = 10.4.dp, vertical = 2.88.dp))
 }
@@ -2132,13 +2159,14 @@ private fun CalendarTonePill(tone: CalendarPillTone, phone: Boolean = false) {
 /** Web `.calendar-today-badge`: the small outlined TODAY tag beside today's heading. */
 @Composable
 private fun CalendarTodayBadge(tv: Boolean = false) {
-    val ink = if (tv) io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent else WebInk.copy(alpha = 0.9f)
+    // `.calendar-day.is-today h3 { color: var(--accent) }` and the tag's `border: 1px solid currentColor`.
+    val ink = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent
     // Web `.calendar-today-badge` is one span that owns its outline and padding: the text node draws its own border (nothing is moved off a parent), and the
     // TV glyph sits 1.4 dp above centre through the padding split.
     val lift = if (tv) 1.4.dp else 0.dp
     Text(playarrString(PlayarrString.CalendarToday).uppercase(), color = ink, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight(640), letterSpacing = 0.896.sp, style = WebTextStyle,
         modifier = Modifier.parityBackground("textfill", androidx.compose.ui.graphics.Color.Transparent, CircleShape, radius = 999f, drawsBorder = true)
-            .border(1.dp, ink.copy(alpha = 0.6f), CircleShape)
+            .border(1.dp, if (tv) ink.copy(alpha = 0.6f) else ink, CircleShape)
             .padding(start = 8.dp, end = 8.dp, top = 1.6.dp - lift, bottom = 1.6.dp + lift))
 }
 
@@ -2316,6 +2344,8 @@ private fun Modifier.agendaHeadingFrost(origin: androidx.compose.ui.geometry.Off
     else listOf(0f to 0f, 0.12f to 0.68f, 0.34f to 0.88f, 0.62f to 0.96f, 1f to 1f)
     this
         .onGloballyPositioned { position.value = it.positionInWindow() - origin }
+        // The opaque base the heading really paints (the frost gradient above it is translucent): recorded so descendants' background is the painted one.
+        .parityPaint("fill", base, androidx.compose.ui.graphics.RectangleShape)
         .drawBehind {
             val left = viewportWidth * 0.35f * density - position.value.x
             val right = viewportWidth * density - position.value.x
