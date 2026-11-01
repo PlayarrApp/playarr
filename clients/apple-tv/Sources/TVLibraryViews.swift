@@ -285,7 +285,7 @@ struct TVHomeView: View {
                 .frame(height: 26.5)
                 .padding(.leading, Self.cardBleed)
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: 24.9) {
+                LazyHStack(alignment: .top, spacing: TVWeb.homeRailGap) {
                     ForEach(Array(works.enumerated()), id: \.element.id) { index, work in
                         let focus = HomeRailCardFocus(rail: id, workID: work.id)
                         TVCardButton(work: work, parityPosition: (Int(id.dropFirst()) ?? 0, index),

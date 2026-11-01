@@ -77,6 +77,8 @@ enum TVWeb {
         let x = gridLeft + CGFloat(column) * (width + gap)
         return x - x.rounded(.down)
     }
+    /// `.tv-home-rail { gap: clamp(14px, calc(1.3 * var(--vw)), 26px) }`.
+    static let homeRailGap: CGFloat = layoutUnit(clamp(14, 1.3 * vw, 26))
     /// `--card-radius: clamp(8px, 0.65 * var(--vw), 13px)`.
     static let cardRadius: CGFloat = clamp(8, 0.65 * vw, 13)
     /// `--card-title-size: clamp(0.55rem, 0.62 * var(--vw), 0.78rem)` and `--card-title-weight: 610`.
