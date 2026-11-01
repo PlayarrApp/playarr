@@ -95,7 +95,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import io.playarr.shared.designsystem.page.Surface
-import androidx.compose.material3.Text
+import io.playarr.shared.designsystem.page.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -4787,7 +4787,7 @@ private fun PhoneSettingsIndex(isAdmin: Boolean, onOpen: (SettingsSection) -> Un
                         .then(if (active) Modifier.background(WebSurfaceSoft) else Modifier)
                         .clickable { onOpen(candidate) },
                 ) {
-                Row(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 16.dp)) {
+                Row(Modifier.fillMaxSize().padding(start = 12.dp, end = rememberWebSpan(362f, 374f), top = 16.dp, bottom = 16.dp)) {
                     Text(
                         number, color = WebInk, fontSize = 8.96.sp, lineHeight = 13.44.sp,
                         fontWeight = FontWeight(760), style = WebTextStyle, modifier = Modifier.width(44.dp),
