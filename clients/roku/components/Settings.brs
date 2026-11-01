@@ -178,10 +178,10 @@ sub pgSegmentedWide(x as Float, y as Float, h as Float, labels as Object, active
             by = y - h * 0.01245
             bw = w * 1.0249
             bh = h * 1.0249
-            pgRound(m.pageBody, bx, by, bw, bh, 14, "ink")
+            pgRound(m.pageBody, bx, by, bw, bh, 12, "ink")
         else
-            pgRound(m.pageBody, cx, y, w, h, 14, "surfaceSoft", 163)
-            pgRound(m.pageBody, cx, y, w, h, 14, "line", -1, true)
+            pgRound(m.pageBody, cx, y, w, h, 12, "surfaceSoft", 163)
+            pgRound(m.pageBody, cx, y, w, h, 12, "line", -1, true)
         end if
         role = "inkMuted"
         if i = activeIdx

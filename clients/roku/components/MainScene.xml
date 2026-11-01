@@ -8,7 +8,8 @@
   </interface>
   <children>
     <!-- Playarr dark bg #151315 warm charcoal (not cool navy 070B14). -->
-    <Rectangle width="1920" height="1080" color="0x151315FF" />
+    <!-- The page body, as the web has it: every screen below is a descendant of this fill, so none of them can hide it. -->
+    <Rectangle id="bodyBg" width="1920" height="1080" color="0x151315FF">
 
     <!-- Focus proxy: when a Home rail is on column 0, focus moves here so Left
          can enter the nav dock (RowList swallows Left/Right and never bubbles).
@@ -691,6 +692,8 @@
         <Label id="userVersion" translation="[-11,79.6]" width="100" height="12" horizAlign="center" numLines="1" scale="[0.25,0.25]" scaleRotateCenter="[50,6]" color="0xC5B8BDFF" />
       </Group>
     </Group>
+
+    </Rectangle>
 
     <Video id="video" visible="false" width="1920" height="1080" enableUI="false" />
 
