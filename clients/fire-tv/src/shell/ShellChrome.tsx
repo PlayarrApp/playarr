@@ -13,7 +13,7 @@ import {mix} from '../theme/color';
 import {textRun} from '../theme/fonts';
 import {sw} from '../theme/scale';
 import {useTheme} from '../theme/ThemeProvider';
-import {T} from '../tv/kit';
+import {T, cssClamp, cssRem, cssVh, cssVw} from '../tv/kit';
 import {appNow, formatClockDate, formatClockTime, onParityClockChange} from './clock';
 import {Icon, type IconName} from './icons';
 import {PlayarrLogo} from './Logo';
@@ -73,17 +73,21 @@ export function visibleRailGroups(kinds: ReadonlySet<WorkKind> | null): readonly
 
 export const RAIL_ORDER: readonly RailTarget[] = RAIL_GROUPS.flatMap((group) => group.items.map((item) => item.target));
 
-// Measured from the web TV rail (1920x1080, 2026-10-24 DOM dump): 64 px links, 77.5 px wide groups, 13.6 px between groups, top-anchored at 119.11 px.
-const ITEM = 64;
-const GROUP_PAD_X = 5.75;
-const GROUP_PAD_Y = 6.72;
-const GROUP_GAP = 9.59;
+// The web TV rail's lengths, resolved from global.css (.app-nav, .app-nav-group, .app-nav-link) at the 1920x1080 reference viewport
+// through the shared 1/64 px rule in kit.tsx: 64 px links (clamp(44px, 5.926vh, 64px)), group padding 0.36rem / 0.42rem,
+// the link gap clamp(0.15rem, 0.889vh, 0.6rem) and the group gap clamp(0.25rem, 1.26vh, 0.85rem).
+const ITEM = cssClamp(44, cssVh(5.926), 64);
+const GROUP_PAD_X = cssRem(0.36);
+const GROUP_PAD_Y = cssRem(0.42);
+const GROUP_GAP = cssClamp(cssRem(0.15), cssVh(0.889), cssRem(0.6));
 const GROUP_BORDER = 1;
-const BETWEEN_GROUPS = 13.6;
+const BETWEEN_GROUPS = cssClamp(cssRem(0.25), cssVh(1.26), cssRem(0.85));
 const GROUP_X = 42;
-const RAIL_TOP = 119.11;
-/** The profile group sits at the rail's foot (bottom 1031 px), with the version label under it. */
-const PROFILE_TOP = 952.42;
+/** .app-nav top: clamp(34px, 5.2vh, 66px) + the page control height (the 50 px back button) + clamp(0.4rem, 1.2vh, 0.9rem). */
+const RAIL_TOP = cssClamp(34, cssVh(5.2), 66) + 50 + cssClamp(cssRem(0.4), cssVh(1.2), cssRem(0.9));
+/** The profile group sits at the foot of .app-nav (bottom clamp(22px, 3.2vh, 46px)) with the version label under it: font clamp(0.38rem, 0.42vw, 0.5rem) / 1, margin-top 0.35rem. */
+const VERSION_HEIGHT = cssClamp(cssRem(0.38), cssVw(0.42), cssRem(0.5));
+const PROFILE_TOP = 1080 - cssClamp(22, cssVh(3.2), 46) - VERSION_HEIGHT - cssRem(0.35) - groupHeight(1);
 
 function groupHeight(count: number): number {
   return 2 * GROUP_BORDER + 2 * GROUP_PAD_Y + count * ITEM + (count - 1) * GROUP_GAP;

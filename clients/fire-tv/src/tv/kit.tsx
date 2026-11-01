@@ -11,10 +11,42 @@ import {useTheme} from '../theme/ThemeProvider';
 import {PARITY_CONTROL} from '../debug/parityControl';
 import {registerLines} from '../debug/layoutExport';
 
-/** One web CSS pixel in device pixels. */
+/**
+ * The shared CSS length rule. Blink keeps every layout length as a LayoutUnit, a fixed-point number in 1/64 px that truncates
+ * the computed length (0.36rem = 5.76 px is laid out as 5.75 px). Every length resolved from the web CSS (vw, vh, rem and
+ * clamp()) goes through `layoutUnit`, so the sums the app lays out equal the sums Blink lays out before either snaps to a pixel.
+ */
+export function layoutUnit(px: number): number {
+  return Math.trunc(px * 64 + Math.sign(px) * 1e-6) / 64;
+}
+
+/** The web reference viewport the CSS lengths are resolved against: 1920 x 1080 CSS px, 1rem = 16 px. */
+const WEB_VIEWPORT = {width: 1920, height: 1080, rem: 16} as const;
+
+/** `N vw` of the web reference viewport, as a layout length in web px. */
+export function cssVw(n: number): number {
+  return layoutUnit((n * WEB_VIEWPORT.width) / 100);
+}
+
+/** `N vh` (the web's `--viewport-unit`) of the web reference viewport, as a layout length in web px. */
+export function cssVh(n: number): number {
+  return layoutUnit((n * WEB_VIEWPORT.height) / 100);
+}
+
+/** `N rem` as a layout length in web px. */
+export function cssRem(n: number): number {
+  return layoutUnit(n * WEB_VIEWPORT.rem);
+}
+
+/** `clamp(min, value, max)` over web px lengths already resolved with the helpers above. */
+export function cssClamp(min: number, value: number, max: number): number {
+  return layoutUnit(Math.min(max, Math.max(min, value)));
+}
+
+/** One web CSS pixel in device pixels, on the web's 1/64 px layout grid. */
 export function u(value: number): number {
   const scale = Dimensions.get('window').width / 1920;
-  return value * scale;
+  return layoutUnit(value * scale);
 }
 
 /** One web CSS pixel in device pixels without snapping to the pixel grid: font sizes, letter spacing and line heights stay fractional. */
