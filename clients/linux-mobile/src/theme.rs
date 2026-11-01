@@ -121,9 +121,9 @@ pub fn css(dark: bool) -> String {
     };
     // The web's library rail surface (`.tv-rail-surface`): a sideways ramp of the frost colour in dark; on a phone the light theme's later rule makes it a flat 96 % surface.
     let rail = if dark {
-        ".pa-rail-surface { background: linear-gradient(90deg, alpha(@pa_frost, 0) 0%, alpha(@pa_frost, 0.72) 12%, alpha(@pa_frost, 0.9) 34%, alpha(@pa_frost, 0.97) 62%, @pa_frost 100%); }\n"
+        ".pa-rail-surface, scrolledwindow.pa-transparent.pa-rail-surface { background: linear-gradient(90deg, alpha(@pa_frost, 0) 0%, alpha(@pa_frost, 0.72) 12%, alpha(@pa_frost, 0.9) 34%, alpha(@pa_frost, 0.97) 62%, @pa_frost 100%); }\n"
     } else {
-        ".pa-rail-surface { background: alpha(@pa_surface, 0.96); }\n"
+        ".pa-rail-surface, scrolledwindow.pa-transparent.pa-rail-surface { background: alpha(@pa_surface, 0.96); }\n"
     };
     defs + &hero + include_str!("../data/style.css") + have + &cover + rail
 }

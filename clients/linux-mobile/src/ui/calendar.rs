@@ -1012,15 +1012,10 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         );
     }
     cal.refresh();
-    // The web's rail surface sits under the whole page (`.tv-rail-surface` on the calendar's panel).
-    let surface = gtk4::Box::builder()
-        .css_classes(["pa-rail-surface"])
-        .can_target(false)
-        .build();
+    // The web's rail surface is the page's own background (`.tv-rail-surface` on the calendar's panel).
     scroll.add_css_class("pa-transparent");
-    let root = gtk4::Overlay::builder().child(&surface).build();
-    root.add_overlay(&scroll);
-    root.upcast()
+    scroll.add_css_class("pa-rail-surface");
+    scroll.upcast()
 }
 
 #[cfg(test)]
