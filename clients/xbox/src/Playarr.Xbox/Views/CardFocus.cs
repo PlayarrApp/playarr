@@ -227,6 +227,13 @@ namespace Playarr.Xbox.Views
             }
 
             var target = focused ? 1.025 : 1;
+            if (ParityClock.IsPinned)
+            {
+                // A parity capture shows the settled state: the end value is set directly so the frame never depends on when an animated transform was last re-rasterised.
+                scale.ScaleX = scale.ScaleY = target;
+                return;
+            }
+
             var grow = new Storyboard();
             foreach (var axis in new[] { "ScaleX", "ScaleY" })
             {
@@ -336,6 +343,14 @@ namespace Playarr.Xbox.Views
                 move = new CompositeTransform();
                 card.RenderTransform = move;
                 card.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
+            }
+
+            if (ParityClock.IsPinned)
+            {
+                // Settled state set directly in a parity capture (see ApplyHalo).
+                move.TranslateY = focused ? lift : 0;
+                move.ScaleX = move.ScaleY = focused ? cardScale : 1;
+                return;
             }
 
             // --card-lift-ease: cubic-bezier(0.2, 0.8, 0.2, 1) over --card-lift-duration.
