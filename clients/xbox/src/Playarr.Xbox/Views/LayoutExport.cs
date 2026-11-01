@@ -326,6 +326,23 @@ namespace Playarr.Xbox.Views
         /// <summary>Per-element evidence of the last visibility pass (diagnosis only, not part of the schema).</summary>
         private static List<string> VisibilityLog = new();
 
+        private static string ArtLast = string.Empty;
+
+        /// <summary>Diagnosis: the box as rows of luminance characters.</summary>
+        private static string Art(byte[] px, int width, int x0, int y0, int x1, int y1)
+        {
+            var sb = new System.Text.StringBuilder();
+            var lo = 255; var hi = 0;
+            for (var y = y0; y < y1; y++) for (var x = x0; x < x1; x++) { var i = (y * width + x) * 4; var l = (px[i] + px[i + 1] + px[i + 2]) / 3; lo = Math.Min(lo, l); hi = Math.Max(hi, l); }
+            for (var y = y0; y < y1; y++)
+            {
+                for (var x = x0; x < x1; x++) { var i = (y * width + x) * 4; var l = (px[i] + px[i + 1] + px[i + 2]) / 3; sb.Append(" .:-=+*#%@"[hi == lo ? 0 : (l - lo) * 9 / (hi - lo)]); }
+                sb.Append('/');
+            }
+
+            return sb.ToString();
+        }
+
         private static bool PixelEqual(byte[] a, byte[] b, int i) => a[i] == b[i] && a[i + 1] == b[i + 1] && a[i + 2] == b[i + 2];
 
         // Video needs no mask: a pixel that changes between the base and re-show frames (a playing picture) is never evidence,
@@ -356,6 +373,7 @@ namespace Playarr.Xbox.Views
             var hidden = new HashSet<object>();
             var log = new List<string>();
             var diagnosed = 0;
+            var diagnosedLow = 0;
             foreach (var candidate in Candidates)
             {
                 var x0 = Math.Max(0, (int)Math.Floor(candidate.Box.X));
@@ -428,9 +446,9 @@ namespace Playarr.Xbox.Views
                 }
 
                 var ancestorNote = string.Empty;
-                if (rawHide == 0 && candidate.Owner is TextBlock && diagnosed < 6 && (x1 - x0) * (y1 - y0) <= 4000)
+                if (rawHide == 0 && candidate.Owner is TextBlock && ((colours.Count <= 3 ? diagnosedLow++ < 2 : diagnosed++ < 4)) && (x1 - x0) * (y1 - y0) <= 4000)
                 {
-                    diagnosed++;
+                    ancestorNote += $" text={((TextBlock)candidate.Owner).Text} art0=" + Art(before, width, x0, y0, x1, y1);
                     DependencyObject? up = candidate.Owner;
                     for (var depth = 1; depth <= 10 && up != null; depth++)
                     {
@@ -447,6 +465,7 @@ namespace Playarr.Xbox.Views
                         {
                             await FramesAsync(2);
                             var ghost = (await GrabAsync(root)).Pixels;
+                            ArtLast = Art(ghost, width, x0, y0, x1, y1);
                             moved = 0;
                             for (var y = y0; y < y1; y++)
                             {
@@ -460,6 +479,11 @@ namespace Playarr.Xbox.Views
                         finally
                         {
                             ancestor.Opacity = was;
+                        }
+
+                        if (depth == 1)
+                        {
+                            ancestorNote += " art_a1=" + ArtLast;
                         }
 
                         await FramesAsync(2);
