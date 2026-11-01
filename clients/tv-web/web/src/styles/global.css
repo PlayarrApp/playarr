@@ -5291,28 +5291,14 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   border-left: 0;
   border-right: 0;
   border-bottom: 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 68%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 88%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 96%, transparent) 62%,
-    var(--tv-rail-frost) 100%
-  );
+  background: url("../assets/gradients/rail-frost-light-1248.png") 0 0 / 100% 100% no-repeat;
   box-shadow: none;
   backdrop-filter: none;
 }
 
 :root[data-theme="dark"] .tv-library-grid-panel {
   --tv-rail-frost: color-mix(in srgb, var(--surface-soft) 44%, var(--surface-strong));
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 72%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 90%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 97%, transparent) 62%,
-    var(--tv-rail-frost) 100%
-  );
+  background: url("../assets/gradients/rail-frost-dark-1248.png") 0 0 / 100% 100% no-repeat;
 }
 
 .tv-title-grid {
@@ -6186,14 +6172,7 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 68%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 88%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 96%, transparent) 62%,
-    var(--tv-rail-frost) 100%
-  );
+  background: url("../assets/gradients/rail-frost-light-1190.png") 0 0 / 100% 100% no-repeat;
   overscroll-behavior: contain;
   scroll-behavior: auto;
   scrollbar-width: none;
@@ -6201,14 +6180,7 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
 
 :root[data-theme="dark"] .tv-home-rails {
   --tv-rail-frost: color-mix(in srgb, var(--surface-soft) 44%, var(--surface-strong));
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 72%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 90%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 97%, transparent) 62%,
-    var(--tv-rail-frost) 100%
-  );
+  background: url("../assets/gradients/rail-frost-dark-1190.png") 0 0 / 100% 100% no-repeat;
 }
 
 .tv-home-rails::-webkit-scrollbar {
@@ -6550,28 +6522,14 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   height: 100%;
   min-width: 0;
   overflow: hidden;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 68%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 88%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 96%, transparent) 62%,
-    var(--tv-rail-frost) 100%
-  );
+  background: url("../assets/gradients/rail-frost-light-1190.png") 0 0 / 100% 100% no-repeat;
   /* No entrance of its own: the route transition (page-layout.css) owns it. A base animation here replayed (translateX
      60px, from opacity 0) the moment the route token expired, and on every first paint. */
 }
 
 :root[data-theme="dark"] .tv-rail-surface {
   --tv-rail-frost: color-mix(in srgb, var(--surface-soft) 44%, var(--surface-strong));
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--tv-rail-frost) 72%, transparent) 12%,
-    color-mix(in srgb, var(--tv-rail-frost) 90%, transparent) 34%,
-    color-mix(in srgb, var(--tv-rail-frost) 97%, transparent) 62%,
-    var(--tv-rail-frost) 100%
-  );
+  background: url("../assets/gradients/rail-frost-dark-1190.png") 0 0 / 100% 100% no-repeat;
 }
 
 .tv-rail-surface.is-vertical-tracks {
