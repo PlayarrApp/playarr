@@ -68,7 +68,7 @@ struct RemoteControllerView: View {
                     .background(PlayarrStyle.background.opacity(0.6))
                     .overlay { Rectangle().stroke(PlayarrStyle.lineStrong, lineWidth: 1) }
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 .foregroundStyle(PlayarrStyle.ink)
                 .disabled(!target.online || viewModel.pendingPairing != nil)
             }
@@ -120,7 +120,7 @@ struct RemoteControllerView: View {
                 Text(message).font(.footnote).foregroundStyle(PlayarrStyle.danger)
             }
             Button("Close") { Task { await viewModel.closePad() } }
-                .buttonStyle(.bordered)
+                .parityButtonStyle(.bordered)
         }
         .frame(maxWidth: .infinity)
     }
@@ -151,7 +151,7 @@ struct RemoteControllerView: View {
                 .background(PlayarrStyle.surfaceStrong, in: Circle())
                 .overlay { Circle().stroke(PlayarrStyle.lineStrong, lineWidth: 1) }
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .foregroundStyle(PlayarrStyle.ink)
         .accessibilityLabel(label)
     }
@@ -185,8 +185,8 @@ struct RemoteControllerView: View {
                                     if await viewModel.rename(pairing, to: name) { renaming = nil }
                                 }
                             }
-                            .buttonStyle(.borderedProminent)
-                            Button("Cancel") { renaming = nil }.buttonStyle(.bordered)
+                            .parityButtonStyle(.borderedProminent)
+                            Button("Cancel") { renaming = nil }.parityButtonStyle(.bordered)
                         }
                     } else {
                         Text(viewModel.label(for: pairing)).font(.headline).foregroundStyle(PlayarrStyle.ink)
@@ -200,9 +200,9 @@ struct RemoteControllerView: View {
                             .foregroundStyle(PlayarrStyle.muted)
                         HStack {
                             Button("Rename") { renaming = (pairing.id, pairing.controllerName) }
-                                .buttonStyle(.bordered)
+                                .parityButtonStyle(.bordered)
                             Button("Revoke") { Task { await viewModel.revoke(pairing) } }
-                                .buttonStyle(.bordered)
+                                .parityButtonStyle(.bordered)
                         }
                     }
                 }

@@ -510,3 +510,8 @@ end function
 function WebRailCellWidth() as Float
     return Int(WebCardWidth() + 0.5) + 16.0
 end function
+
+' The nav link is a 64 px box centred in its 67.2 px dock item (.app-nav item box minus the link box, halved), the same inset on both axes.
+function WebNavHitInset() as Float
+    return (67.2 - 64.0) / 2.0
+end function
