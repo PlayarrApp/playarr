@@ -725,10 +725,10 @@ struct WMRailCard: View {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
                 }
                 .overlay { if focused { WMFocusRing(width: width, height: art) } }
-            WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 6.83).padding(.leading, 2)
-            WMText(work.singularKindYearLabel, 6.88, 400, color: WM.muted, lh: 12.3).padding(.leading, 2).offset(y: -1.3)
+            WMText(work.title, 8.8, 600, lh: 13.2, ls: -0.132).padding(.top, 11.52).padding(.leading, 1.92) // web: margin-top 0.72rem, padding-inline 0.12rem, line-height 1.5, letter-spacing -0.015em
+            WMText(work.singularKindYearLabel, 6.88, 400, color: WM.muted, lh: 10.32).padding(.top, 2.56).padding(.leading, 1.92) // web: margin-top 0.16rem, line-height 1.5, hangs below the card box
         }
-        .frame(height: art + 24.7, alignment: .top)
+        .frame(height: art + 24.72, alignment: .top)
         .frame(width: width, height: WMRailCard.height(cover: cover), alignment: .topLeading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(work.title) \(work.singularKindYearLabel)")
@@ -807,9 +807,9 @@ struct WMLibraryCard: View {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
                 }
                 .overlay { if focused { WMFocusRing(width: width, height: art) } }
-            WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 6.83).padding(.leading, 2)
+            WMText(work.title, 8.8, 600, lh: 13.2, ls: -0.132).padding(.top, 11.52).padding(.leading, 1.92) // web: margin-top 0.72rem, padding-inline 0.12rem, line-height 1.5, letter-spacing -0.015em
         }
-        .frame(height: art + 24.7, alignment: .top)
+        .frame(height: art + 24.72, alignment: .top)
         .frame(width: width, height: WMLibraryCard.rowHeight(cover: cover), alignment: .topLeading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Open \(work.title)")

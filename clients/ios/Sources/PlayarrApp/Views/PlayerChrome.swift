@@ -315,7 +315,6 @@ struct PlayerQualityMatrix: View {
                             WMText(tier.name, 8.96, 650, color: .white, lh: 13.44)
                             WMText(tier.resolution, 7.04, 400, color: .white.opacity(0.54), lh: 10.56)
                         }
-                        .offset(y: -0.3)
                         .padding(.horizontal, 4)
                         .frame(width: headingColumn, height: 48, alignment: .leading)
                         ForEach(tier.choices) { item in
@@ -342,12 +341,11 @@ struct PlayerQualityMatrix: View {
         let selected = id == selectedID
         return Button { onSelect(id) } label: {
             HStack(spacing: 5.6) {
-                // Offsets measured against the web capture (Chromium line boxes).
+                // Centred in the 48 px cell; each line carries its own CSS line box (WMText).
                 VStack(alignment: .leading, spacing: 1.5) {
                     WMText(label, 9.28, 650, color: .white, lh: 13.92)
                     WMText(detail, 7.04, 400, color: .white.opacity(0.54), lh: 10.56)
                 }
-                .offset(y: -1.2)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Text(selected ? "✓" : "")
                     .wm(11.84, color: WM.pink, text: selected ? "✓" : "")
