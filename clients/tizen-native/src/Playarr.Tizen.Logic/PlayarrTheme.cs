@@ -5,6 +5,9 @@ public readonly record struct Rgba(float R, float G, float B, float A = 1f)
 {
     public static Rgba Hex(uint rgb, float a = 1f) => new(((rgb >> 16) & 255) / 255f, ((rgb >> 8) & 255) / 255f, (rgb & 255) / 255f, a);
     public static Rgba Of(int r, int g, int b, float a = 1f) => new(r / 255f, g / 255f, b / 255f, a);
+    /// <summary>This colour at <paramref name="alpha"/> the way the web writes <c>color-mix(in srgb, X p%, transparent)</c>: a mix, which the browser serialises with channels at 6 decimals rather than as 8-bit rgba().</summary>
+    public Rgba Mixed(float alpha) => new(R, G, B, alpha) { IsMix = true };
+    public bool IsMix { get; init; }
 }
 
 /// <summary>The web design tokens (clients/tv-web/web/src/styles/global.css :root and [data-theme=dark]). Web is the source of truth.</summary>

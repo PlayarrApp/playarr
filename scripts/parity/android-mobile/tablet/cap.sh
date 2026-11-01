@@ -7,7 +7,9 @@ CLOCK=${PARITY_CLOCK:-$(sed -n 's/.*"clock": *"\([^"]*\)".*/\1/p' "$HERE/../../s
 export PATH=$HOME/Android/Sdk/platform-tools:$PATH ANDROID_SERIAL=${ANDROID_SERIAL:-emulator-5568}
 # A hung emulator must not stall the run: every adb call is bounded (30 s, one retry) and then fails like any other failed command.
 adb() { local rc n; for n in 1 2; do timeout 30 "$HOME/Android/Sdk/platform-tools/adb" "$@"; rc=$?; [ $rc -ne 124 ] && return $rc; done; return 124; }
-O=$1; T=$2; shift 2; adb shell settings put global sysui_demo_allowed 1 >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command enter >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 1200 >/dev/null 2>&1; pkg=io.playarr.mobile; mkdir -p "$O"
+# Agenda times and the clock depend on UTC: pin the emulator zone on every run (a restarted emulator comes back in the host zone).
+adb shell service call alarm 3 s16 UTC >/dev/null 2>&1
+O=$1; T=$2; shift 2; adb shell settings put global sysui_demo_allowed 1 >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command enter >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 1200 >/dev/null 2>&1; for c in '-e command notifications -e visible false' '-e command network -e mobile hide -e sims 0 -e nosim hide -e satellite hide -e wifi show -e level 4 -e fully true' '-e command battery -e level 100 -e plugged false'; do adb shell am broadcast -a com.android.systemui.demo $c >/dev/null 2>&1; done; pkg=io.playarr.mobile; mkdir -p "$O"
 adb shell am force-stop $pkg
 # Web refs format dates as en-GB ("THU 15 OCTOBER"); the app follows the device region, so pin it for captures.
 adb shell cmd locale set-app-locales $pkg --locales en-GB >/dev/null 2>&1
@@ -33,15 +35,17 @@ run() { case $1 in
   calendar-month) NOKEY=1 open "calendar?query=view%3Dmonth" 25; sleep 3; python3 -I $HERE/uiexpect.py 'Calendar' || { echo "wrong screen calendar-month"; return 1; }; shot $1 ;;
   calendar-week) NOKEY=1 open "calendar?query=view%3Dweek" 25; sleep 3; python3 -I $HERE/uiexpect.py 'Calendar' || { echo "wrong screen calendar-week"; return 1; }; shot $1 ;;
   calendar-agenda) NOKEY=1 open "calendar?query=view%3Dagenda" 25; sleep 3; python3 -I $HERE/uiexpect.py 'Calendar' || { echo "wrong screen calendar-agenda"; return 1; }; shot $1 ;;
-  calendar-link) NOKEY=1 open "calendar?query=panel%3Dsubscription" 25; python3 -I $HERE/uiexpect.py 'Calendar link' || { echo "wrong screen calendar-link"; return 1; }; sleep 3; shot $1 ;;
+  calendar-link) NOKEY=1 open "calendar?query=panel%3Dsubscription" 25; python3 -I $HERE/uiexpect.py 'Your personal calendar link' || { echo "wrong screen calendar-link"; return 1; }; sleep 3; shot $1 ;;
   filters) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select; sleep 3; adb shell input tap 2495 298; sleep 2; python3 -I $HERE/uiexpect.py 'Sort by|Library controls' || { echo "wrong screen filters"; return 1; }; shot $1 ;;
-  actions) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select right; adb shell input keyevent --longpress 23; sleep 1.5
-    # Key long-press did not open the drawer before; fall back to a 1.5 s touch hold on the card, then insist the drawer is on screen.
-    python3 -I $HERE/uiexpect.py 'Mark as Watched' || { adb shell input swipe ${ACT_X:-1939} ${ACT_Y:-256} ${ACT_X:-1939} ${ACT_Y:-256} 1500; sleep 1.5; }
-    python3 -I $HERE/uiexpect.py 'Mark as Watched' || { echo "wrong screen actions (drawer not open)"; return 1; }
-    # The web ref opens the actions of the second library card: fail (and retry) on any other title instead of capturing it.
-    python3 -I $HERE/uiexpect.py 'Amber Cathedral 18' || { echo "wrong title in the actions drawer"; return 1; }; shot $1 ;;
-  actions-bottom) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select right; adb shell input keyevent --longpress 23; sleep 1.5
+  actions) for try in 1 2 3; do
+      open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select; sleep 3; kseq right; adb shell input keyevent --longpress 23; sleep 1.5
+      # Key long-press did not open the drawer before; fall back to a 1.5 s touch hold on the card, then insist the drawer is on screen.
+      python3 -I $HERE/uiexpect.py 'Mark as Watched' || { adb shell input swipe ${ACT_X:-1939} ${ACT_Y:-256} ${ACT_X:-1939} ${ACT_Y:-256} 1500; sleep 1.5; }
+      python3 -I $HERE/uiexpect.py 'Mark as Watched' || { echo "wrong screen actions (drawer not open)"; continue; }
+      # The web ref opens the actions of the second library card: retry from a fresh launch when a loaded host dropped the Right key and another card opened.
+      python3 -I $HERE/uiexpect.py 'Amber Cathedral 18' && { shot $1; return $?; }; echo "wrong title in the actions drawer"
+    done; return 1 ;;
+  actions-bottom) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select; sleep 3; kseq right; adb shell input keyevent --longpress 23; sleep 1.5
     # Key long-press did not open the drawer before; fall back to a 1.5 s touch hold on the card, then insist the drawer is on screen.
     python3 -I $HERE/uiexpect.py 'Mark as Watched' || { adb shell input swipe ${ACT_X:-1939} ${ACT_Y:-256} ${ACT_X:-1939} ${ACT_Y:-256} 1500; sleep 1.5; }
     python3 -I $HERE/uiexpect.py 'Mark as Watched' || { echo "wrong screen actions (drawer not open)"; return 1; }; kseq down*8; shot $1 ;;

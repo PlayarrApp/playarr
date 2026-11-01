@@ -3,7 +3,8 @@
 Asks the debug build (PlayarrLayoutExport, shared with the TV client) to write its layout, and checks the answer belongs to this capture.
 PARITY_PNG_OUT=<file> saves the verified stable screenshot, so the PNG and the layout JSON describe the same frame.
 Nothing is sampled from the screenshot here: backgrounds, colours, fonts and radii are the app's own paint-time values."""
-import json, os, re, subprocess, sys, time, uuid
+import io, json, os, re, subprocess, sys, time, uuid
+from PIL import Image
 
 screen, theme, dev, out = sys.argv[1:5]
 serial = os.environ.get("ANDROID_SERIAL", "emulator-5562" if dev == "phone" else "emulator-5568")
@@ -26,7 +27,7 @@ dev_w, dev_h = phys_w / density, phys_h / density
 cap_id = uuid.uuid4().hex
 sh("shell", f"run-as {pkg} rm -f files/parity-layout.json")
 before = sh("exec-out", "screencap", "-p", binary=True)
-sh("shell", "am", "broadcast", "-a", "io.playarr.mobile.PARITY_LAYOUT", "-p", pkg, "--es", "screen", screen, "--es", "theme", theme, "--es", "id", cap_id)
+sh("shell", "am", "broadcast", "-a", "io.playarr.mobile.PARITY_LAYOUT", "-p", pkg, "--es", "screen", screen, "--es", "theme", theme, "--es", "id", cap_id, "--ez", "rendered", "true")
 raw = ""
 for _ in range(30):
     time.sleep(0.5)
@@ -42,6 +43,56 @@ if doc.get("paletteDark") != (theme == "dark") or not isinstance(doc.get("occlud
 vw, vh = doc["viewport"]["w"], doc["viewport"]["h"]
 if abs(vw - dev_w) > 1 or abs(vh - dev_h) > 1: sys.exit(f"exported viewport {vw}x{vh} differs from the device {r2(dev_w)}x{r2(dev_h)} CSS px")
 doc["viewport"] = {"w": vw, "h": vh, "dpr": r2(density)}
+
+# Real-screen occlusion (docs/parity/LAYOUT.md), same toggle-and-diff as the TV driver: the app flags rows that lie wholly inside a
+# higher window's opaque container or a later painted box of the same window; a flagged row is kept only if the pixels of its own
+# rectangle change when that cover is hidden (otherwise it was not showing).
+def cover(on, ids):
+    sh("shell", "am", "broadcast", "-a", "io.playarr.mobile.PARITY_COVER", "-p", pkg, "--ez", "on", "true" if on else "false", "--es", "ids", ",".join(map(str, ids)) if ids else "none")
+
+def hidden_shot(windows, ids):
+    try:
+        cover(windows, ids)
+        time.sleep(0.8)
+        return Image.open(io.BytesIO(sh("exec-out", "screencap", "-p", binary=True))).convert("RGB")
+    finally:
+        cover(False, [])
+        time.sleep(0.5)
+
+shown = Image.open(io.BytesIO(after)).convert("RGB")
+def changed_fraction(e, other):
+    r = e["rect"]
+    x0, y0 = max(0, int(r["x"] * density)), max(0, int(r["y"] * density))
+    x1, y1 = min(shown.width, int(-(-(r["x"] + r["w"]) * density // 1))), min(shown.height, int(-(-(r["y"] + r["h"]) * density // 1)))
+    a, b = shown.crop((x0, y0, x1, y1)).getdata(), other.crop((x0, y0, x1, y1)).getdata()
+    total = len(a)
+    changed = sum(1 for p, q in zip(a, b) if abs(p[0] - q[0]) + abs(p[1] - q[1]) + abs(p[2] - q[2]) > 24)
+    return changed / total if total else 0
+
+flagged = [e for e in doc["elements"] if e.get("covered")]
+drop = set()
+window_level = [e for e in flagged if not e.get("coverIds")]
+same_window = [e for e in flagged if e.get("coverIds")]
+if window_level:
+    bare = hidden_shot(True, [])
+    for e in window_level:
+        if changed_fraction(e, bare) == 0: drop.add(id(e))
+groups = []
+for e in same_window:
+    for g in groups:
+        if not any(c in m["chainIds"] for c in e["coverIds"] for m in g["members"]) and not any(h in e["chainIds"] for h in g["hide"]):
+            g["members"].append(e); g["hide"] += [c for c in e["coverIds"] if c not in g["hide"]]; break
+    else: groups.append({"members": [e], "hide": list(e["coverIds"])})
+for g in groups:
+    bare = hidden_shot(False, g["hide"])
+    for e in g["members"]:
+        if changed_fraction(e, bare) >= 0.9: drop.add(id(e))
+for e in doc["elements"]:
+    for k in ("covered", "coverIds", "chainIds"): e.pop(k, None)
+if flagged and sh("exec-out", "screencap", "-p", binary=True) != after: sys.exit(f"screen did not return after the cover check of {screen} {theme}")
+doc["elements"] = [e for e in doc["elements"] if id(e) not in drop]
+doc["occluded"] = len(drop)
+print("occluded", len(drop), "of", len(flagged), "flagged", file=sys.stderr)
 os.makedirs(os.path.dirname(out), exist_ok=True)
 json.dump(doc, open(out, "w"))
 # The screenshot the export was verified against (taken before and after the broadcast, byte-identical) is the one to publish with it.

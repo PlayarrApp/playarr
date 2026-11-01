@@ -11,6 +11,11 @@
 #     --force-device-scale-factor=1 --disable-gpu --num-raster-threads=1 --disable-partial-raster --force-color-profile=srgb \
 #     --user-agent="<Tizen 6.5 UA of clients/tv-web/web/scripts/tv-viewport.mjs>" --autoplay-policy=no-user-gesture-required --app=http://127.0.0.1:18565/
 #   WEBOS_CDP=9285 WEBOS_MATCH='^http' node scripts/parity/tizen-webos/signin-webos.mjs      # once per profile
+# Warm-up is a precaution, not a proven fix: a capture after a Chrome start has differed from later ones by 1/255 on 4 pixels of the nav rail group
+# shadow edge in Settings light (k1/k2 twin, 31 Oct), so two raster states of that blurred shadow exist and which one a run lands in has not been tied to
+# the warm-up. A cold start to Settings light gave the same crop every time (4 starts), and the final r5 twin (fresh Chrome and warm-up each) was byte
+# identical, so the cause is run history, still open. Always run the twin check (two full runs, PNG and layout JSON) before publishing. To warm anyway,
+# run `--only screens --screens settings --themes light` into a scratch dir once after starting Chrome and discard it.
 # Player controls: stock Chromium has no H.264, so the driver injects tizen-webos/avplay-shim.js (AVPlay state machine, no decoding); the screen is
 # compared with the video hidden (web refs: group tv-tizen65 of web-refs.json).
 set -euo pipefail

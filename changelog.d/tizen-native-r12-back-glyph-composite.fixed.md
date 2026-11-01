@@ -1,0 +1,1 @@
+- Samsung Tizen native: the back arrow uses the web's 720 glyph weight (exported weight is the requested CSS weight for the fallback arrow face), and the layout export composites translucent fills with the web exporter's arithmetic (double channels, CSS alpha, halves up).

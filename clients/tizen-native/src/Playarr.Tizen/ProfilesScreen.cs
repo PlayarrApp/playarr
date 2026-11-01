@@ -139,7 +139,7 @@ internal sealed class ProfilesScreen : IPage
 
     private void AddPill(float x, float y, float w, string text, string? icon, string label, Action select, bool round = false)
     {
-        var box = Ui.Box(x, y, w, 44, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 22);
+        var box = Ui.Box(x, y, w, 44, _t.SurfaceStrong.Mixed(0.78f), 22);
         box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.075f);
         if (y < 900) Sem.Tag(box, "button", icon == "signout" ? "Sign out " + label[..^" sign out".Length] : label);
         if (icon == "signout")

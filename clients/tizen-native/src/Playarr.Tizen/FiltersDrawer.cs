@@ -75,7 +75,7 @@ internal sealed class FiltersDrawer
     }
 
     /// <summary>The drawer panel over the page: --surface-strong at 94 %.</summary>
-    internal static Rgba DrawerBackdrop(PlayarrTheme t) => new(t.SurfaceStrong.R * 0.94f + t.Surface.R * 0.06f, t.SurfaceStrong.G * 0.94f + t.Surface.G * 0.06f, t.SurfaceStrong.B * 0.94f + t.Surface.B * 0.06f);
+    internal static Rgba DrawerBackdrop(PlayarrTheme t) => new(t.SurfaceStrong.R * 0.94f + t.Bg.R * 0.06f, t.SurfaceStrong.G * 0.94f + t.Bg.G * 0.06f, t.SurfaceStrong.B * 0.94f + t.Bg.B * 0.06f);
 
     private void Build()
     {

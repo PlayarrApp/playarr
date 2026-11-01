@@ -88,7 +88,7 @@ internal sealed class LibraryScreen : IPage
     private void BuildSide()
     {
         // Filters tile (shell action column: 62x72 at 1845.5,151.2)
-        var tile = Ui.Box(1845.5f, 151.2f, 62, 72, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 14);
+        var tile = Ui.Box(1845.5f, 151.2f, 62, 72, _t.SurfaceStrong.Mixed(0.78f), 14);
         tile.BorderlineWidth = 1; tile.BorderlineColor = Ui.LineA(_t, 0.075f);
         tile.Add(Ui.Icon("filters", 19, 15, 24, _t.InkMuted)); // web: the sliders glyph
         _tile = tile; Sem.Tag(tile, "button", "Filters");
@@ -269,7 +269,7 @@ internal sealed class LibraryScreen : IPage
 
     private void Toast(string text)
     {
-        var toast = Ui.Box(560, 960, 800, 56, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.96f), 28);
+        var toast = Ui.Box(560, 960, 800, 56, _t.SurfaceStrong.Mixed(0.96f), 28);
         toast.Add(Ui.Text(text, 0, 14, 14, 600, _t.Ink, 800, 28, HorizontalAlignment.Center));
         _root.Add(toast);
         var timer = new global::Tizen.NUI.Timer(2500);

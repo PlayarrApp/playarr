@@ -3,7 +3,7 @@
  * accent colour and a bold label, on surface-soft with a 14 radius, 14 apart. Lives in the shared `Drawer` body.
  */
 
-import { nunito, nunitoAt, webLineHeight } from '../Typography';
+import { nunito, nunitoAt, glyphFamily, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv, isTvMetrics } from '../Metrics';
@@ -43,7 +43,7 @@ export struct ActionList {
         Column() {
           Row() {
             // web draws these glyphs with DejaVu Sans and Liberation Sans fallbacks (PlayarrGlyphs); the Previewer would use its emoji font
-            Text(action.glyph).fontFamily(nunitoAt(400, isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1)) + ',PlayarrGlyphs')
+            Text(action.glyph).fontFamily(glyphFamily(action.glyph, nunitoAt(400, isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1))))
               .width(tv(GLYPH_COLUMN))
               .fontSize(isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1)).lineHeight(webLineHeight(isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1))).halfLeading(true)
               .fontColor(toResourceColor(BRAND_PINK))
