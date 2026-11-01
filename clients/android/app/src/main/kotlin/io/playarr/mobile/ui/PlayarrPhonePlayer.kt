@@ -45,7 +45,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import io.playarr.shared.designsystem.page.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -253,7 +253,6 @@ internal fun BoxScope.PhonePlayerOverlay(
                 verticalArrangement = Arrangement.spacedBy(if (LocalStageScale.current == 1f) 3.4.dp else 2.dp),
             ) {
                 // `.player-time` leads the first line (order -1, full width) with 2 px of padding below.
-                Row(Modifier.fillMaxWidth().padding(bottom = if (LocalStageScale.current == 1f) 6.9.dp else 2.dp), horizontalArrangement = Arrangement.Center) {
                 Row(
                     Modifier.fillMaxWidth().padding(bottom = if (LocalStageScale.current == 1f) 6.9.dp else 2.dp),
                     horizontalArrangement = Arrangement.spacedBy(5.6.dp, Alignment.CenterHorizontally),
@@ -263,7 +262,6 @@ internal fun BoxScope.PhonePlayerOverlay(
                     Text(formatPlayarrPlayerTime(displayedMs), color = Color.White, style = WebTextStyle.merge(time))
                     Text("/", color = PlayerSeparator, style = WebTextStyle.merge(time))
                     Text(formatPlayarrPlayerTime(durationMs), color = Color.White, style = WebTextStyle.merge(time))
-                }
                 }
                 PhonePlayerButton(PlayarrWebIcons.PlayerPrevious, playarrString(PlayarrString.PlayerPreviousEpisode), enabled = canPrevious && !controls.switching, dimWhenDisabled = true) { onPrevious() }
                 PhonePlayerButton(

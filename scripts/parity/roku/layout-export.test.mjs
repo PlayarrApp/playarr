@@ -71,3 +71,11 @@ test("a childless Rectangle that paints the colour already behind it is not a fi
     <Rectangle bounds="{40, 40, 20, 20}" color="#202020ff"><Rectangle bounds="{40, 40, 5, 5}" color="#303030ff" /></Rectangle>`);
   assert.deepEqual(els.filter((e) => e.role === "container").map((e) => [e.rect.x, e.background]), [[0, "#101010"], [10, "#202020"], [40, "#202020"], [40, "#303030"]]);
 });
+
+test("a same-colour Rectangle that is not exported still hides what lies beneath it", () => {
+  const els = doc(`
+    <Rectangle bounds="{0, 0, 100, 100}" color="#101010ff" />
+    <Rectangle bounds="{10, 10, 5, 5}" color="#202020ff" />
+    <Rectangle bounds="{0, 0, 100, 100}" color="#101010ff" />`);
+  assert.deepEqual(els.filter((e) => e.role === "container").map((e) => e.rect.x), [0]);
+});

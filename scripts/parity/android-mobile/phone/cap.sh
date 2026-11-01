@@ -5,6 +5,8 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 export PATH=$HOME/Android/Sdk/platform-tools:$PATH ANDROID_SERIAL=${ANDROID_SERIAL:-emulator-5562}
 # A hung emulator must not stall the run: every adb call is bounded (30 s, one retry) and then fails like any other failed command.
 adb() { local rc n; for n in 1 2; do timeout 30 "$HOME/Android/Sdk/platform-tools/adb" "$@"; rc=$?; [ $rc -ne 124 ] && return $rc; done; return 124; }
+# Agenda times and the clock depend on UTC: pin the emulator zone on every run (a restarted emulator comes back in the host zone).
+adb shell service call alarm 3 s16 UTC >/dev/null 2>&1
 O=$1; T=$2; shift 2; adb shell settings put global sysui_demo_allowed 1 >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command enter >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 1200 >/dev/null 2>&1; pkg=io.playarr.mobile; mkdir -p "$O"
 CLOCK=${PARITY_CLOCK:-$(sed -n 's/.*"clock": *"\([^"]*\)".*/\1/p' "$HERE/../../screens.json" | head -1)}
 # Calendar posters are loopback art URLs on the static server (art port 18495): let the emulator reach the host's.
@@ -49,7 +51,7 @@ run() { case $1 in
     shot $1 3 || return 1
     python3 -I -c "import sys;from PIL import Image,ImageStat;im=Image.open(sys.argv[1]).convert('L').crop((0,560,719,1300));sys.exit(0 if ImageStat.Stat(im).mean[0]>60 else 1)" "$O/$1.png" || { echo 'player video not presented'; rm -f "$O/$1.png"; return 1; } ;;
   actions) open movies 16; python3 -I $HERE/uiexpect.py 'Amber Thicket 3' || { echo "wrong screen movies"; return 1; }; python3 -I $HERE/uitap.py 'Open 7 Distant Harbour 30' long || { echo 'actions card not found'; return 1; }; sleep 2; python3 -I $HERE/uiexpect.py 'Title actions|Mark as Watched' || { echo 'wrong screen actions'; return 1; }; shot $1 ;;
-  calendar-link) NOKEY=1 open "calendar?query=panel%3Dsubscription" 18; python3 -I $HERE/uiexpect.py 'Calendar link' || { echo "wrong screen calendar-link"; return 1; }; sleep 3; shot $1 ;;
+  calendar-link) NOKEY=1 open "calendar?query=view%3Dagenda" 18; python3 -I $HERE/uiexpect.py 'Calendar' || { echo "wrong screen calendar"; return 1; }; tapdesc '^Calendar link' 2; python3 -I $HERE/uiexpect.py 'Your personal calendar link' || { echo "calendar-link drawer not open"; return 1; }; sleep 3; shot $1 ;;
   filters) open movies 16; tapdesc '^Filters' 2; python3 -I $HERE/uiexpect.py 'Sort by|Library controls|Filters' || { echo "wrong screen filters"; return 1; }; shot $1 ;;
   *) echo "unknown $1" ;;
 esac; }

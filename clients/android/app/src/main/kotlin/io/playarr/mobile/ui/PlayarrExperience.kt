@@ -123,7 +123,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import io.playarr.shared.designsystem.page.Surface
-import androidx.compose.material3.Text
+import io.playarr.shared.designsystem.page.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -350,6 +350,8 @@ internal val webSymbolFamily: androidx.compose.ui.text.font.FontFamily by lazy {
 }
 /** A symbol drawn from [webSymbolFamily] inside a Nunito Sans text, as a browser falls back for one missing glyph (the line keeps Nunito's metrics). */
 internal fun webSymbol(glyph: String): androidx.compose.ui.text.AnnotatedString =
+    // Basic Latin (a plain "+") is in Nunito Sans: web draws it from the primary font, so it stays in the text's own family.
+    if (glyph.all { it.code < 0x80 }) androidx.compose.ui.text.AnnotatedString(glyph) else
     androidx.compose.ui.text.buildAnnotatedString { withStyle(androidx.compose.ui.text.SpanStyle(fontFamily = webSymbolFamily)) { append(glyph) } }
 
 internal var webMonoFamily: androidx.compose.ui.text.font.FontFamily? = null
@@ -1422,14 +1424,8 @@ internal val WebTextStyle: androidx.compose.ui.text.TextStyle
     // Chromium lays glyphs out with unhinted, fractional advances; Compose's default hints them (about 4% narrower at
     // 11 sp). The animated text motion turns hinting off and positions glyphs at subpixel offsets.
     textMotion = if (webFontFamily != null) androidx.compose.ui.text.style.TextMotion.Animated else null,
-    lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
-        alignment = if (webFontFamily != null) {
-            androidx.compose.ui.text.style.LineHeightStyle.Alignment(0.3f)
-        } else {
-            androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center
-        },
-        trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.None,
-    ),
+    // The phone derives the line box from Chromium's rules per size (PlayarrWebText); the tablet keeps the plain centre.
+    lineHeightStyle = if (webFontFamily != null) io.playarr.shared.designsystem.page.WebLineBox else androidx.compose.ui.text.style.LineHeightStyle(androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center, androidx.compose.ui.text.style.LineHeightStyle.Trim.None),
 )
 
 /**
@@ -3851,7 +3847,7 @@ internal fun ExperienceLandscapeCard(
                 )
             }
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) (if (LocalStageScale.current != 1f) (3f / LocalStageScale.current).dp else 3.08.dp) else 3.dp).parityBackground("img", Color.White.copy(alpha = 0.2f)).semantics { role = Role.Image }) {
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) (if (LocalStageScale.current != 1f) (3f / LocalStageScale.current).dp else 3.08.dp) else 3.dp).parityBackground("image", Color.White.copy(alpha = 0.2f)).semantics { role = Role.Image }) {
                     // Web `.tv-watch-progress` (white 20%) and its `i` fill: `--brand` (#cf3157) in both themes.
                     Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", Color(0xFFCF3157)))
                 }
@@ -4006,7 +4002,8 @@ private fun PlayarrUnwatchedDot(modifier: Modifier = Modifier, size: Dp = 12.dp,
                 .shadow(4.dp, CircleShape, clip = false, ambientColor = Color(0xFF1F0E14), spotColor = Color(0xFF1F0E14))
                 .drawBehind { drawCircle(UnwatchedDotColour.copy(alpha = 0.35f), radius = size.toPx() / 2f + 1.dp.toPx() * 0.5f, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx())) }
             else Modifier)
-            .parityBackground("img", UnwatchedDotColour, CircleShape, radius = 999f)
+            // Television web exports the dot as `img`; the phone (halo) export reads it as an image.
+            .parityBackground(if (halo) "image" else "img", UnwatchedDotColour, CircleShape, radius = 999f)
             .border(2.dp, Color.White.copy(alpha = 0.94f), CircleShape)
             .semantics { role = Role.Image; contentDescription = label },
     )
@@ -4245,13 +4242,14 @@ private fun LibraryFiltersDialog(
         onClose = onDismiss,
     ) {
         run {
-            Column(verticalArrangement = if (playarrTvDrawer() && !LocalTabletDrawerCssPx.current) io.playarr.shared.designsystem.page.FractionalSpacedVertical(29.63.dp) else Arrangement.spacedBy(if (!playarrTvDrawer()) 23.1.dp else if (LocalTabletDrawerCssPx.current) webVu(22f, 2.8f, 34f) else 30.dp)) {
+            val filterBody: @Composable () -> Unit = {
                 LibraryFilterChoices(
                     playarrString(PlayarrString.LibraryView),
                     availableViewModes,
                     viewMode,
                     onViewMode,
                     icon = { mode, colour -> LibraryViewIcon(mode, colour) },
+                    originCss = PHONE_DRAWER_BODY_TOP_CSS,
                 ) {
                     playarrString(
                         when (it) {
@@ -4267,6 +4265,7 @@ private fun LibraryFiltersDialog(
                     listOf("title", "recent"),
                     sortMode,
                     onSortMode,
+                    originCss = PHONE_DRAWER_BODY_TOP_CSS + 94.22f,
                 ) {
                     playarrString(if (it == "title") PlayarrString.LibrarySortTitle else PlayarrString.LibrarySortDateAdded)
                 }
@@ -4275,6 +4274,7 @@ private fun LibraryFiltersDialog(
                     listOf(false, true),
                     descending,
                     onDescending,
+                    originCss = PHONE_DRAWER_BODY_TOP_CSS + 188.44f,
                 ) {
                     playarrString(
                         when {
@@ -4298,6 +4298,15 @@ private fun LibraryFiltersDialog(
                 if (!languageSelection.isEmpty) {
                     PlayarrChoice(playarrString(PlayarrString.LibraryClearLanguages), false) { onLanguageSelection(LanguageSelection()) }
                 }
+            }
+            if (playarrTvDrawer()) {
+                Column(verticalArrangement = if (playarrTvDrawer() && !LocalTabletDrawerCssPx.current) io.playarr.shared.designsystem.page.FractionalSpacedVertical(29.63.dp) else Arrangement.spacedBy(if (LocalTabletDrawerCssPx.current) webVu(22f, 2.8f, 34f) else 30.dp)) {
+                    filterBody()
+                }
+            } else {
+                // Web phone `.drawer-body`: sections 70.56 px tall (10.56 label, 12 gap, 48 choices) every 94.22 px (gap 2.8 vu = 23.66),
+                // the first at css y 95.02 (20 padding, 47.36 header, 23.66 gap, 4 body padding).
+                WebCssLayout(PHONE_DRAWER_BODY_TOP_CSS, listOf(0f, 94.22f, 188.44f), listOf(70.56f, 70.56f, 70.56f), 23.66f) { filterBody() }
             }
         }
     }
@@ -4530,6 +4539,7 @@ private fun <T> LibraryFilterChoices(
     selected: T,
     onSelected: (T) -> Unit,
     icon: (@Composable (T, Color) -> Unit)? = null,
+    originCss: Float? = null,
     label: @Composable (T) -> String,
 ) {
     val language = LocalPlayarrLanguage.current
@@ -4543,7 +4553,18 @@ private fun <T> LibraryFilterChoices(
         }
         return
     }
-    // Web phone drawer: the same equal-width segments as the television one.
+    // Web phone drawer: the same equal-width segments as the television one. A section 70.56 px tall: 10.56 label, 12 gap, 48 choices.
+    if (originCss != null) {
+        WebCssLayout(originCss, listOf(0f, 22.56f), listOf(10.56f, 48f), 12f) {
+            LibraryFilterLabel(title)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                values.forEach { value ->
+                    PlayarrChoice(label(value), value == selected, Modifier.weight(1f).fillMaxHeight(), icon = icon?.let { draw -> { colour -> draw(value, colour) } }) { onSelected(value) }
+                }
+            }
+        }
+        return
+    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LibraryFilterLabel(title)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -5176,7 +5197,7 @@ private fun PhoneSearchContent(
                         .parityShape(999f)
                         .background(WebSurfaceStrong.copy(alpha = 0.88f), pillShape)
                         .border(1.dp, WebSearchBorder, pillShape)
-                        .padding(horizontal = 17.dp), // the web box adds its 1 px border to the padding
+                        .padding(horizontal = rememberWebSpan(16f, 33f)), // the web box adds its 1 px border to the padding; the icon lands on css x=33
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(PlayarrWebIcons.Search, contentDescription = null, tint = PlayarrWebTheme.palette.phoneInkMuted, modifier = Modifier.size(18.dp).parityBox("image"))
@@ -7878,7 +7899,7 @@ private fun WebEpisodeDetailCard(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 11.5.dp, bottom = 8.8.dp),
             )
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).parityBackground("img", Color.White.copy(alpha = 0.28f)).semantics { role = Role.Image }) {
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).parityBackground("image", Color.White.copy(alpha = 0.28f)).semantics { role = Role.Image }) {
                     Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", WebAccent))
                 }
             }
@@ -10713,13 +10734,15 @@ internal fun AuthenticatedMediaThumbnail(
     } else {
         // The label stands in while the picture loads or fails; a loaded (opaque) thumbnail covers it, so it is no longer composed.
         var loaded by remember(request) { mutableStateOf(false) }
+        // Capture readiness waits for the composition that has dropped the label: reporting at onSuccess let an export see the label still composed under the loaded picture.
+        androidx.compose.runtime.LaunchedEffect(loaded) { if (loaded) PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) }
         Box(modifier.background(WebSurfaceSoft), contentAlignment = Alignment.Center) {
             if (!loaded) ThumbnailFallbackLabel(fallbackLabel)
             AsyncImage(
                 model = request,
                 contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
-                onSuccess = { loaded = true; PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
+                onSuccess = { loaded = true },
                 onError = { PlayarrCaptureReadiness.imageFinished(captureToken, captureKey) },
                 modifier = Modifier.fillMaxSize().parityCaptureArtwork(captureToken, captureKey),
             )

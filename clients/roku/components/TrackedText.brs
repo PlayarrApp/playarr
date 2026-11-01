@@ -89,11 +89,14 @@ sub onSpecChange()
                 glyph.font = font
                 glyph.width = 0
                 glyph.height = 0
+                ' The Font node is a whole pixel size: scale the Label to the web's fractional size about its top-left corner.
+                glyph.scaleRotateCenter = [0, 0]
+                glyph.scale = [PlayarrScaleFor(size), PlayarrScaleFor(size)]
                 if spec.symbol = true
                     glyph.font = PlayarrSymbolFont(piece, size, weight)
                 end if
                 ' The font actually drawn (the bundled instance's weight, the integer pixel size the Font node takes), readable through ECP query/app-ui (node names are printed; fonts are not).
-                drawnWeight = PlayarrInstanceWeight(weight)
+                drawnWeight = PlayarrDrawnWeight(weight, Int(size + 0.5))
                 if spec.symbol = true then drawnWeight = PlayarrSymbolWeight(piece, weight)
                 glyph.id = "f" + Str(drawnWeight).Trim() + "s" + Str(Int(size + 0.5)).Trim()
                 ' Untracked text is set a word per Label, tracked text a character per Label: the export joins words with a space and characters directly.

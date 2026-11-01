@@ -44,21 +44,48 @@ function readToken(): string | null {
   }
 }
 
-// html-to-image's toPng/toJpeg leave the canvas (8 MB at 1920x1080) and the SVG image behind for the garbage collector, which
-// barely runs because the JS heap stays tiny: the TV browser's native memory grew about 17 MB per frame until the TV hung.
-// Render to a canvas ourselves, read it out and shrink it to nothing at once.
+// html-to-image's toPng/toJpeg load the SVG through a fresh <img> with a multi-megabyte data: URL every frame. Chromium keeps each
+// of those as a cached resource (the URL is unique per frame), which grew the renderer by about 12 MB per frame until the TV hung.
+// Load the same SVG from a blob: URL that is revoked at once, into one reused <img> and one reused canvas, read the frame out and
+// shrink the canvas to nothing so no frame data outlives its frame.
+let frameImg: HTMLImageElement | null = null;
+let frameCanvas: HTMLCanvasElement | null = null;
+
 async function renderFrame(
-  toCanvas: (node: HTMLElement, options: HtmlToImageOptions) => Promise<HTMLCanvasElement>,
+  toSvg: (node: HTMLElement, options: HtmlToImageOptions) => Promise<string>,
   node: HTMLElement,
   png: boolean,
   options: HtmlToImageOptions,
 ): Promise<string> {
-  const canvas = await toCanvas(node, options);
+  const width = options.width ?? 0;
+  const height = options.height ?? 0;
+  const ratio = options.pixelRatio ?? 1;
+  const svg = await toSvg(node, options);
+  const url = URL.createObjectURL(new Blob([decodeURIComponent(svg.slice(svg.indexOf(",") + 1))], { type: "image/svg+xml" }));
+  const img = (frameImg ??= new Image());
   try {
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("frame image failed to load"));
+      img.src = url;
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+  const canvas = (frameCanvas ??= document.createElement("canvas"));
+  try {
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("no 2d canvas context");
+    ctx.fillStyle = options.backgroundColor ?? "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     return png ? canvas.toDataURL() : canvas.toDataURL("image/jpeg", options.quality || 1);
   } finally {
     canvas.width = 0;
     canvas.height = 0;
+    img.removeAttribute("src");
   }
 }
 
@@ -328,7 +355,7 @@ export function startDebugMirror(): void {
           throw new Error(`memory guard: ${captured} frames captured by this page load (limit ${maxFrames}); reload the page`);
         }
         captured += 1;
-        const { toCanvas, getFontEmbedCSS } = await withTimeout(import("html-to-image"), 10000, "html-to-image import");
+        const { toSvg, getFontEmbedCSS } = await withTimeout(import("html-to-image"), 10000, "html-to-image import");
         // The TV stage scale (tvStageScale.ts) zooms <html> on most platforms, which html-to-image does
         // not see. VIDAA instead transforms <body>; clear only that transform on the cloned body so the
         // logical stage is rendered once at the requested output density.
@@ -380,13 +407,13 @@ export function startDebugMirror(): void {
           }
         });
         image = await withTimeout(
-          withCollapsingTrackHeights(() => renderFrame(toCanvas, document.body, usePng, {
+          withCollapsingTrackHeights(() => renderFrame(toSvg, document.body, usePng, {
             // The clone loses ::-webkit-scrollbar rules (pseudo-elements are not copied), so overflow containers would draw
             // native scrollbars the TV does not show: hide them in the rendered copy.
             // ?mirrorGeo=1 turns hinting off (geometricPrecision). Measured on the TV: it scored 0.02 to 0.2 lower than the default on settings, month and agenda.
             fontEmbedCSS: `${fontCss}\n${mirrorFlag("mirrorGeo") ? "*{text-rendering:geometricPrecision!important}\n" : ""}*::-webkit-scrollbar{display:none}*{scrollbar-width:none}\n${scrollCss}`,
             // Cross-origin media (posters, video) would stall or taint the render: leave it out.
-            filter: (node) => {
+            filter: (node: Node) => {
               // Skip what lies past the right or bottom edge (long rails and grids): the TV needs far
               // less time to render, and nothing visible moves because earlier siblings stay put.
               if (node instanceof HTMLElement && node !== document.body) {

@@ -1,0 +1,1 @@
+- Android TV: the calendar agenda paints the web library panel frost behind the list and each pinned day heading as the web h3 box (frost over the page base).

@@ -27,6 +27,8 @@ internal sealed class PlayerScreen : IPage
     private readonly View _root = new();
     private readonly View _controls = new();
     private readonly View _progress;
+    private readonly View _buffered;
+    private float _bufferedFraction;
     private int _beforeSeek = -1;
     private readonly View _seek;
     private readonly TextLabel _now, _total;
@@ -71,6 +73,9 @@ internal sealed class PlayerScreen : IPage
         _seek = Sem.Tag(new View { PositionX = TrackX, PositionY = TrackY - 19, Size = new Size(TrackW, 44) }, "slider", "Seek");
         _controls.Add(_seek);
         _seek.Add(Ui.Box(0, 19, TrackW, 6, new Rgba(1, 1, 1, 0.18f), 3));
+        // web: .player-seek-buffered, one layer per buffered range, drawn under the played part (width follows the player's buffering progress)
+        _buffered = Ui.Box(0, 19, 0, 6, new Rgba(1, 1, 1, 0.35f), 3);
+        _seek.Add(_buffered);
         _progress = Ui.Box(0, 19, 0, 6, _t.Brand, 0);
         _seek.Add(_progress);
 
@@ -132,19 +137,67 @@ internal sealed class PlayerScreen : IPage
 
     private void AddIcon(string icon, float x, float y, string label, bool dim, Action? select = null)
     {
-        var disabledLook = dim || label == "audio"; // web: a disabled control (no previous, no next, no audio track) draws at 28 %
-        // web: each tool is a 64 px round button holding its 20 px icon; a disabled one (no previous, no next, no audio track) draws at 28 %
+        // web: each tool is a 64 px round button holding its 20 px icon; a disabled one (no previous, no next, no audio track) draws at 28 % and is not focusable
         var host = Ui.Box(x - 22, y - 22, 64, 64, null, 32);
-        host.Opacity = disabledLook ? 0.28f : 1f;
-        var buttonName = label switch { "previous" => "Previous episode", "next" => "Next episode", "audio" => "Audio: Unavailable", "subtitles" => "Subtitles: Off", "playlist" => "Playlist: 1 item", "info" => "Info and playback health", _ => "Play on another device" };
-        Sem.Tag(host, "button", buttonName);
         host.Add(Ui.Icon(icon, 22, 22, 20, new Rgba(1, 1, 1)));
         _controls.Add(host);
-        if (disabledLook) return; // web: a disabled button (no previous, no next, no audio track) is not focusable
         var ring = Ring.Make(36, 36, 18, new Rgba(1, 1, 1), themed: false); ring.PositionX = x - 12; ring.PositionY = y - 12; ring.Show(false);
         _controls.Add(ring);
-        _focus.Items.Add(new Focusable { Rect = () => new Box(x - 22, y - 22, 64, 64), Label = label, Select = select ?? (() => { }), Style = f => ring.Show(f) });
+        _toolHosts[label] = host;
+        _toolFocus[label] = new Focusable { Rect = () => new Box(x - 22, y - 22, 64, 64), Label = label, Select = select ?? (() => { }), Style = f => ring.Show(f) };
+        RefreshTool(label);
     }
+
+    // The tool buttons follow the real player state, as web's PlayerControls does: the previous/next buttons need a queue to step through (this player plays the one file it was
+    // opened with, so its queue is that file), audio is enabled by the server's audio tracks, the names carry the selected track.
+    private readonly Dictionary<string, View> _toolHosts = new();
+    private readonly Dictionary<string, Focusable> _toolFocus = new();
+    private int QueueCount => 1;
+    private bool CanStep => QueueCount > 1;
+
+    private static string TrackName(PlaybackTrackOption t) => !string.IsNullOrWhiteSpace(t.Label) ? t.Label! : t.Language ?? "Track";
+
+    private (string Name, bool Enabled) ToolState(string label)
+    {
+        var audio = _info?.AudioTracks ?? Array.Empty<PlaybackTrackOption>();
+        var subs = _info?.SubtitleTracks ?? Array.Empty<PlaybackTrackOption>();
+        switch (label)
+        {
+            case "previous": return ("Previous episode", CanStep);
+            case "next": return ("Next episode", CanStep);
+            case "audio":
+                // a direct stream is one muxed source the Tizen player cannot switch tracks on (web reaches the same state: its capture reads "Audio: Unavailable"); only an HLS session carries a selectable track
+                var switchable = _info?.Mode == PlaybackMode.Hls && audio.Count > 0;
+                var active = audio.FirstOrDefault(t => t.Id == _info?.SelectedAudioTrackId) ?? audio.FirstOrDefault();
+                return ("Audio: " + (!switchable || active is null ? "Unavailable" : TrackName(active)), switchable);
+            case "subtitles":
+                var sub = subs.FirstOrDefault(t => t.Id == _info?.SelectedSubtitleTrackId);
+                return ("Subtitles: " + (sub is null ? "Off" : TrackName(sub)), true);
+            case "playlist": return (QueueCount == 1 ? $"Playlist: {QueueCount} item" : $"Playlist: {QueueCount} episodes", QueueCount > 0);
+            case "info": return ("Info and playback health", true);
+            default: return ("Play on another device", true);
+        }
+    }
+
+    private void RefreshTool(string label)
+    {
+        if (!_toolHosts.TryGetValue(label, out var host)) return;
+        var (name, enabled) = ToolState(label);
+        Sem.Tag(host, "button", name);
+        host.Opacity = enabled ? 1f : 0.28f;
+        var f = _toolFocus[label];
+        var present = _focus.Items.Contains(f);
+        if (enabled && !present)
+        {
+            // keep the web tab order: the tools follow the transport row in the order they were built
+            var order = new[] { "previous", "next", "audio", "subtitles", "playlist", "quality", "info", "cast" };
+            var after = order.TakeWhile(l => l != label).Reverse().Select(l => _toolFocus.TryGetValue(l, out var o) ? o : null).FirstOrDefault(o => o is not null && _focus.Items.Contains(o));
+            _focus.Items.Insert(after is null ? Math.Max(0, _focus.Items.FindIndex(i => i.Label == "pause") + 1) : _focus.Items.IndexOf(after) + 1, f);
+        }
+        else if (!enabled && present) _focus.Items.Remove(f);
+    }
+
+    private void RefreshTools() { foreach (var l in _toolHosts.Keys.ToArray()) RefreshTool(l); }
 
     private async Task StartAsync()
     {
@@ -165,7 +218,7 @@ internal sealed class PlayerScreen : IPage
             var start = _startMs;
             if (start == 0) try { start = PlaybackResume.FromProgress(await _env.Api.GetWatchProgressAsync(_file)) ?? 0; } catch (Exception) { /* no saved position */ }
             var info = await client.GetInfoAsync(_file, start);
-            Dbg.Log($"PLAY mode={info.Mode} dur={info.DurationMs} offset={info.SourceOffsetMs} start={start}");
+            Dbg.Log($"PLAY mode={info.Mode} audio={info.AudioTracks?.Count} subs={info.SubtitleTracks?.Count} dur={info.DurationMs} offset={info.SourceOffsetMs} start={start}");
             SynchronizationContextHolder.Post(() => Begin(info, start));
         }
         catch (PlaybackRefusedException e)
@@ -186,6 +239,7 @@ internal sealed class PlayerScreen : IPage
         try
         {
             _info = info;
+            RefreshTools();
             UpdateQualityLabel(info);
             _total.Text = DetailModel.Clock(info.DurationMs);
             _player = new Player();
@@ -195,6 +249,7 @@ internal sealed class PlayerScreen : IPage
                 Dbg.Log("PLAY error " + e.Error);
                 SynchronizationContextHolder.Post(() => _ = RecoverSessionAsync());
             };
+            _player.BufferingProgressChanged += (_, e) => SynchronizationContextHolder.Post(() => ShowBuffered(e.Percent / 100f));
             _player.PlaybackCompleted += (_, _) => SynchronizationContextHolder.Post(OnCompleted);
             _player.SetSource(new MediaUriSource(_local is not null ? info.Url : _env.Abs(info.Url)));
             _player.Display = new Display(Window.Default);
@@ -267,7 +322,7 @@ internal sealed class PlayerScreen : IPage
     private void OnTick()
     {
         if (_player is null || _info is null) return;
-        var pos = HoldAtMs >= 0 && _paused ? HoldAtMs : PositionMs; // a held capture shows its exact position whatever the decoder reports
+        var pos = PositionMs; // always the decoder's position
         var frac = _info.DurationMs > 0 ? Math.Clamp(pos / (float)_info.DurationMs, 0, 1) : 0;
         _progress.Size = new Size(Math.Max(0, TrackW * frac), 6);
         _now.Text = DetailModel.Clock(pos);
@@ -275,6 +330,13 @@ internal sealed class PlayerScreen : IPage
     }
 
     private bool _error;
+
+    /// <summary>The buffered layer of the seek bar: the share of the track the player reports as buffered (BufferingProgressChanged), never a fixed width.</summary>
+    private void ShowBuffered(float fraction)
+    {
+        _bufferedFraction = Math.Clamp(fraction, 0f, 1f);
+        _buffered.Size = new Size(TrackW * _bufferedFraction, 6);
+    }
 
     private void ShowError(string message)
     {
@@ -451,24 +513,20 @@ internal sealed class PlayerScreen : IPage
     /// <summary>
     /// Capture only, and a staged frame (disclosed in docs/parity/DEVICES.md): the screenshot path may not carry the
     /// video plane, so the driver stands the clip's paused frame (an image the driver supplies) in behind the controls.
-    /// It is not decoded by the player. The buffered segment below is likewise staged, not read from the
-    /// player's buffer: the web capture plays the whole clip through first (scripts/parity/drivers/web.mjs), so its buffered
-    /// range spans the full track, and the segment is drawn at the full track width to match. The player-controls score
-    /// for the seek bar's buffered range is therefore staged, not measured.
+    /// It is not decoded by the player. The seek bar's buffered range is not staged: it is drawn from the player's own
+    /// buffering progress (see <see cref="ShowBuffered"/>), as web draws its buffered layer from the video element.
     /// </summary>
     public void ShowStandInFrame(string path)
     {
         var frame = Sem.Tag(new ImageView(path) { Size = _root.Size }, "video", "Video playback surface"); // web: the <video> element is the playback surface
         _root.Add(frame); frame.LowerToBottom();
-        // staged: a full-width light segment on the seek track under the played part (the web capture's fully buffered clip); see the summary above
-        _seek.Add(Ui.Box(0, 19, TrackW, 6, new Rgba(1, 1, 1, 0.35f), 3)); _progress.RaiseToTop();
     }
 
     public (bool Playing, long PositionMs) Status
     {
         get
         {
-            try { return _player is null ? (false, 0) : (_player.State == PlayerState.Playing, HoldAtMs >= 0 && _paused ? HoldAtMs : PositionMs); }
+            try { return _player is null ? (false, 0) : (_player.State == PlayerState.Playing, PositionMs); }
             catch (Exception) { return (false, 0); }
         }
     }
@@ -502,6 +560,7 @@ internal sealed class PlayerScreen : IPage
         _hide.Restart();
         if (key == RemoteKey.Select) { _focus.Item?.Select?.Invoke(); return true; }
         if (key == RemoteKey.Down && _focus.Item?.Label == "seek" && _beforeSeek >= 0) { _focus.Set(_beforeSeek); return true; } // as web: Down from the seek bar returns to the control Up left
+        if (_focus.Item?.Label == "seek" && key is RemoteKey.Left or RemoteKey.Right) { SeekBy(key == RemoteKey.Right ? SeekStepMs : -SeekStepMs); return true; } // web: the slider steps with Left and Right
         var from = _focus.Current;
         _focus.Move(key);
         if (key == RemoteKey.Up && _focus.Item?.Label == "seek") _beforeSeek = from;

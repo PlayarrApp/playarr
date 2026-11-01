@@ -135,7 +135,7 @@ internal object PlayarrLayoutExport {
                         // A box that paints nothing (a layout wrapper, a surface without a fill) is not an element: only painted containers are exported.
                         if ((box.kind == "fill" || box.kind == "container") && !painted) continue
                         pending += Triple(e, box.id, painted)
-                        ctx.add(e, x, y, b.width, b.height, occludes = box.kind == "container" && painted && box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha >= 0.5f, hook = true, boxId = box.id)
+                        ctx.add(e, x, y, b.width, b.height, occludes = (box.kind == "container" || box.kind == "fill") && painted && box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha >= 0.5f, hook = true, boxId = box.id)
                     }
                 }
                 // Like the browser's backdrop: the fills of the box's own tree ancestors (and its own), outer to inner. A box that paints nothing
@@ -356,14 +356,29 @@ internal object PlayarrLayoutExport {
                         if (holds) {
                             val (pl, local, _) = platformLine!!
                             val lineLeft = pl.getLineLeft(local); val lineRight = pl.getLineRight(local)
-                            // The side is logical: in a right-to-left paragraph the start of the text is on the right.
-                            when (PlayarrEllipsizedRun.side(runStart, runEnd, span!!)) {
-                                PlayarrEllipsizedRun.Side.Only -> { lo = lineLeft; hiEnd = lineRight }
-                                PlayarrEllipsizedRun.Side.After -> if (rtl) lo = minOf(lo, lineLeft) else hiEnd = maxOf(hiEnd, lineRight)
-                                PlayarrEllipsizedRun.Side.Before -> if (rtl) hiEnd = maxOf(hiEnd, lineRight) else lo = minOf(lo, lineLeft)
+                            // The ellipsis glyph sits in the gap between the nearest drawn characters of the line on either side of the replaced span: those glyph boxes bound it, never the whole-line edge
+                            // (which would absorb the extent of other style runs). Only with no drawn character on a side does the line's own edge stand.
+                            val lineFirst = layout.getLineStart(i); val lineLast = layout.getLineEnd(i)
+                            val drawnBefore = (span!!.first - 1 downTo lineFirst).firstOrNull { it < lineLast && !raw[it].isWhitespace() }
+                            val drawnAfter = (span.endExclusive until lineLast).firstOrNull { !raw[it].isWhitespace() }
+                            // The side is logical: in a right-to-left paragraph the start of the text is on the right, so the character before the span bounds the gap from its left edge.
+                            val beforeEdge = drawnBefore?.let { if (rtl) layout.getBoundingBox(it).left else layout.getBoundingBox(it).right } ?: if (rtl) lineRight else lineLeft
+                            val afterEdge = drawnAfter?.let { if (rtl) layout.getBoundingBox(it).right else layout.getBoundingBox(it).left } ?: if (rtl) lineLeft else lineRight
+                            val gLo = minOf(beforeEdge, afterEdge)
+                            val gHi = maxOf(beforeEdge, afterEdge)
+                            when (PlayarrEllipsizedRun.side(runStart, runEnd, span)) {
+                                PlayarrEllipsizedRun.Side.Only -> { lo = gLo; hiEnd = gHi }
+                                PlayarrEllipsizedRun.Side.After, PlayarrEllipsizedRun.Side.Before -> { lo = minOf(lo, gLo); hiEnd = maxOf(hiEnd, gHi) }
                                 else -> {}
                             }
                         }
+                        // Chrome's text rect includes the trailing letter-spacing of the last glyph; the character boxes of the layout do not.
+                        val spacingPx = when {
+                            runStyle.letterSpacing.isSp -> runStyle.letterSpacing.value * input.density.fontScale * input.density.density
+                            runStyle.letterSpacing.isEm -> runStyle.letterSpacing.value * size
+                            else -> 0f
+                        }
+                        if (spacingPx != 0f && hiEnd > lo) hiEnd += spacingPx
                         // The run's four corners through the node's transform (a rotation or unequal scale still gives its bounding box).
                         val corners = listOf(lo to baseline - ascent, hiEnd to baseline - ascent, lo to baseline + descent, hiEnd to baseline + descent).map { (cx, cy) -> coords.localToRoot(androidx.compose.ui.geometry.Offset(cx, cy)) }
                         val x = corners.minOf { it.x } + ctx.dx; val y = corners.minOf { it.y } + ctx.dy; val w = corners.maxOf { it.x } - corners.minOf { it.x }; val h = corners.maxOf { it.y } - corners.minOf { it.y }

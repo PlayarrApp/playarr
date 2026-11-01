@@ -1,0 +1,1 @@
+- Samsung Tizen native: the player tools take their names, opacity and focus from the real tracks and queue, the seek bar shows the player's buffered progress and steps on Left and Right, and the parity web driver waits for the profile avatar sync before a shot.

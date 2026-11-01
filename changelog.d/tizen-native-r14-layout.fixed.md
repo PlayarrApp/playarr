@@ -1,0 +1,1 @@
+- Tizen native: layout export reports declared border-radius before focus scale (capped on the drawn box), rail labels use weight 680 and the search empty-state copy weight 650 as in the web CSS.
