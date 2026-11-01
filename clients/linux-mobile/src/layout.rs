@@ -250,13 +250,41 @@ fn rgba(c: &gdk::RGBA) -> [f32; 4] {
     [c.red(), c.green(), c.blue(), c.alpha()]
 }
 
-fn over(top: [f32; 4], under: [f32; 3]) -> [f32; 3] {
-    let a = top[3];
-    [
-        top[0] * a + under[0] * (1.0 - a),
-        top[1] * a + under[1] * (1.0 - a),
-        top[2] * a + under[2] * (1.0 - a),
-    ]
+/// Pango units rounded to whole logical px (half up), still in Pango units.
+fn round_px(v: i32) -> i32 {
+    let u = pango::SCALE;
+    (v + u / 2).div_euclid(u) * u
+}
+
+/// A background colour as the layout document defines it: sRGB channels in 0..255, every ancestor fill composited over white.
+type Bg = [f64; 3];
+
+/// One composite step with the layout document's own arithmetic (docs/parity/LAYOUT.md: the colour behind and including the
+/// element, ancestors composited over white, rounded once to 8 bits at the end). The fill's channels are the 8-bit values it
+/// was declared with and its alpha is the declared one, so a fill of 70 % reads 27.5 or 27.4999 exactly where the web's
+/// double-precision composite does; the web rounds that tie by the same arithmetic.
+fn over(top: [f32; 4], under: Bg) -> Bg {
+    let a = (f64::from(top[3]) * 1000.0).round() / 1000.0;
+    // A translucent fill is declared with `color-mix(in srgb, ...)` in the web CSS, and the browser serialises such a colour with six decimals per channel (33 reads as 0.129412), which the document's arithmetic then multiplies back by 255.
+    let ch = |v: f32| {
+        let t = f64::from(v) * 255.0;
+        if (t - t.round()).abs() >= 0.01 {
+            t
+        } else if a < 1.0 {
+            (t.round() / 255.0 * 1.0e6).round() / 1.0e6 * 255.0
+        } else {
+            t.round()
+        }
+    };
+    let total = a + (1.0 - a);
+    let mix = |i: usize| (ch(top[i]) * a + under[i] * (1.0 - a)) / total;
+    [mix(0), mix(1), mix(2)]
+}
+
+/// The document's `#rrggbb` of a background (a round half up, as `Math.round`).
+fn hex_bg(c: Bg) -> String {
+    let b = |v: f64| (v + 0.5).floor().clamp(0.0, 255.0) as u8;
+    format!("#{:02x}{:02x}{:02x}", b(c[0]), b(c[1]), b(c[2]))
 }
 
 impl Fill {
@@ -394,7 +422,7 @@ impl Walk<'_> {
         c[2] > 0.0 && c[3] > 0.0
     }
 
-    fn visit(&mut self, w: &gtk4::Widget, clip: Rect, inherited: f32, parent_bg: [f32; 3]) {
+    fn visit(&mut self, w: &gtk4::Widget, clip: Rect, inherited: f32, parent_bg: Bg) {
         if !w.is_mapped() || !w.is_visible() {
             return;
         }
@@ -458,9 +486,9 @@ impl Walk<'_> {
         clip: Rect,
         inherited: f32,
         factor: f32,
-        parent_bg: [f32; 3],
+        parent_bg: Bg,
         lp: &Paints,
-    ) -> (bool, [f32; 3]) {
+    ) -> (bool, Bg) {
         let own = lp
             .fills
             .iter()
@@ -487,11 +515,11 @@ impl Walk<'_> {
                 .find(|(cb, r)| *r > 0.0 && near(*cb, b, 0.55))
                 .map(|(_, r)| *r);
         }
-        let base = |role: &str, text: &str, rect: Rect, opacity: f32, bgc: [f32; 3]| {
+        let base = |role: &str, text: &str, rect: Rect, opacity: f32, bgc: Bg| {
             let mut el = json!({
                 "text": text, "role": role,
                 "rect": {"x": rect[0], "y": rect[1], "w": rect[2], "h": rect[3]},
-                "color": Value::Null, "background": hex([bgc[0], bgc[1], bgc[2], 1.0], false),
+                "color": Value::Null, "background": hex_bg(bgc),
                 "fontSize": Value::Null, "fontWeight": Value::Null,
             });
             if (opacity - 1.0).abs() > 0.004 {
@@ -557,8 +585,11 @@ impl Walk<'_> {
                         if item.analysis().flags() & PANGO_FLAG_IS_ELLIPSIS != 0 || primary.height() <= 0 {
                             (lg.y(), lg.height())
                         } else {
+                            // Blink rounds the font's ascent and descent to whole px separately (SimpleFontData), so the
+                            // content area is round(ascent) + round(descent), not their sum.
                             let base = it.baseline();
-                            (base - primary.ascent(), primary.ascent() + primary.descent())
+                            let (asc, desc) = (round_px(primary.ascent()), round_px(primary.descent()));
+                            (base - asc, asc + desc)
                         };
                     let local = graphene::Rect::new(
                         ox as f32 + x0 as f32 / s,
@@ -869,7 +900,7 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
         viewport,
         items: Vec::new(),
     };
-    walk.visit(root, [-1.0e6, -1.0e6, 2.0e6, 2.0e6], 1.0, [1.0, 1.0, 1.0]);
+    walk.visit(root, [-1.0e6, -1.0e6, 2.0e6, 2.0e6], 1.0, [255.0, 255.0, 255.0]);
     // Occlusion as the web scorer samples it: nine points of the visible box; hidden when each lies under a later box
     // that paints (alpha of 0.5 or more) and is not part of the element.
     let n = walk.items.len();
@@ -939,6 +970,17 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
 mod tests {
     use super::*;
     use gtk4::AccessibleRole as R;
+
+    #[test]
+    fn a_translucent_fill_composites_with_the_documents_arithmetic() {
+        // Surface #211d21 at 70 % over the page #1b181b: the green channel is 27.5 in exact arithmetic and 27.4999 in the
+        // web's double precision with the six-decimal colour, which is the web's #1f1b1f.
+        let under = [27.0, 24.0, 27.0];
+        let fill = [33.0 / 255.0, 29.0 / 255.0, 33.0 / 255.0, 0.7];
+        assert_eq!(hex_bg(over(fill, under)), "#1f1b1f");
+        // An opaque fill replaces what is under it.
+        assert_eq!(hex_bg(over([1.0, 1.0, 1.0, 1.0], under)), "#ffffff");
+    }
 
     // GTK must only be used from the thread that initialised it, and the test harness runs each test on its own thread, so the
     // two GTK checks run in sequence inside `gtk_checks` (two tests initialising GTK on two threads crashed with SIGSEGV).
