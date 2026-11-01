@@ -639,7 +639,7 @@ internal sealed class DetailsPanel
         var t = _env.Theme;
         foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
         var ky = _flow ? 286.6f : 259.2f; var tsize = _flow ? 49.92f : 69.12f; var tlh = _flow ? 47.424f : 62.208f; var tw = _flow ? 420f : 369f; var ty = _flow ? 330.9f : 303.5f;
-        Root.Add(Ui.Text(kicker ?? card.Kicker, 153.6f, ky, 12.288f, 800, t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
+        Root.Add(Ui.Text(kicker ?? card.Kicker, 153.6f, ky, 12.288f, 860, t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
         var lines = Ui.Paragraph(Root, card.Title, 153.6f, ty, tsize, 600, t.Ink, tw, tlh, _flow ? -3f : -4.98f, titleMaxLines, balance: true, role: "heading");
         var metaY = ty + tlh * lines + (_flow ? 27f : 22.6f) + (_library ? 4f : 0); // library panels: measured 4 px lower on web
         var metaSize = _library ? 13.056f : 12.864f;

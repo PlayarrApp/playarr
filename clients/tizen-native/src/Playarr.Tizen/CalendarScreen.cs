@@ -12,7 +12,15 @@ namespace Playarr.Tizen;
 /// </summary>
 internal sealed class CalendarScreen : IPage
 {
-    private const float GridX = 153.6f, HeadY = 174f, CellW = 237.6f, CellH = 151.3f, RowsY = 204.8f;
+    private const float GridX = 153.59375f, HeadY = 174f, CellH = 151.28125f, RowsY = 204.78125f, GridW = 1663.140625f; // 1/64 px LayoutUnits (Blink)
+    /// <summary>Grid track x and width: the grid is divided in whole 1/64 px units, the remainder going one unit each to the last tracks (Blink grid track sizing).</summary>
+    private static (float X, float W) Col(int c)
+    {
+        var units = (int)Math.Round(GridW * 64); var baseW = units / 7; var extra = units % 7;
+        var w = baseW + (c >= 7 - extra ? 1 : 0); var x = c * baseW + Math.Max(0, c - (7 - extra));
+        return (GridX + x / 64f, w / 64f);
+    }
+    private const float CellW = 237.59375f;
     private const float WeekClipX = 153.6f, WeekClipY = 160f, WeekClipW = 1660f, WeekClipH = 880f;
     private const float WeekColumnW = 440f, WeekColumnClipPad = 5f, WeekColumnWClip = 450f, WeekColumnPitch = 460f;
 
@@ -109,7 +117,7 @@ internal sealed class CalendarScreen : IPage
         tile.Add(Ui.Icon(icon, 19, 15, 24, _t.InkMuted));
         tile.Add(Ui.Text(text, 0, 44.6f, 8.256f, 700, _t.InkMuted, w, 12.384f, HorizontalAlignment.Center, spacing: 0.165f));
         var ring = Ring.Make(w, h, 14, new Rgba(1, 1, 1)); ring.Show(false); tile.Add(ring);
-        _root.Add(tile);
+        _env.AddShellView(tile);
         _focus.Items.Add(new Focusable { Rect = () => new Box(1845.5f, y, w, h), Label = text.ToLowerInvariant(), Select = select, Style = f => ring.Show(f) });
     }
 
@@ -189,15 +197,15 @@ internal sealed class CalendarScreen : IPage
     private void RenderMonth(DateTime start, DateTime end)
     {
         var days = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
-        for (var i = 0; i < 7; i++) _body.Add(Ui.Text(days[i], GridX + i * CellW, HeadY + 6, 12f, 400, _t.InkMuted, CellW, 18f, HorizontalAlignment.Center, upper: true, spacing: 0.96f));
+        for (var i = 0; i < 7; i++) _body.Add(Ui.Text(days[i], Col(i).X, HeadY + 6, 12f, 400, _t.InkMuted, Col(i).W, 18f, HorizontalAlignment.Center, upper: true, spacing: 0.96f));
         var byDay = Visible.GroupBy(CalendarRules.LocalDay).ToDictionary(g => g.Key, g => g.OrderBy(Order).ToList());
         var rows = (int)Math.Ceiling(((end - start).TotalDays + 1) / 7);
         for (var r = 0; r < rows; r++)
             for (var c = 0; c < 7; c++)
             {
-                var day = start.AddDays(r * 7 + c); var x = GridX + c * CellW; var y = RowsY + r * CellH;
+                var day = start.AddDays(r * 7 + c); var (x, cellW) = Col(c); var y = RowsY + r * CellH;
                 var outside = day.Month != _anchor.Month;
-                var cell = Ui.Box(x, y, CellW, CellH, new Rgba(_t.SurfaceSoft.R, _t.SurfaceSoft.G, _t.SurfaceSoft.B, outside ? 0.35f : 0f), 0);
+                var cell = Ui.Box(x, y, cellW, CellH, new Rgba(_t.SurfaceSoft.R, _t.SurfaceSoft.G, _t.SurfaceSoft.B, outside ? 0.35f : 0f), 0);
                 cell.BorderlineWidth = 1; cell.BorderlineColor = Ui.C(_t.Line);
                 Sem.Tag(cell, "container"); // web: only the days outside the month carry a fill; every day has the hairline border
                 _body.Add(cell);
@@ -207,9 +215,9 @@ internal sealed class CalendarScreen : IPage
                 {
                     var e = list[k];
                     var dot = ToneColor(CalendarRules.Tone(e, _today));
-                    var ly = 15.3f + k * 25.4f;
-                    var row = new View { PositionX = 5.8f, PositionY = 1.8f + k * 25.4f, Size = new Size(226, 44) }; // the event row (dot and title); the day cell is the focus target
-                    row.Add(Ui.Box(5.6f, ly + 4.1f - row.PositionY, 8.8f, 8.8f, dot, 4.4f));
+                    var ly = 15.296875f + k * 25.40625f;
+                    var row = new View { PositionX = 5.796875f, PositionY = 1.796875f + k * 25.40625f, Size = new Size(226, 44) }; // the event row (dot and title); the day cell is the focus target
+                    row.Add(Ui.Box(5.59375f, ly + 4.09375f - row.PositionY, 8.796875f, 8.796875f, dot, 4.4f));
                     var multi = e.Members is { Count: > 1 } m ? $" · {m.Count}×" : "";
                     // the row is only a group of the dot and the title: the day cell is the focus target, so it is not exported as a control
                     row.Add(Ui.Text(e.Title + multi, 21.6f, ly - row.PositionY, 12.48f, multi.Length > 0 ? 700 : 400, _t.Ink, CellW - 36, 14.976f));
@@ -218,7 +226,7 @@ internal sealed class CalendarScreen : IPage
                 cell.Add(Ui.Text(day.Day.ToString(), 8.8f, CellH - 33, 12.8f, 640, day == _today ? _t.Ink : outside ? _t.InkMuted : _t.Ink, 30, 19.2f));
                 if (list.Count > shown) cell.Add(Ui.Text($"+{list.Count - shown} more", 43, CellH - 33, 12.48f, 400, _t.InkSoft, 90, 18.72f));
                 var cx = x; var cy = y; var d = day;
-                _focus.Items.Add(new Focusable { Rect = () => new Box(cx, cy, CellW, CellH), Label = "day " + d.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("en-GB")).ToLowerInvariant(), Style = f => { cell.BorderlineWidth = f ? 3 : 1; cell.BorderlineColor = f ? (_t.Name == "light" ? Ui.C(_t.Ink) : new Color(1, 1, 1, 0.9f)) : Ui.C(_t.Line); } });
+                _focus.Items.Add(new Focusable { Rect = () => new Box(cx, cy, cellW, CellH), Label = "day " + d.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("en-GB")).ToLowerInvariant(), Style = f => { cell.BorderlineWidth = f ? 3 : 1; cell.BorderlineColor = f ? (_t.Name == "light" ? Ui.C(_t.Ink) : new Color(1, 1, 1, 0.9f)) : Ui.C(_t.Line); } });
             }
     }
 
@@ -396,7 +404,7 @@ internal sealed class CalendarScreen : IPage
         _panelItems.Clear();
         _keyArt.Set(e.WorkId is { } work ? $"/api/v1/artwork/work/{work:D}/backdrop?w=780" : null);
         var tone = CalendarRules.Tone(e, _today);
-        _panel.Add(Ui.Text($"{(e.MediaKind == "movie" ? "Movies" : "Episodes")} \u00b7 {(e.ReleaseType is "digital" ? "Digital release" : "Airs")}", 153.6f, 263.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
+        _panel.Add(Ui.Text($"{(e.MediaKind == "movie" ? "Movies" : "Episodes")} \u00b7 {(e.ReleaseType is "digital" ? "Digital release" : "Airs")}", 153.6f, 263.2f, 12.288f, 860, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
         var lines = Ui.Paragraph(_panel, e.Title, 153.6f, 307.42f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5);
         var my = 308.5f + 62.208f * lines + 24.6f;
         var code = CalendarRules.EpisodeCode(e.SeasonNumber, e.EpisodeNumber);

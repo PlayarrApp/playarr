@@ -509,6 +509,8 @@ def main() -> None:
         nine_patch(f"round-r{r}", r)
         nine_patch(f"round-outline-r{r}", r, 1.2)
     square_outline("square-outline")  # the calendar month's day cells: 1 px border, no corner
+    nine_patch("round-r14", 14)  # the 14 px buttons and tiles (web --radius 0.875rem)
+    nine_patch("round-outline-r14", 14, 1.2)
     nine_patch("round-r29", 29)  # the 58 px pills (calendar agenda actions): web's radius is half the height
     nine_patch("round-outline-r29", 29, 1.2)
     nine_patch("round-r38", 38)
