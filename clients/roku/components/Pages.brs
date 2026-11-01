@@ -120,6 +120,7 @@ function pgRadiusFor(h as Float, r as Float) as Integer
     if r >= 82 then return 82
     if r = 29 and h >= 56 and h <= 60 then return 29
     if r >= 25 then return 25
+    if r = 14 then return 14
     if r >= 12 then return 12
     return 6
 end function
@@ -132,6 +133,7 @@ function pgRound(parent as Object, x as Float, y as Float, w as Float, h as Floa
     if w < smallest then smallest = w
     if radius = 82 and smallest < 160 then radius = 25
     if radius = 25 and smallest < 49 then radius = 12
+    if radius = 14 and smallest < 29 then radius = 12
     if radius = 12 and smallest < 23 then radius = 6
     name = "round"
     if outline then name = "round-outline"
@@ -2378,6 +2380,7 @@ sub renderCalendarMonth(entries as Object)
         ' A day with chips is reached through its chips; an empty day keeps the whole-cell stop that opens it in the agenda.
         if shown = 0
             if day = today then todayIdx = m.pageItems.Count()
+            pgHit(m.pageBody, "button", weekdays[calWeekday(day)] + " " + Val(Mid(day, 9, 2)).ToStr() + " " + calendarMonthName(Val(Mid(day, 6, 2)), false), x + 1, y + 1, cw - 1, ch - 1, 0)
             pgFocusable(x + 1, y + 1, cw - 1, ch - 1, 6, "cell", day)
         end if
     end for

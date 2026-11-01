@@ -282,3 +282,59 @@ test("a volatile element cut by ellipsis, a vertical line clamp and an input val
   await assert.rejects(dump(`<input class="abs" value="typed" style="width:100px">`), /value of an input/);
   assert.ok((await dump(`<input class="abs" value="" style="width:100px" aria-label="Empty">`)).elements.length === 1);
 });
+
+test("an input exports its implicit ARIA role by type: searchbox, slider, spinbutton, textbox", { skip }, async () => {
+  const d = await dump(`<input type="search" class="abs" style="top:0;width:80px;height:20px" aria-label="s"><input type="range" class="abs" style="top:30px;width:80px;height:20px" aria-label="r">
+    <input type="number" class="abs" style="top:60px;width:80px;height:20px" aria-label="n"><input type="email" class="abs" style="top:90px;width:80px;height:20px" aria-label="e">
+    <input type="tel" class="abs" style="top:120px;width:80px;height:20px" aria-label="t"><input type="url" class="abs" style="top:150px;width:80px;height:20px" aria-label="u"><input type="text" class="abs" style="top:180px;width:80px;height:20px" aria-label="x">`);
+  const roles = Object.fromEntries(d.elements.filter((e) => e.text.length === 1).map((e) => [e.text, e.role]));
+  assert.deepEqual(roles, { s: "searchbox", r: "slider", n: "spinbutton", e: "textbox", t: "textbox", u: "textbox", x: "textbox" });
+});
+
+test("a control with direct text and a styled child is named by its whole content", { skip }, async () => {
+  const d = await dump(`<button class="abs" style="top:0">Go <span style="font-weight:700">back</span></button>`);
+  assert.equal(d.elements.find((e) => e.role === "button").text, "Go back");
+});
+
+test("a text run's right edge excludes the trailing letter-spacing of its last glyph, once per line", { skip }, async () => {
+  const spaced = await dump(`<span class="abs" style="top:0;font:20px monospace;letter-spacing:10px">abcd</span><span class="abs" style="top:40px;font:20px monospace">abcd</span>`);
+  const [a, b] = spaced.elements;
+  assert.equal(a.text, "abcd");
+  assert.ok(Math.abs(a.rect.w - (b.rect.w + 4 * 10 - 10)) < 0.1, `spaced ${a.rect.w} plain ${b.rect.w}`);
+  const wrapped = await dump(`<span class="abs" style="top:0;width:90px;font:20px monospace;letter-spacing:10px">ab cd</span>`);
+  assert.equal(wrapped.elements.length, 2);
+  assert.ok(wrapped.elements.every((e) => Math.abs(e.rect.w - (2 * 12 + 2 * 10 - 10)) < 0.1), JSON.stringify(wrapped.elements.map((e) => e.rect.w)));
+});
+
+test("a percentage border radius resolves against the element's own box, capped at half the short side", { skip }, async () => {
+  const d = await dump(`<button class="abs" style="top:0;width:44px;height:44px;border-radius:50%;background:#123456" aria-label="c"></button>
+    <button class="abs" style="top:60px;width:100px;height:40px;border-radius:50%;background:#123456" aria-label="p"></button>
+    <button class="abs" style="top:120px;width:100px;height:40px;border-radius:10%;background:#123456" aria-label="q"></button>
+    <button class="abs" style="top:180px;width:100px;height:40px;border-radius:999px;background:#123456" aria-label="r"></button>`);
+  const radius = Object.fromEntries(d.elements.filter((e) => e.role === "button").map((e) => [e.text, e.radius]));
+  assert.deepEqual(radius, { c: 22, p: 20, q: 4, r: 20 });
+});
+
+test("role=img and role=dialog export their accessible name; none stays empty, never invented", { skip }, async () => {
+  const d = await dump(`<span id="t" class="abs" style="top:200px;left:200px">Drawer title</span>
+    <span role="img" aria-label="Unwatched" class="abs" style="top:10px;left:0;width:12px;height:12px;background:#f00"></span>
+    <span role="img" class="abs" style="top:30px;left:0;width:12px;height:12px;background:#0f0"></span>
+    <div role="dialog" aria-labelledby="t" class="abs" style="top:60px;left:0;width:100px;height:60px;background:#ccc"></div>
+    <div role="dialog" aria-label="Filters" class="abs" style="top:130px;left:0;width:100px;height:60px;background:#ddd"></div>
+    <div role="dialog" class="abs" style="top:200px;left:0;width:100px;height:60px;background:#eee"></div>
+    <span role="img" aria-label="Unpainted" class="abs" style="top:270px;left:0;width:12px;height:12px"></span>`);
+  const by = (role) => d.elements.filter((e) => e.role === role).sort((a, b) => a.rect.y - b.rect.y).map((e) => e.text);
+  assert.deepEqual(by("img"), ["Unwatched", "", "Unpainted"]);
+  assert.deepEqual(by("dialog"), ["Drawer title", "Filters", ""]);
+});
+
+test("a colour-only layer equal to the composite already under it adds no paint; a different one does", { skip }, async () => {
+  const d = await dump(`<div class="abs" style="top:0;left:0;width:400px;height:200px;background:#1b181b"></div>
+    <div class="abs" style="top:0;left:150px;width:250px;height:200px;background:#1b181b"><span class="abs" style="top:10px;left:10px">child</span></div>
+    <div class="abs" style="top:220px;left:0;width:100px;height:30px;background:#334455"></div>
+    <div class="abs" style="top:260px;left:0;width:100px;height:30px;background:#1b181b"></div>`);
+  /* the second #1b181b layer (left 150) and nothing else is dropped; its text child stays; the layer on the white page keeps its fill */
+  const boxes = d.elements.filter((e) => e.role === "container").map((e) => `${e.rect.x}:${e.rect.y}:${e.background}`);
+  assert.deepEqual(boxes, ["0:0:#1b181b", "0:220:#334455", "0:260:#1b181b"]);
+  assert.equal(d.elements.filter((e) => e.text === "child").length, 1);
+});
