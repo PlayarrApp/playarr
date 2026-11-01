@@ -118,12 +118,22 @@ struct TVProfileAvatar: View {
                 .frame(width: size, height: size)
                 .clipShape(Circle())
         } else {
+            #if os(tvOS)
+            // Rasterised once and blitted: a live Canvas drew its curves differently after the parity measurement hid and showed it
+            // (the Device tile's face moved by up to 41 levels), which broke the PNG/layout bind.
+            if let bitmap = TVAvatarBitmap.image(for: self) {
+                Image(uiImage: bitmap).resizable().frame(width: size, height: size)
+            } else {
+                presetBody
+            }
+            #else
             presetBody
+            #endif
         }
     }
 
     @ViewBuilder
-    private var presetBody: some View {
+    var presetBody: some View {
         let index = presetName.flatMap { Self.order.firstIndex(of: $0) } ?? Self.presetIndex(for: userID)
         let preset = Self.preset(index)
         let art = size * 0.84
@@ -301,3 +311,21 @@ enum TVSVGPath {
         case number(CGFloat)
     }
 }
+
+#if os(tvOS)
+@MainActor
+private enum TVAvatarBitmap {
+    private static var cache: [String: UIImage] = [:]
+
+    static func image(for avatar: TVProfileAvatar) -> UIImage? {
+        let scale = UIScreen.main.scale
+        let key = "\(avatar.userID)|\(avatar.presetName ?? "")|\(avatar.size)|\(scale)"
+        if let cached = cache[key] { return cached }
+        let renderer = ImageRenderer(content: avatar.presetBody)
+        renderer.scale = scale
+        guard let image = renderer.uiImage else { return nil }
+        cache[key] = image
+        return image
+    }
+}
+#endif

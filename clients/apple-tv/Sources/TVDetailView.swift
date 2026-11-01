@@ -62,7 +62,7 @@ struct TVWorkDetailView: View {
 
     private var content: some View {
         ZStack {
-            TVStageBackground()
+            TVWebPageBase()
             Group {
                 switch viewModel.state {
                 case .idle, .loading:
@@ -132,10 +132,10 @@ struct TVWorkDetailView: View {
 
     /// Web `.tv-detail-title`: `max-width: 9ch; text-wrap: balance`, so two lines split where the longer one is shortest.
     private func titleLines(_ title: String) -> [String] {
-        let greedy = TVTextWrap.lines(title, weight: 560, size: 69.12, kern: -4.98, width: 379.5)
+        let greedy = TVTextWrap.lines(title, weight: TVWeb.titleWeight, size: TVWeb.titleSize, kern: TVWeb.titleTracking, width: TVWeb.titleWrapWidth)
         let words = title.split(separator: " ").map(String.init)
         guard greedy.count == 2, words.count > 2 else { return greedy }
-        func width(_ text: String) -> CGFloat { TVTextWrap.lines(text, weight: 560, size: 69.12, kern: -4.98, width: 10_000).count == 1 ? TVTextWrap.measure(text, weight: 560, size: 69.12, kern: -4.98) : 10_000 }
+        func width(_ text: String) -> CGFloat { TVTextWrap.lines(text, weight: TVWeb.titleWeight, size: TVWeb.titleSize, kern: TVWeb.titleTracking, width: 10_000).count == 1 ? TVTextWrap.measure(text, weight: TVWeb.titleWeight, size: TVWeb.titleSize, kern: TVWeb.titleTracking) : 10_000 }
         let best = (1..<words.count).map { i in (words[..<i].joined(separator: " "), words[i...].joined(separator: " ")) }
             .min { max(width($0.0), width($0.1)) < max(width($1.0), width($1.1)) }
         return best.map { [$0.0, $0.1] } ?? greedy
@@ -143,10 +143,10 @@ struct TVWorkDetailView: View {
 
     private func kicker(_ text: String) -> some View {
         Text(text.uppercased())
-            .font(TVTheme.font(size: 12.29, css: 820))
-            .tracking(0.98)
+            .font(TVTheme.font(size: TVWeb.kickerSize, css: TVWeb.detailKickerWeight820))
+            .tracking(TVWeb.kickerTracking)
             .foregroundStyle(DesignTokens.Stage.brandInk)
-            .parityLayout(text: text.uppercased(), size: 12.29, weight: Int(820), color: DesignTokens.Stage.brandInk, tracking: 0.98)
+            .parityLayout(text: text.uppercased(), size: TVWeb.kickerSize, weight: Int(TVWeb.detailKickerWeight820), color: DesignTokens.Stage.brandInk, tracking: TVWeb.kickerTracking)
             .placed(x: 153.6, y: 259.2, w: 455, h: 18.4)
     }
 
@@ -155,27 +155,27 @@ struct TVWorkDetailView: View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                 Text(line)
-                    .font(TVTheme.font(size: 69.12, css: 560))
-                    .tracking(-4.98)
+                    .font(TVTheme.font(size: TVWeb.titleSize, css: TVWeb.titleWeight))
+                    .tracking(TVWeb.titleTracking)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
-                    .parityLayout(text: line, role: "heading", size: 69.12, weight: 560, color: DesignTokens.Color.textPrimary, tracking: -4.98)
+                    .parityLayout(text: line, role: "heading", size: TVWeb.titleSize, weight: Int(TVWeb.titleWeight), color: DesignTokens.Color.textPrimary, tracking: TVWeb.titleTracking)
                     .fixedSize()
-                    .frame(width: 379.5, height: 62.2, alignment: .leading)
+                    .frame(width: TVWeb.titleWrapWidth, height: TVWeb.titleLine, alignment: .leading)
             }
         }
-        .placed(x: 153.6, y: 303.5, w: 379.5, h: 62.2 * CGFloat(lines.count))
+        .placed(x: 153.6, y: 303.5, w: TVWeb.titleWrapWidth, h: TVWeb.titleLine * CGFloat(lines.count))
     }
 
     /// Web `.tv-detail-meta`: plain spans 0.85rem apart (no dividers); the first is ink-soft and bold, the rest ink-muted.
     private func metaRow(_ parts: [(String, Bool)]) -> some View {
-        HStack(spacing: 13.6) {
+        HStack(spacing: TVWeb.detailMetaGap) {
             ForEach(Array(parts.enumerated()), id: \.offset) { _, part in
                 Text(part.0)
-                    .font(TVTheme.font(size: 10.56, weight: part.1 ? .bold : .regular))
+                    .font(TVTheme.font(size: TVWeb.detailMetaLineSize, css: part.1 ? TVWeb.detailMetaLeadWeight : TVWeb.regularWeight))
                     .foregroundStyle(part.1 ? DesignTokens.Stage.inkSoft : DesignTokens.Stage.inkMuted)
                     .lineLimit(1)
-                    .parityLayout(text: part.0, size: 10.56, weight: Int(TVTheme.cssWeight(part.1 ? .bold : .regular)), color: part.1 ? DesignTokens.Stage.inkSoft : DesignTokens.Stage.inkMuted)
+                    .parityLayout(text: part.0, size: TVWeb.detailMetaLineSize, weight: Int(part.1 ? TVWeb.detailMetaLeadWeight : TVWeb.regularWeight), color: part.1 ? DesignTokens.Stage.inkSoft : DesignTokens.Stage.inkMuted)
             }
         }
     }
@@ -183,7 +183,7 @@ struct TVWorkDetailView: View {
     private func movieCopy(_ detail: WorkDetail) -> some View {
         let work = detail.work
         let lines = titleLines(work.title)
-        let bottom = 303.5 + 62.2 * CGFloat(lines.count)
+        let bottom = 303.5 + TVWeb.titleLine * CGFloat(lines.count)
         let metaY = bottom + 27
         let synopsisY = metaY + 37.5
         var parts: [(String, Bool)] = [(work.kind.rawValue.capitalized, true)]
@@ -192,21 +192,21 @@ struct TVWorkDetailView: View {
         if let date = TVWebFormat.date(work.releaseDate) { parts.append(("Released  \(date)", false)) }
         parts += work.genres.map { ($0, false) }
         let synopsis = work.overview ?? ""
-        let synopsisLines = synopsis.isEmpty ? 0 : min(5, max(1, TVTextWrap.lines(synopsis, weight: 400, size: 12.864, kern: 0, width: 336).count))
-        let buttonsY = synopsisY + 20.3 * CGFloat(synopsisLines) + 37.8
+        let synopsisLines = synopsis.isEmpty ? 0 : min(5, max(1, TVTextWrap.lines(synopsis, weight: 400, size: TVWeb.synopsisSize, kern: 0, width: 336).count))
+        let buttonsY = synopsisY + TVWeb.synopsisLine * CGFloat(synopsisLines) + 37.8
         return ZStack(alignment: .topLeading) {
             kicker(work.genres.first ?? work.kind.rawValue)
             titleBlock(lines)
             metaRow(parts).placed(x: 153.6, y: metaY, h: 15.8)
             if !synopsis.isEmpty {
-                Text(synopsis)
-                    .font(TVTheme.font(size: 12.86, weight: .regular))
+                Text.parityWrapped(synopsis)
+                    .font(TVTheme.font(size: TVWeb.synopsisSize, css: TVWeb.regularWeight))
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
                     .lineSpacing(macDetail(2.8, 0))
-                    .parityLayout(text: synopsis, size: 12.86, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Stage.inkMuted) // static web ref: 21 pt line pitch
+                    .parityLayout(text: synopsis, size: TVWeb.synopsisSize, weight: Int(TVWeb.regularWeight), color: DesignTokens.Stage.inkMuted) // static web ref: 21 pt line pitch
                     .frame(width: 336, alignment: .leading)
-                    .placed(x: 153.6, y: synopsisY + macDetail(1.5, 0), w: 336, h: 20.3 * CGFloat(synopsisLines), alignment: .topLeading)
+                    .placed(x: 153.6, y: synopsisY + macDetail(1.5, 0), w: 336, h: TVWeb.synopsisLine * CGFloat(synopsisLines), alignment: .topLeading)
             }
             actionPill("Download", glyph: "\u{21E9}", x: 153.6, y: buttonsY, width: 142, name: "Download \(work.title)") { showDownloadNote = true }
             actionPill("Playback", glyph: "\u{2637}", x: 311.6, y: buttonsY, width: 142, name: "Playback settings for \(work.title)")
@@ -224,7 +224,7 @@ struct TVWorkDetailView: View {
         let seasonNumber = season?.season.seasonNumber ?? 1
         let code = episode.map { episodeCode(season: seasonNumber, episode: $0.episode.episodeNumber) }
         let lines = titleLines(work.title)
-        let bottom = 303.5 + 62.2 * CGFloat(lines.count)
+        let bottom = 303.5 + TVWeb.titleLine * CGFloat(lines.count)
         let episodeTitle = episode.map { $0.episode.title ?? "Episode \($0.episode.episodeNumber)" }
         let episodeY = bottom + 19.5
         let metaY = episodeY + 24.3 + 26.9
@@ -243,18 +243,18 @@ struct TVWorkDetailView: View {
         }
         if let genre = work.genres.first { parts.append((genre, false)) }
         let synopsis = episode?.episode.overview ?? work.overview ?? ""
-        let synopsisLines = synopsis.isEmpty ? 0 : min(5, max(1, TVTextWrap.lines(synopsis, weight: 400, size: 12.864, kern: 0, width: 336).count))
-        let buttonsY = synopsisY + 20.3 * CGFloat(synopsisLines) + 12
+        let synopsisLines = synopsis.isEmpty ? 0 : min(5, max(1, TVTextWrap.lines(synopsis, weight: 400, size: TVWeb.synopsisSize, kern: 0, width: 336).count))
+        let buttonsY = synopsisY + TVWeb.synopsisLine * CGFloat(synopsisLines) + 12
         return ZStack(alignment: .topLeading) {
             kicker(code ?? work.kind.rawValue)
             titleBlock(lines)
             if let episodeTitle {
                 Text(episodeTitle)
-                    .font(TVTheme.font(size: 21.12, weight: .medium))
-                    .tracking(-0.74)
+                    .font(TVTheme.font(size: TVWeb.episodeTitleSize, css: TVWeb.episodeTitleWeight))
+                    .tracking(TVWeb.episodeTitleTracking)
                     .foregroundStyle(DesignTokens.Color.textSecondary)
                     .lineLimit(1)
-                    .parityLayout(text: episodeTitle, role: "heading", size: 21.12, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textSecondary, tracking: -0.74)
+                    .parityLayout(text: episodeTitle, role: "heading", size: TVWeb.episodeTitleSize, weight: Int(TVWeb.episodeTitleWeight), color: DesignTokens.Color.textSecondary, tracking: TVWeb.episodeTitleTracking)
                     .placed(x: 153.6, y: episodeY, w: 309.2, h: 24.3)
             }
             metaRow(parts).placed(x: 153.6, y: metaY, h: 15.8)
@@ -267,13 +267,13 @@ struct TVWorkDetailView: View {
                     .placed(x: 153.6, y: lagY, w: 455, h: 28.8)
             }
             if !synopsis.isEmpty {
-                Text(synopsis)
-                    .font(TVTheme.font(size: 12.86, weight: .regular))
+                Text.parityWrapped(synopsis)
+                    .font(TVTheme.font(size: TVWeb.synopsisSize, css: TVWeb.regularWeight))
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
-                    .parityLayout(text: synopsis, size: 12.86, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Stage.inkMuted)
+                    .parityLayout(text: synopsis, size: TVWeb.synopsisSize, weight: Int(TVWeb.regularWeight), color: DesignTokens.Stage.inkMuted)
                     .frame(width: 336, alignment: .leading)
-                    .placed(x: 153.6, y: synopsisY, w: 336, h: 20.3 * CGFloat(synopsisLines), alignment: .topLeading)
+                    .placed(x: 153.6, y: synopsisY, w: 336, h: TVWeb.synopsisLine * CGFloat(synopsisLines), alignment: .topLeading)
             }
             seriesStart(detail, ordered: ordered, x: 153.6, y: buttonsY)
             actionPill("Add to watchlist", glyph: "+", x: 325.6, y: buttonsY, width: 142) { addToWatchlist(work) }
@@ -489,7 +489,7 @@ struct TVWorkDetailView: View {
     private func movieRail(_ detail: WorkDetail) -> some View {
         let list = chapters(runtimeMs: detail.runtimeMs)
         return ZStack(alignment: .topLeading) {
-            TVRailPanelGradient(width: 1190.4)
+            TVRailPanelGradient(width: TVWeb.railWidth)
             if !list.isEmpty {
                 railHeading("Chapters", count: "\(list.count) scene markers", y: 540)
                 ForEach(list) { chapter in
@@ -504,9 +504,9 @@ struct TVWorkDetailView: View {
                         }
                         .overlay(alignment: .bottomTrailing) {
                             Text(String(format: "%02d", chapter.index + 1))
-                                .font(TVTheme.font(size: 19.2, css: 560))
+                                .font(TVTheme.font(size: 19.2, css: TVWeb.episodeNumberWeight))
                                 .foregroundStyle(Color.white)
-                                .parityLayout(text: String(format: "%02d", chapter.index + 1), size: 19.2, weight: Int(560), color: Color.white)
+                                .parityLayout(text: String(format: "%02d", chapter.index + 1), size: 19.2, weight: Int(TVWeb.episodeNumberWeight), color: Color.white)
                                 .padding(.trailing, 11.6)
                                 .padding(.bottom, 8.8)
                         }
@@ -564,6 +564,7 @@ struct TVWorkDetailView: View {
                         }
                         .buttonStyle(TVFocusableCardButtonStyle())
                         .accessibilityLabel("Open \(other.title)")
+                        .accessibilityAddTraits(.isLink) // it opens the title: the role the export declares is the one the app reports
                         .disabled(frozen) // not .focusable: on a Button it adds a second, inert focus target
                     }
                 }
@@ -673,7 +674,7 @@ struct TVWorkDetailView: View {
         let base: CGFloat = viewModel.similar.isEmpty ? 358 : 540
         let shift = max(0, base + CGFloat(activeSeason) * 314.3 + 270 - 1020)
         return ZStack(alignment: .topLeading) {
-            TVRailPanelGradient(width: 1190.4)
+            TVRailPanelGradient(width: TVWeb.railWidth)
             Group {
                 ForEach(Array(ordered.enumerated()), id: \.element.season.id) { seasonIndex, season in
                     let top = base + CGFloat(seasonIndex) * 314.3
@@ -749,9 +750,9 @@ struct TVWorkDetailView: View {
             #endif
             .overlay(alignment: .bottomTrailing) {
                 Text(String(format: "%02d", ep.episodeNumber))
-                    .font(TVTheme.font(size: 19.2, css: 560))
+                    .font(TVTheme.font(size: 19.2, css: TVWeb.episodeNumberWeight))
                     .foregroundStyle(Color.white)
-                    .parityLayout(text: String(format: "%02d", ep.episodeNumber), size: 19.2, weight: 560, color: Color.white)
+                    .parityLayout(text: String(format: "%02d", ep.episodeNumber), size: 19.2, weight: Int(TVWeb.episodeNumberWeight), color: Color.white)
                     .padding(.trailing, 11.6)
                     .padding(.bottom, 8.8)
             }
@@ -784,6 +785,7 @@ struct TVWorkDetailView: View {
         // Media cards show focus as a soft shadow plus a lift, never a ring or fill (owner ruling). Pinned web values
         // (page-layout spec, section 5 item 1a): the card rises 7 px over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1).
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: selected)
+        let episodeName = "\(String(format: "%02d", ep.episodeNumber)) \(code.replacingOccurrences(of: "S ", with: "S").replacingOccurrences(of: "E ", with: "E")) \(title)"
         if let mediaFileID = episode.mediaFileID, !frozen {
             NavigationLink {
                 TVPlayerView(
@@ -800,9 +802,11 @@ struct TVWorkDetailView: View {
                     )
                 )
             } label: {
-                card.parityBox("link", text: "\(String(format: "%02d", ep.episodeNumber)) \(code.replacingOccurrences(of: "S ", with: "S").replacingOccurrences(of: "E ", with: "E")) \(title)")
+                card.parityBox("link", text: episodeName)
             }
             .buttonStyle(TVFocusableCardButtonStyle())
+            .accessibilityLabel(episodeName)
+            .accessibilityAddTraits(.isLink) // it opens the player
             .focused($focusedEpisodeID, equals: ep.id)
         } else {
             card

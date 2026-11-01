@@ -16,8 +16,7 @@ struct TVCalendarView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            DesignTokens.Color.backgroundElevated.ignoresSafeArea()
-                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
+            TVWebPageBase()
             if let viewModel {
                 content(viewModel)
             }
@@ -52,7 +51,7 @@ struct TVCalendarView: View {
             TVKeyArt(url: entry.posterURL.flatMap { environment.apiClient.artworkURL(forPath: $0) })
             TVStageWash()
             // Web `ListPanel`: the frosted right-hand surface the agenda list sits on (x 729.6, 1190.4 wide, full height).
-            TVRailPanelGradient(width: 1190.4, bleed: false)
+            TVRailPanelGradient(width: TVWeb.railWidth, bleed: false)
             agendaDetail(entry, item: item, today: model.today, model: model)
         }
 
@@ -88,7 +87,7 @@ struct TVCalendarView: View {
                         .font(TVTheme.font(size: 22.4, weight: .bold))
                         .foregroundStyle(DesignTokens.Color.textPrimary)
                         .parityLayout(text: "Nothing scheduled", size: 22.4, weight: Int(TVTheme.cssWeight(.bold)), color: DesignTokens.Color.textPrimary)
-                        .placed(x: 783.4, y: 170, w: 600, h: 33.6)
+                        .placed(x: TVWeb.gridLeft, y: 170, w: 600, h: 33.6)
                 } else {
                     agendaList(model)
                 }
@@ -223,7 +222,7 @@ struct TVCalendarView: View {
         // The list starts under the header row so the header controls stay reachable with UP (focus search).
         .parityBackdrop(DesignTokens.Stage.bg) // web: the list's text sits on the page background colour
         .mask(Self.topFade)
-        .placed(x: 783.4, y: 130, w: 1033.4 + 30, h: 950, alignment: .topLeading)
+        .placed(x: TVWeb.gridLeft, y: 130, w: TVWeb.cardContentWidth + 30, h: 950, alignment: .topLeading)
     }
 
     private func dayHeading(_ day: String, today: String) -> some View {
@@ -287,6 +286,7 @@ struct TVCalendarView: View {
             ? (item.entries.count == 1 ? nil : "\(item.entries.count) episodes")
             : entry.flatMap { Self.episodeCode($0) }
         let subtitle = [code, item.entries.count > 1 ? nil : entry?.subtitle].compactMap { $0 }.joined(separator: " \u{00B7} ")
+        let cardName = [Self.title(of: item), subtitle, entry?.releaseAt.map { Self.format($0, "HH:mm") } ?? "All day", entry.map { Self.releaseLabel($0) } ?? "", entry.map { Self.kindLabel($0) } ?? "", TVStatusPill.label(Self.tone(of: item, today: today))].filter { !$0.isEmpty }.joined(separator: " ")
         let available = item.entries.allSatisfy(\.hasFile)
         return HStack(alignment: .center, spacing: 14.4) {
             posterView(entry)
@@ -329,7 +329,8 @@ struct TVCalendarView: View {
         .padding(.trailing, 12)
         // Web: the card is the poster (60) plus 9 pt above and below, or its three text lines plus the same padding when taller.
         .frame(width: width, height: subtitle.isEmpty ? 78 : 106.9)
-        .parityBox("button", text: [Self.title(of: item), subtitle, entry?.releaseAt.map { Self.format($0, "HH:mm") } ?? "All day", entry.map { Self.releaseLabel($0) } ?? "", entry.map { Self.kindLabel($0) } ?? "", TVStatusPill.label(Self.tone(of: item, today: today))].filter { !$0.isEmpty }.joined(separator: " "), radius: 12, fill: DesignTokens.Stage.surfaceStrong)
+        .accessibilityLabel(cardName)
+        .parityBox("button", text: cardName, radius: 12, fill: DesignTokens.Stage.surfaceStrong)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(DesignTokens.Stage.surfaceStrong))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DesignTokens.Stage.line.opacity(0.3), lineWidth: 1))
         // The left border shows availability: we have it (playable) or not (owner rule).
@@ -513,7 +514,7 @@ struct TVCalendarView: View {
         } else {
             ForEach(0..<5, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 12).fill(block.opacity(0.5))
-                    .placed(x: 783.4, y: 238 + 120.6 * CGFloat(index), w: 1033.4, h: 106.9)
+                    .placed(x: TVWeb.gridLeft, y: 238 + 120.6 * CGFloat(index), w: TVWeb.cardContentWidth, h: 106.9)
             }
         }
     }
@@ -521,7 +522,7 @@ struct TVCalendarView: View {
     @ViewBuilder
     private func calendarLink(_ model: CalendarViewModel) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.")
+            Text.parityWrapped("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.")
                 .font(TVTheme.font(size: 12.48, css: 400))
                 .foregroundStyle(DesignTokens.Color.textSecondary)
                 .parityLayout(text: "Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.", size: 12.48, weight: Int(400), color: DesignTokens.Color.textSecondary)
@@ -534,7 +535,7 @@ struct TVCalendarView: View {
                 linkButton("Create subscription link") { Task { await model.createFeed() } }
             case .active:
                 Text("Subscription link active").font(TVTheme.font(size: 12.48, css: 640)).foregroundStyle(DesignTokens.Color.textPrimary).parityLayout(text: "Subscription link active", size: 12.48, weight: Int(640), color: DesignTokens.Color.textPrimary)
-                Text("For security the link is not shown again. Regenerate it to get a new one.")
+                Text.parityWrapped("For security the link is not shown again. Regenerate it to get a new one.")
                     .font(TVTheme.font(size: 12.48, css: 400)).foregroundStyle(DesignTokens.Color.textDisabled)
                     .parityLayout(text: "For security the link is not shown again. Regenerate it to get a new one.", size: 12.48, weight: Int(400), color: DesignTokens.Color.textDisabled)
                     .fixedSize(horizontal: false, vertical: true)
@@ -597,38 +598,38 @@ struct TVCalendarView: View {
     /// and the server's actions.
     private func agendaDetail(_ entry: CalendarEntry, item: CalendarItem, today: String, model: CalendarViewModel) -> some View {
         let title = Self.title(of: item)
-        let lines = max(1, TVTextWrap.lines(title, weight: 560, size: 69.12, kern: -4.98, width: 379.5).count)
-        let metaY = 307.5 + 62.2 * CGFloat(lines) + 27
+        let lines = max(1, TVTextWrap.lines(title, weight: TVWeb.titleWeight, size: TVWeb.titleSize, kern: TVWeb.titleTracking, width: TVWeb.titleWrapWidth).count)
+        let metaY = 307.5 + TVWeb.titleLine * CGFloat(lines) + 27
         let code = item.entries.count > 1 ? "\(item.entries.count) episodes" : Self.episodeCode(entry)
         let codeLine = [code, item.entries.count > 1 ? nil : (entry.subtitle ?? "TBA")].compactMap { $0 }.joined(separator: " \u{00B7} ")
         let when = entry.releaseAt.map { Self.format($0, "EEEE, d MMMM yyyy 'at' HH:mm") }
             ?? CalendarDays.displayDate(entry.date).map { Self.format($0, "EEEE, d MMMM yyyy") } ?? entry.date
-        let soft = DesignTokens.Color.textPrimary.opacity(0.86)
+        let soft = DesignTokens.Stage.detailsSoft
         return ZStack(alignment: .topLeading) {
             Text("\(Self.kindLabel(entry)) \u{00B7} \(Self.releaseLabel(entry))".uppercased())
-                .font(TVTheme.font(size: 12.288, css: 860))
+                .font(TVTheme.font(size: TVWeb.kickerSize, css: TVWeb.detailsKickerWeight))
                 .tracking(0.98)
                 .foregroundStyle(DesignTokens.Stage.brandInk)
-                .parityLayout(text: "\(Self.kindLabel(entry)) \u{00B7} \(Self.releaseLabel(entry))".uppercased(), size: 12.288, weight: Int(860), color: DesignTokens.Stage.brandInk, tracking: 0.98)
+                .parityLayout(text: "\(Self.kindLabel(entry)) \u{00B7} \(Self.releaseLabel(entry))".uppercased(), size: TVWeb.kickerSize, weight: Int(TVWeb.detailsKickerWeight), color: DesignTokens.Stage.brandInk, tracking: 0.98)
                 .placed(x: 153.6, y: 263.2, w: 455, h: 18.4)
             TVHeroTitle(title: title, role: "text")
-                .placed(x: 153.6, y: 307.5, w: 379.5, h: 62.2 * CGFloat(lines), alignment: .topLeading)
+                .placed(x: 153.6, y: 307.5, w: TVWeb.titleWrapWidth, h: TVWeb.titleLine * CGFloat(lines), alignment: .topLeading)
             HStack(spacing: 12.8) {
                 Text(codeLine)
-                    .parityLayout(text: codeLine, size: 13.056, weight: 600, color: soft)
+                    .parityLayout(text: codeLine, size: TVWeb.detailsMetaSize, weight: Int(TVWeb.detailsTextWeight), color: soft)
                 Text(when)
-                    .parityLayout(text: when, size: 13.056, weight: 600, color: soft)
+                    .parityLayout(text: when, size: TVWeb.detailsMetaSize, weight: Int(TVWeb.detailsTextWeight), color: soft)
             }
-            .font(TVTheme.font(size: 13.056, css: 600))
+            .font(TVTheme.font(size: TVWeb.detailsMetaSize, css: TVWeb.detailsTextWeight))
             .foregroundStyle(soft)
             .placed(x: 153.6, y: metaY, h: 19.6)
             TVStatusPill(tone: Self.tone(of: item, today: today))
                 .placed(x: 153.6, y: metaY + 36.9, h: 26.6)
             if let overview = entry.overview, !overview.isEmpty {
                 Text(overview)
-                    .font(TVTheme.font(size: 13.82, css: 600))
+                    .font(TVTheme.font(size: TVWeb.detailsOverviewSize, css: TVWeb.detailsTextWeight))
                     .foregroundStyle(soft)
-                    .parityLayout(text: overview, size: 13.82, weight: 600, color: soft)
+                    .parityLayout(text: overview, size: TVWeb.detailsOverviewSize, weight: Int(TVWeb.detailsTextWeight), color: soft)
                     .placed(x: 153.6, y: metaY + 86, w: 455, h: 19)
             }
             actionButtons(entry, model: model, y: metaY + (entry.overview?.isEmpty == false ? 130.6 : 87.2))
@@ -735,7 +736,7 @@ struct TVCalendarView: View {
         .buttonStyle(TVFocusableCardButtonStyle())
         .focusEffectDisabled()
         .accessibilityLabel(name)
-        .opacity(enabled ? 1 : 0.5)
+        .parityOpacity(enabled ? 1 : 0.5)
         .placed(x: x, y: y, w: width, h: 58)
     }
 

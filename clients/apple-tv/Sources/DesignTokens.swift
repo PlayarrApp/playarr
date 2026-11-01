@@ -37,6 +37,8 @@ enum DesignTokens {
         static let ink = adaptive(light: 0x382621, dark: 0xf4f0f1)
         static let inkSoft = adaptive(light: 0x443a40, dark: 0xcdc1c6)
         static let inkMuted = adaptive(light: 0x4d4248, dark: 0xc2b5bb)
+        /// `--dp-soft: color-mix(in srgb, var(--ink) 88%, var(--surface))` (global.css `.details-panel`): the details panel's meta and overview ink.
+        static let detailsSoft = adaptive(light: TVWeb.mix(0x382621, 88, 0xfbfaf9), dark: TVWeb.mix(0xf4f0f1, 88, 0x1b181b))
         /// The pre-AAA muted ink, kept only for hairlines and borders (web borders did not change).
         static let line = adaptive(light: 0xa5969e, dark: 0x887a82)
         static let accentSoft = adaptive(light: 0xc5b8bd, dark: 0x675961)
@@ -122,7 +124,7 @@ enum DesignTokens {
         static let md: CGFloat = 6
         static let lg: CGFloat = 8
         static let full: CGFloat = 9999
-        static let card: CGFloat = 12
+        static let card: CGFloat = TVWeb.cardRadius // `--card-radius: clamp(8px, 0.65 * var(--vw), 13px)` (12.48)
         static let button: CGFloat = 4
         static let input: CGFloat = 9999 // pill search field
         static let badge: CGFloat = 2
@@ -229,11 +231,11 @@ enum DesignTokens {
         /// intact while still wrapping "Lane" onto a third line.
         static let featureTitleMaxWidth: CGFloat = 455
         // Overview: clamp(0.58rem, 0.67vw, 0.84rem) → ~13.
-        static let featureOverviewSize: CGFloat = 13
+        static let featureOverviewSize: CGFloat = TVWeb.synopsisSize
         /// SPA overview `max-width: 42ch` at small body size ≈ 300.
         static let featureOverviewMaxWidth: CGFloat = 300
         // Rail heading: clamp(0.76rem, 0.92vw, 1.18rem) → ~18.
-        static let railHeadingSize: CGFloat = 18
+        static let railHeadingSize: CGFloat = TVWeb.railHeadingSize
         // SPA `.tv-key-art > span` watermark: top 28%, left 18%, max 34vw,
         // font-size clamp(3rem, 7vw, 9rem) → 134 @ 1920, weight 760, opacity 0.22,
         // line-height 0.82.
@@ -345,13 +347,13 @@ enum DesignTokens {
         /// Grid panel width 62% (1190.4 from x 729.6, `.tv-library-grid-panel`)
         static let libraryGridWidthFraction: CGFloat = 0.62
         /// First card art top-left (measured @ 1920×1080 SPA frame).
-        static let libraryCardOriginX: CGFloat = 783.5
+        static let libraryCardOriginX: CGFloat = TVWeb.gridLeft
         static let libraryCardOriginY: CGFloat = 162
         /// Art tile size (16:9) measured from SPA first card.
-        static let libraryCardArtWidth: CGFloat = 327.2
-        static let libraryCardArtHeight: CGFloat = 184
+        static let libraryCardArtWidth: CGFloat = TVWeb.cardWidthMedium
+        static let libraryCardArtHeight: CGFloat = TVWeb.layoutUnit(TVWeb.cardWidthMedium * 9 / 16)
         /// Centre-to-centre pitch of unwatched dots / cards.
-        static let libraryCardPitchX: CGFloat = 353
+        static let libraryCardPitchX: CGFloat = TVWeb.cardPitch()
         static let libraryCardPitchY: CGFloat = 240.4
         /// Title under art.
         static let libraryCardTitleHeight: CGFloat = 28

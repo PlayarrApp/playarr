@@ -75,6 +75,6 @@ final class DesignTokensTests: XCTestCase {
     func testRadiusScale() {
         XCTAssertEqual(DesignTokens.Radius.sm, 4)
         XCTAssertEqual(DesignTokens.Radius.md, 6)
-        XCTAssertEqual(DesignTokens.Radius.card, 12)
+        XCTAssertEqual(DesignTokens.Radius.card, 12.48, accuracy: 0.001) // `--card-radius: clamp(8px, 0.65vw, 13px)` at 1920
     }
 }

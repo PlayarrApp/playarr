@@ -680,29 +680,70 @@ struct TVNavIconVector {
     }
 }
 
+/// The nav icons are rasterised once (Core Graphics, one scale) and every later draw blits that bitmap. A live Canvas re-rasterised
+/// its curves after the parity measurement hid and showed the icon again, with slightly different antialiasing (up to 48 levels on
+/// the search, series, movies and calendar icons: roundedRect and ellipse paths), which broke the PNG/layout bind.
+#if canImport(UIKit)
+@MainActor
+private enum TVNavIconBitmap {
+    private static var cache: [TVNavTab: UIImage] = [:]
+
+    static func image(for tab: TVNavTab, vector: TVNavIconVector) -> UIImage {
+        if let cached = cache[tab] { return cached }
+        let side = TVNavIconVector.renderedSize
+        let format = UIGraphicsImageRendererFormat.default()
+        let image = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).image { renderer in
+            let scale = side / TVNavIconVector.viewBoxSize
+            let transform = CGAffineTransform(scaleX: scale, y: scale)
+            let context = renderer.cgContext
+            context.setStrokeColor(UIColor.black.cgColor)
+            context.setFillColor(UIColor.black.cgColor)
+            context.setLineWidth(TVNavIconVector.strokeWidth * scale)
+            context.setLineCap(.round)
+            context.setLineJoin(.round)
+            for path in vector.strokes {
+                context.addPath(path.applying(transform).cgPath)
+                context.strokePath()
+            }
+            for path in vector.fills {
+                context.addPath(path.applying(transform).cgPath)
+                context.fillPath()
+            }
+        }.withRenderingMode(.alwaysTemplate)
+        cache[tab] = image
+        return image
+    }
+}
+#endif
+
 private struct TVNavVectorIcon: View {
     let tab: TVNavTab
 
     var body: some View {
         if let vector = TVNavIconVector.forTab(tab) {
-            Canvas { context, size in
-                let scale = min(size.width, size.height) / TVNavIconVector.viewBoxSize
-                let transform = CGAffineTransform(scaleX: scale, y: scale)
-                let style = StrokeStyle(lineWidth: TVNavIconVector.strokeWidth * scale, lineCap: .round, lineJoin: .round)
-                for path in vector.strokes {
-                    context.stroke(path.applying(transform), with: .foreground, style: style)
-                }
-                for path in vector.fills {
-                    context.fill(path.applying(transform), with: .foreground)
-                }
-            }
-            .frame(width: TVNavIconVector.renderedSize, height: TVNavIconVector.renderedSize)
-            .accessibilityHidden(true)
-            .parityBox("image")
+            icon(vector)
+                .frame(width: TVNavIconVector.renderedSize, height: TVNavIconVector.renderedSize)
+                .accessibilityHidden(true)
+                .parityBox("image")
         } else {
             Image(systemName: tab.systemImage)
                 .font(.system(size: 20, weight: .medium))
         }
+    }
+
+    @ViewBuilder
+    private func icon(_ vector: TVNavIconVector) -> some View {
+        #if canImport(UIKit)
+        Image(uiImage: TVNavIconBitmap.image(for: tab, vector: vector)).renderingMode(.template)
+        #else
+        Canvas { context, size in
+            let scale = min(size.width, size.height) / TVNavIconVector.viewBoxSize
+            let transform = CGAffineTransform(scaleX: scale, y: scale)
+            let style = StrokeStyle(lineWidth: TVNavIconVector.strokeWidth * scale, lineCap: .round, lineJoin: .round)
+            for path in vector.strokes { context.stroke(path.applying(transform), with: .foreground, style: style) }
+            for path in vector.fills { context.fill(path.applying(transform), with: .foreground) }
+        }
+        #endif
     }
 }
 
@@ -1050,6 +1091,8 @@ struct TVFloatingNav: View {
 
     @ViewBuilder
     private func navButton(_ tab: TVNavTab) -> some View {
+        let iconH = TVNavIconVector.renderedSize
+        let labelH: CGFloat = 10.6
         let isActive = selection == tab
         let isFocused = externalFocus.wrappedValue == .nav(tab)
         let isOneShotFocusTarget = oneShotFocusTarget == tab
@@ -1073,11 +1116,17 @@ struct TVFloatingNav: View {
         } label: {
             VStack(spacing: 2.75) { // web: the label's top sits 22.75 pt below the icon's
                 TVNavVectorIcon(tab: tab)
+                    .scaleEffect(isActive || isFocused ? 1.05 : 1)
+                    .offset(y: isActive || isFocused ? -0.05 * (iconH + 2.75 + labelH - iconH) / 2 : 0)
+                // Web scales the whole link by 1.05 (transform). Text is drawn at the scaled size directly (font, tracking and offsets x 1.05)
+                // and only the tile and icon are transformed, so glyphs are never re-rasterised through a fractional scale.
+                let k: CGFloat = isActive || isFocused ? 1.05 : 1
                 Text(tab.title)
-                    .font(TVTheme.font(size: 8.832, css: 680))
-                    .tracking(0.31)
+                    .offset(y: isActive || isFocused ? 0.05 * (iconH + 2.75) / 2 : 0)
+                    .font(TVTheme.font(size: 8.832 * k, css: 680))
+                    .tracking(0.31 * k)
                     .lineLimit(1)
-                    .parityLayout(text: tab.title, size: 8.832, weight: 680, color: isActive || isFocused ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled, tracking: 0.31)
+                    .parityLayout(text: tab.title, size: 8.832 * k, weight: 680, color: isActive || isFocused ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled, tracking: 0.31 * k)
             }
             // Web: the icon sits 15.2 pt below the link's top, 1 pt lower than the centred pair.
             .padding(.top, 2)
@@ -1090,7 +1139,6 @@ struct TVFloatingNav: View {
                 width: DesignTokens.Shell.navItemSize,
                 height: DesignTokens.Shell.navItemSize
             )
-            .parityBox("link", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Color.textPrimary : nil, alpha: 0.09)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(
@@ -1098,9 +1146,15 @@ struct TVFloatingNav: View {
                             ? DesignTokens.Color.textPrimary.opacity(0.09)
                             : Color.clear
                     )
+                    .scaleEffect(isActive || isFocused ? 1.05 : 1)
             )
-            // Web `.app-nav-link.is-active`: transform scale(1.05) (tile and content).
-            .scaleEffect(isActive || isFocused ? 1.05 : 1)
+            // Web `.app-nav-link.is-active`: transform scale(1.05) (tile and content); the box is reported at the scaled frame.
+            .overlay(
+                Color.clear
+                    .parityBox("link", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Color.textPrimary : nil, alpha: 0.09)
+                    .scaleEffect(isActive || isFocused ? 1.05 : 1)
+                    .allowsHitTesting(false)
+            )
             // Web TV nav: focus looks like the active tab (filled tile, ink text); no ring, no scale.
         }
         // Card-like style stays focusable; .plain can drop remote hand-off.

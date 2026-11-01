@@ -1,0 +1,1 @@
+- Apple TV and Mac Home rails space cards by the stylesheet gap clamp(14px, 1.3vw, 26px) (24.96 at 1920) instead of a fitted 24.9.
