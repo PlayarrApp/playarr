@@ -2140,10 +2140,9 @@ private fun MobileProfilesStage(
         PhoneProfilesHeading(playarrString(PlayarrString.ProfilesTitle), playarrString(PlayarrString.ProfilesHeading))
         // `.profiles-row`: from inset + 150 px down, scrolls sideways and clips what grows past its top edge.
         Box(Modifier.fillMaxSize().padding(top = topInset + 150.dp).clipToBounds()) {
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()).padding(start = 28.dp, end = 28.dp, top = 18.dp),
-                horizontalArrangement = Arrangement.spacedBy(22.dp),
-                verticalAlignment = Alignment.Top,
+            WebCssRow(
+                28f, 28f, listOf(156f), 22f,
+                Modifier.horizontalScroll(rememberScrollState()).padding(top = 18.dp),
             ) {
                 profiles.forEach { profile ->
                     PhoneProfileChoice(

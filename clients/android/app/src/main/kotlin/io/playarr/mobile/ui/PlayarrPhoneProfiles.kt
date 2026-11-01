@@ -110,6 +110,11 @@ internal fun PhoneProfilesHeading(kicker: String, title: String) {
 /** The web `--line-strong` at 66%: the 1 px ring of an avatar plate. */
 private val PlateBorder: Color get() = WebPillBorder
 
+/** Web phone `.profiles-row` top below the status inset: 150 px of heading block plus 18 px of padding. */
+internal const val PHONE_PROFILES_ROW_TOP_CSS = 168f
+/** `.profile-avatar-button`: 156 avatar, 8.8 gap, 19.68 name line, 8.8 gap, 10.08 status line. */
+internal const val PHONE_PROFILE_CHOICE_HEIGHT_CSS = 156f + 8.8f + 19.68f + 8.8f + 10.08f
+
 /** `.profile-choice` for a profile: avatar, name, status and, when selected, the settings and sign-out pills. */
 @Composable
 internal fun PhoneProfileChoice(
@@ -128,10 +133,11 @@ internal fun PhoneProfileChoice(
         if (profile.isCurrent) PlayarrString.ProfilesAvatarLabelCurrent else PlayarrString.ProfilesAvatarLabel,
         "name" to profile.displayName,
     )
-    Column(Modifier.width(156.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Column(
+    val rowTop = webPhoneInsets().asPaddingValues().calculateTopPadding().value + PHONE_PROFILES_ROW_TOP_CSS
+    WebCssLayout(rowTop, listOf(0f, PHONE_PROFILE_CHOICE_HEIGHT_CSS + 20f), listOf(PHONE_PROFILE_CHOICE_HEIGHT_CSS, 44f), 0f) {
+        WebCssLayout(
+            rowTop, listOf(0f, 156f + 8.8f, 156f + 8.8f + 19.68f + 8.8f), listOf(156f, 19.68f, 10.08f), 0f,
             Modifier
-                .fillMaxWidth()
                 .graphicsLayer {
                     if (selected) {
                         translationY = -8.dp.toPx()
@@ -139,10 +145,7 @@ internal fun PhoneProfileChoice(
                         scaleY = 1.045f
                     }
                 }
-                
                 .clickable(enabled = enabled, onClick = onClick, role = androidx.compose.ui.semantics.Role.Button),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.8.dp),
         ) {
             PhoneProfileAvatarPlate(selected, Modifier.semantics { contentDescription = avatarDescription }) {
                 PlayarrProfileAvatar(userId = profile.id, preference = avatar, modifier = Modifier.fillMaxSize().parityBox("container", radius = 999f), artworkModifier = Modifier.parityBox("image"), artworkInset = 1.dp)
@@ -151,9 +154,9 @@ internal fun PhoneProfileChoice(
                 profile.displayName,
                 color = if (selected) WebInk else WebInkSoft, fontSize = 13.12.sp, lineHeight = 19.68.sp, fontWeight = FontWeight(680),
                 style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().offset(y = (-0.3).dp),
+                modifier = Modifier.fillMaxWidth(),
             )
-            Text(
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) { Text(
                 playarrString(
                     when {
                         switching -> PlayarrString.ProfilesStatusSwitching
@@ -163,13 +166,13 @@ internal fun PhoneProfileChoice(
                     },
                 ).uppercase(LocalPlayarrLanguage.current.locale),
                 color = WebInkMuted, fontSize = 6.72.sp, lineHeight = 10.08.sp, fontWeight = FontWeight(690),
-                letterSpacing = 0.3024.sp, style = WebTextStyle, maxLines = 1, modifier = Modifier.offset(y = (-0.33).dp),
-            )
+                letterSpacing = 0.3024.sp, style = WebTextStyle, maxLines = 1, modifier = Modifier,
+            ) }
         }
         if (selected) androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalMinimumInteractiveComponentSize provides androidx.compose.ui.unit.Dp.Unspecified) {
             Row(
-                Modifier.padding(top = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.8.dp),
+                Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(8.8.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 val settingsName = playarrString(PlayarrString.ProfilesSettingsFor, "name" to profile.displayName)
@@ -207,10 +210,11 @@ internal fun PhoneProfileChoice(
 /** `.profile-add`: the dashed rose plate with a plus. */
 @Composable
 internal fun PhoneAddProfileChoice(selected: Boolean, enabled: Boolean, onFocus: () -> Unit, onClick: () -> Unit) {
-    Column(Modifier.width(156.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Column(
+    val rowTop = webPhoneInsets().asPaddingValues().calculateTopPadding().value + PHONE_PROFILES_ROW_TOP_CSS
+    WebCssLayout(rowTop, listOf(0f), listOf(PHONE_PROFILE_CHOICE_HEIGHT_CSS), 0f) {
+        WebCssLayout(
+            rowTop, listOf(0f, 156f + 8.8f, 156f + 8.8f + 19.68f + 8.8f), listOf(156f, 19.68f, 10.08f), 0f,
             Modifier
-                .fillMaxWidth()
                 .graphicsLayer {
                     if (selected) {
                         translationY = -8.dp.toPx()
@@ -218,10 +222,7 @@ internal fun PhoneAddProfileChoice(selected: Boolean, enabled: Boolean, onFocus:
                         scaleY = 1.045f
                     }
                 }
-                
                 .clickable(enabled = enabled, onClick = onClick, role = androidx.compose.ui.semantics.Role.Button),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.8.dp),
         ) {
             PhoneProfileAvatarPlate(selected, Modifier, dashed = true) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -231,13 +232,13 @@ internal fun PhoneAddProfileChoice(selected: Boolean, enabled: Boolean, onFocus:
             Text(
                 playarrString(PlayarrString.ProfilesSignIn),
                 color = if (selected) WebInk else WebInkSoft, fontSize = 13.12.sp, lineHeight = 19.68.sp, fontWeight = FontWeight(680),
-                style = WebTextStyle, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().offset(y = (-0.3).dp),
+                style = WebTextStyle, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
             )
-            Text(
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) { Text(
                 playarrString(PlayarrString.ProfilesAddAnother).uppercase(LocalPlayarrLanguage.current.locale),
                 color = WebInkMuted, fontSize = 6.72.sp, lineHeight = 10.08.sp, fontWeight = FontWeight(690),
-                letterSpacing = 0.3024.sp, style = WebTextStyle, maxLines = 1, modifier = Modifier.offset(y = (-0.33).dp),
-            )
+                letterSpacing = 0.3024.sp, style = WebTextStyle, maxLines = 1, modifier = Modifier,
+            ) }
         }
     }
 }

@@ -81,3 +81,35 @@ internal fun WebCssEndRow(gapCss: Float, heightCss: Float, modifier: Modifier = 
         layout(constraints.maxWidth, rowH) { placed.forEach { (x, p) -> p.placeRelative(x, 0) } }
     }
 }
+
+/**
+ * A row of fixed css-width children laid out at absolute web css positions: child `i` starts at [startCss] plus the widths
+ * and [gapCss] gaps before it, each edge snapped to a device pixel once, as the browser does. The row is [startCss] +
+ * widths + gaps + [endCss] wide, so it also works inside a horizontal scroller.
+ */
+@Composable
+internal fun WebCssRow(
+    startCss: Float,
+    endCss: Float,
+    widthsCss: List<Float>,
+    gapCss: Float,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    androidx.compose.ui.layout.Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val d = density
+        var x = startCss
+        var maxH = 0
+        val placed = measurables.mapIndexed { i, m ->
+            val w = widthsCss[minOf(i, widthsCss.size - 1)]
+            val x0 = Math.round(x * d)
+            val x1 = Math.round((x + w) * d)
+            x += w + gapCss
+            val p = m.measure(androidx.compose.ui.unit.Constraints(minWidth = x1 - x0, maxWidth = x1 - x0, minHeight = 0, maxHeight = constraints.maxHeight))
+            maxH = maxOf(maxH, p.height)
+            x0 to p
+        }
+        val total = Math.round((x - gapCss + endCss) * d)
+        layout(total, maxH) { placed.forEach { (px, p) -> p.placeRelative(px, 0) } }
+    }
+}
