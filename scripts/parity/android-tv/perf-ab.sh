@@ -47,7 +47,16 @@ if [ "$compile_mode" != none ]; then
 else compiled=uncompiled; fi
 echo "compile: $compiled" >&2
 
-setup_native() {
+setup_native() { # the first launch after a fresh boot can still be on the splash at the first tap: verify the sign-in and retry
+  for attempt in 1 2 3; do
+    sign_in_native
+    adb logcat -c; adb shell am start -n $pkg/io.playarr.mobile.MainActivity >/dev/null
+    [ -n "$(wait_marker home_ready 30)" ] && { adb shell am force-stop $pkg; return; }
+    echo "sign-in attempt $attempt did not reach Home, retrying" >&2
+  done
+  echo "native sign-in failed" >&2; exit 7
+}
+sign_in_native() {
   adb shell pm clear $pkg >/dev/null
   adb shell cmd locale set-app-locales $pkg --locales en-GB >/dev/null 2>&1 || true
   adb shell am start -n $pkg/io.playarr.mobile.MainActivity >/dev/null; sleep 10

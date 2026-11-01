@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Like-for-like A/B: every arm on a fresh boot of the pilot emulator unit (its memory grows over time and throttles after ~40 min).
-#   perf-ab-fresh.sh <apk> <out-dir> <unit> <serial> [iterations]   arms: web, nativeA, nativeB, nativeALT
+#   perf-ab-fresh.sh <apk> <out-dir> <unit> <serial> [iterations]   arms: web, nativeA, nativeB, nativeALT, nativeOld
 # Both arms are AOT-compiled after install (perf-ab.sh, PERF_COMPILE=none to skip) as a Play install would be.
 # Then aggregate: node perf-agg.mjs web=<out>/web:web nativeA=<out>/nativeA:nativeA nativeB=<out>/nativeB:nativeB
 set -euo pipefail
@@ -12,7 +12,7 @@ for arm in ${PERF_ARMS:-web nativeA nativeB}; do
   variant=${arm%%[A-Z]*}
   arm_apk=$apk; [ "$variant" = web ] && arm_apk=${PERF_WEB_APK:-$apk}
   # PERF_ALT_APK: the APK for an arm named like nativeALT (an A/B of two native builds, e.g. with and without a baseline profile).
-  case $arm in *ALT) arm_apk=${PERF_ALT_APK:?PERF_ALT_APK for the ALT arm} ;; esac
+  case $arm in *ALT) arm_apk=${PERF_ALT_APK:?PERF_ALT_APK for the ALT arm} ;; *Old) arm_apk=${PERF_OLD_APK:?PERF_OLD_APK for the Old arm (the base branch build)} ;; esac
   systemctl --user restart "$unit"
   sleep 15
   for _ in $(seq 1 60); do [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] && break; sleep 4; done
