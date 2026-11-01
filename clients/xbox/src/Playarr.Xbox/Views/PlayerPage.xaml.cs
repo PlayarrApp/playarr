@@ -191,6 +191,7 @@ namespace Playarr.Xbox.Views
                 return;
             }
 
+            _initialFocus.Stop();
             var direction = DirectionOf(e.Key);
             var select = e.Key == Windows.System.VirtualKey.Enter || e.Key == Windows.System.VirtualKey.GamepadA;
             if (direction == '\0' && !select)
@@ -592,6 +593,29 @@ namespace Playarr.Xbox.Views
             ShowChrome();
             PlayPauseButton.Focus(FocusState.Programmatic); // the checks start on play/pause, as the web's
             UpdateChrome();
+            _initialFocus.Stop();
+            if (!_initialFocusWired)
+            {
+                _initialFocus.Tick += HandInitialFocusToVideo;
+                _initialFocusWired = true;
+            }
+
+            _initialFocus.Interval = TimeSpan.FromSeconds(2);
+            _initialFocus.Start();
+        }
+
+        // Web (PlayerSurface.tsx): Play is the initial focus target and, once playback is active and nobody has moved focus, the video
+        // surface takes it so inactivity can hide the overlay. A key press before then keeps the control it moved to.
+        private readonly Windows.UI.Xaml.DispatcherTimer _initialFocus = new Windows.UI.Xaml.DispatcherTimer();
+        private bool _initialFocusWired;
+
+        private void HandInitialFocusToVideo(object sender, object e)
+        {
+            _initialFocus.Stop();
+            if (ReferenceEquals(Windows.UI.Xaml.Input.FocusManager.GetFocusedElement(), PlayPauseButton) && Probe().State == "playing")
+            {
+                VideoSurface.Focus(FocusState.Programmatic);
+            }
         }
 
         private DateTime _lastBack = DateTime.MinValue;
