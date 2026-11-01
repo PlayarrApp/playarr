@@ -1,0 +1,1 @@
+- The web reference driver no longer waits for a Mute button on the Android TV and Roku user agents, whose player uses the system volume only, so the Android TV player-controls ref captures again.
