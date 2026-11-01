@@ -3641,7 +3641,13 @@ internal fun ExperienceMediaRail(
                 val onDeck = rail.onDeckByWork[work.id]
                 val episode = onDeck?.episode
                 ExperienceLandscapeCard(
-                    modifier = if (rails != null) Modifier.tvRailItem(rails, railIndex, itemIndex) else Modifier,
+                    modifier = (if (rails != null) Modifier.tvRailItem(rails, railIndex, itemIndex) else Modifier)
+                        // `.tv-home-card > small { height: 1.3em; margin: 0.16rem 0 calc(-1.3em - 0.16rem) }` hangs below the card box, but the flex row still
+                        // lays the card out with it: the rail is taller than the card rect by the small's margin-top plus its line (6.88 px * 1.3).
+                        .then(if (!isTelevision && homeView == PlayarrHomeViewPreference.Thumbnail) Modifier.layout { measurable, constraints ->
+                            val placeable = measurable.measure(constraints)
+                            layout(placeable.width, placeable.height + (webLayoutUnit(0.16f * 16f) + webLayoutUnit(1.3f * 6.88f)).dp.roundToPx()) { placeable.placeRelative(0, 0) }
+                        } else Modifier),
                     work = work,
                     serverUrl = serverUrl,
                     accessToken = accessToken,

@@ -1477,7 +1477,7 @@ internal fun CalendarMonth(
         if (!wide) {
             // Web phone `.calendar-month`: a 720 css px grid scrolling sideways, laid out from its css by webPhoneMonth (1/64 LayoutUnit, `1fr` tracks, page bottom padding).
             val d = androidx.compose.ui.platform.LocalDensity.current
-            val windowHeightCss = androidx.compose.ui.platform.LocalView.current.rootView.height / d.density
+            val windowHeightCss = androidx.compose.ui.platform.LocalView.current.rootView.height.let { Math.round(it / d.density).toFloat() } // a web viewport is a whole number of css px
             var slotTopCss by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
             val month = webPhoneMonth(slotTopCss + PHONE_MONTH_BODY_GAP_CSS, windowHeightCss, rows.size)
             Box(modifier.fillMaxSize().onGloballyPositioned { slotTopCss = it.positionInWindow().y / d.density }.horizontalScroll(rememberScrollState())) {
