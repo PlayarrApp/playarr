@@ -3530,7 +3530,6 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
                 letterSpacing = 0.983.sp,
                 lineHeight = 18.432.sp,
                 style = glow,
-                modifier = Modifier.offset(y = 1.dp),
             )
             WebHeroTitle(work.title, Modifier.padding(top = 25.9.dp + (if (tabletHero) 3.7.dp else 0.dp)))
             val runtime = runtimeMs?.let { formatPlayarrVideoRuntime(it, language) }
@@ -6744,6 +6743,8 @@ private fun ExperienceVideoDetailContent(
                     .padding(start = playarrPageMetrics(true).start, top = tvHeroTop(), end = 28.dp, bottom = 64.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
+              // The page scaffold gives every scaffolded page the css line box; the detail copy column is not inside one.
+              androidx.compose.material3.ProvideTextStyle(androidx.compose.material3.LocalTextStyle.current.copy(lineHeightStyle = io.playarr.shared.designsystem.page.WebLineBox)) {
                 VideoDetailCopy(
                     detail.work,
                     selectedSeason?.season?.seasonNumber,
@@ -6775,6 +6776,7 @@ private fun ExperienceVideoDetailContent(
                     television = true,
                     modifier = Modifier.padding(top = (if (selectedEpisode != null) 10.3.dp else 37.8.dp) + (if (LocalStageScale.current != 1f) (if (selectedEpisode != null) 6.dp else 9.dp) else 0.dp)),
                 )
+              }
             }
             if (series != null) {
                 SeriesEpisodeBrowser(
@@ -7302,7 +7304,7 @@ private fun VideoDetailCopy(
                 lineHeight = 18.432.sp,
                 modifier = if (episodeNumber != null) Modifier else Modifier,
             )
-            WebHeroTitle(work.title, Modifier.padding(top = 25.9.dp + (if (LocalStageScale.current != 1f) 3.7.dp else 0.dp)))
+            WebHeroTitle(work.title, Modifier.padding(top = if (LocalStageScale.current != 1f) 29.6.dp else webVu(18f, 2.4f, 34f)))
             episode?.episode?.title?.let { title ->
                 Text(
                     title,
@@ -7314,7 +7316,7 @@ private fun VideoDetailCopy(
                 )
             }
             androidx.compose.foundation.layout.FlowRow(
-                modifier = Modifier.padding(top = 26.dp),
+                modifier = Modifier.padding(top = if (LocalStageScale.current != 1f) 26.dp else webVu(18f, 2.5f, 34f)),
                 // 13.6 css px between chips; each chip's width is rounded up to a pixel, so the drift is cancelled by a gap 0.5 px shorter.
                 horizontalArrangement = io.playarr.shared.designsystem.page.FractionalSpacedArrangement(13.1.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -7958,8 +7960,8 @@ private fun WebSeasonHeading(
 ) {
     Row(Modifier.fillMaxWidth().height(46.dp)) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = WebInk, fontSize = 17.664.sp, fontWeight = FontWeight(610), letterSpacing = (-0.53).sp, lineHeight = 26.5.sp, modifier = Modifier.semantics { heading() })
-            Text(count, color = WebInkMuted, fontSize = 9.984.sp, lineHeight = 15.sp, modifier = Modifier.padding(top = 4.dp))
+            Text(title, color = WebInk, fontSize = 17.664.sp, fontWeight = FontWeight(610), letterSpacing = (-0.53).sp, lineHeight = 26.5.sp, maxLines = 1, modifier = Modifier.semantics { heading() })
+            Text(count, color = WebInkMuted, fontSize = 9.984.sp, lineHeight = 15.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }
@@ -8295,10 +8297,12 @@ private fun WebMediaTrack(
     cards: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
 ) {
     val tabletTrack = if (LocalStageScale.current != 1f) 1f else 0f
+    // The css line box for every text in the track (the detail page is not inside the page scaffold that provides it).
+    androidx.compose.material3.ProvideTextStyle(androidx.compose.material3.LocalTextStyle.current.copy(lineHeightStyle = io.playarr.shared.designsystem.page.WebLineBox)) {
     Column {
         Column(Modifier.padding(start = 0.dp).height(45.5.dp)) {
-            Text(title, color = WebInk, fontSize = 17.664.sp, fontWeight = FontWeight(610), letterSpacing = (-0.53).sp, lineHeight = 26.5.sp, modifier = Modifier.semantics { heading() })
-            Text(count, color = WebInkMuted, fontSize = 9.984.sp, lineHeight = 15.sp, modifier = Modifier.padding(top = 4.dp))
+            Text(title, color = WebInk, fontSize = 17.664.sp, fontWeight = FontWeight(610), letterSpacing = (-0.53).sp, lineHeight = 26.5.sp, maxLines = 1, modifier = Modifier.semantics { heading() })
+            Text(count, color = WebInkMuted, fontSize = 9.984.sp, lineHeight = 15.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
         }
         run {
         LazyRow(
@@ -8311,6 +8315,7 @@ private fun WebMediaTrack(
             content = cards,
         )
         }
+    }
     }
 }
 
@@ -8419,6 +8424,7 @@ private fun WebEpisodeCard(
                     fontSize = 19.2.sp,
                     fontWeight = FontWeight(560),
                     lineHeight = 28.8.sp,
+                    maxLines = 1,
                     modifier = Modifier.align(Alignment.BottomEnd).padding(end = 11.5.dp, bottom = 8.8.dp),
                 )
             }
