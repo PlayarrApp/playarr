@@ -9,6 +9,7 @@ import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import { chromium } from "playwright-core";
 import { dumpLayout } from "../layout-dump.mjs";
 import { assertAllowedDeviceTestUsername, assertDeviceTestPage, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl, trustedLoginUsername } from "../device-test-guard.mjs";
@@ -228,6 +229,36 @@ export async function serveWebDist(dist, env = process.env) {
 export async function clickIfPresent(locator) {
   if (await locator.count()) await locator.click();
 }
+
+// Raster flags for a repeatable reference: one raster thread and whole-tile repaint keep gradient, backdrop-filter and image tiles from
+// depending on thread scheduling; PaintHolding off stops the compositor holding the previous frame. Software raster stays as before.
+export const DETERMINISTIC_RASTER_ARGS = ["--num-raster-threads=1", "--disable-partial-raster", "--disable-features=PaintHolding"];
+
+// Fonts ready, every <img> and CSS background image in the viewport decoded, then two frames, so a shot never catches a half-decoded tile.
+export const settleDecodedPaint = () => (async () => {
+  await document.fonts.ready;
+  // A shot taken after earlier layouts depends on the history of the page (nav label tops moved a device pixel, button text a half CSS pixel, between
+  // identical runs: proved with a before/after screenshot of one page). Hiding and showing the root forces one full style, layout and paint pass from
+  // nothing, so the frame is a function of the DOM only. Scroll offsets are restored; focus survives (checked: activeElement is unchanged).
+  const scrolls = [...document.querySelectorAll("*")].filter((e) => e.scrollTop || e.scrollLeft).map((e) => [e, e.scrollLeft, e.scrollTop]);
+  const root = document.documentElement;
+  root.style.display = "none"; void root.offsetHeight; root.style.display = ""; void root.offsetHeight;
+  for (const [e, x, y] of scrolls) { e.scrollLeft = x; e.scrollTop = y; }
+  const urls = new Set();
+  const inView = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth; };
+  const jobs = [];
+  for (const el of document.querySelectorAll("*")) {
+    if (!inView(el)) continue;
+    if (el instanceof HTMLImageElement) jobs.push(el.decode().catch(() => {}));
+    for (const pseudo of [null, "::before", "::after"]) {
+      const bg = getComputedStyle(el, pseudo).backgroundImage;
+      for (const m of bg.matchAll(/url\((['"]?)(.*?)\1\)/g)) urls.add(new URL(m[2], location.href).href);
+    }
+  }
+  for (const u of urls) { const img = new Image(); img.src = u; jobs.push(img.decode().catch(() => {})); }
+  await Promise.all(jobs);
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+})();
 
 export async function createDriver({ playwright = chromium, secrets } = {}) {
   const env = process.env;
@@ -531,6 +562,18 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
         return performance.now() - w.__previewSeen.since > 1500;
       }, null, { timeout: 30000, polling: 100 });
     }
+    // The focused film's runtime fills in when its detail request lands (LibraryPreview, Home hero): a shot taken before it drops the "1 min" span.
+    // The app can drop the answer of that request when the Home page's controller is released as the library mounts (the response is 200 and the span never appears), so the wait is short and a reload retries it.
+    if (path === "/movies") {
+      for (let attempt = 1; ; attempt++) {
+        try { await page.waitForSelector(".tv-library-preview [data-detail-field=runtime]", { timeout: 8000 }); break; } catch (e) {
+          if (e?.name !== "TimeoutError" || attempt >= 3) throw e;
+          await page.reload();
+          await page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 });
+        }
+      }
+    }
+    if (path === "/") await page.waitForSelector("[data-detail-field=runtime]", { timeout: 8000 }).catch((e) => { if (e?.name !== "TimeoutError") throw e; }); // a series or music first card has no runtime
     if (path === "/calendar") await page.waitForSelector(".calendar-page", { timeout: 30000 });
     if (path === "/search") await page.waitForSelector(".tv-search-results-grid:visible, .tv-empty-state:visible, .tv-search-prompt:visible", { timeout: 30000 }); // :visible, as the phone layout also renders a hidden prompt
     if (path.startsWith("/movies/") || path.startsWith("/series/")) await waitForDetailReady({ requireHeroAction: detailActionRequired });
@@ -773,7 +816,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     },
     waitReady,
     get page() { return page; }, // for DOM dumps (android-mobile/domdump.mjs)
-    async start() { browser = await playwright.launch(env.PARITY_CHROME ? { executablePath: env.PARITY_CHROME } : {}); await open(); await guard(); },
+    async start() { browser = await playwright.launch({ ...(env.PARITY_CHROME ? { executablePath: env.PARITY_CHROME } : {}), args: DETERMINISTIC_RASTER_ARGS }); await open(); await guard(); },
     async stop() { await browser?.close(); await localWeb?.close(); },
     async setTheme(t) { await guard(); if (t !== theme) { theme = t; await open(); } },
     // TV Home proves first-card focus and the Left/Right nav round trip. Mobile Home waits for populated content and settles without TV focus keys.
@@ -900,6 +943,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       // A detail page opens at its top. On a phone the focus-scroll to the first episode card can land late and leave the page scrolled
       // (a different frame per run), so the capture returns every scrolled box to the top first.
       if (detailRoute) await page.evaluate(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; });
+      await page.evaluate(settleDecodedPaint);
       if (disableAnimations) {
         await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         await guard();
