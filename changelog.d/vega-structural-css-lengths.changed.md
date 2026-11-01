@@ -1,0 +1,1 @@
+- Fire TV (Vega) screens take every page, hero, card grid and alphabet rail length from the web CSS through one shared 1/64 px length rule, and the player D-pad reference uses the same user agent and capability profile as the layout reference.
