@@ -27,7 +27,9 @@ screens=home,movies,series,music,calendar-month,calendar-week,calendar-agenda,se
 # PARITY_DPAD_CHECKS=<id,id,...> runs only those D-pad checks.
 # Player D-pad rows play the pinned clip (they change On deck on the shared account); PARITY_SKIP_PLAYER=1 leaves them out.
 player_flag=--player; [ -z "${PARITY_SKIP_PLAYER:-}" ] || player_flag=--skip-player
-suite() { node suite-run.mjs --driver ./drivers/firetv.mjs "$player_flag" ${PARITY_THEMES:+--themes "$PARITY_THEMES"} --out "$out" "$@"; }
+# The Fire TV player D-pad reference (xbox user agent, Vega capability profile) once vega/capture-dpad-expected.sh has written it.
+expected_flag=(); [ ! -f "$here/expected.firetv.static.json" ] || [ -n "${PARITY_LIVE:-}" ] || [ -z "${PARITY_SERVER_URL:-}" ] || expected_flag=(--expected "$here/expected.firetv.static.json")
+suite() { node suite-run.mjs --driver ./drivers/firetv.mjs "$player_flag" "${expected_flag[@]}" ${PARITY_THEMES:+--themes "$PARITY_THEMES"} --out "$out" "$@"; }
 if [ "$only" = all ] || [ "$only" = screens ]; then suite --via route --only screens --screens "$screens" --extra-screens calendar-link; fi
 if [ "$only" = all ] || [ "$only" = dpad ]; then suite --via route --only dpad ${PARITY_DPAD_CHECKS:+--checks "$PARITY_DPAD_CHECKS"}; fi
 repo="$(git rev-parse --show-toplevel)"
