@@ -272,7 +272,7 @@ namespace Playarr.Xbox.Views
             else if (work.ShowUnwatched)
             {
                 // .tv-watch-unseen: a brand dot with a white ring in the top right corner.
-                art.Children.Add(new Border
+                var dot = new Border
                 {
                     Width = 13,
                     Height = 13,
@@ -284,7 +284,9 @@ namespace Playarr.Xbox.Views
                     BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(240, 255, 255, 255)),
                     BorderThickness = new Thickness(2),
                     IsHitTestVisible = false,
-                });
+                };
+                Windows.UI.Xaml.Automation.AutomationProperties.SetLocalizedControlType(dot, "img");
+                art.Children.Add(dot);
             }
 
             var root = new StackPanel { Width = width, Spacing = 0, Tag = work.Id };

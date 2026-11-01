@@ -47,6 +47,11 @@ namespace Playarr.Xbox.Views
                 return "heading";
             }
 
+            if (Windows.UI.Xaml.Automation.AutomationProperties.GetLocalizedControlType(element) == "img")
+            {
+                return "img"; // a decorative marker the web exposes as role="img" (the card's unwatched dot)
+            }
+
             return PeerOf(element)?.GetAutomationControlType() switch
             {
                 AutomationControlType.Button => "button",
