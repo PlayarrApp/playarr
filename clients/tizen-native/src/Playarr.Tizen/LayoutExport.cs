@@ -248,7 +248,6 @@ internal static class LayoutExport
         foreach (var l in lines.OrderBy(l => l.Top))
             yield return (System.Text.RegularExpressions.Regex.Replace(text[l.First..(l.Last + 1)], @"\s+", " ").Trim(), l.L, l.Top, l.R - l.L, l.Bottom - l.Top);
     }
-    }
 
     /// <summary>
     /// A fill with alpha over the backdrop, in the web exporter's arithmetic (layout-dump.mjs over): doubles on the 0..255 scale and the CSS alpha (a
