@@ -15,11 +15,16 @@ export function summarise(dir, variant) {
         .filter((c) => c[COL_FLAGS] === 0 && c[COL_COMPLETED] > 0 && c[COL_COMPLETED] < 9e18)
         .map((c) => (c[COL_COMPLETED] - c[COL_INTENDED]) / 1e6);
     } catch {}
-    return { ...r, frame_count: ft.length, janky_pct: ft.length ? (100 * ft.filter((x) => x > VSYNC_MS).length) / ft.length : null,
+    // PERF_MEM_DUMP output (mem-<web|native>-<n>-app.playarr.mobile.txt): PSS of the ".apk mmap" row, which holds the Chromium WebView library
+    // for the web arm; "other" is the summed PSS without it.
+    let apk = null;
+    try { apk = Number(readFileSync(`${dir}/mem-${r.variant.replace(/[AB]$/, "")}-${r.n}-app.playarr.mobile.txt`, "utf8").split("\n").find((l) => /^\s*\.apk mmap/.test(l)).trim().split(/\s+/)[2]); } catch {}
+    return { ...r, apk_mmap_kb: apk, pss_other_kb: apk != null && r.pss_kb != null ? r.pss_kb - apk : null,
+       frame_count: ft.length, janky_pct: ft.length ? (100 * ft.filter((x) => x > VSYNC_MS).length) / ft.length : null,
       p50_ms: pct(ft, 50), p90_ms: pct(ft, 90), p99_ms: pct(ft, 99) };
   });
   const m = {};
-  for (const k of ["start_total_ms", "ready_ms", "pss_kb", "select_to_first_frame_ms", "janky_pct", "p50_ms", "p90_ms", "p99_ms", "frame_count"]) m[k] = stat(its.map((i) => i[k]));
+  for (const k of ["start_total_ms", "ready_ms", "pss_kb", "apk_mmap_kb", "pss_other_kb", "select_to_first_frame_ms", "janky_pct", "p50_ms", "p90_ms", "p99_ms", "frame_count"]) m[k] = stat(its.map((i) => i[k]));
   return { iterations: its, metrics: m };
 }
 if (import.meta.url === `file://${process.argv[1]}`) {
