@@ -367,7 +367,10 @@ internal object PlayarrLayoutExport {
                         val fm = drawPaint.fontMetrics
                         // The fonts the shaper really used for the run (a fallback font for a symbol is taller); the paint's own metrics only where the platform cannot report the run.
                         val runExtent = shapedRunExtent(layout, i, kept.firstOrNull() ?: runStart, (kept.lastOrNull()?.plus(1)) ?: runEnd, drawPaint)
-                        val ascent = maxOf(-fm.ascent, runExtent?.first ?: 0f); val descent = maxOf(fm.descent, runExtent?.second ?: 0f)
+                        // The platform reports whole device pixels; it only widens the box when a fallback font is taller than the primary font's own (rounded) metrics.
+                        val primary = drawPaint.fontMetricsInt
+                        val fallbackTaller = runExtent != null && (runExtent.first > -primary.ascent || runExtent.second > primary.descent)
+                        val ascent = if (fallbackTaller) runExtent!!.first else -fm.ascent; val descent = if (fallbackTaller) runExtent!!.second else fm.descent
                         val baseline = layout.getLineBaseline(i)
                         // The drawn ellipsis is part of the text and of the width: the platform layout's own line extent covers it, on the side of the shown characters it was drawn at.
                         val rtl = platformLine?.let { (pl, local, _) -> pl.getParagraphDirection(local) == android.text.Layout.DIR_RIGHT_TO_LEFT } ?: false
