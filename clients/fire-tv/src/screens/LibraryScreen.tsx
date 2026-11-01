@@ -53,7 +53,7 @@ import {Button} from '../tv/forms';
 import {EdgeFade} from '../tv/EdgeFade';
 import {CardCaption, focusInk, MediaFocus} from '../tv/mediaFocus';
 import {lx, NATIVE_DRIVER} from '../debug/layoutMarks';
-import {ALPHABET_TOP, ALPHABET_X, ALPHABET_WIDTH, Box, CARD_GRID_GAP, CARD_GRID_GAP_COVER, CARD_PAD_LEFT, cardWidth, cssClamp, cssVh, layoutUnit, RAIL_BOTTOM, RAIL_LEFT, T, u} from '../tv/kit';
+import {ALPHABET_TOP, ALPHABET_X, ALPHABET_WIDTH, Box, CARD_GRID_GAP, CARD_GRID_GAP_COVER, CARD_PAD_LEFT, cardWidth, cssClamp, cssRem, cssVh, cssVw, layoutUnit, RAIL_BOTTOM, RAIL_LEFT, T, u} from '../tv/kit';
 import {PageHeader} from '../tv/PageHeader';
 import {Preview} from '../tv/Preview';
 import {RailFrost, Stage} from '../tv/Stage';
@@ -248,27 +248,32 @@ interface GridLayout {
   /** Poster-first artwork (cover view) or backdrop-first (screen view). */
   posters: boolean;
 }
-/** Caption block under a card plus its row gap (web `.tv-library-grid` row pitch less the art height less the row gap): backdrop cards, poster cards. */
-const SCREEN_COPY = 30.48;
-const COVER_COPY = 42.6;
+/**
+ * Caption block under a card (`.tv-title-card-copy`): `--card-copy-gap` 0.72rem plus one line of the title, whose font size is
+ * `--card-title-size` clamp(0.55rem, 0.62vw, 0.78rem) at the body's line-height 1.5. The web sums these as floats, then snaps the box.
+ */
+const CARD_TITLE_SIZE = Math.min(0.78 * 16, Math.max(0.55 * 16, (0.62 * 1920) / 100));
+const CARD_COPY = layoutUnit(0.72 * 16 + 1.5 * CARD_TITLE_SIZE);
+/** Row gaps of `.tv-title-grid-content`: clamp(22px, 2.5vh, 36px) for backdrops, clamp(26px, 3vh, 42px) for covers. */
+const ROW_GAP_SCREEN = cssClamp(22, cssVh(2.5), 36);
+const ROW_GAP_COVER = cssClamp(26, cssVh(3), 42);
 function gridLayout(cols: number, posters: boolean): GridLayout {
   const gap = posters ? CARD_GRID_GAP_COVER : CARD_GRID_GAP;
   const cardW = cardWidth(cols, gap);
   const cardH = layoutUnit(posters ? cardW * 1.5 : (cardW * 9) / 16);
-  return {cols, cardW, cardH, colPitch: layoutUnit(cardW + gap), rowPitch: layoutUnit(cardH + gap + (posters ? COVER_COPY : SCREEN_COPY)), posters};
+  return {cols, cardW, cardH, colPitch: layoutUnit(cardW + gap), rowPitch: layoutUnit(cardH + (posters ? ROW_GAP_COVER : ROW_GAP_SCREEN) + CARD_COPY), posters};
 }
 /** Web `--card-cols` is 3 (screens) or 5 (posters), one more for small artwork and one fewer for large. */
 const SCREEN_LAYOUTS: Record<ArtworkSize, GridLayout> = {small: gridLayout(4, false), medium: gridLayout(3, false), large: gridLayout(2, false)};
 const COVER_LAYOUTS: Record<ArtworkSize, GridLayout> = {small: gridLayout(6, true), medium: gridLayout(5, true), large: gridLayout(4, true)};
-const LIST_ROW_PITCH = 121.9;
-const LIST_ART_W = 172.8;
-const LIST_ART_H = 97.2;
+/** `.is-list .tv-title-card`: art column clamp(112px, 9vw, 180px) at 16:9, 0.55rem padding all round, 0.45rem between rows. */
+const LIST_ART_W = cssClamp(112, cssVw(9), 180);
+const LIST_ART_H = layoutUnit((LIST_ART_W * 9) / 16);
+const LIST_ROW_PITCH = layoutUnit(2 * cssRem(0.55) + LIST_ART_H + cssRem(0.45));
 const GRID_X = RAIL_LEFT + CARD_PAD_LEFT;
 const GRID_Y = cssClamp(128, cssVh(15), 174);
-/** The grid content viewport starts at y=0; EdgeFade overlays begin separately at GRID_CLIP_TOP=150. */
-const GRID_CLIP_TOP = 150;
+/** The grid panel is the full screen height (`.tv-library-grid-panel` top 0, height 100%); its clip bleeds 48 px left for the focused card's lift, ring and glow. */
 const GRID_CLIP_BLEED_X = 48;
-const GRID_CLIP_BLEED_TOP = GRID_CLIP_TOP;
 const PAGE_SIZE = 200;
 const ALPHABET = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'] as const;
 
@@ -535,8 +540,8 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
           </T>
         </Box>
       ) : null}
-      <Box x={GRID_X - 24 - GRID_CLIP_BLEED_X} y={GRID_CLIP_TOP - GRID_CLIP_BLEED_TOP} w={1920 - GRID_X + 24 + GRID_CLIP_BLEED_X} h={1080 - GRID_CLIP_TOP + GRID_CLIP_BLEED_TOP} style={{overflow: 'hidden'}} pointerEvents="box-none">
-        <Animated.View style={{position: 'absolute', left: u(-(GRID_X - 24 - GRID_CLIP_BLEED_X)), top: u(-(GRID_CLIP_TOP - GRID_CLIP_BLEED_TOP)), width: u(1920), transform: [{translateY: scrollY}]}} pointerEvents="box-none">
+      <Box x={GRID_X - 24 - GRID_CLIP_BLEED_X} y={0} w={1920 - GRID_X + 24 + GRID_CLIP_BLEED_X} h={1080} style={{overflow: 'hidden'}} pointerEvents="box-none">
+        <Animated.View style={{position: 'absolute', left: u(-(GRID_X - 24 - GRID_CLIP_BLEED_X)), top: 0, width: u(1920), transform: [{translateY: scrollY}]}} pointerEvents="box-none">
           {visible.map((work, offset) => {
             const index = firstVisible + offset;
             const col = index % cols;
@@ -569,9 +574,9 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
         side="bottom"
         active={items !== null && Math.ceil((total ?? items.length) / cols) > row + (listView ? 7 : 4)}
         x={GRID_X - 24}
-        y={GRID_CLIP_TOP}
+        y={0}
         w={1920 - GRID_X + 24}
-        h={1080 - GRID_CLIP_TOP}
+        h={1080}
       />
       {filtersOpen ? (
         <FilterDrawer

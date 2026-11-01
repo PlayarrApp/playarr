@@ -3,7 +3,7 @@ import React, {useRef, useState} from 'react';
 import {LayoutChangeEvent, Pressable, View} from 'react-native';
 import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
-import {cssClamp, cssVh, PAGE_CONTROL, PAGE_HEADER_GAP, PAGE_START, T, u, uf} from './kit';
+import {cssClamp, cssRem, cssVh, layoutUnit, PAGE_CONTROL, PAGE_HEADER_GAP, PAGE_START, T, u, uf} from './kit';
 import {lx} from '../debug/layoutMarks';
 
 export interface BackButtonProps {
@@ -72,6 +72,13 @@ const HEADER_X = PAGE_START + PAGE_CONTROL + PAGE_HEADER_GAP;
 /** Web: the title, 24 px, a 1 px divider, 24 px, the subtitle; the subtitle wraps under the title when it would run into the clock (475.75 minus the 24 px gap). */
 const HEADER_GAP = PAGE_HEADER_GAP;
 const HEADER_BESIDE_LIMIT = 451.75;
+/** The subtitle line box (`11.14 px` at line-height 1.5). Beside the title it is centred on the title line (`align-items: center`). */
+const SUBTITLE_LINE = 16.7;
+const DETAIL_BESIDE_TOP = layoutUnit(HEADER_TOP + (PAGE_CONTROL - SUBTITLE_LINE) / 2);
+/** Wrapped (`.is-detail-wrapped`): title line, `gap 0.35rem`, then the detail's `padding-top 0.4rem` under its 1 px `border-top` rule. */
+const DETAIL_RULE_PAD = cssRem(0.4);
+const DETAIL_WRAPPED_RULE = layoutUnit(HEADER_TOP + PAGE_CONTROL + cssRem(0.35));
+const DETAIL_WRAPPED_TOP = layoutUnit(DETAIL_WRAPPED_RULE + 1 + DETAIL_RULE_PAD);
 
 export function PageHeader({title, detail, onBack, backLabel, backFocus, webBack}: PageHeaderProps): React.ReactElement {
   const {colour} = useTheme();
@@ -106,11 +113,11 @@ export function PageHeader({title, detail, onBack, backLabel, backFocus, webBack
       </View>
       {detail !== undefined ? (
         <View
-          style={{position: 'absolute', left: u(HEADER_X), top: u(beside ? 72.7 : 118.8), opacity: widths === null || beside ? 0 : 1}}
+          style={{position: 'absolute', left: u(HEADER_X), top: u(beside ? DETAIL_BESIDE_TOP : DETAIL_WRAPPED_TOP), opacity: widths === null || beside ? 0 : 1}}
           pointerEvents="none"
         >
           <View onLayout={measure('detail')} style={{position: 'absolute', opacity: 0}}>{subtitle}</View>
-          {!beside && widths !== null ? <View style={{position: 'absolute', left: 0, top: u(-4.8), width: u(widths.detail), height: u(1), backgroundColor: colour.lineStrong}} /> : null}
+          {!beside && widths !== null ? <View style={{position: 'absolute', left: 0, top: u(-(DETAIL_RULE_PAD + 1)), width: u(widths.detail), height: u(1), backgroundColor: colour.lineStrong}} /> : null}
           {!beside ? subtitle : null}
         </View>
       ) : null}
