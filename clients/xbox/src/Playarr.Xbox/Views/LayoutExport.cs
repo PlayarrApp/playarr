@@ -355,6 +355,7 @@ namespace Playarr.Xbox.Views
             var (before, width, height) = await GrabAsync(root);
             var hidden = new HashSet<object>();
             var log = new List<string>();
+            var diagnosed = 0;
             foreach (var candidate in Candidates)
             {
                 var x0 = Math.Max(0, (int)Math.Floor(candidate.Box.X));
@@ -415,9 +416,65 @@ namespace Playarr.Xbox.Views
                     }
                 }
 
+                // Diagnosis: how many distinct colours the base frame holds in the box (1 = the render holds no text there at all).
+                var colours = new HashSet<int>();
+                for (var y = y0; y < y1; y++)
+                {
+                    for (var x = x0; x < x1; x++)
+                    {
+                        var i = (y * width + x) * 4;
+                        colours.Add(before[i] | before[i + 1] << 8 | before[i + 2] << 16);
+                    }
+                }
+
+                var ancestorNote = string.Empty;
+                if (rawHide == 0 && candidate.Owner is TextBlock && diagnosed < 6 && (x1 - x0) * (y1 - y0) <= 4000)
+                {
+                    diagnosed++;
+                    DependencyObject? up = candidate.Owner;
+                    for (var depth = 1; depth <= 10 && up != null; depth++)
+                    {
+                        up = VisualTreeHelper.GetParent(up);
+                        if (up is not UIElement ancestor)
+                        {
+                            break;
+                        }
+
+                        var was = ancestor.Opacity;
+                        ancestor.Opacity = 0;
+                        int moved;
+                        try
+                        {
+                            await FramesAsync(2);
+                            var ghost = (await GrabAsync(root)).Pixels;
+                            moved = 0;
+                            for (var y = y0; y < y1; y++)
+                            {
+                                for (var x = x0; x < x1; x++)
+                                {
+                                    var i = (y * width + x) * 4;
+                                    moved += PixelEqual(ghost, before, i) ? 0 : 1;
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            ancestor.Opacity = was;
+                        }
+
+                        await FramesAsync(2);
+                        var fe = ancestor as FrameworkElement;
+                        ancestorNote += $" [a{depth} m={moved} {(ancestor is Panel ? "P" : ancestor is Border ? "B" : ancestor is ContentPresenter ? "CP" : ancestor is Control ? "C" : ancestor is ScrollViewer ? "SV" : "E")} {Math.Round(fe?.ActualWidth ?? 0)}x{Math.Round(fe?.ActualHeight ?? 0)} cache={(ancestor.CacheMode != null)} clip={(ancestor.Clip != null)} eff={(ancestor.Projection != null || ancestor.RenderTransform != null)}]";
+                        if (moved > 0)
+                        {
+                            break;
+                        }
+                    }
+                }
+
                 var changed = rounds[0] > 0 && rounds[1] > 0; // an unplayed second round stays 0
                 var focusable = !changed && IsFocusableAndOnTop(candidate.Owner, candidate.Box);
-                log.Add($"#{log.Count} {Math.Round(candidate.Box.X)},{Math.Round(candidate.Box.Y)} {Math.Round(candidate.Box.Width)}x{Math.Round(candidate.Box.Height)} r1={rounds[0]} r2={rounds[1]} h={rawHide} u={unstable} o={candidate.Owner.Opacity:0.##} {(changed ? "visible" : focusable ? "focusable" : "covered")}");
+                log.Add($"#{log.Count} {Math.Round(candidate.Box.X)},{Math.Round(candidate.Box.Y)} {Math.Round(candidate.Box.Width)}x{Math.Round(candidate.Box.Height)} r1={rounds[0]} r2={rounds[1]} h={rawHide} u={unstable} o={candidate.Owner.Opacity:0.##} {(changed ? "visible" : focusable ? "focusable" : "covered")} d={colours.Count}{ancestorNote}");
                 if (!changed && !focusable)
                 {
                     hidden.Add(candidate.Item);
