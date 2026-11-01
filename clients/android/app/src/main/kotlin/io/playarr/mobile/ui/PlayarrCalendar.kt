@@ -379,9 +379,9 @@ private fun PhoneCalendarHeader(state: CalendarUiState, locale: Locale, holder: 
     // The static web refs (2026-10-24, focus dropped before every shot) draw no Today ring on open, so the ring flag starts off
     // (the earlier live refs showed web's focus ring on Today until the first toolbar action).
     var todayRing by remember { mutableStateOf(false) }
-    Row(
-        Modifier.fillMaxWidth().height(44.dp).offset(y = if (state.mode == CalendarViewMode.Agenda) (-18.5).dp else 0.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically,
+    WebCssEndRow(
+        gapCss = 8f, heightCss = 44f,
+        modifier = Modifier.fillMaxWidth().offset(y = if (state.mode == CalendarViewMode.Agenda) (-18.5).dp else 0.dp),
     ) {
         PhoneCalendarToolbarPill(title, { todayRing = false; onJump() }, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         PhoneCalendarRound(Modifier, "\u2190", playarrString(PlayarrString.CalendarPrevious)) { todayRing = false; holder.previous() }
@@ -1477,7 +1477,7 @@ internal fun CalendarMonth(
         if (!wide) {
             // Web phone: the same month grid as on a television, 103 dp columns in a horizontally scrolling strip (measured on the live page).
             Box(modifier.fillMaxSize().horizontalScroll(rememberScrollState())) {
-                CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.width(721.dp).height(34.dp + 117.5.dp * rows.size).padding(top = 8.dp), true, phoneStrip = true)
+                CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.width(720.dp).height(PHONE_MONTH_STRIP_TOP_PAD.dp + rememberWebSpan(PHONE_MONTH_STRIP_TOP_CSS, PHONE_MONTH_CELLS_TOP_CSS + PHONE_MONTH_ROW_CSS * rows.size)), true, phoneStrip = true)
             }
             return@BoxWithConstraints
         }
@@ -1611,7 +1611,7 @@ private fun CalendarMonthChips(
         entries.groupBy { it.date }.mapValues { (_, day) -> groupSeriesEpisodes(day.sortedBy { it.releaseAt }, zone) }
     }
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
-        val headerHeight = if (phoneStrip) 34.dp else if (tabletCss) 27.75.dp else if (isTelevision) 24.dp else 26.dp
+        val headerHeight = if (phoneStrip) rememberWebSpan(PHONE_MONTH_STRIP_TOP_CSS, PHONE_MONTH_CELLS_TOP_CSS) else if (tabletCss) 27.75.dp else if (isTelevision) 24.dp else 26.dp
         val cellHeight = (maxHeight - headerHeight) / rows.size
         // Web: chips that fit = (cell height - 52) / 26, between 1 and 5; when more exist the last slot is "+N more".
         // Web TV text lines: 25 dp lines above a footer with the day number and "+N more", so the count never takes a line.
@@ -1626,17 +1626,18 @@ private fun CalendarMonthChips(
         val slots = remember(visible) { visible.map { (shown, hidden) -> shown.size + if (hidden > 0) 1 else 0 } }
         val requesters = remember(slots) { slots.map { n -> List(n) { FocusRequester() } } }
         // Web's seven `1fr` columns: each edge is the rounded cumulative position, so no column drifts (a weighted Row ends 1.6 px off).
-        val columnEdges = IntArray(8) { Math.round(it * constraints.maxWidth / 7f) }
+        // Phone strip: the grid is 720 css px wide from x 16 and its edges are the browser's rounded css positions.
+        val columnEdges = IntArray(8) { if (phoneStrip) Math.round((PHONE_MONTH_GRID_LEFT_CSS + it * 720f / 7f) * androidx.compose.ui.platform.LocalDensity.current.density) - Math.round(PHONE_MONTH_GRID_LEFT_CSS * androidx.compose.ui.platform.LocalDensity.current.density) else Math.round(it * constraints.maxWidth / 7f) }
         val columnDensity = androidx.compose.ui.platform.LocalDensity.current
         fun columnWidth(column: Int): Dp = with(columnDensity) { (columnEdges[column + 1] - columnEdges[column]).toDp() }
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth().height(headerHeight)) {
                 calendarWeekdayLabels(firstDay, locale).forEachIndexed { labelIndex, label ->
-                    Text(label.uppercase(locale), color = if (isTelevision && tabletCss) WebInkSoft else WebInkMuted, fontSize = 12.sp, letterSpacing = if (isTelevision) 0.96.sp else 1.sp, textAlign = TextAlign.Center, modifier = (if (isTelevision) Modifier.width(columnWidth(labelIndex)) else Modifier.weight(1f)).padding(top = if (phoneStrip) 7.dp else 0.dp).then(if (isTelevision && !tabletCss) Modifier.offset(y = (-3.6).dp) else Modifier))
+                    Text(label.uppercase(locale), color = if (isTelevision && tabletCss) WebInkSoft else WebInkMuted, fontSize = 12.sp, letterSpacing = if (isTelevision) 0.96.sp else 1.sp, textAlign = TextAlign.Center, modifier = (if (isTelevision) Modifier.width(columnWidth(labelIndex)) else Modifier.weight(1f)).padding(top = if (phoneStrip) 19.39.dp else 0.dp).then(if (isTelevision && !tabletCss) Modifier.offset(y = (-3.6).dp) else Modifier))
                 }
             }
             rows.forEachIndexed { rowIndex, week ->
-                Row(Modifier.weight(1f).fillMaxWidth()) {
+                Row((if (phoneStrip) Modifier.height(rememberWebSpan(PHONE_MONTH_CELLS_TOP_CSS + PHONE_MONTH_ROW_CSS * rowIndex, PHONE_MONTH_CELLS_TOP_CSS + PHONE_MONTH_ROW_CSS * (rowIndex + 1))) else Modifier.weight(1f)).fillMaxWidth()) {
                     week.forEachIndexed { columnIndex, day ->
                         val cell = rowIndex * 7 + columnIndex
                         val (shown, hidden) = visible[cell]
@@ -1727,6 +1728,13 @@ private fun CalendarMonthChips(
         }
     }
 }
+
+/** Web phone month strip, in page css px: it starts under the toolbar at 130, its day cells at 172.78 with a 115.855 pitch, from x 16. */
+private const val PHONE_MONTH_STRIP_TOP_CSS = 130f
+private const val PHONE_MONTH_CELLS_TOP_CSS = 172.78f
+private const val PHONE_MONTH_ROW_CSS = 115.855f
+private const val PHONE_MONTH_GRID_LEFT_CSS = 16f
+private const val PHONE_MONTH_STRIP_TOP_PAD = 0
 
 /** Web `.calendar-chip`: 24 dp, 3 dp availability border, one line of title (series groups read "Title · 3x"). */
 @Composable
