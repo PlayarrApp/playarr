@@ -108,7 +108,30 @@ enum WM {
     }
 }
 
-/// One line of text with a CSS-style line box (height) and letter spacing.
+/// The CSS line box of one line of Nunito Sans (`line-height: lh`), as Blink lays it out: the content area is the
+/// font's hhea ascent (1.011 em) and descent (0.353 em), each rounded to a whole CSS px, and the half-leading
+/// `(lh - (ascent + descent)) / 2` is floored (LayoutNG `CalculateLeadingSpace`, 1/64 px LayoutUnit) above the content area.
+enum WMLineBox {
+    static let ascentEm: CGFloat = 1.011
+    static let descentEm: CGFloat = 0.353
+
+    static func ascent(_ size: CGFloat) -> CGFloat { (ascentEm * size).rounded() }
+    static func descent(_ size: CGFloat) -> CGFloat { (descentEm * size).rounded() }
+
+    /// Distance from the top of the line box to the top of the content area.
+    static func contentTop(size: CGFloat, lineHeight: CGFloat) -> CGFloat {
+        let line = (lineHeight * 64).rounded(.down) / 64
+        return ((line - (ascent(size) + descent(size))) / 2).rounded(.down)
+    }
+
+    /// Distance from the top of the line box to the baseline.
+    static func baseline(size: CGFloat, lineHeight: CGFloat) -> CGFloat {
+        contentTop(size: size, lineHeight: lineHeight) + ascent(size)
+    }
+}
+
+/// One line of text with a CSS line box (height), laid out like Blink: the baseline sits at the line box top plus
+/// the floored half-leading plus the rounded hhea ascent (`WMLineBox`). The export reports the CSS content area.
 struct WMText: View {
     let text: String
     let size: CGFloat
@@ -143,8 +166,11 @@ struct WMText: View {
             .foregroundStyle(color)
             .lineLimit(1)
             .truncationMode(.tail)
-            .parityRenderedText(text, role: role, size: size, weight: weight, color: color)
-            .frame(height: lineHeight, alignment: .leading)
+            .parityRenderedText(text, role: role, size: size, weight: weight, color: color,
+                                cssBox: (WMLineBox.ascent(size), WMLineBox.descent(size)))
+            // SwiftUI puts the baseline one unrounded hhea ascent below the top of the view; move it to the CSS baseline.
+            .padding(.top, WMLineBox.baseline(size: size, lineHeight: lineHeight) - WMLineBox.ascentEm * size)
+            .frame(height: lineHeight, alignment: .topLeading)
             .accessibilityAddTraits(role == "heading" ? .isHeader : [])
     }
 }
@@ -387,7 +413,38 @@ enum WMIcon {
     }
 }
 
+/// The full-bleed page colour every web mobile screen paints over the shell. It is the layer that really shows on screen,
+/// so the parity export reports the web page container from here (the shell box behind it is covered).
+struct WMPageFill: View {
+    var body: some View {
+        WM.page.parityBox("container", background: WM.page).ignoresSafeArea()
+    }
+}
+
 struct WMIconView: View {
+    let icon: WMIcon
+    let color: Color
+    var size: CGFloat = 21
+    @Environment(\.self) private var environment
+
+    var body: some View {
+        // Parity captures blit a bitmap drawn once (the vector strokes antialias a little differently on each simulator).
+        #if DEBUG
+        if ParityLaunch.zeroInsets, let image = WMIconBitmap.image(icon: icon, color: color, size: size, environment: environment) {
+            Image(uiImage: image).resizable().frame(width: size, height: size)
+                .parityBox("image")
+        } else {
+            WMIconCanvas(icon: icon, color: color, size: size)
+                .parityBox("image")
+        }
+        #else
+        WMIconCanvas(icon: icon, color: color, size: size)
+            .parityBox("image")
+        #endif
+    }
+}
+
+struct WMIconCanvas: View {
     let icon: WMIcon
     let color: Color
     var size: CGFloat = 21
@@ -409,7 +466,22 @@ struct WMIconView: View {
             }
         }
         .frame(width: size, height: size)
-        .parityBox("image")
+    }
+}
+
+@MainActor
+enum WMIconBitmap {
+    private static var cache: [String: UIImage] = [:]
+
+    static func image(icon: WMIcon, color: Color, size: CGFloat, environment: EnvironmentValues) -> UIImage? {
+        let resolved = color.resolve(in: environment)
+        let key = "\(icon)|\(size)|\(resolved)"
+        if let cached = cache[key] { return cached }
+        let renderer = ImageRenderer(content: WMIconCanvas(icon: icon, color: Color(resolved), size: size))
+        renderer.scale = UIScreen.main.scale
+        guard let image = renderer.uiImage else { return nil }
+        cache[key] = image
+        return image
     }
 }
 
@@ -530,13 +602,48 @@ extension View {
 // MARK: - Cards
 
 struct WMUnseenDot: View {
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        // Parity captures draw the dot from a bitmap rendered once per theme: the GPU antialiasing of the ring and its
+        // shadow differs a little from one simulator to the next, a blitted bitmap does not.
+        #if DEBUG
+        if ParityLaunch.zeroInsets, let image = WMUnseenDotBitmap.image(scheme) {
+            Image(uiImage: image).resizable().frame(width: 33, height: 33).frame(width: 9, height: 9)
+                .parityBox("img", background: WM.pink, radius: 4.5)
+        } else {
+            WMUnseenDotVector()
+                .parityBox("img", background: WM.pink, radius: 4.5)
+        }
+        #else
+        WMUnseenDotVector()
+            .parityBox("img", background: WM.pink, radius: 4.5)
+        #endif
+    }
+}
+
+struct WMUnseenDotVector: View {
     var body: some View {
         Circle()
             .fill(WM.pink)
             .frame(width: 9, height: 9)
-            .parityBox("image", background: WM.pink, radius: 4.5)
             .overlay(Circle().strokeBorder(Color.white.opacity(0.94), lineWidth: 2))
             .shadow(color: Color(red: 31 / 255, green: 14 / 255, blue: 20 / 255).opacity(0.45), radius: 4.5, y: 2)
+    }
+}
+
+@MainActor
+enum WMUnseenDotBitmap {
+    private static var cache: [Bool: UIImage] = [:]
+
+    static func image(_ scheme: ColorScheme) -> UIImage? {
+        let dark = scheme == .dark
+        if let cached = cache[dark] { return cached }
+        let renderer = ImageRenderer(content: WMUnseenDotVector().padding(12).frame(width: 33, height: 33).environment(\.colorScheme, scheme))
+        renderer.scale = UIScreen.main.scale
+        guard let image = renderer.uiImage else { return nil }
+        cache[dark] = image
+        return image
     }
 }
 
@@ -771,7 +878,7 @@ struct WMHeaderCircleButton: View {
                 .overlay(Ellipse().stroke(WM.line.opacity(0.14), lineWidth: 1))
             }
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 }
 

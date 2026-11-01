@@ -107,7 +107,7 @@ private struct BlockingUpdateInterstitial: View {
                 Text("Open App Store")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .parityButtonStyle(.borderedProminent)
             .padding(.horizontal, 40)
         }
         .padding()

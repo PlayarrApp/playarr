@@ -19,7 +19,7 @@ private struct WMPanelCloseButton: View {
                     }
                 }
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .accessibilityLabel("Close")
     }
 }
@@ -41,7 +41,7 @@ private struct WMPanelFrame<Content: View>: View {
         if isPad {
             WM.chip.ignoresSafeArea() // web tablet drawer: one opaque surface, so the export reads the colour it draws
         } else {
-            WM.page.ignoresSafeArea() // web phone panels are opaque: the library behind does not show through
+            WMPageFill() // web phone panels are opaque: the library behind does not show through
         }
     }
 
@@ -112,7 +112,7 @@ private struct WMChoice: View {
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(WM.line.opacity(scheme == .light ? 0.106 : 0.084), lineWidth: 1))
             .parityScale(selected ? 1.025 : 1)
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 }
 
@@ -157,7 +157,7 @@ private struct WMLanguageSelector: View {
                 .parityShape("button", color: WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 16, style: .continuous), radius: 16)
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(WM.line.opacity(scheme == .light ? 0.106 : 0.084), lineWidth: 1))
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .accessibilityLabel("\(label), \(selectedNames)")
             .accessibilityIdentifier(identifier)
             .accessibilityHint(isExpanded ? "Hides language choices" : "Shows language choices")
@@ -190,7 +190,7 @@ private struct WMLanguageSelector: View {
                                 .padding(.horizontal, 13).frame(minHeight: 42)
                                 .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
+                            .parityButtonStyle(.plain)
                             .accessibilityIdentifier("\(identifier)-option-\(facet.code)")
                             .accessibilityAddTraits(selectedCodes.contains(facet.code) ? .isSelected : [])
                         }
@@ -297,7 +297,7 @@ struct WMTitleActionsPanel: View {
                 if focused { RoundedRectangle(cornerRadius: 17.5, style: .circular).stroke(WM.ink, lineWidth: 3).padding(-3.5).allowsHitTesting(false) }
             }
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
         .accessibilityLabel(label)
     }
 
