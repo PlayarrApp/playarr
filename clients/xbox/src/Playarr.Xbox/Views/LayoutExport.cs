@@ -331,6 +331,25 @@ namespace Playarr.Xbox.Views
         // Video needs no mask: a pixel that changes between the base and re-show frames (a playing picture) is never evidence,
         // and the player's video surface spans the whole screen, so a box mask would blind every control on it.
 
+        /// <summary>Waits for the compositor to present frames, so a hide or re-show has reached the tree the next grab renders.</summary>
+        private static async Task FramesAsync(int count)
+        {
+            for (var i = 0; i < count; i++)
+            {
+                var source = new TaskCompletionSource<bool>();
+                void OnRendering(object? sender, object args) => source.TrySetResult(true);
+                Windows.UI.Xaml.Media.CompositionTarget.Rendering += OnRendering;
+                try
+                {
+                    await Task.WhenAny(source.Task, Task.Delay(250));
+                }
+                finally
+                {
+                    Windows.UI.Xaml.Media.CompositionTarget.Rendering -= OnRendering;
+                }
+            }
+        }
+
         private static async Task<(HashSet<object> Hidden, bool Stable, string Diff)> ToggleAllAsync(FrameworkElement root)
         {
             var (before, width, height) = await GrabAsync(root);
@@ -359,7 +378,7 @@ namespace Playarr.Xbox.Views
                     byte[] hiddenFrame;
                     try
                     {
-                        await Task.Delay(16);
+                        await FramesAsync(2);
                         hiddenFrame = (await GrabAsync(root)).Pixels;
                     }
                     finally
@@ -367,7 +386,7 @@ namespace Playarr.Xbox.Views
                         undo();
                     }
 
-                    await Task.Delay(16);
+                    await FramesAsync(2);
                     var shown = (await GrabAsync(root)).Pixels;
                     var proven = 0;
                     for (var y = y0; y < y1; y++)
