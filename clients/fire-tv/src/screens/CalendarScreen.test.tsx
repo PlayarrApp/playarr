@@ -117,7 +117,9 @@ describe('CalendarScreen', () => {
       await Promise.resolve();
     });
     // The month grid names the weekdays (the text is upper-cased by style, not in the string).
-    expect(allText(renderer)).toContain('Oct 2026');
+    const now = new Date();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    expect(allText(renderer)).toContain(`${months[now.getMonth()]} ${now.getFullYear()}`);
     expect(allText(renderer)).toContain('Mon | Tue | Wed');
   });
 
