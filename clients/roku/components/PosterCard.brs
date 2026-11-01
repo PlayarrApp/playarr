@@ -498,8 +498,8 @@ sub nameCard(content as Object, circle as Boolean, hasNumber as Boolean)
     else
         linkName = "Open " + content.title
     end if
+    ' The link is a Group around the art and caption: it paints no corner of its own, so it declares none (the art container carries the mask).
     linkRadius = 0
-    if content.gridCard = true then linkRadius = 12
     m.cardBody.id = "a11y|link|" + linkRadius.ToStr() + "|" + linkName
     m.posterBg.id = "a11y|container|" + m.top.findNode("cornerTL").width.ToStr() + "|"
     m.unwatchedBadge.id = "a11y|img|6.5|"

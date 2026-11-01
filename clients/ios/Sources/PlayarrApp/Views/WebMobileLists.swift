@@ -13,8 +13,7 @@ private struct WMListPage<Content: View>: View {
     var body: some View {
         GeometryReader { proxy in
             let phone = PlayarrLayout.isPhone(proxy.size)
-            ZStack(alignment: .topLeading) {
-                WM.page.ignoresSafeArea()
+            ZStack(alignment: .topLeading) { // the page fill is the background below: one fill per screen
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 9.6) { content() }
                         .padding(.leading, phone ? 16 : max(102, proxy.size.width * 0.08))
@@ -36,7 +35,7 @@ private struct WMListPage<Content: View>: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }
-        .background(WM.page.ignoresSafeArea())
+        .background(WMPageFill())
         .parityFill(WM.page)
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
@@ -265,7 +264,7 @@ struct WatchlistView: View {
             Button { Task { await model.remove(entry) } } label: {
                 WMSmallPill(label: "Remove from watchlist")
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
         }
     }
 
@@ -281,7 +280,7 @@ struct WatchlistView: View {
             } label: {
                 WMText(title.title, 10.88, 700, lh: 16.3)
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
         } else {
             WMText(title.title, 10.88, 700, lh: 16.3)
         }
@@ -308,13 +307,13 @@ struct WatchlistView: View {
             } label: {
                 WMPrimaryPill(label: primary.label)
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
         } else if primary?.action == "request" {
             let done = model.requested.contains(entry.title.titleKey)
             Button { Task { await model.request(entry) } } label: {
                 WMSmallPill(label: done ? "Requested" : "Request")
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .disabled(done)
         }
     }

@@ -135,7 +135,7 @@ internal object PlayarrLayoutExport {
                         // A box that paints nothing (a layout wrapper, a surface without a fill) is not an element: only painted containers are exported.
                         if ((box.kind == "fill" || box.kind == "container") && !painted) continue
                         pending += Triple(e, box.id, painted)
-                        ctx.add(e, x, y, b.width, b.height, occludes = (box.kind == "container" || box.kind == "fill") && painted && box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha >= 0.5f, hook = true, boxId = box.id)
+                        ctx.add(e, x, y, b.width, b.height, occludes = (box.kind == "container" || box.kind == "fill") && painted && ((box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha >= 0.5f) || (box.fill == androidx.compose.ui.graphics.Color.Unspecified && box.brushPainted)), hook = true, boxId = box.id)
                     }
                 }
                 // Like the browser's backdrop: the fills of the box's own tree ancestors (and its own), outer to inner. A box that paints nothing
@@ -166,11 +166,21 @@ internal object PlayarrLayoutExport {
         }.toSet()
         // Same-window candidates: painted boxes (images, video, opaque containers) drawn after the element (later in paint order, outside its subtree) whose rectangles
         // together reach 90% of its area. Geometry only nominates; the rendered diff decides, with the covers' paint skipped (docs/parity/LAYOUT.md).
-        val painters = unique.filter { it.hook && it.boxId >= 0 && it.order >= 0 && (it.json.getString("role") == "image" || it.json.getString("role") == "video" || (it.json.getString("role") == "container" && it.occludes)) }
+        val painters = unique.filter { (it.hook || it.occludes) && it.order >= 0 && (it.json.getString("role") == "image" || it.json.getString("role") == "video" || (it.json.getString("role") == "container" && it.occludes)) }
         fun overlap(a: Item, b: Item): Float = maxOf(0f, minOf(a.x + a.w, b.x + b.w) - maxOf(a.x, b.x)) * maxOf(0f, minOf(a.y + a.h, b.y + b.h) - maxOf(a.y, b.y))
+        // The contract's 3 x 3 test: the element is covered when every sample point (20%, 50%, 80% of the part on screen) lies inside one cover's painted rectangle (corners rounded).
+        fun inside(k: Item, px: Float, py: Float): Boolean {
+            if (px < k.x || px > k.x + k.w || py < k.y || py > k.y + k.h) return false
+            val r = (k.json.optDouble("radius", 0.0).toFloat() / unit).coerceAtMost(minOf(k.w, k.h) / 2f)
+            if (r <= 0f) return true
+            val cx = px.coerceIn(k.x + r, k.x + k.w - r); val cy = py.coerceIn(k.y + r, k.y + k.h - r)
+            return (px - cx) * (px - cx) + (py - cy) * (py - cy) <= r * r
+        }
         val sameWindow = if (!candidates) emptyMap() else unique.filter { it !in nominated && it.order >= 0 }.mapNotNull { c ->
             val covers = painters.filter { k -> k !== c && k.window == c.window && k.order > c.end && overlap(c, k) > 0f }
-            if (covers.isNotEmpty() && covers.sumOf { overlap(c, it).toDouble() } >= 0.9 * c.w * c.h) c to covers else null
+            val x0 = maxOf(c.x, 0f); val y0 = maxOf(c.y, 0f); val x1 = minOf(c.x + c.w, width.toFloat()); val y1 = minOf(c.y + c.h, height.toFloat())
+            val samples = if (x1 > x0 && y1 > y0) listOf(0.2f, 0.5f, 0.8f).flatMap { fy -> listOf(0.2f, 0.5f, 0.8f).map { fx -> (x0 + (x1 - x0) * fx) to (y0 + (y1 - y0) * fy) } } else emptyList()
+            if (covers.isNotEmpty() && samples.isNotEmpty() && samples.all { (px, py) -> covers.any { inside(it, px, py) } }) c to covers else null
         }.toMap()
         val kept = if (candidates) unique.also {
             nominated.forEach { it.json.put("covered", true) }
@@ -285,6 +295,14 @@ internal object PlayarrLayoutExport {
         (-out.ascent).toFloat() to out.descent.toFloat()
     }.onFailure { parityLog("fallback extent failed ${it.javaClass.simpleName} ${it.message?.take(100)}") }.getOrNull()
 
+    /** The advance (px) the platform shaper gives characters [from, to) of the compose text drawn with [paint], letter spacing included. Null when the layout does not expose it. */
+    private fun shapedRunAdvance(result: TextLayoutResult, line: Int, from: Int, to: Int, paint: android.text.TextPaint): Float? = runCatching {
+        val (platform, _, paragraphStart) = platformLine(result, line)!!
+        val text = platform.text
+        val a = (from - paragraphStart).coerceIn(0, text.length); val b = (to - paragraphStart).coerceIn(a, text.length)
+        if (b <= a) null else paint.getRunAdvance(text, a, b, a, b, false, b)
+    }.onFailure { parityLog("run advance failed ${it.javaClass.simpleName} ${it.message?.take(100)}") }.getOrNull()
+
     /** The ellipsis the platform text engine draws for this overflow (its own string for the truncation the overflow selects; the export fails when the framework hides it). */
     private fun platformEllipsis(overflow: androidx.compose.ui.text.style.TextOverflow): String = runCatching {
         val at = when (overflow) {
@@ -347,7 +365,12 @@ internal object PlayarrLayoutExport {
                         val probe = kept.firstOrNull() ?: runStart
                         val drawPaint = checkNotNull(shapedRunPaint(layout, i, probe)) { "shaped paint of '${runText.take(20)}' unavailable" }
                         val fm = drawPaint.fontMetrics
-                        val ascent = -fm.ascent; val descent = fm.descent
+                        // The fonts the shaper really used for the run (a fallback font for a symbol is taller); the paint's own metrics only where the platform cannot report the run.
+                        val runExtent = shapedRunExtent(layout, i, kept.firstOrNull() ?: runStart, (kept.lastOrNull()?.plus(1)) ?: runEnd, drawPaint)
+                        // The platform reports whole device pixels; it only widens the box when a fallback font is taller than the primary font's own (rounded) metrics.
+                        val primary = drawPaint.fontMetricsInt
+                        val fallbackTaller = runExtent != null && (runExtent.first > -primary.ascent || runExtent.second > primary.descent)
+                        val ascent = if (fallbackTaller) runExtent!!.first else -fm.ascent; val descent = if (fallbackTaller) runExtent!!.second else fm.descent
                         val baseline = layout.getLineBaseline(i)
                         // The drawn ellipsis is part of the text and of the width: the platform layout's own line extent covers it, on the side of the shown characters it was drawn at.
                         val rtl = platformLine?.let { (pl, local, _) -> pl.getParagraphDirection(local) == android.text.Layout.DIR_RIGHT_TO_LEFT } ?: false
@@ -372,13 +395,12 @@ internal object PlayarrLayoutExport {
                                 else -> {}
                             }
                         }
-                        // Chrome's text rect includes the trailing letter-spacing of the last glyph; the character boxes of the layout do not.
-                        val spacingPx = when {
-                            runStyle.letterSpacing.isSp -> runStyle.letterSpacing.value * input.density.fontScale * input.density.density
-                            runStyle.letterSpacing.isEm -> runStyle.letterSpacing.value * size
-                            else -> 0f
+                        // The run's right edge is the shaped advance of its characters, read from the paint the layout draws them with (letter spacing included, the trailing one too, as the
+                        // platform shaper advances every glyph by it): measured on the real run, never a spacing added to the extent afterwards.
+                        if (holds.not() && !rtl && kept.isNotEmpty()) {
+                            val advance = shapedRunAdvance(layout, i, kept.first(), kept.last() + 1, drawPaint)
+                            if (advance != null && advance > 0f) hiEnd = maxOf(hiEnd, lo + advance)
                         }
-                        if (spacingPx != 0f && hiEnd > lo) hiEnd += spacingPx
                         // The run's four corners through the node's transform (a rotation or unequal scale still gives its bounding box).
                         val corners = listOf(lo to baseline - ascent, hiEnd to baseline - ascent, lo to baseline + descent, hiEnd to baseline + descent).map { (cx, cy) -> coords.localToRoot(androidx.compose.ui.geometry.Offset(cx, cy)) }
                         val x = corners.minOf { it.x } + ctx.dx; val y = corners.minOf { it.y } + ctx.dy; val w = corners.maxOf { it.x } - corners.minOf { it.x }; val h = corners.maxOf { it.y } - corners.minOf { it.y }

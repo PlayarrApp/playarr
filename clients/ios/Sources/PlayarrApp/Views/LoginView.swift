@@ -167,7 +167,7 @@ struct LoginView: View {
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .background(PlayarrStyle.accent, in: Capsule())
                 }
-                .buttonStyle(.plain)
+                .parityButtonStyle(.plain)
                 .disabled(isSubmitting)
                 .opacity(isSubmitting ? 0.45 : 1)
                 .padding(.top, 24)
@@ -176,7 +176,7 @@ struct LoginView: View {
                     .font(.custom("Avenir Next", fixedSize: 11.5).weight(.semibold))
                     .foregroundStyle(PlayarrStyle.inkSoft)
                     .frame(maxWidth: .infinity, minHeight: 42)
-                    .buttonStyle(.plain)
+                    .parityButtonStyle(.plain)
                     .padding(.top, 8)
             }
             .frame(maxWidth: .infinity)
@@ -242,7 +242,7 @@ struct LoginView: View {
                     .background(PlayarrStyle.surfaceStrong.opacity(0.7), in: Circle())
                     .overlay { Circle().stroke(PlayarrStyle.line.opacity(1.3), lineWidth: 1) }
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
             .offset(x: phone ? 74 : 62.55, y: logoTop)
             .accessibilityLabel("Back")
 
@@ -277,7 +277,7 @@ struct LoginView: View {
                 .background(PlayarrStyle.background)
                 .overlay { Rectangle().stroke(PlayarrStyle.lineStrong, lineWidth: 1) }
             }
-            .buttonStyle(.plain)
+            .parityButtonStyle(.plain)
 
             if languageMenuOpen {
                 VStack(spacing: 0) {
@@ -309,7 +309,7 @@ struct LoginView: View {
             .padding(.horizontal, 14)
             .frame(height: 42)
         }
-        .buttonStyle(.plain)
+        .parityButtonStyle(.plain)
     }
 
     private var languageLabel: String {
@@ -411,7 +411,7 @@ private struct SignupView: View {
                             }
 
                             Button(submitting ? "Creating account…" : "Create account") { submit() }
-                                .buttonStyle(PlayarrPrimaryButtonStyle())
+                                .parityButtonStyle(PlayarrPrimaryButtonStyle())
                                 .frame(maxWidth: .infinity)
                                 .disabled(submitting || inviteToken.isEmpty || displayName.isEmpty || newUsername.isEmpty || password.isEmpty)
                         }
