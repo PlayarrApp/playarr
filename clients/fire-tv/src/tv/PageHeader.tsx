@@ -3,7 +3,7 @@ import React, {useRef, useState} from 'react';
 import {LayoutChangeEvent, Pressable, View} from 'react-native';
 import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
-import {T, u, uf} from './kit';
+import {cssClamp, cssVh, PAGE_CONTROL, PAGE_HEADER_GAP, PAGE_START, T, u, uf} from './kit';
 import {lx} from '../debug/layoutMarks';
 
 export interface BackButtonProps {
@@ -17,7 +17,7 @@ export interface BackButtonProps {
   webBack?: {role: 'link' | 'button'; label: string};
 }
 
-export function BackButton({onPress, x = 153.6, y = 56.2, size = 50, accessibilityLabel = 'Back', hasTVPreferredFocus, webBack = {role: 'link', label: 'Back to Home'}}: BackButtonProps): React.ReactElement {
+export function BackButton({onPress, x = PAGE_START, y = HEADER_TOP, size = PAGE_CONTROL, accessibilityLabel = 'Back', hasTVPreferredFocus, webBack = {role: 'link', label: 'Back to Home'}}: BackButtonProps): React.ReactElement {
   const {colour, scheme} = useTheme();
   const [focused, setFocused] = useState(false);
   return (
@@ -66,9 +66,11 @@ export interface PageHeaderProps {
   webBack?: BackButtonProps['webBack'];
 }
 
-const HEADER_X = 226.6;
+/** `--page-header-top`; Back, then the title after `--page-header-gap`: PAGE_START + PAGE_CONTROL + PAGE_HEADER_GAP. */
+const HEADER_TOP = cssClamp(34, cssVh(5.2), 66);
+const HEADER_X = PAGE_START + PAGE_CONTROL + PAGE_HEADER_GAP;
 /** Web: the title, 24 px, a 1 px divider, 24 px, the subtitle; the subtitle wraps under the title when it would run into the clock (475.75 minus the 24 px gap). */
-const HEADER_GAP = 23.02;
+const HEADER_GAP = PAGE_HEADER_GAP;
 const HEADER_BESIDE_LIMIT = 451.75;
 
 export function PageHeader({title, detail, onBack, backLabel, backFocus, webBack}: PageHeaderProps): React.ReactElement {
@@ -89,7 +91,7 @@ export function PageHeader({title, detail, onBack, backLabel, backFocus, webBack
   return (
     <>
       <BackButton onPress={onBack} accessibilityLabel={backLabel} hasTVPreferredFocus={backFocus} webBack={webBack} />
-      <View style={{position: 'absolute', left: u(HEADER_X), top: u(56.2), height: u(50), flexDirection: 'row', alignItems: 'center'}} pointerEvents="none">
+      <View style={{position: 'absolute', left: u(HEADER_X), top: u(HEADER_TOP), height: u(PAGE_CONTROL), flexDirection: 'row', alignItems: 'center'}} pointerEvents="none">
         <View onLayout={measure('title')}>
           <T heading size={33.6} weight={580} ls={-1.512} lh={50} color={colour.ink} lines={1}>
             {title}

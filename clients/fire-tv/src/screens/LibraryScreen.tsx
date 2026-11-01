@@ -53,7 +53,7 @@ import {Button} from '../tv/forms';
 import {EdgeFade} from '../tv/EdgeFade';
 import {CardCaption, focusInk, MediaFocus} from '../tv/mediaFocus';
 import {lx, NATIVE_DRIVER} from '../debug/layoutMarks';
-import {Box, T, u} from '../tv/kit';
+import {ALPHABET_TOP, ALPHABET_X, ALPHABET_WIDTH, Box, CARD_GRID_GAP, CARD_GRID_GAP_COVER, CARD_PAD_LEFT, cardWidth, cssClamp, cssVh, layoutUnit, RAIL_BOTTOM, RAIL_LEFT, T, u} from '../tv/kit';
 import {PageHeader} from '../tv/PageHeader';
 import {Preview} from '../tv/Preview';
 import {RailFrost, Stage} from '../tv/Stage';
@@ -248,28 +248,28 @@ interface GridLayout {
   /** Poster-first artwork (cover view) or backdrop-first (screen view). */
   posters: boolean;
 }
-const SCREEN_LAYOUTS: Record<ArtworkSize, GridLayout> = {
-  small: {cols: 4, cardW: 238.9, cardH: 134.4, colPitch: 264.8, rowPitch: 190.8, posters: false},
-  medium: {cols: 3, cardW: 327.2, cardH: 184, colPitch: 353.05, rowPitch: 240.4, posters: false},
-  large: {cols: 2, cardW: 503.7, cardH: 283.3, colPitch: 529.6, rowPitch: 339.7, posters: false},
-};
-const COVER_LAYOUTS: Record<ArtworkSize, GridLayout> = {
-  small: {cols: 6, cardW: 156.2, cardH: 234.3, colPitch: 175.4, rowPitch: 296.1, posters: true},
-  medium: {cols: 5, cardW: 191.3, cardH: 287, colPitch: 210.5, rowPitch: 348.8, posters: true},
-  large: {cols: 4, cardW: 244, cardH: 365.9, colPitch: 263.1, rowPitch: 427.7, posters: true},
-};
+/** Caption block under a card plus its row gap (web `.tv-library-grid` row pitch less the art height less the row gap): backdrop cards, poster cards. */
+const SCREEN_COPY = 30.48;
+const COVER_COPY = 42.6;
+function gridLayout(cols: number, posters: boolean): GridLayout {
+  const gap = posters ? CARD_GRID_GAP_COVER : CARD_GRID_GAP;
+  const cardW = cardWidth(cols, gap);
+  const cardH = layoutUnit(posters ? cardW * 1.5 : (cardW * 9) / 16);
+  return {cols, cardW, cardH, colPitch: layoutUnit(cardW + gap), rowPitch: layoutUnit(cardH + gap + (posters ? COVER_COPY : SCREEN_COPY)), posters};
+}
+/** Web `--card-cols` is 3 (screens) or 5 (posters), one more for small artwork and one fewer for large. */
+const SCREEN_LAYOUTS: Record<ArtworkSize, GridLayout> = {small: gridLayout(4, false), medium: gridLayout(3, false), large: gridLayout(2, false)};
+const COVER_LAYOUTS: Record<ArtworkSize, GridLayout> = {small: gridLayout(6, true), medium: gridLayout(5, true), large: gridLayout(4, true)};
 const LIST_ROW_PITCH = 121.9;
 const LIST_ART_W = 172.8;
 const LIST_ART_H = 97.2;
-const GRID_X = 783.4;
-const GRID_Y = 162;
+const GRID_X = RAIL_LEFT + CARD_PAD_LEFT;
+const GRID_Y = cssClamp(128, cssVh(15), 174);
 /** The grid content viewport starts at y=0; EdgeFade overlays begin separately at GRID_CLIP_TOP=150. */
 const GRID_CLIP_TOP = 150;
 const GRID_CLIP_BLEED_X = 48;
 const GRID_CLIP_BLEED_TOP = GRID_CLIP_TOP;
 const PAGE_SIZE = 200;
-const CARD_W = 327.2;
-const CARD_H = 184;
 const ALPHABET = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'] as const;
 
 export function letterOf(title: string): string {
@@ -758,9 +758,9 @@ function ListRow(props: CardProps): React.ReactElement {
 }
 
 /** The web's letter column: 44 px targets from y 278 (a 270 box with 8 px padding) down to the screen edge; it scrolls to keep the active letter centred. */
-const RAIL_TOP = 270;
+const RAIL_TOP = ALPHABET_TOP;
 const RAIL_ROW = 44;
-const RAIL_SCROLL_MAX = 8 + ALPHABET.length * RAIL_ROW + 65 - (1080 - RAIL_TOP);
+const RAIL_SCROLL_MAX = 8 + ALPHABET.length * RAIL_ROW + RAIL_BOTTOM - (1080 - RAIL_TOP);
 
 function Alphabet({active, onJump}: {active: string | null; onJump: (letter: string) => void}): React.ReactElement {
   const {colour} = useTheme();
@@ -774,7 +774,7 @@ function Alphabet({active, onJump}: {active: string | null; onJump: (letter: str
     return () => animation.stop();
   }, [at, scroll]);
   return (
-    <Box x={1851.5} y={RAIL_TOP} w={56} h={1080 - RAIL_TOP} style={{overflow: 'hidden'}} pointerEvents="box-none">
+    <Box x={ALPHABET_X} y={RAIL_TOP} w={ALPHABET_WIDTH} h={1080 - RAIL_TOP} style={{overflow: 'hidden'}} pointerEvents="box-none">
       <Animated.View style={{transform: [{translateY: scroll}]}}>
         {ALPHABET.map((letter, index) => {
           const on = letter === active;

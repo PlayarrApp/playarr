@@ -43,6 +43,36 @@ export function cssClamp(min: number, value: number, max: number): number {
   return layoutUnit(Math.min(max, Math.max(min, value)));
 }
 
+/**
+ * Page-layout lengths resolved from the web CSS (`page-layout.css`, `global.css`) with the rule above; nothing here is measured.
+ * `--page-start`, `.tv-home-feature` (top 24 %), `.tv-provider` margin-bottom and the hero paragraph margin-top.
+ */
+export const PAGE_START = cssClamp(102, cssVw(8), 160);
+export const HERO_TOP = cssVh(24);
+export const HERO_PROVIDER_GAP = cssClamp(18, cssVh(2.4), 34);
+export const HERO_COPY_GAP = cssClamp(16, cssVh(2), 28);
+/** `--page-control-height` and `--page-header-gap`: Back is as tall as the title line, the title follows after the gap. */
+export const PAGE_CONTROL = cssClamp(44, cssVw(2.8), 50);
+export const PAGE_HEADER_GAP = cssClamp(14, cssVw(1.2), 24);
+/** The right-hand column (`--stage-rail-vw` 62) and its paddings (`--card-pad-left`, `--card-pad-right`), and the library grid card sums. */
+export const RAIL_WIDTH = (62 * WEB_VIEWPORT.width) / 100;
+export const RAIL_LEFT = WEB_VIEWPORT.width - RAIL_WIDTH;
+/** Unsnapped: the web ref puts the first grid column at 783.36 (729.6 + 53.76), not on the 1/64 grid. */
+export const CARD_PAD_LEFT = Math.min(54, Math.max(28, (2.8 * WEB_VIEWPORT.width) / 100));
+const DIRECTORY_EDGE = cssClamp(5, cssVw(0.65), 14);
+export const ALPHABET_WIDTH = 56;
+export const CARD_PAD_RIGHT = layoutUnit(DIRECTORY_EDGE + Math.max(cssClamp(48, cssVw(3.6), 62), ALPHABET_WIDTH) + cssClamp(18, cssVw(1.5), 30));
+export const CARD_GRID_GAP = cssClamp(14, cssVw(1.35), 28);
+export const CARD_GRID_GAP_COVER = cssClamp(12, cssVw(1), 20);
+/** `--card-w` / `--card-w-cover`: the rail less its paddings and gaps, split into `cols` columns. */
+export function cardWidth(cols: number, gap: number): number {
+  return layoutUnit((RAIL_WIDTH - CARD_PAD_LEFT - CARD_PAD_RIGHT - (cols - 1) * gap) / cols);
+}
+/** The library alphabet column (`.tv-directory .tv-alphabet`): its top, its right edge and the grid's bottom padding. */
+export const ALPHABET_TOP = cssClamp(214, cssVh(25), 286);
+export const ALPHABET_X = layoutUnit(1920 - DIRECTORY_EDGE - ALPHABET_WIDTH);
+export const RAIL_BOTTOM = cssClamp(48, cssVh(6), 78);
+
 /** One web CSS pixel in device pixels, on the web's 1/64 px layout grid. */
 export function u(value: number): number {
   const scale = Dimensions.get('window').width / 1920;

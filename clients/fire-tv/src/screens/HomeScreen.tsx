@@ -25,7 +25,7 @@ import {blend} from '../theme/color';
 import {EdgeFade} from '../tv/EdgeFade';
 import {CardCaption, focusInk, MediaFocus} from '../tv/mediaFocus';
 import {lx, NATIVE_DRIVER} from '../debug/layoutMarks';
-import {BalancedT, Box, T, u} from '../tv/kit';
+import {BalancedT, Box, CARD_GRID_GAP, CARD_GRID_GAP_COVER, CARD_PAD_LEFT, cardWidth, cssClamp, cssVh, HERO_COPY_GAP, HERO_PROVIDER_GAP, HERO_TOP, PAGE_START, RAIL_LEFT, RAIL_WIDTH, T, u} from '../tv/kit';
 import {indexWatchProgressByWork, WatchState} from '../tv/WatchState';
 import {RailFrost, Stage} from '../tv/Stage';
 import {ActionsDrawer} from '../tv/ActionsDrawer';
@@ -59,17 +59,16 @@ export interface HomeLayout {
 }
 /** Web's `--card-w` / `--card-w-cover`: the 62 vw rail less its padding, split into 3 (thumbnail) or 5 (cover) columns, one more when small and one fewer when large. */
 const COLUMNS: Record<'thumbnail' | 'cover', Record<ArtworkSize, number>> = {thumbnail: {small: 4, medium: 3, large: 2}, cover: {small: 6, medium: 5, large: 4}};
-const GRID_GAP = {thumbnail: 25.92, cover: 19.2};
-const RAIL_PAD = 156.96;
+const GRID_GAP = {thumbnail: CARD_GRID_GAP, cover: CARD_GRID_GAP_COVER};
 /** Web `--library-rail-top`: clamp(128px, 15 * viewport-unit, 174px) = 162 px at 1920 x 1080. */
-const LIBRARY_RAIL_TOP = 162;
+const LIBRARY_RAIL_TOP = cssClamp(128, cssVh(15), 174);
 /** Web `--card-pad-left` (`--library-rail-left`): the Library grid's left padding, which Home's rails now start at and fade over. */
-const RAIL_GUTTER = 53.76;
+const RAIL_GUTTER = CARD_PAD_LEFT;
 const HOME_CARD_GAP = 24.96;
 const COPY_H = 43.15;
 export function homeLayout(view: 'thumbnail' | 'cover', size: ArtworkSize): HomeLayout {
   const cols = COLUMNS[view][size];
-  const cardW = (1190.4 - RAIL_PAD - (cols - 1) * GRID_GAP[view]) / cols;
+  const cardW = cardWidth(cols, GRID_GAP[view]);
   const artH = view === 'cover' ? cardW * 1.5 : (cardW * 9) / 16;
   const cardH = artH + COPY_H;
   // The stack keeps its centre: a taller card moves the first heading up by half the extra height.
@@ -81,9 +80,9 @@ export function homeLayout(view: 'thumbnail' | 'cover', size: ArtworkSize): Home
  * card's target pixel less that origin.
  */
 function cardLeft(index: number, pitch: number): number {
-  return Math.round(RAIL_X + index * pitch) - (Math.round(729.6) + Math.round(RAIL_X - 729.6));
+  return Math.round(RAIL_X + index * pitch) - (Math.round(RAIL_LEFT) + Math.round(RAIL_X - RAIL_LEFT));
 }
-const RAIL_X = 729.6 + RAIL_GUTTER;
+const RAIL_X = RAIL_LEFT + RAIL_GUTTER;
 
 function mergeRecent(...groups: Work[][]): Work[] {
   return groups.flat().sort((a, b) => new Date(b.added_at).getTime() - new Date(a.added_at).getTime());
@@ -221,7 +220,7 @@ export function HomeScreen(): React.ReactElement {
   const railY = useRef(new Animated.Value(0)).current;
   // The rails scroll through their LEFT offset (JS-driven), not a transform: Vega's focus engine measures layout frames and
   // ignores transforms, so a transform made UP and DOWN land on the same index instead of the card visually above or below.
-  const railLeft = u(RAIL_X - 729.6);
+  const railLeft = u(RAIL_X - RAIL_LEFT);
   const scrollXs = useRef<Animated.Value[]>([]).current;
   const scrollXFor = (rail: number): Animated.Value => {
     while (scrollXs.length <= rail) scrollXs.push(new Animated.Value(railLeft));
@@ -276,17 +275,17 @@ export function HomeScreen(): React.ReactElement {
 
   return (
     <Stage artUri={artUri} accessToken={token}>
-      <Box x={153.6} y={259.2} w={455}>
+      <Box x={PAGE_START} y={HERO_TOP} w={455}>
         <T size={12.288} weight={860} ls={0.983} color={dark ? '#eaa6b6' : '#821e36'} upper lh={18.4}>
           {kicker}
         </T>
-        <View style={{marginTop: u(25.9)}}>
+        <View style={{marginTop: u(HERO_PROVIDER_GAP)}}>
           <BalancedT key={featureTitle} width={373.2} size={69.12} weight={560} ls={-4.9766} lh={62.2} color={colour.ink}>
             {featureTitle}
           </BalancedT>
         </View>
         <FeatureRuntime workId={selected.id} color={soft} />
-        <View style={{marginTop: u(21.6), width: u(324), top: u(2)}}>
+        <View style={{marginTop: u(HERO_COPY_GAP), width: u(324)}}>
           <T size={12.864} weight={600} lh={20.3} color={soft} lines={5}>
             {featureOverview}
           </T>
@@ -295,7 +294,7 @@ export function HomeScreen(): React.ReactElement {
 
       <RailFrost dark={dark} soft={colour.surfaceSoft} strong={colour.surfaceStrong} />
 
-      <Box x={729.6} y={0} w={1190.4} h={1080} style={{overflow: 'hidden'}} pointerEvents="box-none">
+      <Box x={RAIL_LEFT} y={0} w={RAIL_WIDTH} h={1080} style={{overflow: 'hidden'}} pointerEvents="box-none">
         <Animated.View style={{transform: [{translateY: railY}]}} pointerEvents="box-none">
           {rails.map((rail, railIndex) => (
             <HomeRailRow
@@ -322,7 +321,7 @@ export function HomeScreen(): React.ReactElement {
         </Animated.View>
       </Box>
       {/* The web's page scroller fades its end edge (--page-edge-fade-size) while more rails continue below. */}
-      <EdgeFade side="bottom" active={focus.rail < rails.length - 1} x={729.6} y={0} w={1190.4} h={1080} />
+      <EdgeFade side="bottom" active={focus.rail < rails.length - 1} x={RAIL_LEFT} y={0} w={RAIL_WIDTH} h={1080} />
       {actionsWork ? (
         <ActionsDrawer
           work={actionsWork}
@@ -426,7 +425,7 @@ const HomeRailRow = memo(function HomeRailRow(props: HomeRailRowProps): React.Re
   const [lo, hi] = railWindow(rail.items.length, scrolled, focusedItem, layout.cardPitch);
   return (
     <View pointerEvents="box-none">
-      <RailHeading title={rail.title} x={RAIL_X - 729.6} y={headingY} active={active} colour={colour.ink} />
+      <RailHeading title={rail.title} x={RAIL_X - RAIL_LEFT} y={headingY} active={active} colour={colour.ink} />
       <Animated.View
         style={{
           position: 'absolute',
@@ -470,14 +469,14 @@ const HomeRailRow = memo(function HomeRailRow(props: HomeRailRowProps): React.Re
           );
         })}
       </Animated.View>
-      <EdgeFade kind="gutter" tint side="left" active={scrolled > 0} x={0} y={headingY + 26.5} w={1190.4} h={layout.artH + fadeExtra + 47} size={RAIL_GUTTER} />
+      <EdgeFade kind="gutter" tint side="left" active={scrolled > 0} x={0} y={headingY + 26.5} w={RAIL_WIDTH} h={layout.artH + fadeExtra + 47} size={RAIL_GUTTER} />
       <EdgeFade
         kind="mask"
         side="right"
         active={rail.items.length * layout.cardPitch - scrolled > 1920 - RAIL_X + 8}
         x={0}
         y={headingY + 44}
-        w={1190.4}
+        w={RAIL_WIDTH}
         h={layout.artH + 60}
         size={70}
         solid={8}
