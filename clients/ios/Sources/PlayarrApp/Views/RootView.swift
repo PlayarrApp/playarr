@@ -93,9 +93,17 @@ struct RootView: View {
         _updateViewModel = State(initialValue: UpdateViewModel(apiClient: environment.apiClient))
     }
 
+    /// The design report captures the signed-out screens (`login`, `signup`) on a simulator that is otherwise signed in.
+    private var effectiveSessionState: AppEnvironment.SessionState {
+        #if DEBUG
+        if ParityLaunch.signedOutScreen { return .signedOut }
+        #endif
+        return environment.sessionState
+    }
+
     var body: some View {
         Group {
-            switch environment.sessionState {
+            switch effectiveSessionState {
             case .restoring:
                 PlayarrLoadingView(title: "Opening Playarr…")
             case .signedOut:
@@ -149,6 +157,15 @@ struct RootView: View {
         .task {
             #if DEBUG
             ParityLaunch.applyLandscape()
+            if ParityLaunch.isActive, ParityLaunch.signedOutScreen {
+                ParityLaunch.configureDeterministicCapture()
+                if let frozenNow = ParityLaunch.frozenNow {
+                    ParityLaunch.record("frozenNow", ISO8601DateFormatter().string(from: frozenNow))
+                }
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                ParityLaunch.record("signedOutScreenReady", true)
+                return
+            }
             if ParityLaunch.isActive, let server = ParityLaunch.server, let user = ParityLaunch.user {
                 ParityLaunch.configureDeterministicCapture()
                 if let frozenNow = ParityLaunch.frozenNow {
@@ -338,6 +355,7 @@ enum AppDestination: Hashable {
         switch screen {
         case "detail-series": .series
         case "detail-film": .movie
+        case "detail-artist": .artist
         default: nil
         }
         #else
@@ -386,6 +404,8 @@ private struct AuthenticatedPlayarrShell: View {
             case "filters", "actions": _selected = State(initialValue: .library(.movie))
             case "play": _selected = State(initialValue: .player)
             case "movies": _selected = State(initialValue: .library(.movie))
+            case "sites": _selected = State(initialValue: .library(.site))
+            case "playlists", "playlist-detail": _selected = State(initialValue: .playlists)
             case "series": _selected = State(initialValue: .library(.series))
             case "search": _selected = State(initialValue: .search)
             case "calendar": _selected = State(initialValue: .calendar)
@@ -394,8 +414,8 @@ private struct AuthenticatedPlayarrShell: View {
             case "watchlist": _selected = State(initialValue: .watchlist)
             case "requests": _selected = State(initialValue: .requests)
             case "profiles": _selected = State(initialValue: .profiles)
-            case "detail-film", "detail-series": _selected = State(initialValue: .detail)
-            case "player", "player-quality": _selected = State(initialValue: .player)
+            case "detail-film", "detail-series", "detail-artist": _selected = State(initialValue: .detail)
+            case "player", "player-quality", "player-hidden": _selected = State(initialValue: .player)
             default: break
             }
         } else if ProcessInfo.processInfo.arguments.contains("--playarr-demo-profiles") {
@@ -472,7 +492,7 @@ private struct AuthenticatedPlayarrShell: View {
             if let title = ParityLaunch.title, title.hasPrefix("id="), let id = UUID(uuidString: String(title.dropFirst(3))) {
                 demoDetailViewModel = WorkDetailViewModel(apiClient: environment.apiClient, workID: id)
             } else if let title = ParityLaunch.title {
-                let kind: WorkKind = ParityLaunch.screen == "detail-series" ? .series : .movie
+                let kind: WorkKind = ParityLaunch.screen == "detail-series" ? .series : ParityLaunch.screen == "detail-artist" ? .artist : .movie
                 let page = try? await environment.apiClient.browseCatalog(
                     kind: kind, genre: nil, tag: nil, sort: nil, limit: 100, offset: nil
                 )

@@ -141,7 +141,7 @@ export async function createDriver() {
   const e = process.env;
   const expectedUsername = e.DEVICE_TEST_USERNAME;
   if (!hasApprovedDeviceTestIdentity(e, e.TEST_USERNAME) || !expectedUsername || e.TEST_USERNAME.toLocaleLowerCase() !== expectedUsername.toLocaleLowerCase()) throw new Error("apple-ios driver: launch account is not the approved Device Test account");
-  let theme = "dark", wanted = "/";
+  let theme = "dark", wanted = "/", design = null; // design: the design-report capture of one screen (scripts/parity/ios/design-capture.mjs)
   const fixtureNow = run("node", [join(dirname(fileURLToPath(import.meta.url)), "../apple/fixture-clock.mjs")]).trim();
   let captureNow = device === "ipad" ? (e.PARITY_CAPTURE_NOW || fixtureNow) : (e.PARITY_FIXED_NOW || e.PARITY_CAPTURE_NOW || fixtureNow);
   const captureTimezone = e.PARITY_CAPTURE_TIMEZONE || "UTC";
@@ -161,7 +161,7 @@ export async function createDriver() {
     }
   };
   let launchedAt = "";
-  const launch = async (route, extra = [], enableLayoutDiagnostics = false) => {
+  const launch = async (route, extra = [], enableLayoutDiagnostics = false, { signedOut = false } = {}) => {
     const d = new Date(), z = (n) => String(n).padStart(2, "0");
     launchedAt = `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`; // local time, as `log show --start` reads it
     terminate();
@@ -181,11 +181,15 @@ export async function createDriver() {
       "--playarr-parity-now", captureNow, "--playarr-parity-timezone", captureTimezone,
       ...(device === "ipad" ? ["--playarr-parity-landscape"] : []), ...(process.env.PARITY_FOCUS ? ["--playarr-parity-focus", process.env.PARITY_FOCUS] : []),
       ...(process.env.PARITY_MOTION === "1" ? ["--playarr-parity-motion"] : []), ...(process.env.PARITY_COVERS === "1" ? ["--playarr-parity-covers"] : []), ...(process.env.PARITY_SIZE ? ["--playarr-parity-size", process.env.PARITY_SIZE] : []), ...extra], { env: launchEnv });
+    if (signedOut) { // design report: the signed-out screens never verify an identity, the app only reports that it is showing them
+      for (let i = 0; i < 60; i += 1) { if (state().signedOutScreenReady === true) return; await sleep(1000); }
+      throw new Error("iOS parity signed-out screen readiness timed out after 60 seconds");
+    }
     for (let i = 0; i < 60; i += 1) {
       const current = state();
       if (current.failure) throw new Error(`iOS parity app failed: ${String(current.failure)}`);
       if (current.screenContentReady === true) {
-        assertCaptureState(current, expectedUsername, { player: route.startsWith("player:"), deterministic: deterministicCapture, fixedNow });
+        assertCaptureState(current, expectedUsername, { player: route.startsWith("player:") || route.startsWith("player-hidden:"), deterministic: deterministicCapture, fixedNow });
         return;
       }
       await sleep(1000);
@@ -193,7 +197,7 @@ export async function createDriver() {
     const finalState = state();
     if (finalState.failure) throw new Error(`iOS parity app failed: ${String(finalState.failure)}`);
     if (finalState.screenContentReady === true) {
-      assertCaptureState(finalState, expectedUsername, { player: route.startsWith("player:"), deterministic: deterministicCapture, fixedNow });
+      assertCaptureState(finalState, expectedUsername, { player: route.startsWith("player:") || route.startsWith("player-hidden:"), deterministic: deterministicCapture, fixedNow });
       return;
     }
     throw new Error("iOS parity screen readiness timed out after 60 seconds");
@@ -230,14 +234,14 @@ export async function createDriver() {
       if (!app || !existsSync(app)) throw new Error("installed iOS app bundle is unavailable for build identity");
       return { platform: "ios-simulator", bundle, sha256: digestTree(app) };
     },
-    async waitReady({ screen, phase = "capture" } = {}) {
+    async waitReady({ screen, phase = "capture", player = false } = {}) {
       if (!["route", "capture", "focus"].includes(phase)) throw new Error(`unsupported iOS readiness phase: ${phase}`);
       const deadline = Date.now() + 60000;
       while (Date.now() < deadline) {
         const current = state();
         if (current.failure) throw new Error(`iOS parity app failed: ${String(current.failure)}`);
         if (current.screenContentReady === true) {
-          assertCaptureState(current, expectedUsername, { player: screen === "player-controls", deterministic: deterministicCapture, fixedNow });
+          assertCaptureState(current, expectedUsername, { player: screen === "player-controls" || player, deterministic: deterministicCapture, fixedNow });
           return;
         }
         await sleep(500);
@@ -245,7 +249,7 @@ export async function createDriver() {
       const finalState = state();
       if (finalState.failure) throw new Error(`iOS parity app failed: ${String(finalState.failure)}`);
       if (finalState.screenContentReady === true) {
-        assertCaptureState(finalState, expectedUsername, { player: screen === "player-controls", deterministic: deterministicCapture, fixedNow });
+        assertCaptureState(finalState, expectedUsername, { player: screen === "player-controls" || player, deterministic: deterministicCapture, fixedNow });
         return;
       }
       throw new Error(`iOS parity ${phase} readiness timed out for ${screen}`);
@@ -322,6 +326,24 @@ export async function createDriver() {
       const extra = screen.id === "player-controls" ? ["--playarr-parity-play", fixture] : [];
       await launch(nativeRoute, extra);
     },
+    // Design report: capture one screen of the native app by its native route (any screen the suite does not list).
+    // `signedOut` screens (login, signup) are shown without signing in and have no layout export.
+    async design(file, { native, extra = [], player = false, wanted: open = "/", signedOut = false }) {
+      const id = basename(file, ".png");
+      if (!signedOut) { design = { native, extra, player }; wanted = open; try { await this.screenshot(file); } finally { design = null; } return; }
+      await launch(native, [], false, { signedOut: true });
+      let previous = null;
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        await sleep(2000);
+        run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", device === "ipad" ? `${file}.raw.png` : file]);
+        const frame = readFileSync(device === "ipad" ? `${file}.raw.png` : file);
+        if (previous && previous.equals(frame)) break;
+        previous = frame;
+        if (attempt === 7) throw new Error(`iOS signed-out screen ${id} never settled`);
+      }
+      if (device === "ipad") { run("sips", ["-r", "90", `${file}.raw.png`, "--out", file]); rmSync(`${file}.raw.png`); }
+      assertScreenshotFile(file);
+    },
     async key() { throw new Error("touch device: no D-pad"); },
     async location() { return wanted; },
     async focused() { return null; },
@@ -329,15 +351,15 @@ export async function createDriver() {
       const id = basename(file, ".png");
       // Opt-in: the geometry markers are collected only when IPAD_LAYOUT_DIAGNOSTICS=true; a normal capture never fails on them.
       const layoutDiagnostics = process.env.IPAD_LAYOUT_DIAGNOSTICS === "true" && device === "ipad" && id === "series-detail";
-      if (!suite.screens.some((screen) => screen.id === id)) throw new Error(`iOS capture screen is not in suite.json: ${id}`);
+      if (!design && !suite.screens.some((screen) => screen.id === id)) throw new Error(`iOS capture screen is not in suite.json: ${id}`);
       const detail = /^\/(movies|series)\/([0-9a-f-]{36})$/.exec(wanted);
       const fixture = suite.performance?.[0]?.file;
       if (id === "player-controls" && !fixture) throw new Error("iOS player-controls capture has no pinned direct-play fixture in suite.json");
-      const nativeRoute = detail ? `detail:${detail[1] === "movies" ? "movie" : "series"}:id=${detail[2]}`
+      const nativeRoute = design ? design.native : detail ? `detail:${detail[1] === "movies" ? "movie" : "series"}:id=${detail[2]}`
         : id === "player-controls" ? `player:movie:${fixture}` : id;
-      const extra = id === "player-controls" ? ["--playarr-parity-play", fixture] : [];
+      const extra = design ? design.extra : id === "player-controls" ? ["--playarr-parity-play", fixture] : [];
       await launch(nativeRoute, extra, layoutDiagnostics);
-      await this.waitReady({ screen: id, phase: "capture" });
+      await this.waitReady({ screen: id, phase: "capture", player: design?.player === true });
       if (process.env.PARITY_MOTION === "1" && id === "home") { // frame bursts: 5 frames about 150 ms apart after every scripted step
         const dir = `${file}.motion`; run("mkdir", ["-p", dir]);
         let seen = 0;
@@ -349,10 +371,11 @@ export async function createDriver() {
         if (!state().motionDone) throw new Error("iOS scripted Home motion timed out before completion");
       }
       const layoutPath = join(dirname(statePath()), "parity-layout.json");
-      const readLayout = () => parseCaptureLayout(readFileSync(layoutPath, "utf8"), { screen: id, theme, deterministic: deterministicCapture });
+      // Design report captures take the layout export when the screen has one (30 s) and settle on the pixels alone otherwise.
+      const readLayout = () => existsSync(layoutPath) ? parseCaptureLayout(readFileSync(layoutPath, "utf8"), { screen: id, theme, deterministic: deterministicCapture }) : null;
       // The app writes atomically after its tree settles. A missing export is a capture failure, never an optional sidecar.
-      for (let attempt = 0; !existsSync(layoutPath) && attempt < 120; attempt += 1) await sleep(1000);
-      if (!existsSync(layoutPath)) throw new Error(`iOS parity layout export missing for ${id} after 120 seconds; probe counts: ${JSON.stringify(state().layoutProbeCounts ?? null)}`);
+      for (let attempt = 0; !existsSync(layoutPath) && attempt < (design ? 30 : 120); attempt += 1) await sleep(1000);
+      if (!existsSync(layoutPath) && !design) throw new Error(`iOS parity layout export missing for ${id} after 120 seconds; probe counts: ${JSON.stringify(state().layoutProbeCounts ?? null)}`);
       readLayout();
       const raw = device === "ipad" ? `${file}.raw.png` : file;
       // Wait for two byte-identical frames so the capture contains the settled screen.
@@ -363,7 +386,7 @@ export async function createDriver() {
           const current = state();
           if (current.failure) throw new Error(`iOS parity app failed: ${String(current.failure)}`);
           if (current.screenContentReady === true && current.layoutProbing !== true) { // never capture while the visibility probe hides views
-            assertCaptureState(current, expectedUsername, { player: id === "player-controls", deterministic: deterministicCapture, fixedNow });
+            assertCaptureState(current, expectedUsername, { player: id === "player-controls" || design?.player === true, deterministic: deterministicCapture, fixedNow });
             return;
           }
           await sleep(500);
@@ -382,6 +405,7 @@ export async function createDriver() {
       if (id === "player-controls") writeFileSync(`${file}.player-state.json`, JSON.stringify(state().playerCapture));
       // Layout export (docs/parity/LAYOUT.md): the app's own style values and frames, written beside the screenshot.
       const dir = join(dirname(dirname(file)), "layout", theme);
+      if (!layout) return; // design report screen without a layout export
       run("mkdir", ["-p", dir]);
       writeFileSync(join(dir, `${id}.json`), JSON.stringify(layout));
       writeFileSync(`${file}.probe-counts.json`, JSON.stringify(state().layoutProbeCounts ?? null)); // per-element changed-pixel counts of the visibility probe

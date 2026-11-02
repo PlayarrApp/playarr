@@ -679,6 +679,7 @@ extension SettingsView {
     fileprivate static var initialSection: Section? {
         #if DEBUG
         switch ParityLaunch.panel {
+        case "appearance": return .appearance
         case "avatar": return .avatar
         case "language": return .language
         case "player": return .player

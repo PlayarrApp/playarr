@@ -1,0 +1,35 @@
+{
+  "$comment": "Design report (design-report/SCREENS-ALL.md): the screens beyond the 15 suite screens, by native launch route (clients/ios ParityLaunch.swift). `absent` names the evidence for a screen the iOS app does not have.",
+  "captured": {
+    "login": { "native": "login", "signedOut": true },
+    "signup": { "native": "signup", "signedOut": true },
+    "downloads": { "native": "downloads" },
+    "sites": { "native": "sites" },
+    "music-detail": { "native": "detail:artist:@first" },
+    "search-results": { "native": "search:the" },
+    "watchlist": { "native": "watchlist" },
+    "requests": { "native": "requests" },
+    "playlists": { "native": "playlists" },
+    "playlist-detail": { "native": "playlist-detail" },
+    "player": { "native": "player-hidden:movie:{fixture}", "play": true },
+    "settings-appearance": { "native": "settings:appearance" },
+    "settings-profile-avatar": { "native": "settings:avatar" },
+    "settings-language": { "native": "settings:language" },
+    "settings-player": { "native": "settings:player" },
+    "settings-server": { "native": "settings:server" },
+    "settings-profile-lock": { "native": "settings:lock" },
+    "settings-invite": { "native": "settings:invite" },
+    "settings-request-latency": { "native": "settings:latency" },
+    "settings-remote": { "native": "settings:remote" },
+    "settings-your-data": { "native": "settings:your-data" },
+    "settings-home": { "native": "settings:home" }
+  },
+  "absent": {
+    "login-qr": "No QR sign-in in the iOS app: clients/ios/Sources/PlayarrApp/Views/LoginView.swift has server, username and password fields and an invitation sign-up sheet only (no QR or device-code flow; the only QR code is the calendar subscription sheet and the settings invite).",
+    "link": "No device link code screen: the iOS app signs in with credentials; searched clients/ios/Sources/PlayarrApp for link code, device link and /link routes (none).",
+    "household": "No household route: the only household UI is the HouseholdBlockedView overlay (a limit-reached block, Views/HouseholdBlockedView.swift) shown by HouseholdViewModel when the server blocks a profile; the Destination enum in Views/RootView.swift has no household entry.",
+    "folders": "No folders screen: the Destination enum in Views/RootView.swift lists downloads, search, home, libraries, playlists, watchlist, requests and calendar; folders exist only as playlist child counts inside PlaylistsView.swift.",
+    "episode-detail": "Same screen as series-detail: episodes are rows inside WorkDetailView (Views/WorkDetailView.swift); there is no separate episode route.",
+    "not-found": "No not-found screen: the app navigates by the Destination enum and NavigationStack values, not by URL, so no unknown-route fallback exists (Views/RootView.swift)."
+  }
+}

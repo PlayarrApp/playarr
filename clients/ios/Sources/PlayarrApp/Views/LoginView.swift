@@ -22,6 +22,9 @@ struct LoginView: View {
         self.environment = environment
         self.onBack = onBack
         _serverURL = State(initialValue: environment.serverBaseURL.absoluteString)
+        #if DEBUG
+        _showingSignup = State(initialValue: ParityLaunch.screen == "signup")
+        #endif
     }
 
     var body: some View {
