@@ -21,6 +21,8 @@ struct TVPlayerView: View {
     let parity: (position: Double, duration: Double, menuOpen: Bool)?
     @State private var interaction = TVPlayerInteraction()
     @FocusState private var focusedControl: TVPlayerControl?
+    /// The menu control the last Left/Right walked to (the live focus may have been moved by the focus engine first).
+    @State private var menuCursor: TVPlayerControl?
     /// Set by the first remote move or back: the opening focus on Play is then no longer enforced.
     @State private var remoteUsed = false
     #if os(macOS)
@@ -226,6 +228,7 @@ struct TVPlayerView: View {
 
     /// Moves the focus after the focus engine's own move for the same press has landed, so the explicit order wins.
     private func settle(_ target: TVPlayerControl) {
+        menuCursor = TVPlayerControl.menuRow.contains(target) ? target : nil
         focusedControl = target
         interaction.focus = target
         DispatchQueue.main.async { focusedControl = target; interaction.focus = target }
@@ -250,16 +253,19 @@ struct TVPlayerView: View {
                 if focusedControl == .surface {
                     switch direction {
                     case .left: focusedControl = .play
-                    case .right: focusedControl = .audio
+                    case .right: focusedControl = .audio; menuCursor = .audio
                     case .up: focusedControl = .scrubber
                     default: break
                     }
                     if let next = focusedControl { interaction.focus = next }
                     return
                 }
-                if let current = focusedControl, let at = TVPlayerControl.menuRow.firstIndex(of: current), direction == .left || direction == .right {
-                    // The menu row walks in the web's order; the focus engine's own move would pick by geometry.
+                if let current = focusedControl, TVPlayerControl.menuRow.contains(current), direction == .left || direction == .right {
+                    // The menu row walks in the web's order; the focus engine's own move would pick by geometry and may
+                    // already have landed (so the cursor is the last explicit target, not the live focus).
                     let row = TVPlayerControl.menuRow
+                    let from = menuCursor.flatMap { row.contains($0) ? $0 : nil } ?? current
+                    guard let at = row.firstIndex(of: from) else { return }
                     let target = direction == .right ? row[min(at + 1, row.count - 1)] : (at == 0 ? .play : row[at - 1])
                     settle(target)
                     return

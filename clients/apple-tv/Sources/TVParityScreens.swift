@@ -57,7 +57,7 @@ extension TVParityLaunch {
 
     /// The suite drives the player (a parity route, screen, direct play or pinned title): its icon menus open the app-owned panel.
     static var drivesPlayer: Bool {
-        isParityRun || playFile != nil || ProcessInfo.processInfo.arguments.contains("-PlayarrOpenWork")
+        isParityRun || pinnedClock || playFile != nil || ProcessInfo.processInfo.arguments.contains("-PlayarrOpenWork")
     }
 
     /// `-PlayarrPlayFile <media file id>`: plays that file at once (suite playback cases a and b); the player reports to parity-state.json.
