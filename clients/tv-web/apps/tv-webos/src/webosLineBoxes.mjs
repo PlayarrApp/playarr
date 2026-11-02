@@ -50,6 +50,39 @@ export function needsLineBoxFix(userAgent) {
 }
 
 /**
+ * Explicit column tracks for a grid of equal `fr` tracks. Blink from 105 on sizes the tracks in 1/64 px LayoutUnits from the exact fraction and hands the
+ * rounding out cumulatively (the first track 237.578125, the next six 237.59375 in a 7-column row); Chromium 94 gives every track the first track's width, so
+ * the columns after the first sit up to 0.08 px left. Track k ends at floor(k * fraction) in 1/64 px, which is what this returns (px widths, gaps excluded).
+ * @param {number} count number of tracks
+ * @param {number} width the content width of the grid in CSS px
+ * @param {number} gap the column gap in CSS px
+ */
+export function cumulativeTracks(count, width, gap) {
+  const unit = 64;
+  const fraction = ((Math.round(width * unit) - Math.round(gap * unit) * (count - 1)) / count);
+  const widths = [];
+  let previous = 0;
+  for (let k = 1; k <= count; k += 1) {
+    const end = Math.floor(k * fraction);
+    widths.push((end - previous) / unit);
+    previous = end;
+  }
+  return widths;
+}
+
+/**
+ * True when the computed tracks are one equal width that, with the gaps, fills the content width (so they came from equal `fr` tracks or one `1fr` repeat).
+ * @param {number[]} tracks computed track widths in CSS px
+ * @param {number} width content width in CSS px
+ * @param {number} gap column gap in CSS px
+ */
+export function isEqualFillingGrid(tracks, width, gap) {
+  if (tracks.length < 2) return false;
+  if (tracks.some((t) => !Number.isFinite(t) || Math.abs(t - tracks[0]) > 0.05)) return false;
+  return Math.abs(tracks.reduce((a, b) => a + b, 0) + gap * (tracks.length - 1) - width) < 0.1;
+}
+
+/**
  * @param {Window & typeof globalThis} win
  * @param {{ force?: boolean, roundPitch?: boolean }} [options] `roundPitch` also lays the lines of a multi-line text leaf out on the nearest whole pixel
  * pitch instead of the truncated one (the engine keeps whole pixels per line) and takes the surplus back from the block's end margin, so the block keeps
@@ -59,6 +92,8 @@ export function installLineBoxFix(win, options = {}) {
   if (!options.force && !needsLineBoxFix(win.navigator.userAgent)) return;
   const doc = win.document;
   const touched = new Set();
+  /** @type {Map<Element, string>} grids given explicit tracks, with the inline value they had before */
+  const gridTouched = new Map();
   let scheduled = false;
   const run = () => {
     scheduled = false;
@@ -70,6 +105,8 @@ export function installLineBoxFix(win, options = {}) {
       style.marginBlockEnd = "";
     }
     touched.clear();
+    for (const [el, before] of gridTouched) /** @type {HTMLElement} */ (el).style.gridTemplateColumns = before;
+    gridTouched.clear();
     const jobs = [];
     for (const el of doc.body.querySelectorAll("*")) {
       const cs = win.getComputedStyle(el);
@@ -104,7 +141,24 @@ export function installLineBoxFix(win, options = {}) {
       }
       touched.add(s.el);
     }
+    fixGridTracks();
     observe();
+  };
+  const fixGridTracks = () => {
+    for (const el of doc.body.querySelectorAll("*")) {
+      const cs = win.getComputedStyle(el);
+      if (cs.display !== "grid" && cs.display !== "inline-grid") continue;
+      const tracks = cs.gridTemplateColumns.split(" ").map(parseFloat);
+      if (tracks.length < 2) continue;
+      const gap = parseFloat(cs.columnGap) || 0;
+      if (cs.transform !== "none") continue;
+      const width = el.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth);
+      if (!isEqualFillingGrid(tracks, width, gap)) continue;
+      const wanted = cumulativeTracks(tracks.length, width, gap);
+      if (wanted.every((w, i) => Math.abs(w - tracks[i]) < 0.004)) continue;
+      gridTouched.set(el, /** @type {HTMLElement} */ (el).style.gridTemplateColumns);
+      /** @type {HTMLElement} */ (el).style.gridTemplateColumns = wanted.map((w) => `${w}px`).join(" ");
+    }
   };
   const schedule = () => {
     if (scheduled) return;

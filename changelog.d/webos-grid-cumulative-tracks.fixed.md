@@ -1,0 +1,1 @@
+- webOS and Tizen: grids of equal fr tracks get explicit px tracks that follow the web's cumulative 1/64 px floor, so the calendar month columns after the first sit on the web edges.
