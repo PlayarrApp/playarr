@@ -714,9 +714,6 @@ impl Cal {
                         .css_classes(["pa-dot", tone])
                         .valign(gtk4::Align::Center)
                         .build();
-                    // The web's 7-column grid pitch is 102.86 px; GTK rounds it to 103, so the dot sits 1 px left of its slot (the label is pulled back to keep its place).
-                    dot.set_margin_start(-1);
-                    dot.set_margin_end(1);
                     row.append(&dot);
                     let text = if *n > 1 {
                         format!("{} · {n}×", e.title)
@@ -731,7 +728,6 @@ impl Cal {
                         .ellipsize(gtk4::pango::EllipsizeMode::End)
                         .max_width_chars(1)
                         .build();
-                    name.set_margin_start(-1);
                     row.append(&name);
                     let btn = gtk4::Button::builder()
                         .child(&row)
@@ -909,9 +905,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .css_classes(["pa-pill", "range"])
         .build();
     let prev = round_arrow("←");
-    // The web's previous button sits 0.8 px right of the whole-pixel flow.
-    prev.set_margin_start(1);
-    prev.set_margin_end(-1);
     let today_btn = pill("Today");
     today_btn.add_css_class("selected");
     let next = round_arrow("→");

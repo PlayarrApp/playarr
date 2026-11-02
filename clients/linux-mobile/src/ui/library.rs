@@ -478,12 +478,6 @@ impl Lib {
         let mut drops = Vec::new();
         for (i, heading) in ["Audio language", "Subtitle language"].iter().enumerate() {
             label(heading);
-            if i == 0 {
-                // The web's Audio heading sits one px higher than the rhythm of the rows above it.
-                if let Some(l) = col.last_child() {
-                    l.set_margin_top(-1);
-                }
-            }
             let dd = gtk4::DropDown::builder()
                 .model(&gtk4::StringList::new(&["Any language"]))
                 .accessible_role(gtk4::AccessibleRole::Group)
@@ -508,7 +502,6 @@ impl Lib {
                 crate::layout::decorative(&caret);
                 inner.append(&caret);
             }
-            dd.set_margin_top(-1);
             col.append(&dd);
             drops.push(dd);
             let _ = i;
@@ -683,8 +676,10 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
             }
         });
     }
-    // The web spreads the 44 px wide letter buttons 18.635 css px apart (the first at y 88); whole px give 18 or 19.
-    let top = |i: usize| (88.0 + 18.635 * i as f64 - 0.2).round() as i32;
+    // Phone `.tv-directory .tv-alphabet`: fixed from top 14 + 74 to 58 + 8 (nav) + 16 (gap) above the viewport bottom
+    // (673 css px), its 27 letters `flex: 1 1 0`, so each takes (673 - 88 - 82) / 27 css px; whole px by cumulative rounding.
+    let pitch = (673.0 - 88.0 - 82.0) / ALPHABET.chars().count() as f64;
+    let top = |i: usize| (88.0 + pitch * i as f64).round() as i32;
     for (i, c) in ALPHABET.chars().enumerate() {
         let name = if c == '#' {
             "Numbers and symbols".to_string()

@@ -537,6 +537,17 @@ impl Walk<'_> {
                         let o = item.offset() as usize;
                         text.get(o..o + item.length() as usize).unwrap_or("").to_string()
                     };
+                    // A run of blanks alone has no ink: it keeps the word break in the neighbouring text but adds no
+                    // rectangle of its own (the web dumper skips whitespace-only character boxes).
+                    if piece.trim().is_empty() && item.analysis().flags() & PANGO_FLAG_IS_ELLIPSIS == 0 {
+                        if let Some(last) = recs.last_mut() {
+                            last.1.push(' ');
+                        }
+                        if !it.next_run() {
+                            break;
+                        }
+                        continue;
+                    }
                     // Glyph extent of the run without its leading and trailing blanks, from the layout's own cluster positions.
                     let (mut x0, mut x1) = (lg.x(), lg.x() + lg.width());
                     if !matches!(piece.as_str(), "\u{2026}") {

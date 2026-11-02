@@ -1,0 +1,1 @@
+- Nura: removed content- and position-keyed native fitting (home second rail, filter Audio offsets, settings first-row arrow, calendar arrows and dots, detail synopsis and series gaps now from the phone CSS, alphabet pitch from the rail geometry), exported the ink bounds of the player time separator and stopped pinning the buffered fill in captures. Unmeasured; scores may change.

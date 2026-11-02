@@ -417,7 +417,8 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         // The web's episode synopsis sits 14 px closer to the meta row than the film's (set on the synopsis below).
     }
     body.append(&meta_flow);
-    gap(&body, if film { 11 } else { 0 });
+    // Phone `.tv-detail-synopsis`: margin-top 10 px.
+    gap(&body, 10);
     let overview = focus_ep
         .as_ref()
         .and_then(|(_, e)| e.episode.overview.clone())
@@ -433,14 +434,15 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             // The web's synopsis is 52ch wide, 17 px short of the page's right margin.
             .margin_end(17)
             .build();
-        l.set_height_request(if film { 34 } else { 50 });
-        l.set_valign(gtk4::Align::Start);
+        // `.is-episodic` (a series page) keeps three 1.45 line-height lines of room, 3 * 1.45 * 11.52 px.
         if !film {
-            l.set_margin_top(-5);
+            l.set_height_request((3.0_f64 * 1.45 * 11.52).round() as i32);
         }
+        l.set_valign(gtk4::Align::Start);
         body.append(&l);
     }
-    gap(&body, if series { 28 } else { 14 });
+    // Phone `.tv-detail-actions`: margin-top 14 px.
+    gap(&body, 14);
 
     let title = w.title.clone();
     let play = {
@@ -586,9 +588,8 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         body.append(&albums(&l.detail.children.albums, &title, play.clone()));
     }
     let seasons = &l.detail.children.seasons;
-    // Negative margins do not take the pill scroller's focus room back, so the series gap is shortened by the
-    // room kept above and below (measured against the web capture).
-    gap(&body, if series { 53 - 2 * FOCUS_ROOM } else { 28 });
+    // Phone `.tv-series-browser, .tv-movie-browser`: margin-top 28 px.
+    gap(&body, 28);
     // The static server (like most libraries) has no chapters: the web shows one generated marker per interval.
     let mut band = None;
     if let (false, "movie", Some(file)) = (series, w.kind.as_str(), l.detail.media_file_id.as_deref()) {
