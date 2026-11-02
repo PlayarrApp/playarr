@@ -273,7 +273,6 @@
       <Poster id="browseKeyArtFade" translation="[781.03,-22.9]" width="252" height="1190.6" uri="pkg:/images/stage-key-art-fade.png" loadDisplayMode="scaleToFill" />
       <StageScrims id="browseScrims" />
       <Rectangle id="washBrowse" width="1920" height="1080" color="0x00000000" />
-      <Rectangle id="browsePanel" translation="[729.6,0]" width="1190.4" height="1080" color="0x1B181BFF" />
       <!-- Web .tv-library-heading: back is dock Home; h1 + "1,730 TITLES". -->
       <TrackedText id="browseTitle" translation="[226.6,58.2]" />
       <TrackedText id="browseCountLabel" translation="[226.6,112]" />
@@ -354,7 +353,7 @@
     <Group id="searchGroup" visible="false">
       <Rectangle id="searchSurface" width="1920" height="1080" color="0x1B181BFF" />
       <Rectangle id="washSearch" width="1920" height="1080" color="0x00000000" />
-      <Rectangle id="searchPanel" translation="[729.6,0]" width="1190.4" height="1080" color="0x1B181BFF" />
+      <RailFrost id="searchFrost" />
       <!-- Native Search shell only. No web-freeze crop Posters (those painted
            solid dark/blue panel slabs over the UI). -->
       <Label id="searchTitle" translation="[220,95]" width="900" height="60" text="Search" scale="[1.35,1.35]" color="0xFFFFFFFF" />
