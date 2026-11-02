@@ -17,6 +17,7 @@ if [ -z "${SKIP_SIGNIN:-}" ]; then
   export PLAYARR_NURA_EXPECTED_SUB
 fi
 mkdir -p "$O"
+python3 -I "$H/seed-playlist.py"
 # route:screen-id pairs; the app route is what the control file takes.
 SCREENS="home:home movies:movies series:series music:music calendar-month:calendar-month calendar-week:calendar-week
 calendar-agenda:calendar-agenda search:search search:the:search-results film:$FILM:film-detail series-detail:$SERIES:series-detail
@@ -31,11 +32,14 @@ for t in $THEMES; do
   for pair in $SCREENS; do
     id=${pair##*:}; route=${pair%:*}
     want "$id" || continue
+    [ -z "${RESUME:-}" ] || [ ! -s "$O/$t/$id.png" ] || continue
+    # The avatar grid is solid green art in places, which the VM-green guard cannot tell from an unpainted tile.
+    green=; [ "$id" = settings-profile-avatar ] && green=true
     # The web opens a series from the Series list, so the detail page's back button reads "Back to Series".
     case $route in series-detail:*) "$H/pmssh.sh" "printf %s series > $PLAYARR_CONTROL" </dev/null; sleep 8;; esac
     for try in 1 2 3; do
       rm -f -- "$O/$t/${route//:/_}.png"
-      WAIT=${WAIT:-45} "$H/pmcap3.sh" "$O/$t" "theme:$t" "$route" </dev/null && break
+      PLAYARR_CAPTURE_GREEN_CHECK=${green:-python3 -I $H/nogreen.py} WAIT=${WAIT:-45} "$H/pmcap3.sh" "$O/$t" "theme:$t" "$route" </dev/null && break
       [ "$try" = 3 ] && { echo "capture failed: $id" >&2; exit 1; }
     done
     [ "${route//:/_}" = "$id" ] || mv -- "$O/$t/${route//:/_}.png" "$O/$t/$id.png"
