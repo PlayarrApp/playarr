@@ -231,7 +231,10 @@ struct TVPlayerView: View {
         menuCursor = TVPlayerControl.menuRow.contains(target) ? target : nil
         focusedControl = target
         interaction.focus = target
-        DispatchQueue.main.async { focusedControl = target; interaction.focus = target }
+        // The focus engine applies its own geometric move for the same press a beat later: assert the web's target again after it.
+        for delay in [0.05, 0.2] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { focusedControl = target; interaction.focus = target }
+        }
     }
 
     /// The remote's behaviour shared by playback and the parity frame.
