@@ -1,0 +1,1 @@
+- Tizen 6.5 web build no longer rounds the line pitch of multi-line text to whole pixels: the line-box fix keeps the web CSS line height and only sets the block minimum height.
