@@ -4347,7 +4347,7 @@ private fun LibraryFiltersDialog(
                     viewMode,
                     onViewMode,
                     icon = { mode, colour -> LibraryViewIcon(mode, colour) },
-                    originCss = PHONE_DRAWER_BODY_TOP_CSS,
+                    originCss = phoneDrawerBodyTopCss(),
                 ) {
                     playarrString(
                         when (it) {
@@ -4363,7 +4363,7 @@ private fun LibraryFiltersDialog(
                     listOf("title", "recent"),
                     sortMode,
                     onSortMode,
-                    originCss = PHONE_DRAWER_BODY_TOP_CSS + 94.22f,
+                    originCss = phoneDrawerBodyTopCss() + phoneDrawerSectionPitchCss(),
                 ) {
                     playarrString(if (it == "title") PlayarrString.LibrarySortTitle else PlayarrString.LibrarySortDateAdded)
                 }
@@ -4372,7 +4372,7 @@ private fun LibraryFiltersDialog(
                     listOf(false, true),
                     descending,
                     onDescending,
-                    originCss = PHONE_DRAWER_BODY_TOP_CSS + 188.44f,
+                    originCss = phoneDrawerBodyTopCss() + 2f * phoneDrawerSectionPitchCss(),
                 ) {
                     playarrString(
                         when {
@@ -4402,9 +4402,11 @@ private fun LibraryFiltersDialog(
                     filterBody()
                 }
             } else {
-                // Web phone `.drawer-body`: sections 70.56 px tall (10.56 label, 12 gap, 48 choices) every 94.22 px (gap 2.8 vu = 23.66),
-                // the first at css y 95.02 (20 padding, 47.36 header, 23.66 gap, 4 body padding).
-                WebCssLayout(PHONE_DRAWER_BODY_TOP_CSS, listOf(0f, 94.22f, 188.44f), listOf(70.56f, 70.56f, 70.56f), 23.66f) { filterBody() }
+                // Web phone `.drawer-body`: sections 70.56 px tall (10.56 label, 12 gap, 48 choices) one `clamp(22px, 2.8 vu, 34px)` gap apart,
+                // the first at 20 padding + 47.36 header + that gap + 4 body padding.
+                val pitch = phoneDrawerSectionPitchCss()
+                val sectionHeight = pitch - phoneDrawerGapCss()
+                WebCssLayout(phoneDrawerBodyTopCss(), listOf(0f, pitch, 2f * pitch), listOf(sectionHeight, sectionHeight, sectionHeight), phoneDrawerGapCss()) { filterBody() }
             }
         }
     }
@@ -6685,9 +6687,9 @@ private fun ExperienceVideoDetailContent(
     Box(Modifier.fillMaxSize().background(WebSurface)) {
         HeroBackdropStack {
         if (!isTelevision) {
-            // Web `.tv-detail`: key art 58% of the viewport tall (490 px), wash 72% (608 px).
-            PhoneKeyArt(detail.work, serverUrl, accessToken, Modifier.fillMaxWidth().height(489.5.dp))
-            PhoneStageWash(Modifier.fillMaxWidth().height(607.7.dp))
+            // Web phone `.tv-detail > .tv-key-art`: height min(58 vu, 520 px); `.tv-stage-wash`: min(72 vu, 640 px).
+            PhoneKeyArt(detail.work, serverUrl, accessToken, Modifier.fillMaxWidth().height(webVuCss(0f, 58f, 520f).dp))
+            PhoneStageWash(Modifier.fillMaxWidth().height(webVuCss(0f, 72f, 640f).dp))
             // Web: the art is fully hidden under the header for the first 125 px and fades in by 200 px (measured on the live refs).
             Box(Modifier.fillMaxWidth().height(108.5.dp).background(Brush.verticalGradient(0f to WebSurface, 0.627f to WebSurface, 1f to Color.Transparent)))
         } else {
@@ -6898,10 +6900,10 @@ private fun PhoneVideoDetailBody(
     val synopsis = episode?.overview?.takeIf(String::isNotBlank)
         ?: work.overview?.takeIf(String::isNotBlank)
         ?: playarrString(if (episode == null) PlayarrString.DetailNoSynopsis else PlayarrString.DetailNoEpisodeSynopsis)
-    // Web: the copy block starts 375 px down (kicker top) and the page scrolls under the fixed key art. A plain scrolling column
+    // Web: the copy block follows the sticky key art (58 vu) less its -24 vu margin, plus the 64 px copy padding and the top inset, and the page scrolls under the fixed key art. A plain scrolling column
     // (two blocks, nothing to lazy-load) so the page surface has its real full height.
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-      Column(Modifier.fillMaxWidth().padding(top = 351.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(), bottom = 82.dp)) {
+      Column(Modifier.fillMaxWidth().padding(top = phoneDetailCopyTopCss().dp + webPhoneInsets().asPaddingValues().calculateTopPadding(), bottom = 82.dp)) {
         run {
             Column(Modifier.padding(horizontal = 16.dp)) {
                 Text(

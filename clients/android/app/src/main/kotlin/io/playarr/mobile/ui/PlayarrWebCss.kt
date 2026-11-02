@@ -55,8 +55,24 @@ internal fun WebCssLayout(
     }
 }
 
-/** Web phone `.drawer-body` top in css px: 20 padding, 47.36 header (10.56 kicker, 3.2, 33.6 title), 23.66 gap (2.8 vu), 4 body padding. */
-internal const val PHONE_DRAWER_BODY_TOP_CSS = 95.02f
+/** The css viewport height in px: the system height in dp is the css height because the stage density is the css device pixel ratio. */
+@Composable
+internal fun webViewportHeightCss(): Float = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.toFloat()
+
+/** A css `clamp(min, percent * viewport-unit, max)` where the unit is 1% of the css viewport height, as a LayoutUnit. */
+@Composable
+internal fun webVuCss(minCss: Float, percent: Float, maxCss: Float): Float = webClamp(minCss, percent * webViewportHeightCss() / 100f, maxCss)
+
+/** Web `.drawer > .drawer-body` grid gap and the sections' pitch: `clamp(22px, 2.8 * vu, 34px)` plus the 70.56 px section (10.56 label, 12 gap, 48 choices). */
+@Composable
+internal fun phoneDrawerGapCss(): Float = webVuCss(22f, 2.8f, 34f)
+
+@Composable
+internal fun phoneDrawerSectionPitchCss(): Float = webLayoutUnit(10.56f) + 12f + 48f + phoneDrawerGapCss()
+
+/** Web phone `.drawer-body` top in css px: 20 padding, 47.36 header (10.56 kicker, 3.2, 33.6 title), the drawer gap, 4 body padding. */
+@Composable
+internal fun phoneDrawerBodyTopCss(): Float = 20f + webLayoutUnit(10.56f) + webLayoutUnit(3.2f) + webLayoutUnit(33.6f) + phoneDrawerGapCss() + 4f
 
 /**
  * A one-line row whose children are as wide as their content, packed against the right edge with a css [gapCss] between them, each
@@ -208,3 +224,10 @@ internal fun WebAbsoluteLayout(originXCss: Float, originYCss: Float, widthCss: F
         layout(Math.round((originXCss + widthCss) * d) - bx, Math.round((originYCss + heightCss) * d) - by) { placed.forEach { (x, y, p) -> p.placeRelative(x, y) } }
     }
 }
+
+/**
+ * Web phone `.tv-detail-copy` top before the top inset: the sticky `.tv-key-art` is `min(58 vu, 520px)` tall with a `-24 vu` bottom margin,
+ * and the copy follows it in flow with 64 px of top padding (the inset is added by the caller).
+ */
+@Composable
+internal fun phoneDetailCopyTopCss(): Float = webVuCss(0f, 58f, 520f) - webLayoutUnit(24f * webViewportHeightCss() / 100f) + 64f

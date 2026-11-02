@@ -366,7 +366,7 @@ private fun PhoneDrawerPanel(
                     }
                 }
             }
-            Spacer(Modifier.height(with(androidx.compose.ui.platform.LocalDensity.current) { webSpan(20f + 47.36f, PHONE_DRAWER_BODY_TOP_CSS) }))
+            Spacer(Modifier.height(with(androidx.compose.ui.platform.LocalDensity.current) { webSpan(20f + 47.36f, phoneDrawerBodyTopCss()) }))
             Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 content()
                 if (footer != null) {

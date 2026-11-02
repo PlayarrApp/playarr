@@ -1,0 +1,1 @@
+- Android phone: filters drawer gap and detail key art, wash and copy top are derived from the css viewport height (clamp/vu, 1/64 px LayoutUnit) instead of frozen numbers.
