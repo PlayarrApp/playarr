@@ -8,6 +8,7 @@
  *   cmd=open&kind=movies&id=<id>   open a title's detail page by work id
  *   cmd=play&file=<media file id>  start playback of a media file
  *   cmd=armPause&ms=<n>[&at=<m>]   pause the player at n ms of playback, on the app's own clock; at=<m> then puts the position on m ms
+ *   cmd=blur                       drop the focus ring the player chrome draws (the web refs are captured with focus dropped; native focus stays where it is)
  *   cmd=stop                       stop playback and close the player
  *   cmd=theme&name=dark|light      set the in-app theme preference
  *   cmd=clock&now=<ISO instant>    freeze the app clock (shown in UTC, en-GB, like the web refs); `now` empty releases it
@@ -68,6 +69,13 @@ export function clearFocus(owner: object): void {
 }
 
 const queries: Record<string, string | null> = {};
+
+const blurListeners = new Set<() => void>();
+/** The player registers here so cmd=blur can drop its drawn focus ring, as the web driver's blur() does for the refs. */
+export function onParityBlur(listener: () => void): () => void {
+  blurListeners.add(listener);
+  return () => blurListeners.delete(listener);
+}
 
 /** A screen reports a piece of its own state that the web keeps in the URL query (`view=month`, `panel=filters`). */
 export function reportQuery(key: string, value: string | null): void {
@@ -177,6 +185,7 @@ export function installParityControl(hooks: ParityHooks): () => void {
         case 'open': hooks.open(command.kind ?? 'movies', command.id ?? ''); break;
         case 'play': hooks.play(command.file ?? ''); break;
         case 'stop': hooks.stop(); break;
+        case 'blur': blurListeners.forEach((listener) => listener()); break;
         case 'cover': hooks.cover?.(command.on === '1'); break;
         case 'armPause': hooks.armPause(command.ms ? Number(command.ms) : null, command.at ? Number(command.at) : null); break;
         case 'theme': hooks.setTheme(command.name === 'light' ? 'light' : 'dark'); break;

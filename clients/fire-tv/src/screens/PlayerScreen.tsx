@@ -67,7 +67,7 @@ import {useApiClient} from '../api/ApiClientProvider';
 import {ensureFireTvAccessToken} from '../auth/session';
 import {useAppForeground, useRemoteKey} from '../platform';
 import {TvFocusScope, focusNode} from '../platform/focus';
-import {reportQuery} from '../debug/parityControl';
+import {onParityBlur, reportQuery} from '../debug/parityControl';
 import {audioCodecName, audioTrackLabel} from '../lib/trackLabels';
 import {useBackLayer} from '../navigation/backPolicy';
 import {DarkSurface} from '../theme/ThemeProvider';
@@ -452,6 +452,9 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
     onClose?.();
     void stopped;
   });
+
+  // cmd=blur (parity builds): the refs are captured with focus dropped, so the drawn ring goes; native focus stays on its control.
+  useEffect(() => onParityBlur(() => setFocusedControl(null)), []);
 
   // The parity driver reads whether the quality, audio or subtitles panel (the web's .player-quality-menu) is open.
   useEffect(() => {

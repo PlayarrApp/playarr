@@ -313,18 +313,24 @@ export async function createDriver({ out } = {}) {
         }
       }
       if (!paused) throw new Error("the Vega player did not pause at 2 s");
-      // The buffered bar keeps growing while paused: wait until it stops, so the bar is the same in every run.
-      let lastBuffered = -1;
-      for (let i = 0; i < 40; i++) {
-        const b = (await state(20000).catch(() => ({}))).player?.bufferedSeconds;
-        if (b != null && b === lastBuffered) break;
-        lastBuffered = b ?? -1;
-        await sleep(3000);
+      // The seek bar draws the buffered range (the web ref shows the whole clip buffered). The engine stops downloading at a timing-dependent point,
+      // so wait on a fixed condition: the buffered end has reached the clip's end. A stall (no growth for 60 s) fails the capture instead of drawing a different bar.
+      let lastBuffered = -1, grownAt = Date.now(), full = false;
+      while (!full) {
+        const p = (await state(20000).catch(() => ({}))).player ?? {};
+        const b = p.bufferedSeconds ?? -1;
+        full = p.durationSeconds > 0 && b >= p.durationSeconds - 0.1;
+        if (b !== lastBuffered) { lastBuffered = b; grownAt = Date.now(); }
+        if (!full && Date.now() - grownAt > 60000) throw new Error(`the Vega player stopped buffering at ${b} of ${p.durationSeconds} s`);
+        if (!full) await sleep(1500);
       }
-      console.error(`firetv: buffered to ${lastBuffered} s`);
+      console.error(`firetv: buffered to ${lastBuffered} s (full)`);
       await sleep(7000); // the controls hide after 5 s without input
       await press("Right"); // the first input with the controls hidden only raises them
       await sleep(2500);
+      // The web refs are captured with focus dropped (blur): drop the drawn ring too, so every run shows the same state whichever control the refocus timers left focused.
+      await command({ cmd: "blur" }, 500);
+      await sleep(1500);
     },
     async route(path, { screenId } = {}) {
       if (path.startsWith("/player/")) return this.playerControls();
