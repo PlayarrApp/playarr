@@ -1,12 +1,9 @@
 sub init()
-    for each id in ["rampKeyLeft", "rampKeyBottom", "rampKeyTop", "rampWashLeft", "rampWashRight"]
+    for each id in ["rampKeyLeft", "rampKeyBottom", "rampKeyTop", "rampWashLeft"]
         ramp = m.top.findNode(id)
         ThemeSetRole(ramp, "surface")
         ramp.blendColor = ThemeColor("surface")
     end for
-    solid = m.top.findNode("washLeftSolid")
-    ThemeSetRole(solid, "surface")
-    solid.color = ThemeColor("surface")
     m.frostLight = m.top.findNode("frostLight")
     m.frostDark = m.top.findNode("frostDark")
     ThemeSetRole(m.frostLight, "homeRailFrost")

@@ -298,45 +298,29 @@ def profile_settings_buttons() -> None:
 
 
 def profile_add_avatar(theme: str) -> None:
-    """Render web .profile-add's theme-specific gradient, dashed border and plus glyph."""
-    size = 240
+    """Render web .profile-add: the pre-rendered 242 px gradient PNG the web draws (generate-gradient-assets.mjs), clipped to the
+    244 px circle, with the 1 px dashed border and the plus glyph on top."""
+    size = 244
     scale = SS
     width = height = size * scale
     if theme == "light":
-        start, ink, border = (247, 222, 228), (68, 58, 64), (56, 38, 33, 47)
+        ink, border = (68, 58, 64), (56, 38, 33, 47)
         filename = "avatar-add-light.png"
     else:
-        start, ink, border = (61, 32, 42), (205, 193, 198), (223, 220, 221, 39)
+        ink, border = (205, 193, 198), (223, 220, 221, 39)
         filename = "avatar-add.png"
-    end = (168, 38, 85)
-    image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    pixels = image.load()
-    cx, cy = width * 0.34, height * 0.26
-    highlight_radius = width * 0.27
-    angle = math.radians(145)
-    gradient_x, gradient_y = math.sin(angle), -math.cos(angle)
-    gradient_length = (width - 1) * (gradient_x + gradient_y)
-    for y in range(height):
-        for x in range(width):
-            t = min(1.0, max(0.0, (x * gradient_x + y * gradient_y) / gradient_length))
-            r = round(start[0] * (1 - t) + end[0] * t)
-            g = round(start[1] * (1 - t) + end[1] * t)
-            b = round(start[2] * (1 - t) + end[2] * t)
-            distance = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
-            amount = 0.28 * max(0.0, 1 - distance / highlight_radius)
-            pixels[x, y] = (
-                round(r * (1 - amount) + 255 * amount),
-                round(g * (1 - amount) + 255 * amount),
-                round(b * (1 - amount) + 255 * amount),
-                255,
-            )
+    web = Image.open(Path(__file__).resolve().parents[2] / "tv-web" / "web" / "src" / "assets" / "gradients" / f"profile-add-{theme}-242.png").convert("RGB")
+    # The 242 px padding box sits inside the 1 px border; the border box repeats the image like the CSS default.
+    base = Image.new("RGB", (size, size))
+    for ty in range(-1, 2):
+        for tx in range(-1, 2):
+            base.paste(web, (1 + tx * 242, 1 + ty * 242))
     circle = Image.new("L", (width, height), 0)
     ImageDraw.Draw(circle).ellipse((0, 0, width - 1, height - 1), fill=255)
-    image.putalpha(circle)
-
-    # The web's 1 px dashed --line-strong border is subtle against both palettes.
-    border_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    border_draw = ImageDraw.Draw(border_layer)
+    base.putalpha(circle.resize((size, size), Image.Resampling.LANCZOS))
+    image = base
+    layers = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    border_draw = ImageDraw.Draw(layers)
     centre = (width - 1) / 2
     radius = (size / 2 - 1) * scale
     for start_degrees in range(0, 360, 16):
@@ -347,14 +331,10 @@ def profile_add_avatar(theme: str) -> None:
             fill=border,
             width=1 * scale,
         )
-    image = Image.alpha_composite(image, border_layer)
-
     font = ImageFont.truetype(str(IMAGES.parent / "fonts" / "NunitoSans-300.ttf"), 77 * scale)
-    plus_layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    plus_draw = ImageDraw.Draw(plus_layer)
-    plus_draw.text((centre, centre), "+", font=font, fill=ink, anchor="mm")
-    image = Image.alpha_composite(image, plus_layer)
-    image.resize((size, size), Image.Resampling.LANCZOS).save(IMAGES / filename)
+    ImageDraw.Draw(layers).text((centre, centre), "+", font=font, fill=ink, anchor="mm")
+    image = Image.alpha_composite(image, layers.resize((size, size), Image.Resampling.LANCZOS))
+    image.save(IMAGES / filename)
 
 
 def profile_visual_assets() -> None:
@@ -591,6 +571,26 @@ def main() -> None:
             for xx in range(size[0]):
                 rpx[xx, yy] = (255, 255, 255, max(0, min(255, fn(xx, yy))))
         ramp_img.save(IMAGES / f"{name}.png")
+    # .tv-stage-wash on the 1920 stage: the web draws one pre-rendered alpha row (clients/tv-web/web/scripts/generate-gradient-assets.mjs,
+    # stageWashRow): `linear-gradient(90deg, surface 0 36%, transparent 52%)` over `linear-gradient(270deg, surface 0, transparent 17%)`,
+    # alpha = 1 - (1 - a1)(1 - a2) sampled at (x + 0.5) / 1920. White here, tinted with the surface colour at run time.
+    def wash_ramp(stops, t):
+        k = 1
+        while k < len(stops) - 1 and t > stops[k][0]:
+            k += 1
+        t0, a0 = stops[k - 1]
+        t1, a1 = stops[k]
+        return a0 + (a1 - a0) * (t - t0) / (t1 - t0)
+    wash = Image.new("RGBA", (1920, 4), (255, 255, 255, 0))
+    wpx = wash.load()
+    for xx in range(1920):
+        t = (xx + 0.5) / 1920
+        a1 = min(max(wash_ramp([(0, 1), (0.36, 1), (0.52, 0)], t), 0), 1)
+        a2 = min(max(wash_ramp([(0, 1), (0.17, 0)], 1 - t), 0), 1)
+        alpha = round((1 - (1 - a1) * (1 - a2)) * 255)
+        for yy in range(4):
+            wpx[xx, yy] = (255, 255, 255, alpha)
+    wash.save(IMAGES / "stage-wash.png")
     # Home's right rail frost (.tv-home-rails) uses a theme-specific alpha curve over 62% of the canvas.
     for name, stops in (
         ("home-rail-frost-light", [(0, 0), (0.12, 0.68), (0.34, 0.88), (0.62, 0.96), (1, 1)]),
