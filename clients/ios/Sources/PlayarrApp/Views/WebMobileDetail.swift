@@ -24,7 +24,7 @@ struct WMRemoteImage: View {
     var body: some View {
         ZStack {
             if let image {
-                Image(uiImage: image).resizable().scaledToFill()
+                WMFillImage(image: image)
             }
         }
         .clipped()
