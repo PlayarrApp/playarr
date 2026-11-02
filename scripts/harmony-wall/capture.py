@@ -347,6 +347,9 @@ def design_routes(folder, floor):
         seed_design_playlist()
     except Exception as e:  # noqa: BLE001 - the playlist screens then show the empty state; say so in the log
         print("design playlist NOT seeded:", type(e).__name__, e, flush=True)
+    if device == "tv":
+        guarded("playlist-detail", lambda: (route("playlists", 15), click(1815, 270), time.sleep(6), design_snap("playlist-detail", folder)))
+        guarded("search-results", lambda: (route("search", 12), click(960, 150), time.sleep(1), get("/type", text="the"), time.sleep(12), design_snap("search-results", folder)))
     for name, r in (("watchlist", "watchlist"), ("requests", "requests"), ("playlists", "playlists"),
                     ("downloads", "downloads"), ("sites", "library:site")):
         guarded(name, lambda name=name, r=r: (route(r, 15), design_snap(name, folder)))
