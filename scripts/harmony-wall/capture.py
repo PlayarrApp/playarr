@@ -318,8 +318,35 @@ def design_snap(name, folder):
     print("design capture", name, flush=True)
 
 
+def seed_design_playlist():
+    """Design report fixture the frozen seed lacks: one playlist of pinned titles (as the web refs create it), through the API. Skipped when one exists."""
+    import urllib.request  # noqa: PLC0415
+    server = os.environ["SERVER_URL"].strip().rstrip("/")
+    suite = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))
+    headers = {"User-Agent": "playarr-parity-harmony", "content-type": "application/json"}  # Cloudflare refuses the default urllib agent
+    def call(path, body=None, token=None):
+        h = dict(headers, **({"authorization": "Bearer " + token} if token else {}))
+        req = urllib.request.Request(server + path, data=json.dumps(body).encode() if body is not None else None, headers=h)
+        with urllib.request.urlopen(req, timeout=30) as response:
+            return json.load(response)
+    token = call("/api/v1/auth/login", {"client_platform": "web", "client_version": "parity", "device_id": "00000000-0000-4000-8000-000000000043",
+                                        "device_name": "parity-harmony-playlist", "username": os.environ["TEST_USERNAME"], "password": os.environ["TEST_PASSWORD"]})["access_token"]
+    existing = call("/api/v1/playlists", token=token)
+    if (existing if isinstance(existing, list) else existing.get("items") or existing.get("playlists") or []):
+        return
+    playlist = call("/api/v1/playlists", {"name": "Parity Watch Night", "media_type": "video"}, token)
+    opens = {x.get("id"): x.get("open") for x in suite["screens"]}
+    for work in [opens["film-detail"].rsplit("/", 1)[-1], opens["series-detail"].rsplit("/", 1)[-1], "4ec39b80-28c3-4d83-9f83-f07872e5f4c0"]:
+        call("/api/v1/playlists/%s/items" % playlist["id"], {"work_id": work}, token)
+    print("design playlist seeded", flush=True)
+
+
 def design_routes(folder, floor):
     """Design report: the app's other route-reached pages (each guarded; a failure lists the screen as missing, never stops the run)."""
+    try:
+        seed_design_playlist()
+    except Exception as e:  # noqa: BLE001 - the playlist screens then show the empty state; say so in the log
+        print("design playlist NOT seeded:", type(e).__name__, e, flush=True)
     for name, r in (("watchlist", "watchlist"), ("requests", "requests"), ("playlists", "playlists"),
                     ("downloads", "downloads"), ("sites", "library:site")):
         guarded(name, lambda name=name, r=r: (route(r, 15), design_snap(name, folder)))
