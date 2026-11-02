@@ -1,0 +1,1 @@
+- Tizen native: panel frost drawn from the web's own rail-frost PNG strips (shipped in res/gradients, premultiplied composite over the page background, no dither) instead of a rebuilt gradient, and the right-edge scroll fade now fades to the real panel colour instead of the page surface.

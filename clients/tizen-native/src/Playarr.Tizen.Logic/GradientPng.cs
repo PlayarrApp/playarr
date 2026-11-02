@@ -93,62 +93,6 @@ public static class GradientPng
         return Encode(width, height, raw);
     }
 
-    /// <summary>
-    /// A horizontal CSS linear gradient (premultiplied stops, straight colour <paramref name="frost"/> at the given alphas) pre-composited over the opaque page
-    /// colour <paramref name="page"/>: the gradient value at each pixel centre, (x + 0.5 - origin) / width, is composited in floating point and rounded to
-    /// 8 bits with Skia's 8 x 8 ordered dither (SkRasterPipeline dither stage: with Y = y ^ x, M = (Y&amp;1)&lt;&lt;5 | (x&amp;1)&lt;&lt;4 | (Y&amp;2)&lt;&lt;2 | (x&amp;2)&lt;&lt;1 |
-    /// (Y&amp;4)&gt;&gt;1 | (x&amp;4)&gt;&gt;2, offset M/64 - 63/128). The matrix is indexed by coordinates local to the gradient's layer, whose left edge is floor(origin); the
-    /// dither is added before rounding, exactly as Skia does, with no phase or sign fitted to pixels (a flat-page Chromium 151 capture agrees on 92.8 % of the
-    /// channel bytes; the earlier fitted 2 x 2 table reached 93.9 %). The result is fully opaque, so it is only valid where nothing but
-    /// the flat page lies underneath. Columns run from <paramref name="firstColumn"/> to the right edge of a 1920 px wide design.
-    /// </summary>
-    public static byte[] MakeDitheredPanel(IReadOnlyList<(float At, float Alpha)> stops, (float R, float G, float B) frost, (int R, int G, int B) page, float origin, float width, int firstColumn, int height, int designWidth = 1920)
-    {
-        var w = designWidth - firstColumn;
-        var raw = new byte[(w * 4 + 1) * height];
-        var alphas = new double[w];
-        var layerX = (int)Math.Floor(origin);
-        for (var i = 0; i < w; i++)
-        {
-            var t = (firstColumn + i + 0.5 - origin) / width;
-            alphas[i] = AlphaAt(stops, t);
-        }
-        for (var y = 0; y < height; y++)
-        {
-            var row = y * (w * 4 + 1);
-            for (var i = 0; i < w; i++)
-            {
-                var a = alphas[i]; var x = firstColumn + i - layerX;
-                var o = row + 1 + i * 4;
-                var d = SkiaDither(x & 7, y & 7);
-                raw[o] = Dither(frost.R, page.R, a, d); raw[o + 1] = Dither(frost.G, page.G, a, d); raw[o + 2] = Dither(frost.B, page.B, a, d); raw[o + 3] = 255;
-            }
-        }
-        return Encode(w, height, raw);
-    }
-
-    /// <summary>Skia's ordered-dither offset for layer-local pixel (x, y), both reduced to 0..7: M / 64 - 63 / 128.</summary>
-    private static double SkiaDither(int x, int y)
-    {
-        var yy = y ^ x;
-        var m = ((yy & 1) << 5) | ((x & 1) << 4) | ((yy & 2) << 2) | ((x & 2) << 1) | ((yy & 4) >> 1) | ((x & 4) >> 2);
-        return m / 64.0 - 63.0 / 128.0;
-    }
-
-    private static byte Dither(double frost, int page, double a, double dither)
-    {
-        var v = (frost * a + page / 255.0 * (1 - a)) * 255.0;
-        return (byte)Math.Clamp(Math.Floor(v + 0.5 + dither), 0, 255);
-    }
-
-    private static double AlphaAt(IReadOnlyList<(float At, float Alpha)> stops, double t)
-    {
-        if (t <= stops[0].At) return stops[0].Alpha;
-        for (var i = 1; i < stops.Count; i++)
-            if (t <= stops[i].At) return stops[i - 1].Alpha + (stops[i].Alpha - stops[i - 1].Alpha) * (t - stops[i - 1].At) / (stops[i].At - stops[i - 1].At);
-        return stops[^1].Alpha;
-    }
-
     internal static byte[] Encode(int w, int h, byte[] raw)
     {
         using var png = new MemoryStream();
