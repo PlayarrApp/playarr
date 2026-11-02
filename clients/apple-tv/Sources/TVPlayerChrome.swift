@@ -260,7 +260,7 @@ struct TVPlayerChrome: View {
         .focusEffectDisabled()
         .accessibilityLabel(name)
         .modifier(TVOptionalFocusTag(binding: focus, control: control))
-        .macPlayerMenuTarget(name, name: control == .subtitles ? "subtitles" : nil)
+        .macPlayerMenuTarget(name, name: control == .audio ? "audio" : nil)
         .placed(x: x - 22, y: 958, w: 64, h: 64, alignment: .center)
     }
 
@@ -314,8 +314,11 @@ struct TVPlayerChrome: View {
     }
 
     private var rightGroup: some View {
-        ZStack(alignment: .topLeading) {
-            iconMenu("speaker.wave.2.fill", x: 1245.9, name: state.audioLabel) {
+        // The web TV player has no fullscreen button, so its group ends one 77.6 pt slot (64 + 13.6 gap) further right.
+        let showsFullscreen = onFullscreen != nil && !frozen
+        let shift: CGFloat = showsFullscreen ? 0 : 77.6
+        return ZStack(alignment: .topLeading) {
+            iconMenu("speaker.wave.2.fill", x: 1245.9 + shift, name: state.audioLabel, control: .audio) {
                 if state.audioTracks.isEmpty {
                     Text("No audio tracks to choose from")
                 }
@@ -323,13 +326,13 @@ struct TVPlayerChrome: View {
                     Button((track.id == state.selectedAudioID ? "\u{2713} " : "") + track.displayName) { onSelectAudio(track.id) }
                 }
             }
-            iconMenu("text.rectangle", x: 1323.5, name: state.subtitleLabel, control: .subtitles) {
+            iconMenu("text.rectangle", x: 1323.5 + shift, name: state.subtitleLabel) {
                 Button((state.selectedSubtitleID == nil ? "\u{2713} " : "") + "Off") { onSelectSubtitle(nil) }
                 ForEach(state.subtitleTracks) { track in
                     Button((track.id == state.selectedSubtitleID ? "\u{2713} " : "") + track.displayName) { onSelectSubtitle(track.id) }
                 }
             }
-            iconMenu("text.line.last.and.arrowtriangle.forward", x: 1401.1, name: state.playlistLabel) {
+            iconMenu("text.line.last.and.arrowtriangle.forward", x: 1401.1 + shift, name: state.playlistLabel) {
                 Text("Now playing: \(state.currentTitle)")
                 ForEach(state.upcoming) { entry in
                     Button(entry.title) { onPlayEntry(entry) }
@@ -363,12 +366,14 @@ struct TVPlayerChrome: View {
             .modifier(TVFocusTag(binding: focus, control: .quality))
             .macPlayerTag("Quality: \(state.qualityLabel)")
             .accessibilityLabel("Quality: \(state.qualityLabel)")
-            .placed(x: 1456.6, y: 959.8, w: 173.4, h: 60.5)
-            iconMenu("info.circle", x: 1652.8, name: "Info and playback health") {
+            .placed(x: 1456.6 + shift, y: 959.8, w: 173.4, h: 60.5)
+            iconMenu("info.circle", x: 1652.8 + shift, name: "Info and playback health") {
                 ForEach(state.healthLines, id: \.self) { Text($0) }
             }
-            icon("macbook.and.iphone", x: 1730.4, name: "Play on another device", enabled: onCast != nil, action: onCast ?? {})
-            icon("arrow.up.left.and.arrow.down.right", x: 1808, name: "Enter fullscreen", enabled: onFullscreen != nil, action: onFullscreen ?? {})
+            icon("macbook.and.iphone", x: 1730.4 + shift, name: "Play on another device", action: onCast ?? {})
+            if showsFullscreen {
+                icon("arrow.up.left.and.arrow.down.right", x: 1808, name: "Enter fullscreen", action: onFullscreen ?? {})
+            }
         }
     }
 
@@ -549,7 +554,7 @@ private struct TVScrubberBody: View {
 enum TVPlayerControl: Hashable {
     /// The video itself (web: the player's opening focus, named "video playback surface").
     case surface
-    case subtitles
+    case audio
     case scrubber
     case play
     case quality
@@ -609,7 +614,7 @@ struct TVPlayerInteraction: Equatable {
             return nil
         }
         switch focus {
-        case .subtitles: return nil
+        case .audio: return nil
         case .surface, .scrubber, .play: return .togglePlayPause
         case .quality:
             openQualityMenu()
@@ -665,14 +670,14 @@ extension View {
 
 extension View {
     /// The video itself as the player's opening focus (web: "video playback surface"): from it Left reaches Play, Right the first
-    /// menu control (subtitles) and Up the seek bar. On tvOS the surface carries these moves in TVPlayerView.
+    /// menu control (audio) and Up the seek bar. On tvOS the surface carries these moves in TVPlayerView.
     @ViewBuilder func macPlayerSurfaceTarget() -> some View {
         #if os(macOS)
         macFocusTarget()
             .environment(\.macParityTag, MacParityTag(title: "video playback surface", id: "player-surface", rail: nil, index: nil, gridPosition: nil))
             .environment(\.macPreferredFocus, true)
             .environment(\.macFocusName, "surface")
-            .environment(\.macRoutes, [.left: "play", .right: "subtitles", .up: "seek"])
+            .environment(\.macRoutes, [.left: "play", .right: "audio", .up: "seek"])
         #else
         self
         #endif

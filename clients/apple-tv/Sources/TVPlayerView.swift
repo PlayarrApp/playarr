@@ -61,12 +61,32 @@ struct TVPlayerView: View {
         // The player is full screen like the web's player page: the shell hides its nav and clock.
         screen
             .parityLayerScope() // the player covers the page: only its own items are visible
+        .task {
+            // The video surface holds the focus when the player opens (web: "video playback surface"), not whichever control the system finds first.
+            // The system focuses the first focusable view it finds (the scrubber) and writes that into focusedControl, so a nil check
+            // never fires: set the opening control outright, three times, as the chrome may appear after the stream is negotiated.
+            #if os(macOS) && DEBUG
+            NSLog("PlayarrMacTrace player open focus task started")
+            #endif
+            for delay in [400, 800, 1500] {
+                try? await Task.sleep(for: .milliseconds(delay))
+                #if os(macOS) && DEBUG
+                NSLog("PlayarrMacTrace player open focus delay=%d remoteUsed=%d", delay, remoteUsed ? 1 : 0)
+                #endif
+                #if os(macOS)
+                // The Mac's focus is the engine's: the first control to register (the scrubber) takes it, so name the surface outright.
+                if !remoteUsed { MacFocusEngine.shared.focusNamed("surface"); interaction.focus = .surface }
+                #else
+                if !remoteUsed, focusedControl != .surface { focusedControl = .surface; interaction.focus = .surface }
+                #endif
+            }
+        }
             .onAppear {
                 setShellChromeHidden(true)
                 #if os(macOS)
                 // Escape runs the same Back sequence whatever has focus: once the controls hide, their disabled buttons drop
                 // the focus and the view's onExitCommand would never see the second Back.
-                if parity == nil {
+                do {
                     MacKeyboard.shared.pushBackHandler(macBackHandlerID) {
                         switch interaction.back() {
                         case .closedMenu: focusedControl = interaction.focus
@@ -100,10 +120,18 @@ struct TVPlayerView: View {
             ZStack(alignment: .topLeading) {
                 Color.black.parityBox("container", fill: Color.black)
                 parityFrame
-                chrome(
-                    state: chromeState(position: parity.position, duration: parity.duration, isPlaying: false, menuOpen: parity.menuOpen),
-                    frozen: true,
-                    menuBackdrop: AnyView(parityFrame)
+                // The frozen frame answers the remote as the web player does: the video holds the opening focus, Back hides the controls first.
+                remoteCommands(
+                    ZStack(alignment: .topLeading) {
+                        playerSurface
+                        chrome(
+                            state: chromeState(position: parity.position, duration: parity.duration, isPlaying: false, menuOpen: parity.menuOpen),
+                            controlsVisible: interaction.controlsVisible,
+                            frozen: true,
+                            focus: $focusedControl,
+                            menuBackdrop: AnyView(parityFrame)
+                        )
+                    }
                 )
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -169,6 +197,65 @@ struct TVPlayerView: View {
             .parityBox("image") // a still of the clip: this is an image, not a playing video
     }
 
+    /// While the controls are hidden this catches SELECT and moves to reveal them again; it is the player's opening focus.
+    private var playerSurface: some View {
+        Color.clear
+            .ignoresSafeArea()
+            .modifier(TVPlayerSurfaceFocus(focus: $focusedControl))
+            .accessibilityLabel("Video playback surface")
+            .parityFocusTag("video playback surface")
+            .onTapGesture {
+                interaction.reveal()
+                focusedControl = interaction.focus
+            }
+    }
+
+    /// The remote's behaviour shared by playback and the parity frame.
+    private func remoteCommands<Content: View>(_ content: Content) -> some View {
+        content
+            .onPlayPauseCommand { viewModel.togglePlay(); interaction.reveal() }
+            .onExitCommand {
+                remoteUsed = true
+                switch interaction.back() {
+                case .closedMenu: focusedControl = interaction.focus
+                case .hidControls: break
+                case .exit: dismiss()
+                }
+            }
+            .onMoveCommand { direction in
+                remoteUsed = true
+                interaction.reveal()
+                // Web: from the video, left reaches Play/Pause, right the first menu control, up the seek bar.
+                if focusedControl == .surface {
+                    switch direction {
+                    case .left: focusedControl = .play
+                    case .right: focusedControl = .audio
+                    case .up: focusedControl = .scrubber
+                    default: break
+                    }
+                    if let next = focusedControl { interaction.focus = next }
+                    return
+                }
+                switch direction {
+                case .left:
+                    viewModel.seek(by: -10)
+                    interaction.seeked()
+                case .right:
+                    viewModel.seek(by: 10)
+                    interaction.seeked()
+                default: break
+                }
+                // A seek never moves focus: keep it on the control the user left it on.
+                if focusedControl != interaction.focus { focusedControl = interaction.focus }
+            }
+            .onChange(of: focusedControl) { _, control in
+                if let control { interaction.focus = control }
+            }
+            #if os(tvOS)
+            .defaultFocus($focusedControl, .surface)
+            #endif
+    }
+
     private var playerBody: some View {
         ZStack {
             // The stage is black behind the video, as on the web.
@@ -182,61 +269,16 @@ struct TVPlayerView: View {
                     TVVideoSurface(player: viewModel.player)
                         .ignoresSafeArea()
                 }
-                ZStack {
-                // While the controls are hidden this catches SELECT and moves to reveal them again.
-                Color.clear
-                    .ignoresSafeArea()
-                    .modifier(TVPlayerSurfaceFocus(focus: $focusedControl))
-                    .accessibilityLabel("Video playback surface")
-                    .parityFocusTag("video playback surface")
-                    .onTapGesture {
-                        interaction.reveal()
-                        focusedControl = interaction.focus
+                remoteCommands(
+                    ZStack {
+                        playerSurface
+                        chrome(
+                            state: chromeState(position: viewModel.position, duration: viewModel.duration, isPlaying: viewModel.isPlaying, menuOpen: interaction.menuOpen),
+                            controlsVisible: interaction.controlsVisible,
+                            focus: $focusedControl
+                        )
                     }
-                chrome(
-                    state: chromeState(position: viewModel.position, duration: viewModel.duration, isPlaying: viewModel.isPlaying, menuOpen: interaction.menuOpen),
-                    controlsVisible: interaction.controlsVisible,
-                    focus: $focusedControl
                 )
-                }
-                .onPlayPauseCommand { viewModel.togglePlay(); interaction.reveal() }
-                .onExitCommand {
-                    remoteUsed = true
-                    switch interaction.back() {
-                    case .closedMenu: focusedControl = interaction.focus
-                    case .hidControls: break
-                    case .exit: dismiss()
-                    }
-                }
-                .onMoveCommand { direction in
-                    remoteUsed = true
-                    interaction.reveal()
-                    // Web: from the video, left reaches Play/Pause, right the first menu control, up the seek bar.
-                    if focusedControl == .surface {
-                        switch direction {
-                        case .left: focusedControl = .play
-                        case .right: focusedControl = .subtitles
-                        case .up: focusedControl = .scrubber
-                        default: break
-                        }
-                        if let next = focusedControl { interaction.focus = next }
-                        return
-                    }
-                    switch direction {
-                    case .left:
-                        viewModel.seek(by: -10)
-                        interaction.seeked()
-                    case .right:
-                        viewModel.seek(by: 10)
-                        interaction.seeked()
-                    default: break
-                    }
-                    // A seek never moves focus: keep it on the control the user left it on.
-                    if focusedControl != interaction.focus { focusedControl = interaction.focus }
-                }
-                .onChange(of: focusedControl) { _, control in
-                    if let control { interaction.focus = control }
-                }
                 if spinner {
                     ProgressView().tint(.white).controlSize(.large)
                 }
@@ -258,26 +300,6 @@ struct TVPlayerView: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: viewModel.endOfPlayback.phase)
-        .task {
-            // The video surface holds the focus when the player opens (web: "video playback surface"), not whichever control the system finds first.
-            // The system focuses the first focusable view it finds (the scrubber) and writes that into focusedControl, so a nil check
-            // never fires: set the opening control outright, three times, as the chrome may appear after the stream is negotiated.
-            #if os(macOS) && DEBUG
-            NSLog("PlayarrMacTrace player open focus task started")
-            #endif
-            for delay in [400, 800, 1500] {
-                try? await Task.sleep(for: .milliseconds(delay))
-                #if os(macOS) && DEBUG
-                NSLog("PlayarrMacTrace player open focus delay=%d remoteUsed=%d", delay, remoteUsed ? 1 : 0)
-                #endif
-                #if os(macOS)
-                // The Mac's focus is the engine's: the first control to register (the scrubber) takes it, so name the surface outright.
-                if !remoteUsed { MacFocusEngine.shared.focusNamed("surface"); interaction.focus = .surface }
-                #else
-                if !remoteUsed, focusedControl != .surface { focusedControl = .surface; interaction.focus = .surface }
-                #endif
-            }
-        }
         .task {
             viewModel.onExit = { dismiss() }
             // Returning from a suggestion must not restart a finished item.

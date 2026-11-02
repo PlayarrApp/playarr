@@ -190,16 +190,28 @@ struct TVParityLiveDetailView: View {
 struct TVParityLivePlayerView: View {
     @Environment(TVAppEnvironment.self) private var environment
     @State private var mediaFileID: UUID?
+    @State private var work: Work?
+    /// Back from the player (web: history back from `/player/<id>` lands on the title page).
+    @State private var exited = false
 
     var body: some View {
         Group {
-            if let mediaFileID, let target = TVParityLaunch.livePlayer {
+            if exited, let work {
+                TVWorkDetailView(work: work, apiClient: environment.apiClient)
+                    .task {
+                        try? await Task.sleep(for: .milliseconds(400))
+                        TVParityState.setRoute(tab: .movies, path: [.work(work)])
+                    }
+            } else if let mediaFileID, let target = TVParityLaunch.livePlayer {
                 TVPlayerView(
                     mediaFileID: mediaFileID,
                     title: target.title,
                     apiClient: environment.apiClient,
                     parity: (position: 2, duration: 60, menuOpen: target.menuOpen)
                 )
+                #if os(macOS)
+                .environment(\.macCoverDismiss, MacDismissAction { exited = true })
+                #endif
             } else {
                 Color.black.ignoresSafeArea()
             }
@@ -223,6 +235,7 @@ struct TVParityLivePlayerView: View {
                     return
                 }
                 let detail = try await environment.apiClient.fetchWork(id: work.id)
+                self.work = work
                 mediaFileID = detail.mediaFileID
                 #if DEBUG && (os(tvOS) || os(macOS))
                 TVParityState.setNote("live player: media file \(detail.mediaFileID?.uuidString ?? "none")")
