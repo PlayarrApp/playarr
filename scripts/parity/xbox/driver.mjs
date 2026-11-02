@@ -268,10 +268,10 @@ export async function createDriver() {
     async ui(command, { anon = false, wait = 4 } = {}) { if (!anon) await requireTestAccount(); run("write", "parity.do", command); await sleep(wait * 1000); },
     async pressKey(name, wait = 1.5) { await requireTestAccount(); run("key", name); await sleep(wait * 1000); },
     async parkPointer() { await requireTestAccount(); run("move", 1919, 600); await sleep(500); },
-    async shotPlain(file, { anon = false } = {}) {
+    async shotPlain(file, { anon = false, unguarded = false } = {}) {
       if (!anon) await requireTestAccount();
       mkdirSync(dirname(file), { recursive: true });
-      run("shot", file, ...(theme && trace().screen !== "playback" ? [theme] : [])); // the helper (the player is black in both themes) refuses a frame of the other theme (exit 4)
+      run("shot", file, ...(theme && !unguarded && trace().screen !== "playback" ? [theme] : [])); // the helper (the player is black in both themes) refuses a frame of the other theme (exit 4)
     },
     async waitFor(fn, seconds, what) { await until(fn, seconds, what); },
     // The web's D-pad checks start with the video playing, controls up and focus on play/pause.

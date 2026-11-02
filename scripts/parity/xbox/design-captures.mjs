@@ -46,7 +46,7 @@ async function take(id, fn) {
   catch (e) { result[id] = `failed: ${String(e.message).split("\n")[0]}`; console.log(`FAIL ${theme} ${id}: ${result[id]}`); }
 }
 const expectScreen = async (screen, seconds = 40) => d.waitFor((t) => t.screen === screen, seconds, `the ${screen} page`);
-const shot = async (id) => { await d.parkPointer(); await sleep(2500); await d.shotPlain(file(id)); };
+const shot = async (id, opts) => { await d.parkPointer(); await sleep(2500); await d.shotPlain(file(id), opts); };
 const railTo = async (id, screen) => { await d.clickAt(...RAIL[id], 10); await expectScreen(screen); await sleep(6000); };
 
 await d.start();
@@ -104,7 +104,7 @@ await take("profiles--add", async () => {
   await expectScreen("profiles");
   await sleep(4000);
   await d.ui("addprofile", { wait: 4 });
-  await shot("profiles--add");
+  await shot("profiles--add", { unguarded: true }); // the dialog scrim dims the top strip the theme guard samples
   await d.pressKey("esc", 1.5); // Cancel
 });
 await d.home(); // the picker again: pick the profile so Settings has its rail
