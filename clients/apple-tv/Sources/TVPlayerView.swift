@@ -224,6 +224,13 @@ struct TVPlayerView: View {
             .onTapGesture(perform: selectSurface)
     }
 
+    /// Moves the focus after the focus engine's own move for the same press has landed, so the explicit order wins.
+    private func settle(_ target: TVPlayerControl) {
+        focusedControl = target
+        interaction.focus = target
+        DispatchQueue.main.async { focusedControl = target; interaction.focus = target }
+    }
+
     /// The remote's behaviour shared by playback and the parity frame.
     private func remoteCommands<Content: View>(_ content: Content) -> some View {
         content
@@ -250,6 +257,13 @@ struct TVPlayerView: View {
                     if let next = focusedControl { interaction.focus = next }
                     return
                 }
+                if let current = focusedControl, let at = TVPlayerControl.menuRow.firstIndex(of: current), direction == .left || direction == .right {
+                    // The menu row walks in the web's order; the focus engine's own move would pick by geometry.
+                    let row = TVPlayerControl.menuRow
+                    let target = direction == .right ? row[min(at + 1, row.count - 1)] : (at == 0 ? .play : row[at - 1])
+                    settle(target)
+                    return
+                }
                 switch (focusedControl, direction) {
                 case (.scrubber, .left):
                     viewModel.seek(by: -10)
@@ -260,7 +274,8 @@ struct TVPlayerView: View {
                     interaction.seeked()
                     focusedControl = .scrubber
                 case (.scrubber, .down):
-                    focusedControl = .play
+                    settle(.play)
+                    return
                 case (_, .up) where focusedControl != .scrubber:
                     focusedControl = .scrubber
                 default: break

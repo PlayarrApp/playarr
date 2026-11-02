@@ -242,7 +242,7 @@ struct TVPlayerChrome: View {
             .parityFocusTag(name)
     }
 
-    private func icon(_ symbol: String, x: CGFloat, opacity: Double = 0.92, name: String, enabled: Bool = true, action: @escaping () -> Void) -> some View {
+    private func icon(_ symbol: String, x: CGFloat, opacity: Double = 0.92, name: String, enabled: Bool = true, control: TVPlayerControl? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             iconLabel(symbol, opacity: opacity, enabled: enabled, name: name)
         }
@@ -250,6 +250,7 @@ struct TVPlayerChrome: View {
         .focusEffectDisabled()
         .disabled(!enabled)
         .accessibilityLabel(name)
+        .modifier(TVOptionalFocusTag(binding: focus, control: control))
         .macPlayerTag(name)
         .placed(x: x - 22, y: 958, w: 64, h: 64, alignment: .center)
     }
@@ -268,7 +269,7 @@ struct TVPlayerChrome: View {
     /// A parity run opens an app-owned panel (its open state is what the driver reads); playback uses the system Menu.
     @ViewBuilder
     private func iconMenuBody<Items: View>(_ symbol: String, name: String, control: TVPlayerControl?, @ViewBuilder items: () -> Items) -> some View {
-        if TVParityLaunch.isParityRun {
+        if TVParityLaunch.drivesPlayer {
             Button { onOpenPanel(name, control) } label: { iconLabel(symbol, opacity: 0.92, enabled: true, name: name) }
         } else {
             Menu { items() } label: { iconLabel(symbol, opacity: 0.92, enabled: true, name: name) }
@@ -404,7 +405,7 @@ struct TVPlayerChrome: View {
             iconMenu("info.circle", x: 1652.8 + shift, name: "Info and playback health", control: .info) {
                 ForEach(state.healthLines, id: \.self) { Text($0) }
             }
-            icon("macbook.and.iphone", x: 1730.4 + shift, name: "Play on another device", action: onCast ?? {})
+            icon("macbook.and.iphone", x: 1730.4 + shift, name: "Play on another device", control: .cast, action: onCast ?? {})
             if showsFullscreen {
                 icon("arrow.up.left.and.arrow.down.right", x: 1808, name: "Enter fullscreen", action: onFullscreen ?? {})
             }
@@ -595,7 +596,11 @@ enum TVPlayerControl: Hashable {
     case scrubber
     case play
     case quality
+    case cast
     case close
+
+    /// The menu row in the web's tab order (Left and Right walk it).
+    static let menuRow: [TVPlayerControl] = [.audio, .subtitles, .playlist, .quality, .info, .cast]
 }
 
 enum TVPlayerSelectAction: Equatable {
@@ -657,7 +662,7 @@ struct TVPlayerInteraction: Equatable {
             return nil
         }
         switch focus {
-        case .audio, .subtitles, .playlist, .info: return nil
+        case .audio, .subtitles, .playlist, .info, .cast: return nil
         case .surface, .scrubber, .play: return .togglePlayPause
         case .quality:
             openQualityMenu()
