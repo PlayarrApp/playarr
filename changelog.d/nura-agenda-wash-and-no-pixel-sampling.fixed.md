@@ -1,0 +1,1 @@
+- Nura: removed the double-counted white agenda backdrop wash (the web paints only the rail ramp there) and, as an audit correction, the exporter no longer reads flat-fill colours from rendered pixels; it exports the composite of the native style fills again.
