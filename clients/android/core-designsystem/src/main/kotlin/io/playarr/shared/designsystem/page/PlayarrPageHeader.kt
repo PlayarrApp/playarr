@@ -150,7 +150,7 @@ internal fun PlayarrPageHeaderRow(
                 fontSize = if (tv) (1.75f * metrics.vw).coerceIn(19.2f, 37.6f).div(metrics.stage).sp else if (large) 21.6.sp else 17.6.sp,
                 fontWeight = FontWeight(580),
                 letterSpacing = if (tv) (-0.045f * (1.75f * metrics.vw).coerceIn(19.2f, 37.6f) / metrics.stage).sp else if (large) (-0.972).sp else (-0.792).sp,
-                lineHeight = if (tv) metrics.control.value.sp else if (large) 32.4.sp else 26.4.sp,
+                lineHeight = metrics.control.value.sp,
                 style = if (tv) androidx.compose.material3.LocalTextStyle.current else webText,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -205,19 +205,14 @@ internal fun PlayarrPageHeaderRow(
         val backHeightPx = back?.height ?: 0
         val rowHeight = maxOf(backHeightPx, titleP.height)
         val width = maxOf(titleEnd + (inline?.width ?: 0), backWidth + backGap + (wrapped?.width ?: 0))
-        val subtitleGap = (if (tv) 5.6.dp else 6.dp).roundToPx()
+        // Web `.is-detail-wrapped` block: gap 0.35rem (5.6 px) between title and detail, then the detail's 0.4rem (6.4 px) top padding.
+        val subtitleGap = (if (tv) 5.6.dp else (5.6 + 6.4).dp).roundToPx()
         val height = rowHeight + (wrapped?.let { it.height + subtitleGap } ?: 0)
         layout(width.coerceAtMost(constraints.maxWidth.coerceAtLeast(width)), height) {
             back?.placeRelative(0, (rowHeight - back.height) / 2)
-            // Web phone, measured against the live page at 719 x 1558: the 17.6 px title's glyphs sit 2 px (1.1 dp) and the
-            // 21.6 px title's 7 px (3.8 dp) lower than a centred line box puts them; the count line follows 2 px (1.1 dp) further down.
-            // Pages with a Filters or other action beside the title (library, search, calendar) sit 2 px low; the rest (detail, settings) 7 px.
-            val subtitleDrop = if (tv) 0 else (if (spec.actions.isEmpty() && large) 3.8.dp else 1.1.dp).roundToPx()
-            // The title's glyph run (web `Range` box) sits 1.1 dp low on every page; the exported run measured 3 px low with the 3.8 dp drop.
-            val titleDrop = if (tv) 0 else 1.1.dp.roundToPx()
-            titleP.placeRelative(backWidth + backGap, (rowHeight - titleP.height) / 2 + titleDrop)
+            titleP.placeRelative(backWidth + backGap, (rowHeight - titleP.height) / 2)
             inline?.placeRelative(titleEnd, (rowHeight - inline.height) / 2)
-            wrapped?.placeRelative(backWidth + backGap, rowHeight + subtitleGap + (if (tv) (if (metrics.stage != 1f) metrics.css(4.1f).dp.roundToPx() else 0) else subtitleDrop + 1.1.dp.roundToPx()))
+            wrapped?.placeRelative(backWidth + backGap, rowHeight + subtitleGap + (if (tv) (if (metrics.stage != 1f) metrics.css(4.1f).dp.roundToPx() else 0) else 0))
         }
     }
 }

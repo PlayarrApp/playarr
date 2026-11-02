@@ -510,7 +510,7 @@ sub nameCard(content as Object, circle as Boolean, hasNumber as Boolean)
     linkRadius = 0
     m.cardBody.id = "a11y|link|" + linkRadius.ToStr() + "|" + linkName
     m.posterBg.id = "a11y|container|" + m.top.findNode("cornerTL").width.ToStr() + "|"
-    m.unwatchedBadge.id = "a11y|img|6.5|"
+    m.unwatchedBadge.id = "a11y|img|6.5|Unwatched"
     A11yStamp(m.unwatchedBadge, true)
     m.progressTrack.id = "a11y|img|0|"
 end sub

@@ -92,7 +92,9 @@ function PlayarrFontData(weight as Integer) as Object
 end function
 
 ' Width of `text` in px as the web sets it: web advances at the real (fractional) size, kerning, then `tracking` per character.
-function PlayarrTextWidth(text as String, size as Float, weight as Integer, tracking = 0 as Float) as Float
+function PlayarrTextWidth(text as String, size as Float, weight as Integer, tracking = 0 as Float, mono = false as Boolean) as Float
+    ' JetBrains Mono is monospaced: every glyph advances 600 units of its 1000 per em (hmtx of the bundled instances), no kerning.
+    if mono then return Len(text) * 600 * size / 1000 + tracking * Len(text)
     data = PlayarrFontData(weight)
     units = 0
     previous = ""
@@ -287,4 +289,10 @@ end function
 ' positioned by its text box (a TrackedText, a WebLabel) is placed at this value instead of a hand-set offset.
 function PlayarrTextTop(lineTop as Float, size as Float, lineHeight as Float) as Float
     return lineTop + Int((lineHeight - PlayarrContentHeight(size)) / 2)
+end function
+
+' The same for JetBrains Mono, whose hhea ascent is 1.02 em and descent 0.3 em (head/hhea of the bundled instances).
+function PlayarrMonoTextTop(lineTop as Float, size as Float, lineHeight as Float) as Float
+    content = Int(1.02 * size + 0.5) + Int(0.3 * size + 0.5)
+    return lineTop + Int((lineHeight - content) / 2)
 end function

@@ -95,7 +95,7 @@ sub init()
     m.homeHeroPendingWorkId = ""
     m.pendingHomeHeroRequest = invalid
     m.homeHeroRuntimeById = {}
-    m.homeStage.contentBase = [783.36, 182.9]
+    m.homeStage.contentBase = [783.36, homeContentTop()]
     m.homeContent = m.homeStage.contentTarget
     m.artTelemetryEnabled = false
     if m.global.parityArtEnabled = true then m.artTelemetryEnabled = true
@@ -418,7 +418,11 @@ sub init()
     m.userLinkMark.id = "hit|link|16|Signed in as " + m.session.profileName + ". Open profiles."
     ' The build label under the tile reads like web's (major.minor.0).
     ai = CreateObject("roAppInfo")
-    m.top.findNode("userVersion").text = "v" + ai.GetValue("major_version") + "." + ai.GetValue("minor_version") + ".0"
+    userVersion = m.top.findNode("userVersion")
+    ' .app-user-version follows the 79.44 high profile group by margin-top 0.35rem; its line box is 8 px (line-height 1), the text box inside it
+    ' is JetBrains Mono's content height.
+    userVersion.translation = [0.23, PlayarrMonoTextTop(79.44 + 0.35 * 16.0, 8.0, 8.0)]
+    userVersion.text = "v" + ai.GetValue("major_version") + "." + ai.GetValue("minor_version") + ".0"
     m.profileId = m.session.profileId
     if m.profileId = invalid then m.profileId = ""
     m.avatarKind = ""
@@ -3815,6 +3819,12 @@ sub buildRailContent(row as Object, works as Object, isActive as Boolean, cardSc
         item.focusRingOutsideArt = homeRailIndex(row) >= 0
         item.AddField("homeCardFocusStyle", "boolean", false)
         item.homeCardFocusStyle = homeRailIndex(row) >= 0
+        ' The RowList lays its items out at a whole-pixel pitch (352), the web rail at card + gap (352.13): card i moves right by i * the remainder.
+        item.AddField("colShift", "float", false)
+        if homeRailIndex(row) >= 0 and m.homeCover <> true
+            railPitch = WebCardWidth() + WebRailGap()
+            item.colShift = artCardIndex * (railPitch - Int(railPitch))
+        end if
         ' Home and Similar Titles pass scaled art dimensions to match their
         ' respective web cards. homeCardFocusStyle separates Home's 6px /
         ' 1.025 focus transform from the larger layout scale.
@@ -4966,6 +4976,8 @@ sub layoutNavDock()
     if m.navIcons = invalid or m.navIcons.Count() = 0 then return
     ' Web .app-nav at 1920x1080: groups at x 42.2 (77.5 wide), items 67.2 square on a 73.6 pitch, 5.8 group padding,
     ' 13.7 between groups, the whole dock centred vertically. Icons are 20 px, labels sit 41.6 px below the item top.
+    ' Icon top: the 64 px link (1.62 below this 67 px chip box) centres icon 20 + gap 0.44vh (4.752) + label line 8.83 =
+    ' 33.582 px, so the icon sits (64 - 33.582) / 2 = 15.209 below the link top; the 1.05 scale about the link centre lifts it 0.84.
     itemSize = 67
     itemStep = 73.6
     groupPad = 5.8
@@ -5002,7 +5014,7 @@ sub layoutNavDock()
                 m.navHighlights[i].translation = [dockLeft + 5.2, itemY]
                 m.navHighlights[i].width = itemSize
                 m.navHighlights[i].height = itemSize
-                m.navIcons[i].translation = [dockLeft + 5.2 + 23.6, itemY + 16]
+                m.navIcons[i].translation = [dockLeft + 5.2 + 23.78, itemY + 16.83]
                 m.navIcons[i].width = 20
                 m.navIcons[i].height = 20
                 m.navLabels[i].translation = [dockLeft + 5.2 + 33.6 - 50, itemY + 39.6]
@@ -5203,7 +5215,7 @@ sub renderNavDockFocus()
                 ThemeSetRole(m.navIcons[i], "ink")
                 m.navLabels[i].color = ThemeColor("ink")
                 if m.navIcons[i].width <> 21
-                    m.navIcons[i].translation = [base[0] - 0.5, base[1] - 0.8]
+                    m.navIcons[i].translation = [base[0] - 0.5, base[1] - 0.84]
                     m.navIcons[i].width = 21
                     m.navIcons[i].height = 21
                     m.navLabels[i].setFields({ size: 9.27, tracking: 0.325 })
@@ -5216,7 +5228,7 @@ sub renderNavDockFocus()
                 ThemeSetRole(m.navIcons[i], "inkMuted")
                 m.navLabels[i].color = ThemeColor("inkMuted")
                 if m.navIcons[i].width <> 20
-                    m.navIcons[i].translation = [base[0] + 0.5, base[1] + 0.8]
+                    m.navIcons[i].translation = [base[0] + 0.5, base[1] + 0.84]
                     m.navIcons[i].width = 20
                     m.navIcons[i].height = 20
                     m.navLabels[i].setFields({ size: 8.83, tracking: 0.31 })
@@ -7895,14 +7907,16 @@ function homeRailPitch() as Float
 end function
 
 ' Home opens aligned with the Library grid: the panel starts at web --card-pad-left (53.76) from the 62 vw rail and the first rail at
-' --library-rail-top (162), i.e. 240 px above where it used to centre. Covers rails start 51 px higher inside it (see finishHomeLoad).
+' --library-rail-top (162). The content group sits where the first card's art lands on the CSS art top (WebHomeFirstArtTop), the RowList
+' placing the art 41.1 below the group (row translation 26.1 plus the 15 px the RowList reserves above its items).
+' Covers rails start 51 px higher inside it (see finishHomeLoad).
 function homeContentTop() as Float
-    return 182.9
+    return WebHomeFirstArtTop() - 41.1
 end function
 
 ' Where a focused later rail is held (web centres it): the panel's former top.
 function homeCentredTop() as Float
-    return 422.9
+    return homeContentTop() + 240.0
 end function
 
 ' Parity capture only: seek the video to an exact position (ms) and hold it paused there.

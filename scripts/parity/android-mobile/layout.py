@@ -123,12 +123,16 @@ for e in same_window:
         if not any(c in m["chainIds"] for c in e["coverIds"] for m in g["members"]) and not any(h in e["chainIds"] for h in g["hide"]):
             g["members"].append(e); g["hide"] += [c for c in e["coverIds"] if c not in g["hide"]]; break
     else: groups.append({"members": [e], "hide": list(e["coverIds"])})
+for e in flagged: print("FLAG", e["text"][:30], e["rect"], e.get("coverAlpha"), e.get("coverIds"), file=sys.stderr)
 for g in groups:
     bare = hidden_shot(False, g["hide"])
     for e in g["members"]:
         if samples_changed(e, bare): drop.add(id(e))
+        # A cover painted at alpha >= .5 (docs/parity/LAYOUT.md cover rule) hides the element even where the sample points fall between glyphs
+        # (the tint equals the page colour there): what the cover hides must show up as changed pixels in the element's rectangle when it is toggled off.
+        elif e.get("coverAlpha", 0) >= 0.5 and changed_fraction(e, bare) > 0: drop.add(id(e))
 for e in doc["elements"]:
-    for k in ("covered", "coverIds", "chainIds"): e.pop(k, None)
+    for k in ("covered", "coverIds", "chainIds", "coverAlpha"): e.pop(k, None)
 if flagged and sh("exec-out", "screencap", "-p", binary=True) != after: sys.exit(f"screen did not return after the cover check of {screen} {theme}")
 doc["elements"] = [e for e in doc["elements"] if id(e) not in drop]
 doc["occluded"] = len(drop)

@@ -9,7 +9,7 @@ import net from "node:net";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildLayoutDocument } from "../roku/layout-export.mjs";
+import { assetOpacityMap, buildLayoutDocument, httpAssetEvidence } from "../roku/layout-export.mjs";
 import { artReadiness, createArtReadinessState, intersectingSlots, parseArtEvent, reduceArtEvent, resetArtReadinessState } from "../roku/art-readiness.mjs";
 
 const SAFE_SCREENS = new Set([
@@ -36,6 +36,24 @@ const ROUTE_TRACE_BROWSE = new Set(["movie", "movies", "series", "artist", "musi
 const ROUTE_TRACE_DRAWERS = new Set(["filters", "actions"]);
 const ROUTE_TRACE_KEYS = new Set(["up", "down", "left", "right", "select", "back", "info"]);
 const MAX_ROUTE_TRACE = 32;
+
+/** The headers the channel sends for artwork (ClientHeaders in Config.brs): the client identity and a bearer token of the static account. */
+export async function artHeaders(env = process.env, fetchImpl = fetch) {
+  const headers = { Accept: "application/json", "X-Playarr-Client-Platform": "roku", "X-Playarr-Client-Version": "0.1.0" };
+  const server = env.PARITY_SERVER_URL, name = env.PARITY_ACCOUNT_NAME;
+  let password = env.PLAYARR_PARITY_STATIC_PASSWORD;
+  if (!password) { try { password = /^PLAYARR_PARITY_STATIC_PASSWORD=["']?(.+?)["']?$/m.exec(readFileSync(`${process.env.HOME}/.secrets`, "utf8"))?.[1]; } catch {} }
+  if (!server || !name || !password) return headers; // unknown stays unknown: the image checks then fail and report no opacity
+  try {
+    const res = await fetchImpl(`${server}/api/v1/auth/login`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username: name, password, device_id: crypto.randomUUID(), device_name: "parity-roku-export", client_platform: "roku", client_version: "0.1.0" }),
+    });
+    const token = res.ok ? (await res.json()).access_token : null;
+    if (token) headers.Authorization = `Bearer ${token}`;
+  } catch {}
+  return headers;
+}
 
 export function spawnSyncBinary(command, args, options = {}) {
   return spawnSync(command, args, { ...options, encoding: null });
@@ -1240,7 +1258,11 @@ export function createDriver({ out, args = [] } = {}) {
         writeFileSync(`${file}.appui.xml`, appUi); // the measured tree, kept so the export can be redone offline
         const themeDir = dirname(resolve(file));
         const id = resolve(file).split("/").pop().replace(/\.png$/, "");
-        const doc = buildLayoutDocument(appUi, { screen: id, theme: themeDir.split("/").pop(), clockPinned: pinArg !== "" });
+        // The artwork is fetched the way the app loads it (its client headers plus a bearer token), so the asset alpha is measured, not
+        // guessed; what was observed is kept next to the tree (no secret in it) so the decision can be replayed.
+        const evidence = await httpAssetEvidence(appUi, fetch, await artHeaders());
+        writeFileSync(`${file}.assets.json`, JSON.stringify(evidence, null, 1));
+        const doc = buildLayoutDocument(appUi, { screen: id, theme: themeDir.split("/").pop(), clockPinned: pinArg !== "", assetOpacity: assetOpacityMap(evidence) });
         const layoutDir = resolve(themeDir, "..", "layout", themeDir.split("/").pop());
         mkdirSync(layoutDir, { recursive: true });
         writeFileSync(resolve(layoutDir, `${id}.json`), JSON.stringify(doc, null, 1));

@@ -1,0 +1,1 @@
+- Tizen native: audit F1 to F4 corrections: no per-text focus lifts on Home and Library captions, no extra Series detail episode label shifts or content-keyed glyph Y (centred from the 64 px pill and measured glyph boxes), and the layout export composes colours with plain source-over of the live NUI floats (no 8-bit alpha or layer quantisation).

@@ -470,7 +470,7 @@ end function
 ' Shared page header pieces (web PageHeader): the round Back button, the title spec and the right-hand action tile. Every page
 ' (Pages, Library, Detail, Search) draws these here and nowhere else; clients/roku/tests/test_page_anatomy.py enforces it.
 function pgBackButton(parent as Object, x as Float, name = "Back to Home" as String, role = "link" as String) as Object
-    pgRound(parent, x, 56.3, 50, 50, 25, "surface", 179)
+    pgRound(parent, x, 56.3, 50, 50, 25, "surfaceStrong", 179)
     pgRound(parent, x, 56.3, 50, 50, 25, "line", -1, true)
     pgGlyph(parent, "←", x + 16.4, 69.19, 17.28, 720, "inkSoft")
     back = pgMark(parent, role, name, x, 56.2, 50, 50, 50)
@@ -2312,12 +2312,12 @@ sub renderCalendarMonth(entries as Object)
     if rows > 5 then maxChips = 3
     today = calendarTodayString()
     todayIdx = 0
-    ' Cells of the neighbouring months are filled; the grid lines sit on the cell edges.
+    ' Cells of the neighbouring months are filled: .calendar-month-cell.is-outside, surface-soft at 40% (color-mix); the grid lines sit on the cell edges.
     for i = 0 to days - 1
         day = calAddDays(r.start, i)
         x = gx + (i mod 7) * cw
         y = gy + Int(i / 7) * ch
-        if Mid(day, 6, 2) <> monthOf then pgRect(m.pageBody, x, y, cw, ch, "ink", 12).id = "a11y|container|0|"
+        if Mid(day, 6, 2) <> monthOf then pgRect(m.pageBody, x, y, cw, ch, "surfaceSoft", 102).id = "a11y|container|0|"
     end for
     ' Each day cell is a box with its own 1 px border (web .calendar-month-cell): a bordered container, no corner.
     for i = 0 to days - 1

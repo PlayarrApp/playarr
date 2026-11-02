@@ -533,6 +533,14 @@ impl App {
                     // shadow a few pixels differently from a full one, which makes captures depend on the redraw history.
                     // Drawn three times: the first draw of a blurred shadow differs by a level in a pixel or two from one
                     // taken from the renderer's cache, so a capture waits for the cached form.
+                    // The renderer is also unrealized and realized once, which drops its shadow and glyph caches, so a
+                    // capture late in a long route sequence draws from the same cache state as a fresh app.
+                    if let (Some(renderer), Some(surface)) = (me.window.renderer(), me.window.surface()) {
+                        renderer.unrealize();
+                        if let Err(e) = renderer.realize(Some(&surface)) {
+                            eprintln!("renderer realize failed: {e}");
+                        }
+                    }
                     let redraw = {
                         let window = me.window.clone();
                         move || {

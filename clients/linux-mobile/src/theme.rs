@@ -113,11 +113,11 @@ pub fn css(dark: bool) -> String {
             "grayscale(1) contrast(0.88) brightness(1.1)"
         }
     );
-    // Light agenda availability is the web's dark green (dark keeps the mint of style.css); the light agenda has no backdrop wash.
+    // Light agenda availability is the web's dark green (dark keeps the mint of style.css).
     let have = if dark {
         ""
     } else {
-        "button.pa-entry.have { border-left-color: #224c3a; }\n.pa-dot.have { background: #224c3a; }\n.pa-chip-status.ok { color: @pa_ink; border-color: alpha(#224c3a, 0.65); background: alpha(#224c3a, 0.16); }\n.pa-agenda-bg { background: none; }\n"
+        "button.pa-entry.have { border-left-color: #224c3a; }\n.pa-dot.have { background: #224c3a; }\n.pa-chip-status.ok { color: @pa_ink; border-color: alpha(#224c3a, 0.65); background: alpha(#224c3a, 0.16); }\n"
     };
     // The web's library rail surface (`.tv-rail-surface`): a sideways ramp of the frost colour in dark; on a phone the light theme's later rule makes it a flat 96 % surface.
     let rail = if dark {
