@@ -49,7 +49,7 @@ for t in $THEMES; do
       PLAYARR_KEEP_CONTROLS=$keep PLAYARR_PARITY_PAUSE_MS=2000 "$H/pmrun.sh" </dev/null; sleep 15; "$H/pmfocus.sh"
       rm -f -- "$O/$t/player.png"
       PLAYARR_CAPTURE_GREEN_CHECK=true "$H/pmcap3.sh" "$O/$t" "theme:$t" player </dev/null || continue
-      mv -- "$O/$t/player.png" "$O/$t/$id.png"; break
+      [ "$id" = player ] || mv -- "$O/$t/player.png" "$O/$t/$id.png"; break
     done
     [ -s "$O/$t/$id.png" ] || { echo "capture failed: $id" >&2; exit 1; }
   done
