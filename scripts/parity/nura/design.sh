@@ -38,7 +38,7 @@ for t in $THEMES; do
       WAIT=${WAIT:-45} "$H/pmcap3.sh" "$O/$t" "theme:$t" "$route" </dev/null && break
       [ "$try" = 3 ] && { echo "capture failed: $id" >&2; exit 1; }
     done
-    mv -- "$O/$t/${route//:/_}.png" "$O/$t/$id.png"
+    [ "${route//:/_}" = "$id" ] || mv -- "$O/$t/${route//:/_}.png" "$O/$t/$id.png"
   done
   # Player: its own start, paused at 2 s; once with the controls hidden (player), once with them pinned (player-controls).
   for pair in player:player player-controls:player; do
