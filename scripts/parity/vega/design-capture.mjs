@@ -41,6 +41,7 @@ const SCREENS = [
   { id: "watchlist", kind: "route", path: "/watchlist", expect: /^\/watchlist/ },
   { id: "requests", kind: "route", path: "/requests", expect: /^\/requests/ },
   { id: "playlists", kind: "route", path: "/playlists", expect: /^\/playlists/ },
+  { id: "playlist-detail", kind: "route", path: () => `/playlists/${playlistId}`, expect: /^\/playlists/ },
   ...["appearance", "profile-avatar", "language", "player", "server", "profile-lock", "invite", "request-latency", "remote", "your-data", "home"].map((s) => ({ id: `settings-${s}`, kind: "route", path: `/settings/${s}`, expect: /^\/settings/ })),
   { id: "not-found", kind: "route", path: "/does-not-exist", expect: /^\/notfound/ },
   { id: "home--focus-second-rail", kind: "home-down" },
@@ -53,7 +54,6 @@ const ABSENT = {
   signup: "No sign-up screen in the Fire TV app: accounts are created on the web and the device is linked with a code. clients/fire-tv/src/navigation/routes.ts has no signup route.",
   household: "No routed household page: clients/fire-tv/src/navigation/AppShellNavigator.tsx shows HouseholdBlockedScreen only as an overlay while the server reports a household block (GET /api/v1/household/status). The seeded parity account is never blocked, so the overlay cannot be reached without faking the server answer.",
   "episode-detail": "Same screen as series-detail: WorkDetailScreen lists the episodes inline (clients/fire-tv/src/screens/WorkDetailScreen.tsx); ROUTES has no episode route.",
-  "playlist-detail": "The seeded parity catalogue has no playlists (GET /api/v1/playlists returns []), so there is no first playlist to open; the Playlists screen is captured as `playlists`.",
   folders: "No Folders screen in the Fire TV app: clients/fire-tv/src/navigation/routes.ts has no folders route and AppShellNavigator.tsx registers none.",
   "profiles--add": "The Add profile tile on the Fire TV profile picker navigates to the Link screen (ProfilesScreen AddProfileTile, ROUTES.link), captured as `link`; there is no add-profile form.",
 };
@@ -69,6 +69,29 @@ manifest.capturedAt = new Date().toISOString();
 for (const [id, reason] of Object.entries(ABSENT)) manifest.screens[id] = { dark: null, light: null, absent: reason };
 const save = () => writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 save();
+
+// The frozen seed has no playlists: create one of pinned titles through the API on the throw-away DB copy (DESIGN-COMMON.md, playlist fixture).
+let playlistId = "";
+async function seedPlaylist(env) {
+  const srv = env.PLAYARR_SERVER_URL.replace(/\/$/, "");
+  const lr = await fetch(`${srv}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-design", username: env.PLAYARR_USERNAME, password: env.PLAYARR_PASSWORD }) });
+  if (!lr.ok) throw new Error(`login ${lr.status}`);
+  const auth = { authorization: `Bearer ${(await lr.json()).access_token}` };
+  const list = async () => { const r = await (await fetch(`${srv}/api/v1/playlists`, { headers: auth })).json(); return Array.isArray(r) ? r : r.items ?? r.playlists ?? []; };
+  let existing = await list();
+  if (!existing.length) {
+    const created = await fetch(`${srv}/api/v1/playlists`, { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify({ name: "Parity Watch Night", media_type: "video" }) });
+    if (!created.ok) throw new Error(`create playlist ${created.status}`);
+    const made = await created.json();
+    for (const workId of [suiteScreen("film-detail").open, suiteScreen("series-detail").open].map((r) => r.split("/").pop()).concat(["4ec39b80-28c3-4d83-9f83-f07872e5f4c0"])) {
+      const added = await fetch(`${srv}/api/v1/playlists/${made.id}/items`, { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify({ work_id: workId }) });
+      if (!added.ok) throw new Error(`add playlist item ${added.status}`);
+    }
+    existing = await list();
+  }
+  playlistId = existing[0].id;
+}
 
 const fixedNow = process.env.PARITY_FIXED_NOW ?? FIXTURE_CLOCK;
 const selected = SCREENS.filter((s) => !want.length || want.includes(s.id));
@@ -88,7 +111,7 @@ async function run() {
     } else if (s.kind === "player") {
       await driver.playerControls({ raise: s.raise });
     } else if (s.kind === "route") {
-      await driver.route(s.path, { screenId: s.id });
+      await driver.route(typeof s.path === "function" ? s.path() : s.path, { screenId: s.id });
       if (s.dismissKeyboard) { await driver.raw.press("Escape"); await sleep(2500); }
       const at = await driver.location();
       if (!s.expect.test(String(at))) throw new Error(`${s.id}: ended on ${at}`);
@@ -114,6 +137,7 @@ async function run() {
         } catch (e) { console.log(`FAIL ${theme} ${s.id} attempt ${attempt}: ${String(e.message).split("\n")[0]}`); }
       }
       manifest.screens[s.id] ??= { dark: null, light: null };
+      if (done) delete manifest.screens[s.id].absent;
       manifest.screens[s.id][theme] = done ? `${theme}/${s.id}.png` : null;
       if (!done) manifest.screens[s.id].failed = `${theme}: capture failed after 3 attempts, see the run log`;
       else if (manifest.screens[s.id].failed?.startsWith(theme)) delete manifest.screens[s.id].failed;
@@ -132,5 +156,6 @@ await withCaptureState({ client: process.env.PARITY_CLIENT, files: stateFiles, e
   Object.assign(process.env, context.env);
   const seeded = await applyCanonicalDeck(context, process.env, readSecrets());
   if (!seeded) { await context.clearResumeChoices(); await context.snapshotNow(); }
+  if (!want.length || want.some((w) => w.startsWith("playlist") || w.startsWith("search") || w === "home")) await seedPlaylist(process.env);
   await run();
 });

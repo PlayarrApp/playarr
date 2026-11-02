@@ -85,6 +85,7 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
         else if (base === '/link') navRef.navigate(ROUTES.link);
         else if (SETTINGS_ROUTES[base]) navRef.navigate(APP_SHELL_ROUTE, {screen: SETTINGS_ROUTES[base]});
         else if (base.startsWith('/music/')) navRef.navigate(APP_SHELL_ROUTE, {screen: ROUTES.musicDetail, params: {workId: base.slice('/music/'.length), backTo: ROUTES.music}});
+        else if (base.startsWith('/playlists/')) navRef.navigate(APP_SHELL_ROUTE, {screen: ROUTES.playlists, params: {playlistId: base.slice('/playlists/'.length), backTo: ROUTES.playlists}});
         else if (base === '/does-not-exist') navRef.navigate(APP_SHELL_ROUTE, {screen: ROUTES.notFound});
         else if (WEB_TO_ROUTE[base]) {
           // A screen that is already up keeps its state, so leave through Home first and let the target mount with the query.
