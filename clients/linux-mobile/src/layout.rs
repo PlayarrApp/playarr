@@ -250,29 +250,20 @@ fn rgba(c: &gdk::RGBA) -> [f32; 4] {
     [c.red(), c.green(), c.blue(), c.alpha()]
 }
 
-/// A background colour as the layout document defines it: sRGB channels in 0..255, every ancestor fill composited over white.
-type Bg = [f64; 3];
+/// A background colour as the layout document defines it: sRGB channels in 0..1, every ancestor fill composited over white.
+type Bg = [f32; 3];
 
-/// One composite step over the colour behind (every ancestor fill composited over white, in 0..255). The fill's channels are
-/// the 8-bit values it was declared with and its alpha is the declared one.
+/// One composite step over the colour behind, source-over on the colour values exactly as the snapshot carries them, in the
+/// single precision the renderer blends in. Nothing is snapped, rounded or calibrated here.
 fn over(top: [f32; 4], under: Bg) -> Bg {
-    let a = (f64::from(top[3]) * 1000.0).round() / 1000.0;
-    let ch = |v: f32| {
-        let t = f64::from(v) * 255.0;
-        if (t - t.round()).abs() < 0.01 {
-            t.round()
-        } else {
-            t
-        }
-    };
-    let mix = |i: usize| ch(top[i]) * a + under[i] * (1.0 - a);
+    let a = top[3];
+    let mix = |i: usize| top[i] * a + under[i] * (1.0 - a);
     [mix(0), mix(1), mix(2)]
 }
 
-/// The `#rrggbb` of a background, rounded once to 8 bits. A channel exactly between two values reads as the lower one, which
-/// is what GTK's renderer draws for it (surface #211d21 at 70 % over #1b181b is drawn #1f1b1f, its green 27.5 drawing as 27).
+/// The `#rrggbb` of a background: each channel quantised once to 8 bits (nearest, as the web document's `Math.round`).
 fn hex_bg(c: Bg) -> String {
-    let b = |v: f64| (v - 0.5 - 1.0e-6).ceil().clamp(0.0, 255.0) as u8;
+    let b = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
     format!("#{:02x}{:02x}{:02x}", b(c[0]), b(c[1]), b(c[2]))
 }
 
@@ -900,7 +891,7 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
         viewport,
         items: Vec::new(),
     };
-    walk.visit(root, [-1.0e6, -1.0e6, 2.0e6, 2.0e6], 1.0, [255.0, 255.0, 255.0]);
+    walk.visit(root, [-1.0e6, -1.0e6, 2.0e6, 2.0e6], 1.0, [1.0, 1.0, 1.0]);
     // Occlusion as the web scorer samples it: nine points of the visible box; hidden when each lies under a later box
     // that paints (alpha of 0.5 or more) and is not part of the element.
     let n = walk.items.len();
@@ -920,20 +911,24 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
         let covered = [0.2_f32, 0.5, 0.8].iter().all(|fy| {
             [0.2_f32, 0.5, 0.8].iter().all(|fx| {
                 let (px, py) = (r[0] + r[2] * fx, r[1] + r[3] * fy);
-                let hit = (end..n).find(|&j| {
-                    let o = &walk.items[j];
-                    o.opaque
-                        && px >= o.rect[0]
-                        && px <= o.rect[0] + o.rect[2]
-                        && py >= o.rect[1]
-                        && py <= o.rect[1] + o.rect[3]
-                });
-                if let Some(j) = hit {
+                // Every later box that paints over the sample is a cover, not only the first: hiding one overlay would leave
+                // another (the navigation under a drawer) in place and the record would read as still shown.
+                let hits: Vec<usize> = (end..n)
+                    .filter(|&j| {
+                        let o = &walk.items[j];
+                        o.opaque
+                            && px >= o.rect[0]
+                            && px <= o.rect[0] + o.rect[2]
+                            && py >= o.rect[1]
+                            && py <= o.rect[1] + o.rect[3]
+                    })
+                    .collect();
+                for &j in &hits {
                     if !cover.contains(&j) {
                         cover.push(j);
                     }
                 }
-                hit.is_some()
+                !hits.is_empty()
             })
         });
         if covered {
@@ -972,13 +967,11 @@ mod tests {
     use gtk4::AccessibleRole as R;
 
     #[test]
-    fn a_translucent_fill_composites_as_the_renderer_draws_it() {
-        // Surface #211d21 at 70 % over the page #1b181b: the green channel is exactly 27.5, which GTK draws as 27 (#1f1b1f).
-        let under = [27.0, 24.0, 27.0];
-        let fill = [33.0 / 255.0, 29.0 / 255.0, 33.0 / 255.0, 0.7];
-        assert_eq!(hex_bg(over(fill, under)), "#1f1b1f");
+    fn a_translucent_fill_composites_in_the_renderer_arithmetic() {
+        // Black at 25 % over white: 191.25 of 255, quantised once to #bfbfbf.
+        assert_eq!(hex_bg(over([0.0, 0.0, 0.0, 0.25], [1.0; 3])), "#bfbfbf");
         // An opaque fill replaces what is under it.
-        assert_eq!(hex_bg(over([1.0, 1.0, 1.0, 1.0], under)), "#ffffff");
+        assert_eq!(hex_bg(over([0.2, 0.4, 0.6, 1.0], [1.0; 3])), "#336699");
     }
 
     // GTK must only be used from the thread that initialised it, and the test harness runs each test on its own thread, so the
