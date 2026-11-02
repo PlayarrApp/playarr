@@ -372,9 +372,9 @@ struct LibraryView: View {
                                 endPoint: .trailing
                             )
                         }
-                    previewCopy(preview, viewportWidth: proxy.size.width)
-                        .frame(width: proxy.size.width * 0.24, alignment: .leading)
-                        .padding(.leading, proxy.size.width * 0.088)
+                    previewCopy(preview, viewportWidth: proxy.size.width, viewportHeight: proxy.size.height)
+                        .frame(width: min(proxy.size.width * 0.24, 455), alignment: .leading)
+                        .padding(.leading, Self.previewLeft(viewportWidth: proxy.size.width))
                         .padding(.top, proxy.size.height * 0.24)
                         .zIndex(2)
                 }
@@ -766,13 +766,24 @@ struct LibraryView: View {
         }
     }
 
-    private func previewCopy(_ work: Work, viewportWidth: CGFloat) -> some View {
+    /// Web `.tv-library-preview` left: max(clamp(102px, 8vw, 160px) (7.5vw up to 1100 px wide), --tv-nav-clearance), in 1/64 px.
+    /// `--tv-nav-clearance` = nav edge clamp(18px, 2.2vw, 44px) + 64px item + 2 x 0.4rem padding + 2px border + 12px gap.
+    static func previewLeft(viewportWidth: CGFloat) -> CGFloat {
+        let unit = viewportWidth / 100
+        let edge = min(max(18, 2.2 * unit), 44)
+        let clearance = edge + 64 + 12.8 + 2 + 12
+        let proportional = viewportWidth <= 1100 ? 7.5 * unit : min(max(102, 8 * unit), 160)
+        return (max(proportional, clearance) * 64).rounded(.down) / 64
+    }
+
+    private func previewCopy(_ work: Work, viewportWidth: CGFloat, viewportHeight: CGFloat) -> some View {
+        let vh = viewportHeight / 100
         let year = WorkDetailView.tabletYearRangeLabel(releaseDate: work.releaseDate, endDate: work.endDate)
         let genres = work.genres.prefix(2).joined(separator: " · ")
         let metaItems = [year, genres.isEmpty ? nil : genres].compactMap { $0 }
         return VStack(alignment: .leading, spacing: 0) {
             WMText((work.genres.first ?? work.kind.displayName).uppercased(), 9.28, 860, color: WM.previewKicker, lh: 12, ls: 1.1)
-                .padding(.bottom, 20)
+                .padding(.bottom, min(max(18, 2.4 * vh), 34)) // `.tv-provider` margin-bottom
             let isPad = UIDevice.current.userInterfaceIdiom == .pad
             let titleSize: CGFloat = isPad ? min(max(35.2, viewportWidth * 0.036), 80) : 42
             let titleWeight = isPad ? 560 : 400
@@ -795,7 +806,7 @@ struct LibraryView: View {
                             .parityRenderedText(line, role: "heading", size: titleSize, weight: titleWeight, color: PlayarrStyle.ink)
                             .lineLimit(1)
                             .fixedSize(horizontal: false, vertical: true)
-                            .frame(height: titleSize * 0.9, alignment: .top)
+                            .frame(height: titleSize * 0.9, alignment: .center)
                     }
                 }
                 .accessibilityElement(children: .ignore)
@@ -818,7 +829,7 @@ struct LibraryView: View {
             HStack(spacing: 12.8) {
                 ForEach(metaItems, id: \.self) { WMText($0, 9.92, 600, color: WM.previewInk, lh: 14) }
             }
-            .padding(.top, 26)
+            .padding(.top, min(max(18, 2.5 * vh), 34)) // `.tv-preview-meta` margin-top
             if let overview = work.overview {
                 let overviewSize: CGFloat = isPad ? min(max(16 * 0.64, viewportWidth * 0.0072), 16 * 0.92) : 11.5
                 let overviewFont = isPad
@@ -841,7 +852,7 @@ struct LibraryView: View {
                     .parityRenderedText(overview, role: "text", size: isPad ? overviewSize : 11.5, weight: isPad ? 600 : 500, color: isPad ? WM.previewInk : PlayarrStyle.inkSoft)
                     .lineLimit(5)
                     .frame(maxWidth: isPad ? overviewWidth : nil, alignment: .leading)
-                    .padding(.top, 20)
+                    .padding(.top, min(max(16, 2 * vh), 28)) // `.tv-preview-overview` margin-top
             }
         }
     }
