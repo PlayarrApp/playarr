@@ -37,8 +37,7 @@ export function stableNativeFocus(doc) {
     const rect = element.getBoundingClientRect();
     const label = (element.getAttribute("aria-label") || element.textContent.trim().slice(0, 80) || element.className.toString()).replace(/\s+/g, " ");
     const half = label.length / 2;
-    let normal = Number.isInteger(half) && half > 0 && label.slice(0, half) === label.slice(half) ? label.slice(0, half) : label;
-    normal = normal.replace(/^Resume (.*) from \d+:\d+(?::\d+)?$/i, "Open $1");
+    const normal = Number.isInteger(half) && half > 0 && label.slice(0, half) === label.slice(half) ? label.slice(0, half) : label;
     return { element, label: normal, key: element.getAttribute("data-navigation-focus-key") || element.id || element.tagName,
       x: rect.x, y: rect.y, width: rect.width, height: rect.height };
   };
@@ -618,8 +617,6 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     const e = document.activeElement;
     if (!e || e === document.body) return null;
     let label = (e.getAttribute("aria-label") || e.textContent.trim().slice(0, 80) || e.className.toString()).replace(/\s+/g, " ");
-    // Resume progress is per account and changes between runs: "Resume X from 2:14" and "Open X" are the same item.
-    label = label.replace(/^Resume (.*) from \d+:\d+(?::\d+)?$/i, "Open $1");
     // Some card markup repeats the accessible name in visible and hidden text.
     const half = label.length / 2;
     if (Number.isInteger(half) && half > 0 && label.slice(0, half) === label.slice(half)) label = label.slice(0, half);

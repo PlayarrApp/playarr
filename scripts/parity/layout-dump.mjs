@@ -114,10 +114,9 @@ export function layoutPageFn(volatile, opts) {
         cur.l = cur.l ? { left: Math.min(cur.l.left, cr.left), top: Math.min(cur.l.top, cr.top), right: Math.max(cur.l.right, cr.right), bottom: Math.max(cur.l.bottom, cr.bottom) } : { left: cr.left, top: cr.top, right: cr.right, bottom: cr.bottom };
       }
     }
-    /* The last glyph of a line carries letter-spacing after it, which draws nothing: take it off the run's right edge once per line (non-zero spacing only). */
-    var spacing = (parseFloat(cs.letterSpacing) || 0) * zoomOf(el);
+    /* Run rects are the engine's own glyph range boxes; no letter-spacing is subtracted by formula. */
     return lines.filter(function (x) { return x.l && norm(x.text); }).map(function (x) {
-      return { text: shown(norm(x.text), cs), left: x.l.left, top: x.l.top, w: x.l.right - x.l.left - spacing, h: x.l.bottom - x.l.top };
+      return { text: shown(norm(x.text), cs), left: x.l.left, top: x.l.top, w: x.l.right - x.l.left, h: x.l.bottom - x.l.top };
     });
   };
   /* A single line cut by text-overflow: ellipsis draws its "…" in the engine, not in the DOM, so the cut cannot be read. The app must render truncated strings

@@ -1,0 +1,1 @@
+- Parity layout dump no longer subtracts letter-spacing from text run widths by formula, and the web D-pad driver reports the real focused name (Resume cards are folded only by the comparison).

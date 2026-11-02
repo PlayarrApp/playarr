@@ -297,16 +297,6 @@ test("a control with direct text and a styled child is named by its whole conten
   assert.equal(d.elements.find((e) => e.role === "button").text, "Go back");
 });
 
-test("a text run's right edge excludes the trailing letter-spacing of its last glyph, once per line", { skip }, async () => {
-  const spaced = await dump(`<span class="abs" style="top:0;font:20px monospace;letter-spacing:10px">abcd</span><span class="abs" style="top:40px;font:20px monospace">abcd</span>`);
-  const [a, b] = spaced.elements;
-  assert.equal(a.text, "abcd");
-  assert.ok(Math.abs(a.rect.w - (b.rect.w + 4 * 10 - 10)) < 0.1, `spaced ${a.rect.w} plain ${b.rect.w}`);
-  const wrapped = await dump(`<span class="abs" style="top:0;width:90px;font:20px monospace;letter-spacing:10px">ab cd</span>`);
-  assert.equal(wrapped.elements.length, 2);
-  assert.ok(wrapped.elements.every((e) => Math.abs(e.rect.w - (2 * 12 + 2 * 10 - 10)) < 0.1), JSON.stringify(wrapped.elements.map((e) => e.rect.w)));
-});
-
 test("a percentage border radius resolves against the element's own box, capped at half the short side", { skip }, async () => {
   const d = await dump(`<button class="abs" style="top:0;width:44px;height:44px;border-radius:50%;background:#123456" aria-label="c"></button>
     <button class="abs" style="top:60px;width:100px;height:40px;border-radius:50%;background:#123456" aria-label="p"></button>
