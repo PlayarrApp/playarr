@@ -244,7 +244,7 @@ final class ParityLayoutRegistry {
                 entry.background = own.background; entry.radius = own.radius; entry.opacity = min(entry.opacity, own.opacity)
                 entry.toggle = own.toggle
                 ownBoxes.append(own)
-            } else if let target = toggleFrames.filter({ distance($0.value, entry.rect) < 6 }).min(by: { distance($0.value, entry.rect) < distance($1.value, entry.rect) }) {
+            } else if let target = toggleFrames.filter({ distance($0.value, entry.rect) < 6 }).min(by: { (distance($0.value, entry.rect), $0.key.uuidString) < (distance($1.value, entry.rect), $1.key.uuidString) }) {
                 // A control without a styled box: the view that draws it carries a `parityToggle`, found by its frame.
                 entry.toggle = target.key
                 // A control that paints nothing of its own sits on whatever is behind it, as in the web export.
@@ -267,7 +267,7 @@ final class ParityLayoutRegistry {
                             guard let colour, rect.width * rect.height > best.area else { return }
                             best = (rect.width * rect.height, colour)
                         }
-                        for (id, frame) in toggleFrames where inside.contains(id) && frame.width > 0 { consider(frame, toggleBackdrops[id]) }
+                        for (id, frame) in toggleFrames.sorted(by: { $0.key.uuidString < $1.key.uuidString }) where inside.contains(id) && frame.width > 0 { consider(frame, toggleBackdrops[id]) }
                         for (id, item) in items where inside.contains(id) {
                             consider(item.rect, item.outer ?? item.background)
                         }
