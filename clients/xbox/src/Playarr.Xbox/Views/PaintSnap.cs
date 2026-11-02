@@ -71,7 +71,6 @@ namespace Playarr.Xbox.Views
                 {
                     var canvas = info.Canvas;
                     var move = (TranslateTransform)canvas.RenderTransform;
-                    move.X = move.Y = 0;
                     var aw = art.ActualWidth;
                     var ah = art.ActualHeight;
                     if (aw <= 0 || ah <= 0)
@@ -81,19 +80,23 @@ namespace Playarr.Xbox.Views
 
                     var w = aw;
                     var h = ah;
+                    double mx = 0, my = 0;
                     var ringShift = new Windows.Foundation.Point(0, 0);
                     Windows.Foundation.Point? origin = null;
                     if (snapped && canvas.Visibility == Visibility.Visible && Window.Current?.Content is FrameworkElement root && root.ActualWidth > 0)
                     {
                         var k = 1920.0 / root.ActualWidth;
                         var at = canvas.TransformToVisual(root).TransformPoint(info.Origin);
-                        move.X = Math.Round(at.X * k, MidpointRounding.AwayFromZero) / k - at.X;
-                        move.Y = Math.Round(at.Y * k, MidpointRounding.AwayFromZero) / k - at.Y;
+                        var cur = new Windows.Foundation.Point(at.X - move.X, at.Y - move.Y); // position without the current shift
+                        mx = Math.Round(cur.X * k, MidpointRounding.AwayFromZero) / k - cur.X;
+                        my = Math.Round(cur.Y * k, MidpointRounding.AwayFromZero) / k - cur.Y;
                         w = Math.Max(1, Math.Round(aw * k, MidpointRounding.AwayFromZero) / k);
                         h = Math.Max(1, Math.Round(ah * k, MidpointRounding.AwayFromZero) / k);
                         origin = at;
                     }
 
+                    move.X = mx;
+                    move.Y = my;
                     foreach (var child in canvas.Children)
                     {
                         if (child is not Border border)
@@ -103,8 +106,7 @@ namespace Playarr.Xbox.Views
 
                         if (border.Tag is int d)
                         {
-                            border.Width = w + 2 * d;
-                            border.Height = h + 2 * d;
+                            SetIfChanged(border, w + 2 * d, h + 2 * d);
                         }
                         else if (border.Tag is "ring")
                         {
@@ -122,10 +124,16 @@ namespace Playarr.Xbox.Views
                                 top = info.Origin.Y + Math.Round((h - rh) / 2, MidpointRounding.AwayFromZero);
                             }
 
-                            border.Width = rw;
-                            border.Height = rh;
-                            Canvas.SetLeft(border, left);
-                            Canvas.SetTop(border, top);
+                            SetIfChanged(border, rw, rh);
+                            if (Math.Abs(Canvas.GetLeft(border) - left) > 1e-6)
+                            {
+                                Canvas.SetLeft(border, left);
+                            }
+
+                            if (Math.Abs(Canvas.GetTop(border) - top) > 1e-6)
+                            {
+                                Canvas.SetTop(border, top);
+                            }
                         }
                     }
                 }
@@ -133,6 +141,20 @@ namespace Playarr.Xbox.Views
                 {
                     // not in the visual tree yet
                 }
+            }
+        }
+
+        /// <summary>Assigns a size only when it differs: a size set from a LayoutUpdated handler would otherwise start another layout pass forever.</summary>
+        private static void SetIfChanged(Border border, double width, double height)
+        {
+            if (Math.Abs(border.Width - width) > 1e-6)
+            {
+                border.Width = width;
+            }
+
+            if (Math.Abs(border.Height - height) > 1e-6)
+            {
+                border.Height = height;
             }
         }
 
