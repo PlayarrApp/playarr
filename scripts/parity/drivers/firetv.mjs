@@ -244,7 +244,8 @@ export async function createDriver({ out } = {}) {
     async key(name, { long } = {}) {
       const key = KEYS[name];
       if (!key) throw new Error(`unknown key ${name}`);
-      await settled();
+      // A playing video never settles (and the player hides its controls after 5 s): do not wait on it.
+      if ((await state(8000).catch(() => ({}))).player?.state !== "playing") await settled();
       if (long) {
         // Menu is the long press on Vega (opens the title actions drawer). It acts on the focused card, so look at the focus right
         // before it: wait for the focus to be a real card and to hold still across two reads, and keep it in the run log.
@@ -361,13 +362,17 @@ export async function createDriver({ out } = {}) {
     async location() {
       return (await state()).route;
     },
-    // Known state for the player checks, as the web's playerReady: the controls are up and Play holds the focus (it reads pause while the clip plays,
-    // as on the web). The raising Right of playerControls can have walked the focus on to Mute: Left walks it back.
-    async playerReady() {
-      for (let i = 0; i < 8; i++) {
+    // Known state for the player checks, as the web's playerReady: the controls are up and Play holds the focus. The clip stays paused
+    // (the controls then stay up; a playing clip hides them after 5 s) except for player-ok-toggle, which toggles a playing clip as on the web.
+    async playerReady(id) {
+      const wantPlaying = id === "player-ok-toggle";
+      for (let i = 0; i < 10; i++) {
         const f = await this.focused();
-        if (f?.label === "pause") return; // playing, Play focused: the web's playerReady state
-        if (f?.label === "play") await this.key("select"); else await this.key("left");
+        const playing = (await state().catch(() => ({}))).player?.state === "playing";
+        if (/^(play|pause)$/.test(f?.label ?? "")) {
+          if (playing === wantPlaying) return;
+          await this.key("select");
+        } else await this.key("left");
         await sleep(1500);
       }
       throw new Error("the Vega player did not focus play/pause");
