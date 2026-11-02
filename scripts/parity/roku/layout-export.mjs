@@ -104,7 +104,7 @@ const fontOf = (name = "") => {
   return m ? { weight: Number(m[1]), size: Number(m[2]), words: m[3] === "w", tail: m[3] === "t", spaceBefore: m[4] === "_", role: m[5] ?? "text" } : null;
 };
 
-export function buildLayoutDocument(appUiXml, { screen, theme, clockPinned }) {
+export function buildLayoutDocument(appUiXml, { screen, theme, clockPinned, assetOpacity }) {
   const items = measureTree(parseAppUi(appUiXml));
   // The video plane paints over everything before it in the tree (the pages under a full-screen player are not on screen).
   // Only a video plane that fills the screen hides them; a smaller plane hides nothing.
@@ -126,17 +126,43 @@ export function buildLayoutDocument(appUiXml, { screen, theme, clockPinned }) {
       groups.push({ single: it, order: it.order });
     }
   }
-  return finish(groups, items, { screen, theme, clockPinned, hiddenByVideo });
+  return finish(groups, items, { screen, theme, clockPinned, hiddenByVideo, assetOpacity });
 }
 
 const imageDir = fileURLToPath(new URL("../../../clients/roku/images/", import.meta.url));
 const pictureCache = new Map();
+let assetOpacityOf = null;
+/** The HTTP image URIs of an app-ui dump. */
+export function httpImageUris(appUiXml) {
+  return [...new Set([...appUiXml.matchAll(/<Poster\b[^>]*?\buri="(https?:\/\/[^"]+)"/g)].map((m) => unescapeXml(m[1])))];
+}
+/** True when the image bytes carry no transparent pixel (a JPEG never does; a PNG is read pixel by pixel). Unknown formats are not opaque. */
+export function imageIsOpaque(bytes) {
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) return true;
+  if (bytes[0] === 0x89 && bytes[1] === 0x50) {
+    const png = PNG.sync.read(Buffer.from(bytes));
+    for (let i = 3; i < png.data.length; i += 4) if (png.data[i] !== 255) return false;
+    return true;
+  }
+  return false;
+}
+/** Fetch every loaded HTTP image of the dump and report whether the asset is fully opaque: Map(uri -> boolean). */
+export async function httpAssetOpacity(appUiXml, fetchImpl = fetch) {
+  const out = new Map();
+  for (const uri of httpImageUris(appUiXml)) {
+    try {
+      const res = await fetchImpl(uri);
+      out.set(uri, res.ok && imageIsOpaque(new Uint8Array(await res.arrayBuffer())));
+    } catch { out.set(uri, false); }
+  }
+  return out;
+}
 /** A bundled picture that paints every pixel of its box: opaque PNG whose aspect matches the box (read from the app's own asset). */
 function opaquePicture(it) {
-  // Loaded server artwork (loadStatus 3 = ready, as the ECP tree reports it) is a JPEG the app zooms to fill its box.
-  // A `style=` bake (the stage key art) is a PNG with alpha baked in by the backend (at most 0.72 dark, 0.4 light, transparent edge),
-  // so it never hides what lies beneath it.
-  if (/^https?:\/\//.test(it.node.attrs.uri ?? "")) return it.node.attrs.loadStatus === "3" && !/[?&]style=/.test(it.node.attrs.uri);
+  // Loaded server artwork (loadStatus 3 = ready, as the ECP tree reports it) paints every pixel of its box only when the asset
+  // itself has no transparent pixel: that is read from the asset (see httpAssetOpacity), never assumed from the URL.
+  // The app zooms it to fill its box, so the aspect is not compared.
+  if (/^https?:\/\//.test(it.node.attrs.uri ?? "")) return it.node.attrs.loadStatus === "3" && assetOpacityOf?.get(it.node.attrs.uri) === true;
   const m = /^pkg:\/images\/([\w.-]+\.png)$/.exec(it.node.attrs.uri ?? "");
   if (!m || m[1].endsWith(".9.png")) return false;
   if (!pictureCache.has(m[1])) {
@@ -153,7 +179,8 @@ function opaquePicture(it) {
 const rgb = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
 const toHex = (v) => "#" + v.map((x) => Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, "0")).join("");
 
-function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }) {
+function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0, assetOpacity }) {
+  assetOpacityOf = assetOpacity ?? null;
   const elements = [];
   const r2 = (v) => Math.round(v * 100) / 100;
   // The colour behind an element: the painted Rectangles of the tree that lie under its centre, composited in paint order over white

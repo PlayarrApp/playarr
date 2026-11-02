@@ -9,7 +9,7 @@ import net from "node:net";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildLayoutDocument } from "../roku/layout-export.mjs";
+import { buildLayoutDocument, httpAssetOpacity } from "../roku/layout-export.mjs";
 import { artReadiness, createArtReadinessState, intersectingSlots, parseArtEvent, reduceArtEvent, resetArtReadinessState } from "../roku/art-readiness.mjs";
 
 const SAFE_SCREENS = new Set([
@@ -1240,7 +1240,7 @@ export function createDriver({ out, args = [] } = {}) {
         writeFileSync(`${file}.appui.xml`, appUi); // the measured tree, kept so the export can be redone offline
         const themeDir = dirname(resolve(file));
         const id = resolve(file).split("/").pop().replace(/\.png$/, "");
-        const doc = buildLayoutDocument(appUi, { screen: id, theme: themeDir.split("/").pop(), clockPinned: pinArg !== "" });
+        const doc = buildLayoutDocument(appUi, { screen: id, theme: themeDir.split("/").pop(), clockPinned: pinArg !== "", assetOpacity: await httpAssetOpacity(appUi) });
         const layoutDir = resolve(themeDir, "..", "layout", themeDir.split("/").pop());
         mkdirSync(layoutDir, { recursive: true });
         writeFileSync(resolve(layoutDir, `${id}.json`), JSON.stringify(doc, null, 1));

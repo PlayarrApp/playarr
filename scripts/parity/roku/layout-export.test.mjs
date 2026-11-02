@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildLayoutDocument } from "./layout-export.mjs";
+import { buildLayoutDocument, httpAssetOpacity, httpImageUris, imageIsOpaque } from "./layout-export.mjs";
 
 const doc = (inner) => buildLayoutDocument(`<app-ui><MainScene>${inner}</MainScene></app-ui>`, { screen: "t", theme: "dark", clockPinned: true }).elements;
 
@@ -22,10 +22,25 @@ test("text colour alpha is folded over the surface behind it", () => {
   assert.equal(els.find((e) => e.text === "Hi").color, "#808080");
 });
 
-test("loaded server artwork hides a surface and a label painted before it", () => {
-  const body = (status) => doc(`<Rectangle bounds="{0, 0, 100, 60}" color="#312a30ff" /><Label name="f400s10~w" text="01" color="#ffffffff" bounds="{0, 0, 10, 12}" /><Poster uri="http://host/art.jpg" loadStatus="${status}" bounds="{0, 0, 100, 60}" />`);
-  assert.equal(body("3").some((e) => e.text === "01" || e.role === "container"), false);
-  assert.equal(body("1").some((e) => e.text === "01"), true);
+test("loaded server artwork hides a surface and a label painted before it only when the asset is opaque", () => {
+  const xml = (status) => `<app-ui><MainScene><Rectangle bounds="{0, 0, 100, 60}" color="#312a30ff" /><Label name="f400s10~w" text="01" color="#ffffffff" bounds="{0, 0, 10, 12}" /><Poster uri="http://host/art.jpg" loadStatus="${status}" bounds="{0, 0, 100, 60}" /></MainScene></app-ui>`;
+  const run = (status, opaque) => buildLayoutDocument(xml(status), { screen: "t", theme: "dark", clockPinned: true, assetOpacity: new Map([["http://host/art.jpg", opaque]]) }).elements;
+  assert.equal(run("3", true).some((e) => e.text === "01" || e.role === "container"), false);
+  assert.equal(run("1", true).some((e) => e.text === "01"), true);
+  assert.equal(run("3", false).some((e) => e.text === "01"), true);
+});
+
+test("asset opacity is read from the image bytes", async () => {
+  const { PNG } = await import("pngjs");
+  const png = (alpha) => { const p = new PNG({ width: 2, height: 2 }); p.data.fill(255); p.data[7] = alpha; return new Uint8Array(PNG.sync.write(p)); };
+  assert.equal(imageIsOpaque(new Uint8Array([0xff, 0xd8, 0xff])), true);
+  assert.equal(imageIsOpaque(png(255)), true);
+  assert.equal(imageIsOpaque(png(200)), false);
+  assert.equal(imageIsOpaque(new Uint8Array([1, 2, 3])), false);
+  const xml = `<Poster uri="http://h/a?x=1&amp;y=2" /><Poster uri="pkg:/images/a.png" />`;
+  assert.deepEqual(httpImageUris(xml), ["http://h/a?x=1&y=2"]);
+  const got = await httpAssetOpacity(xml, async (u) => ({ ok: u === "http://h/a?x=1&y=2", arrayBuffer: async () => new Uint8Array([0xff, 0xd8]).buffer }));
+  assert.equal(got.get("http://h/a?x=1&y=2"), true);
 });
 
 test("a tail Label continues its word without a space", () => {
