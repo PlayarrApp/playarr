@@ -581,6 +581,8 @@ export class VegaPlaybackEngine extends BasePlaybackEngine implements PlaybackEn
     }
 
     configureShakaForHls(shakaPlayer);
+    // Parity builds only: Shaka stops fetching about 14 s past the playhead (its default buffering goal), but the web refs are captured with the whole clip buffered, so ask for the whole clip. The seek bar still draws the engine's real range.
+    if (process.env.PLAYARR_PARITY_CONTROL === '1') shakaPlayer.configure({streaming: {bufferingGoal: 3600}});
     configureTextDisplayer(shakaPlayer, shaka, player);
     registerAuthRequestFilter(
       shakaPlayer,
