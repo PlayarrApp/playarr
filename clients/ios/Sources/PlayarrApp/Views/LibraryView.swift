@@ -697,7 +697,11 @@ struct LibraryView: View {
                                 )
                                     .overlay(alignment: .topTrailing) {
                                         if !phone, let seen = progressedWorkIDs, !seen.contains(work.id) {
-                                            WMUnseenDot().padding(.top, 7).padding(.trailing, 7)
+                                            // `.tv-watch-unseen`: top/right clamp(7px, 0.55 vw, 11px), width clamp(9px, 0.68 vw, 13px), 1/64 px units.
+                                            let unit = viewportWidth / 100
+                                            let inset = (min(max(7, 0.55 * unit), 11) * 64).rounded(.down) / 64
+                                            WMUnseenDot(size: (min(max(9, 0.68 * unit), 13) * 64).rounded(.down) / 64)
+                                                .padding(.top, inset).padding(.trailing, inset)
                                         }
                                     }
                             }

@@ -833,8 +833,11 @@ private struct ParityRenderedTextModifier: ViewModifier {
             var rect = CGRect(x: frame.minX + line.rect.minX * factor, y: frame.minY + line.rect.minY * factor, width: line.rect.width * factor, height: line.rect.height * factor)
             if let cssBox {
                 // The web reports the content area of the line: the rounded ascent above the baseline this line is drawn on
-                // and the rounded descent below it.
-                let baseline = frame.minY + (line.rect.minY + line.ascent) * factor
+                // and the rounded descent below it. SwiftUI puts the baseline one font ascender (the face's hhea ascent, the
+                // same metric Blink rounds for the content area) below the top of the text view; the glyph-run ascent of the
+                // line is only the fallback when the face is unavailable.
+                let ascender = DesignFont.uiFont(family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: size, weight: weight, fixedAxes: DesignFont.nunitoAxes)?.ascender
+                let baseline = frame.minY + (ascender ?? (line.rect.minY + line.ascent)) * factor
                 rect.origin.y = baseline - cssBox.ascent * factor
                 rect.size.height = (cssBox.ascent + cssBox.descent) * factor
             }

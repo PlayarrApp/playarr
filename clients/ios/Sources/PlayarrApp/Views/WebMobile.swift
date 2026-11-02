@@ -603,25 +603,27 @@ extension View {
 
 struct WMUnseenDot: View {
     @Environment(\.colorScheme) private var scheme
+    /// `.tv-watch-unseen` width: clamp(9px, 0.68 vw, 13px); the phone's 393 pt viewport resolves to the 9 pt floor.
+    var size: CGFloat = 9
 
     var body: some View {
         // Parity captures draw the dot from a bitmap rendered once per theme: the GPU antialiasing of the ring and its
         // shadow differs a little from one simulator to the next, a blitted bitmap does not.
         #if DEBUG
-        if ParityLaunch.zeroInsets, let image = WMUnseenDotBitmap.image(scheme) {
+        if ParityLaunch.zeroInsets, let image = WMUnseenDotBitmap.image(scheme, size: size) {
             // The 33 pt bitmap carries the ring and shadow around the 9 pt dot; it is decoration, so it takes no part in the
             // accessibility frame of the card that holds it (the link is the card's box, as in the web).
             // The bitmap hangs off a 9 pt UIKit view as a sublayer, so no SwiftUI child frame (33 pt) reaches the card's
             // accessibility frame: the link is the card's own box, as on the web.
-            WMDotLayerView(image: image).frame(width: 9, height: 9)
-                .parityBox("img", background: WM.pink, radius: 4.5)
+            WMDotLayerView(image: image, size: size).frame(width: size, height: size)
+                .parityBox("img", background: WM.pink, radius: size / 2)
         } else {
-            WMUnseenDotVector()
-                .parityBox("img", background: WM.pink, radius: 4.5)
+            WMUnseenDotVector(size: size)
+                .parityBox("img", background: WM.pink, radius: size / 2)
         }
         #else
-        WMUnseenDotVector()
-            .parityBox("img", background: WM.pink, radius: 4.5)
+        WMUnseenDotVector(size: size)
+            .parityBox("img", background: WM.pink, radius: size / 2)
         #endif
     }
 }
@@ -629,30 +631,33 @@ struct WMUnseenDot: View {
 /// A 9 x 9 pt view whose bitmap (33 x 33, centred) is a sublayer that overhangs the view; it is not an accessibility element.
 struct WMDotLayerView: UIViewRepresentable {
     let image: UIImage
+    var size: CGFloat = 9
 
     func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: CGRect(x: 0, y: 0, width: 9, height: 9))
+        let view = UIView(frame: CGRect(x: 0, y: 0, width: size, height: size))
         view.isUserInteractionEnabled = false
         view.isAccessibilityElement = false
         view.clipsToBounds = false
         let layer = CALayer()
         layer.contents = image.cgImage
         layer.contentsScale = image.scale
-        layer.frame = CGRect(x: -12, y: -12, width: 33, height: 33)
+        layer.frame = CGRect(x: -12, y: -12, width: size + 24, height: size + 24)
         view.layer.addSublayer(layer)
         return view
     }
 
     func updateUIView(_ view: UIView, context: Context) {}
 
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIView, context: Context) -> CGSize? { CGSize(width: 9, height: 9) }
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIView, context: Context) -> CGSize? { CGSize(width: size, height: size) }
 }
 
 struct WMUnseenDotVector: View {
+    var size: CGFloat = 9
+
     var body: some View {
         Circle()
             .fill(WM.pink)
-            .frame(width: 9, height: 9)
+            .frame(width: size, height: size)
             .overlay(Circle().strokeBorder(Color.white.opacity(0.94), lineWidth: 2))
             .shadow(color: Color(red: 31 / 255, green: 14 / 255, blue: 20 / 255).opacity(0.45), radius: 4.5, y: 2)
     }
@@ -660,15 +665,16 @@ struct WMUnseenDotVector: View {
 
 @MainActor
 enum WMUnseenDotBitmap {
-    private static var cache: [Bool: UIImage] = [:]
+    private static var cache: [String: UIImage] = [:]
 
-    static func image(_ scheme: ColorScheme) -> UIImage? {
+    static func image(_ scheme: ColorScheme, size: CGFloat = 9) -> UIImage? {
         let dark = scheme == .dark
-        if let cached = cache[dark] { return cached }
-        let renderer = ImageRenderer(content: WMUnseenDotVector().padding(12).frame(width: 33, height: 33).environment(\.colorScheme, scheme))
+        let key = "\(dark)-\(size)"
+        if let cached = cache[key] { return cached }
+        let renderer = ImageRenderer(content: WMUnseenDotVector(size: size).padding(12).frame(width: size + 24, height: size + 24).environment(\.colorScheme, scheme))
         renderer.scale = UIScreen.main.scale
         guard let image = renderer.uiImage else { return nil }
-        cache[dark] = image
+        cache[key] = image
         return image
     }
 }
