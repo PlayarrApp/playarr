@@ -82,7 +82,6 @@ function pgLabel(parent as Object, x as Float, y as Float, w as Float, h as Floa
         if opts.tracking <> invalid then label.tracking = opts.tracking
         if opts.aria <> invalid then label.aria = opts.aria
         if opts.radius <> invalid then label.radius = opts.radius
-        if opts.fitWidth <> invalid then label.fitWidth = opts.fitWidth
     end if
     label.text = text
     parent.AppendChild(label)
@@ -480,7 +479,7 @@ function pgBackButton(parent as Object, x as Float, name = "Back to Home" as Str
 end function
 
 function PageTitleSpec(text as String) as Object
-    return { text: text, size: 33.6, weight: 580, tracking: -1.523, role: "ink", aria: "heading" }
+    return { text: text, size: 33.6, weight: 580, tracking: -0.045 * 33.6, role: "ink", aria: "heading" }
 end function
 
 ' The action tile's visuals only (Library draws its own focus ring); pgTile adds the focus target.
@@ -488,7 +487,7 @@ sub pgShellTile(parent as Object, x as Float, y as Float, label as String, icon 
     pgTag(pgRound(parent, x, y, 62, 72, 14, "surfaceStrong", 199), "fill", 14)
     pgRound(parent, x, y, 62, 72, 14, "line", -1, true)
     pgIcon(parent, x + 19, y + 15, 24, icon, "inkMuted")
-    pgLabel(parent, x, y + 44.6, 62, 14, label, 8.26, 700, "inkMuted", { horizAlign: "center", tracking: 0.163 })
+    pgLabel(parent, x, y + 44.6, 62, 14, label, 8.26, 700, "inkMuted", { horizAlign: "center", tracking: 0.02 * 8.26 })
     pgMark(parent, "button", label, x, y, 62, 72, 14)
     pgMark(parent, "image", "", x + 19, y + 15, 24, 24, 0)
 end sub
@@ -536,7 +535,7 @@ sub pageBegin(title as String, panelX as Float)
         pgFocusable(1710, 50, 168, 48, 24, "clientsLanguage")
         applyClientsChrome()
     else
-        pgTrackedText(m.pageHead, 226.6, 58.2, 900, title, 33.6, 580, -1.523, "ink", false, "left", 1, 46, "heading")
+        pgTrackedText(m.pageHead, 226.6, 58.2, 900, title, 33.6, 580, -0.045 * 33.6, "ink", false, "left", 1, 46, "heading")
     end if
 end sub
 
@@ -2141,10 +2140,10 @@ sub renderCalendarAgenda(entries as Object)
     agendaStatus = calendarWeekStatus(r)
     ' Left: the selected entry's sheet (web agenda stage: kicker, 69 px title, meta line, status pill, overview, buttons).
     dt = calendarEntryDate(selected)
-    pgTrackedText(m.pageHead, 153.6, 264.2, 0, UCase(calendarKindLabel(selected) + " · " + calendarReleaseLabel(selected)), 12.29, 860, 0.97, "brandInk", true)
+    pgTrackedText(m.pageHead, 153.6, 264.2, 0, UCase(calendarKindLabel(selected) + " · " + calendarReleaseLabel(selected)), 12.29, 860, 0.08 * 12.29, "brandInk", true)
     stageTitle = CreateObject("roSGNode", "TrackedText")
     stageTitle.translation = [153.6, 292.5]
-    stageTitle.spec = { text: selected.title, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true, aria: "text" }
+    stageTitle.spec = { text: selected.title, size: 69.12, weight: 560, tracking: -0.072 * 69.12, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true, aria: "text" }
     m.pageHead.AppendChild(stageTitle)
     titleLines = stageTitle.lineCount
     if titleLines < 1 then titleLines = 1
@@ -2221,8 +2220,8 @@ sub renderCalendarAgenda(entries as Object)
             headLabel = pgLabel(hg, 783.4, ay + 9.2, 0, 25, calendarDayHeading(edt, false), 18.4, 640, headRole, { aria: "heading" })
             if day = today
                 hx = 783.4 + headLabel.textWidth + 18.5
-                pgRound(hg, hx - 9.35, ay + 10.1, 61, 22, 11, "lineStrong", -1, true)
-                tl = pgLabel(hg, hx, ay + 13.6, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3 })
+                pgRound(hg, hx - 9, ay + 10.1, PlayarrTextWidth("TODAY", 11.2, 640, 0.896) + 18, 22, 11, "lineStrong", -1, true)
+                tl = pgLabel(hg, hx, ay + 13.6, 0, 15, "TODAY", 11.2, 640, "accent", { tracking: 0.896 })
             end if
             m.agendaDays.Push({ group: hg, y: ay, endY: ay + 44 })
             ay = ay + 76
@@ -2447,8 +2446,8 @@ sub renderCalendarWeek(entries as Object)
         if day = today
             ' Web's TODAY chip beside the day heading.
             hx = x + headLabel.textWidth + 18.5
-            pgRound(m.pageBody, hx - 9.35, 175.5, 61, 22, 11, "lineStrong", -1, true)
-            tl = pgLabel(m.pageBody, hx, 179.4, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3 })
+            pgRound(m.pageBody, hx - 9, 175.5, PlayarrTextWidth("TODAY", 11.2, 640, 0.896) + 18, 22, 11, "lineStrong", -1, true)
+            tl = pgLabel(m.pageBody, hx, 179.4, 0, 15, "TODAY", 11.2, 640, "accent", { tracking: 0.896 })
         end if
         list = byDay[day]
         y = 208.0
@@ -2819,7 +2818,7 @@ end sub
 ' Web page header: the subtitle sits beside the title after a thin vertical divider (not pink); it wraps under the title,
 ' above a hairline as wide as the title, only when it does not fit before the clock.
 sub layoutHeaderSub(titleW as Float, label as Object, divider as Object, rule as Object, text as String)
-    label.spec = { text: text, size: 11.14, weight: 680, tracking: 0.495, role: "ink", upper: true, width: 520, lineHeight: 16.7, maxLines: 1 }
+    label.spec = { text: text, size: 11.14, weight: 680, tracking: 0.045 * 11.14, role: "ink", upper: true, width: 520, lineHeight: 16.7, maxLines: 1 }
     x = 226.6 + titleW + 24
     if x + 1 + 24 + label.textWidth <= 462
         divider.translation = [x, 73]

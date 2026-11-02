@@ -100,8 +100,8 @@ export function measureTree(root) {
 }
 
 const fontOf = (name = "") => {
-  const m = /^f(\d+)s([\d.]+)~([wct])(?:\|(\w+))?$/.exec(name);
-  return m ? { weight: Number(m[1]), size: Number(m[2]), words: m[3] === "w", tail: m[3] === "t", role: m[4] ?? "text" } : null;
+  const m = /^f(\d+)s([\d.]+)~([wct])(_?)(?:\|(\w+))?$/.exec(name);
+  return m ? { weight: Number(m[1]), size: Number(m[2]), words: m[3] === "w", tail: m[3] === "t", spaceBefore: m[4] === "_", role: m[5] ?? "text" } : null;
 };
 
 export function buildLayoutDocument(appUiXml, { screen, theme, clockPinned }) {
@@ -134,7 +134,9 @@ const pictureCache = new Map();
 /** A bundled picture that paints every pixel of its box: opaque PNG whose aspect matches the box (read from the app's own asset). */
 function opaquePicture(it) {
   // Loaded server artwork (loadStatus 3 = ready, as the ECP tree reports it) is a JPEG the app zooms to fill its box.
-  if (/^https?:\/\//.test(it.node.attrs.uri ?? "")) return it.node.attrs.loadStatus === "3";
+  // A `style=` bake (the stage key art) is a PNG with alpha baked in by the backend (at most 0.72 dark, 0.4 light, transparent edge),
+  // so it never hides what lies beneath it.
+  if (/^https?:\/\//.test(it.node.attrs.uri ?? "")) return it.node.attrs.loadStatus === "3" && !/[?&]style=/.test(it.node.attrs.uri);
   const m = /^pkg:\/images\/([\w.-]+\.png)$/.exec(it.node.attrs.uri ?? "");
   if (!m || m[1].endsWith(".9.png")) return false;
   if (!pictureCache.has(m[1])) {
@@ -194,7 +196,9 @@ function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }
         const r = it.rect, pts = [[r.x + r.w / 2, r.y + r.h / 2], [r.x + 0.5, r.y + 0.5], [r.x + r.w - 0.5, r.y + 0.5], [r.x + 0.5, r.y + r.h - 0.5], [r.x + r.w - 0.5, r.y + r.h - 0.5]];
         // A bitmap drawn before it over one of those points (artwork, a veil, a gradient) means the colour behind is not a flat fill: the
         // Rectangle paints something new there (a panel over the artwork), so it is a fill.
-        const bitmapUnder = (px, py) => items.some((o) => o.order < it.order && (o.kind === "poster" || (o.kind === "a11y" && o.node.tag === "Poster" && o.role !== "container")) && o.op > 0.01 && px >= o.rect.x && px <= o.rect.x + o.rect.w && py >= o.rect.y && py <= o.rect.y + o.rect.h && !/\.9\.png$/.test(o.node.attrs.uri ?? ""));
+        // A bitmap that a later opaque fill (before this Rectangle) paints over at that point is no longer on screen: it makes nothing new.
+        const covered = (o, px, py) => fills.some((f) => f.order > o.order && f.order < it.order && f.opaque && !f.dropped && px >= f.rect.x && px <= f.rect.x + f.rect.w && py >= f.rect.y && py <= f.rect.y + f.rect.h);
+        const bitmapUnder = (px, py) => items.some((o) => o.order < it.order && (o.kind === "poster" || (o.kind === "a11y" && o.node.tag === "Poster" && o.role !== "container")) && o.op > 0.01 && px >= o.rect.x && px <= o.rect.x + o.rect.w && py >= o.rect.y && py <= o.rect.y + o.rect.h && !/\.9\.png$/.test(o.node.attrs.uri ?? "") && !covered(o, px, py));
         const same = pts.every(([px, py]) => {
           if (bitmapUnder(px, py)) return false;
           const under = rgb(background({ x: px, y: py, w: 0, h: 0 }, it.order, false));
@@ -247,17 +251,12 @@ function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }
         if (last && Math.abs(l.rect.y - last[0].rect.y) < font.size * 0.5) last.push(l); else lines.push([l]);
       }
       for (const line of lines) {
-        // Words are one Label each (a space between them); characters are one Label each, and a space is where the real gap between two
-        // neighbours is wider than the run's usual gap by a space's width.
-        const gaps = line.slice(1).map((l, i) => l.rect.x - (line[i].rect.x + line[i].rect.w)).sort((a, b) => a - b);
-        const usual = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 0;
+        // The app stamps a Label that follows a space in its own string; the Labels hold no spaces, so the text is rebuilt from that
+        // stamp, never from the size of the gaps.
         let text = "";
         let prev = null;
         for (const l of line) {
-          if (prev) {
-            const gap = l.rect.x - (prev.rect.x + prev.rect.w);
-            if (!fontOf(l.node.attrs.name).tail && (font.words || gap - usual > font.size * 0.12)) text += " ";
-          }
+          if (prev && fontOf(l.node.attrs.name).spaceBefore) text += " ";
           text += l.node.attrs.text;
           prev = l;
         }
@@ -290,8 +289,9 @@ function finish(groups, items, { screen, theme, clockPinned, hiddenByVideo = 0 }
     if (face && e._source.node.tag === "Rectangle") e.radius = face.radius;
   }
   // A painted surface that another element already describes at the same box is not listed twice.
-  // (A control's own face only: an artwork image at the same box is a different paint, so its veil stays.)
-  const kept = elements.filter((e) => !(e._fill && elements.some((f) => f !== e && !f._fill && f.role !== "image" && same(f.rect, e.rect))));
+  // (A control's own face only: an artwork image at the same box is a different paint, so its veil stays; and only when that row
+  // reports the same colour, so a different surface that shares the box is never dropped as a duplicate.)
+  const kept = elements.filter((e) => !(e._fill && elements.some((f) => f !== e && !f._fill && f.role !== "image" && same(f.rect, e.rect) && f.background === e.background)));
   // Content fully covered by a later opaque surface (a fill, or a bundled opaque picture) is not on screen (a drawer over the page).
   // A surface never covers its own ancestors or descendants (nor does an unexported duplicate cover the fill of its own colour it repeats), and a rounded one is shrunk by its corner.
   const covers = [...fills.filter((f) => f.opaque), ...items.filter((it) => (it.kind === "poster" || (it.kind === "a11y" && it.role === "image" && it.node.tag === "Poster")) && it.op >= 0.99 && opaquePicture(it))].map((f) => {

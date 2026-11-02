@@ -44,6 +44,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -429,6 +430,14 @@ internal val WebAccent get() = PlayarrWebTheme.palette.accent
 internal val WebPink get() = WebAccent
 
 /** Clears the series' remembered resume answers (web "Ask again"); provided by the detail screen. */
+/** Network fetches and parsing leave Main on at most two shared workers: more threads only add per-thread allocator arenas (memory). */
+private val PlayarrFetchDispatcher = Dispatchers.Default.limitedParallelism(2)
+/** Detail page Play pill focus hooks: negotiate the playback info early (web's dwell prefetch) and release it when focus leaves. */
+internal class PlayarrPlayPrewarm(val prewarm: (String, PlayarrPlaybackLaunchSettings?) -> Unit, val release: (String) -> Unit)
+internal val LocalPlayPrewarm = androidx.compose.runtime.staticCompositionLocalOf<PlayarrPlayPrewarm?> { null }
+private const val PREWARM_RELEASE_GRACE_MS = 2_000L
+/** Focus dwell before the playback info is negotiated, so a D-pad pass over Play opens no session. */
+private const val PLAY_PREWARM_DWELL_MS = 250L
 internal val LocalResumeAskAgain = androidx.compose.runtime.staticCompositionLocalOf<((String) -> Unit)?> { null }
 
 /**
@@ -840,7 +849,7 @@ internal class PlayarrExperienceViewModel @Inject constructor(
     fun refreshProgress() {
         viewModelScope.launch {
             progressStamp.begin()
-            runCatching { api.listWatchProgress() }.getOrNull()?.let {
+            withContext(PlayarrFetchDispatcher) { runCatching { api.listWatchProgress() }.getOrNull() }?.let {
                 _progress.value = it
                 _progressLoaded.value = true
             }
@@ -857,6 +866,10 @@ internal class PlayarrExperienceViewModel @Inject constructor(
     val accessToken = tokenStore.accessToken.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val currentUserId = tokenStore.currentUserId.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val currentUserName = tokenStore.currentUserName.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** The user whose session the first loads below ran with (the saved one), read once the store answers. */
+    private val initialLoadUserId = viewModelScope.async { tokenStore.currentUserId.first() }
+    private var initialLoadPending = true
 
     init {
         loadAvailableKinds()
@@ -922,7 +935,9 @@ internal class PlayarrExperienceViewModel @Inject constructor(
     }
 
     private fun launchHome(silent: Boolean): Job {
+        // Fetch and parse on Default: Main is busy composing Home's first frame; only the state writes below go back to Main.
         return viewModelScope.launch {
+            android.os.Trace.beginSection("pl:launchHome_start"); android.os.Trace.endSection()
             homeStamp.begin()
             if (!silent) _home.value = ExperienceLoad.Loading
             val progressRequest = async { runCatching { api.listWatchProgress() }.getOrNull() }
@@ -980,16 +995,41 @@ internal class PlayarrExperienceViewModel @Inject constructor(
                     }
                 }
             val onDeck = (fromRows + fromPlans).awaitAll().filterNotNull()
-            _progress.value = progress
-            if (progressRows != null) _progressLoaded.value = true
-            homeByKind = byKind
-            homeOnDeck = onDeck
-            serverRails = railsRequest.await()
-            _home.value = ExperienceLoad.Ready(buildPlayarrHomeRails(byKind, onDeck, serverRails))
+            val rails = railsRequest.await()
+            android.os.Trace.beginSection("pl:launchHome_fetched"); android.os.Trace.endSection()
+            val ready = android.os.Trace.beginSection("pl:buildHomeRails").let {
+                try { ExperienceLoad.Ready(buildPlayarrHomeRails(byKind, onDeck, rails)) } finally { android.os.Trace.endSection() }
+            }
+            withContext(Dispatchers.Main.immediate) {
+                android.os.Trace.beginSection("pl:home_state_set"); android.os.Trace.endSection()
+                _progress.value = progress
+                if (progressRows != null) _progressLoaded.value = true
+                homeByKind = byKind
+                homeOnDeck = onDeck
+                serverRails = rails
+                _home.value = ready
+            }
         }
     }
 
-    fun reloadForProfile() {
+    /**
+     * The signed-in user changed (or appeared). The first user the screen sees is normally the saved session whose data the
+     * ViewModel's own initial loads already fetch: loading it all a second time only competes with Home's first paint.
+     */
+    fun reloadForProfile(userId: String) {
+        viewModelScope.launch {
+            if (initialLoadPending) {
+                initialLoadPending = false
+                if (initialLoadUserId.await() == userId) {
+                    refreshProfileAvatar()
+                    return@launch
+                }
+            }
+            reloadForProfileNow()
+        }
+    }
+
+    private fun reloadForProfileNow() {
         // Libraries a screen has already asked for are reloaded for the new profile; otherwise a library opened as the
         // first screen (a restored route) was left without data.
         val openLibraries = (libraryJobs.keys + _libraries.value.keys).toSet()
@@ -1559,7 +1599,7 @@ internal fun PlayarrExperience(
     val entry by navController.currentBackStackEntryAsState()
     val currentRoute = entry?.destination?.route.orEmpty().substringBefore('?')
     var detailSectionRoute by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(currentRoute, detailSectionRoute) { parityLog("route=$currentRoute section=${detailSectionRoute.orEmpty()}") }
+    LaunchedEffect(currentRoute, detailSectionRoute) { parityCurrentRoute = currentRoute; parityLog("route=$currentRoute section=${detailSectionRoute.orEmpty()}") }
     // Detail pages highlight the section they belong to (Series for a series, etc.), as the web rail does.
     val activeNavRoute = if (currentRoute.startsWith("experience-detail")) detailSectionRoute ?: currentRoute else currentRoute
     val token by viewModel.accessToken.collectAsState()
@@ -1601,7 +1641,7 @@ internal fun PlayarrExperience(
         }
     }
     LaunchedEffect(currentUserId) {
-        if (currentUserId != null) viewModel.reloadForProfile()
+        currentUserId?.let(viewModel::reloadForProfile)
     }
     val household by viewModel.household.collectAsState()
     val householdBlock = householdBlockState(household)
@@ -2101,6 +2141,14 @@ internal fun NavHostController.openExperienceTopLevel(route: String) {
     }
 }
 
+/** Web phone `.app-nav` css: bar height, padding, link gap, link box and icon size. */
+private const val NAV_BAR_HEIGHT_CSS = 58f
+private const val NAV_PAD_CSS = 5f
+private const val NAV_GAP_CSS = 2f
+private const val NAV_LINK_CSS = 44f
+private const val NAV_LINK_HEIGHT_CSS = 46f
+private const val NAV_ICON_CSS = 21f
+
 @Composable
 private fun ExperienceNavigation(
     destinations: List<ExperienceDestination>,
@@ -2148,64 +2196,65 @@ private fun ExperienceNavigation(
         shape = phoneNavShape,
         tonalElevation = 0.dp,
     ) {
-        LazyRow(
-            // Phone (measured against the static ref, 719 px wide): content 2 device px higher and 1.5 px further left than before.
-            modifier = Modifier.padding(start = if (isTelevision) 5.dp else 4.2.dp, end = 5.dp, top = if (isTelevision) 5.dp else 5.9.dp, bottom = if (isTelevision) 5.dp else 6.1.dp).fillMaxWidth(),
-            // A short list (a household-limited profile) is centred in the bar; a long one scrolls from the start.
-            horizontalArrangement = Arrangement.spacedBy(0.dp, Alignment.CenterHorizontally),
-            contentPadding = PaddingValues(0.dp),
-        ) {
-            if (tvProfile != null) item(key = "profile") {
-                // The web link is 44 wide inside a 46 px slot.
-                Box(Modifier.width(46.dp), contentAlignment = Alignment.Center) {
-                Surface(
-                    onClick = tvProfile.onClick,
-                    color = Color.Transparent,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.height(46.dp).width(if (isTelevision) 46.dp else 44.dp).semantics { contentDescription = tvProfile.description }.parityShape(14f),
-                ) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        PlayarrProfileAvatar(userId = tvProfile.userId, preference = tvProfile.avatar, modifier = Modifier.size(21.2.dp).offset(y = if (isTelevision) 0.dp else (-3.2).dp).parityBox("container", radius = 999f), artworkModifier = Modifier.parityBox("image"), glyphSize = 13.sp) // web: 39 device px
-                    }
-                }
-                }
-            }
-            itemsIndexed(destinations, key = { _, d -> d.route }) { navIndex, destination ->
-                val selected = currentRoute == destination.route
-                val label = playarrString(destination.label)
-                // Web phone bar: the selected pill is 43.4 css px wide inside a 46 px slot, and idle icons are the muted ink.
-                // Web slots are 46 css px (84.8 device px): whole-pixel slots drift 0.2 px per item, so the width follows the cumulative rounding.
-                val slotDensity = LocalDensity.current
-                val slotWidth = if (isTelevision || !parityNoInsets) 46.dp else with(slotDensity) { // parity captures only (719 px wide = 390 css)
-                    val unit = 46f * 719f / 390f
-                    val px = Math.round((navIndex + 1 + (if (tvProfile != null) 1 else 0)) * unit) - Math.round((navIndex + (if (tvProfile != null) 1 else 0)) * unit)
-                    px.toDp()
-                }
-                Box(Modifier.width(slotWidth).height(46.dp), contentAlignment = Alignment.Center) {
-                Surface(
-                    onClick = { onNavigate(destination.route) },
-                    color = if (selected) WebInk else Color.Transparent,
-                    contentColor = if (selected) WebBackground else PlayarrWebTheme.palette.webInkMuted,
-                    shape = RoundedCornerShape(if (isTelevision) 16.dp else 14.dp),
-                    modifier = Modifier.width(43.4.dp).height(46.dp).parityShape(14f),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = if (selected && isTelevision) 16.dp else if (isTelevision) 12.dp else 11.2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
+        // Web `.app-nav` (max-width 760px): left/right `max(10px, safe inset)`, bottom `max(8px, safe inset)`, 58px high, padding 5px, 2px gap,
+        // links 44 x 46 (`flex: 0 0 44px`), centred in the 48px content height, icon 21px centred in the link. Every box is placed at its
+        // summed css position and snapped once (WebAbsoluteLayout); the row scrolls sideways when the links overflow, else it spreads (`space-around`).
+        val density = LocalDensity.current.density
+        val heightPx = androidx.compose.ui.platform.LocalContext.current.resources.displayMetrics.heightPixels
+        val barLeftCss = maxOf(10.dp, sideInsets.calculateLeftPadding(androidx.compose.ui.platform.LocalLayoutDirection.current)).value
+        val barWidthCss = Math.round(androidx.compose.ui.platform.LocalContext.current.resources.displayMetrics.widthPixels / density).toFloat() - barLeftCss - maxOf(10.dp, sideInsets.calculateRightPadding(androidx.compose.ui.platform.LocalLayoutDirection.current)).value
+        val barTopCss = Math.round(heightPx / density).toFloat() - maxOf(8.dp, systemBottom).value - NAV_BAR_HEIGHT_CSS
+        val vwCss = androidx.compose.ui.platform.LocalContext.current.resources.displayMetrics.widthPixels / density / 100f
+        val profileNameCss = (0.46f * vwCss).coerceIn(0.42f * 16f, 0.56f * 16f)
+        val slots = (if (tvProfile != null) 1 else 0) + destinations.size
+        val linksWidthCss = slots * NAV_LINK_CSS + (slots - 1) * NAV_GAP_CSS
+        val innerCss = barWidthCss - 2 * NAV_PAD_CSS
+        // `justify-content: space-around`: a negative free space falls back to the start edge.
+        val free = innerCss - linksWidthCss
+        val around = if (free > 0f) free / slots else 0f
+        fun linkLeft(slot: Int) = barLeftCss + NAV_PAD_CSS + around / 2f + slot * (NAV_LINK_CSS + NAV_GAP_CSS + around)
+        val linkTop = barTopCss + (NAV_BAR_HEIGHT_CSS - NAV_LINK_HEIGHT_CSS) / 2f
+        val contentWidthCss = maxOf(barWidthCss, linksWidthCss + 2 * NAV_PAD_CSS)
+        Box(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+            WebAbsoluteLayout(barLeftCss, barTopCss, contentWidthCss, NAV_BAR_HEIGHT_CSS) {
+                if (tvProfile != null) {
+                    val left = linkLeft(0)
+                    Surface(
+                        onClick = tvProfile.onClick,
+                        color = Color.Transparent,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.webAbs(left, linkTop, NAV_LINK_CSS, NAV_LINK_HEIGHT_CSS).semantics { contentDescription = tvProfile.description }.parityShape(14f),
                     ) {
-                        Icon(destination.icon, contentDescription = label, modifier = Modifier.size(21.dp).parityBox("image"))
-                        AnimatedVisibility(visible = selected && isTelevision) {
-                            Text(
-                                label.uppercase(LocalPlayarrLanguage.current.locale),
-                                modifier = Modifier.padding(start = 8.dp),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp,
+                        // Web's profile link is a flex column (justify-content: center, gap 0) holding the 21px avatar and the name label (font-size clamp(0.42rem, 0.46vw, 0.56rem), line-height 1, display block by the profile-link rule), so the
+                        // avatar sits (46 - 21 - NAV_PROFILE_NAME_CSS) / 2 under the link top; its box is snapped from css edges.
+                        WebAbsoluteLayout(left, linkTop, NAV_LINK_CSS, NAV_LINK_HEIGHT_CSS) {
+                            PlayarrProfileAvatar(
+                                userId = tvProfile.userId, preference = tvProfile.avatar,
+                                modifier = Modifier.webAbs(left + (NAV_LINK_CSS - NAV_ICON_CSS) / 2f, linkTop + (NAV_LINK_HEIGHT_CSS - NAV_ICON_CSS - profileNameCss) / 2f, NAV_ICON_CSS, NAV_ICON_CSS).parityBox("container", radius = 999f, cssShortSide = NAV_ICON_CSS),
+                                artworkModifier = Modifier.parityBox("image"), glyphSize = 13.sp,
                             )
                         }
                     }
                 }
+                destinations.forEachIndexed { navIndex, destination ->
+                    val selected = currentRoute == destination.route
+                    val label = playarrString(destination.label)
+                    val left = linkLeft(navIndex + (if (tvProfile != null) 1 else 0))
+                    Surface(
+                        onClick = { onNavigate(destination.route) },
+                        color = if (selected) WebInk else Color.Transparent,
+                        contentColor = if (selected) WebBackground else PlayarrWebTheme.palette.webInkMuted,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.webAbs(left, linkTop, NAV_LINK_CSS, NAV_LINK_HEIGHT_CSS).semantics { contentDescription = label }.parityShape(14f),
+                    ) {
+                        WebAbsoluteLayout(left, linkTop, NAV_LINK_CSS, NAV_LINK_HEIGHT_CSS) {
+                            // The icon is decoration (the link is named); web's svg has no name of its own.
+                            Icon(
+                                destination.icon, contentDescription = null,
+                                modifier = Modifier.webAbs(left + (NAV_LINK_CSS - NAV_ICON_CSS) / 2f, linkTop + (NAV_LINK_HEIGHT_CSS - NAV_ICON_CSS) / 2f, NAV_ICON_CSS, NAV_ICON_CSS).parityBox("image"),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -2612,6 +2661,14 @@ private fun ExperienceNavHost(
     // Debug parity launches on a detail route sit on top of Movies (on Home), as web's Back from a deep-linked film does.
     val detailOnHome = parityRoute != null && initialRoute.startsWith("experience-detail")
     if (detailOnHome) LaunchedEffect(Unit) { navController.navigate("movies"); navController.navigate(initialRoute) }
+    val playerDefaultsForPrewarm = LocalPlayarrDisplayPreferences.current.playerDefaults
+    val playPrewarm = remember(playerViewModel, playerDefaultsForPrewarm) {
+        PlayarrPlayPrewarm(
+            prewarm = { id, settings -> playerViewModel.prewarmNext(id, playerDefaultsForPrewarm, settings) },
+            release = playerViewModel::releasePrewarmLater,
+        )
+    }
+    CompositionLocalProvider(LocalPlayPrewarm provides playPrewarm) {
     NavHost(navController, startDestination = if (detailOnHome) "home" else initialRoute, modifier = Modifier.fillMaxSize()) {
         composable("home") {
             ExperienceOnlineGate(isOnline, isTelevision, "home") {
@@ -2874,6 +2931,7 @@ private fun ExperienceNavHost(
             }
         }
     }
+    }
 }
 
 internal fun restorableExperienceRoute(
@@ -3048,6 +3106,13 @@ private fun ExperienceHomeScreen(
                 return
             }
             val allWorks = current.value.flatMap(HomeRail::works)
+            // Marker for the device performance A/B (scripts/parity/android-tv/perf-ab.sh): Home content is on screen.
+            LaunchedEffect(Unit) {
+                withFrameNanos { }
+                withFrameNanos { }
+                android.os.Trace.beginSection("pl:home_ready"); android.os.Trace.endSection()
+                android.util.Log.i("PlayarrPerf", "home_ready")
+            }
             val selectedId = savedSelectedId?.takeIf { id -> allWorks.any { it.id == id } } ?: allWorks.first().id
             val activeRailKey = savedRailKey?.takeIf { key -> current.value.any { it.key == key } } ?: current.value.first().key
             var contextWork by remember { mutableStateOf<Work?>(null) }
@@ -4624,10 +4689,10 @@ private fun LibraryViewIcon(mode: LibraryViewMode, colour: Color) {
         else -> Triple(3, 4f, 13f)
     }
     val list = mode == LibraryViewMode.List
-    // A filled bar records its fill; an outlined one records that it draws a border (no fill), so the export keeps the box the app really paints.
+    // Web `.tv-view-icon i { border: 1px solid currentColor }`: every bar is an outlined box with no fill, and the browser floors a border to whole device px.
+    val borderWidth = with(LocalDensity.current) { if (tv) 1.dp else kotlin.math.floor(density).coerceAtLeast(1f).toDp() }
     val bar = Modifier.size(w.dp, h.dp).let {
-        if (list && !tv) it.parityBackground("container", colour, RoundedCornerShape(1.dp), radius = 1f)
-        else it.parityBackground("container", Color.Transparent, RoundedCornerShape(1.dp), radius = 1f, drawsBorder = true).border(1.dp, colour, RoundedCornerShape(1.dp))
+        it.parityBackground("container", Color.Transparent, RoundedCornerShape(1.dp), radius = 1f, drawsBorder = true).border(borderWidth, colour, RoundedCornerShape(1.dp))
     }
     if (list) Column(verticalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }
     else Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }
@@ -4815,7 +4880,7 @@ private fun ExperienceLibraryScreen(
                 Column(
                     modifier = Modifier
                         .then(if (isTelevision) Modifier.width(1190.4.dp).fillMaxHeight().align(Alignment.CenterEnd).parityBox("container") else Modifier.fillMaxSize())
-                        .background(if (isTelevision) webRailSurfaceBrush() else Brush.linearGradient(listOf(Color.Transparent, Color.Transparent)))
+                        .then(if (isTelevision) Modifier.background(webRailSurfaceBrush()) else Modifier)
                         .windowInsetsPadding(if (isTelevision) WindowInsets(0) else webPhoneBodyInsets())
                         .padding(top = if (isTelevision) 76.dp else 0.dp),
                 ) {
@@ -6898,7 +6963,7 @@ private fun PhoneVideoDetailBody(
                     Spacer(Modifier.height(10.dp))
                 }
                 WebClampedText(synopsis, color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 11.52.sp, lineHeight = 16.704.sp, fontWeight = FontWeight.Normal, style = WebTextStyle, maxLines = 3, modifier = Modifier, minLines = if (episode != null) 3 else 1)
-                Spacer(Modifier.height(if (episode != null) 11.67.dp else 14.dp))
+                Spacer(Modifier.height(14.dp))
                 PhoneDetailActions(
                     work = work, episode = selectedEpisode, mediaFileId = mediaFileId, progress = progress, canDownload = canDownload,
                     posterUrl = posterUrl, launchSettings = launchSettings, onPlaybackSettings = onPlaybackSettings, onPlay = onPlay,
@@ -7423,6 +7488,27 @@ private fun VideoDetailActions(
         } else {
             playarrString(PlayarrString.DetailPlay)
         }
+        // Web dwell prefetch: negotiate the playback info shortly after Play gains focus so Select only prepares the player.
+        // Only the plain Play of a film or episode (no custom launch settings, no stacked chooser) is the request play() makes.
+        val playPrewarm = LocalPlayPrewarm.current
+        // A film's launch settings arrive with its playback options (a separate request): negotiating before they are known
+        // would open a second session once they land (the two requests differ), so wait for them.
+        val settingsPending = work.kind == WorkKind.Movie && episode == null && onPlaybackSettings == null
+        val prewarmTarget = if (settingsPending || (smartPlan != null && smartPlan.isStacked)) null
+            else smartPlan?.target?.mediaFileId?.let { it to null } ?: (mediaFileId to launchSettings)
+        var playFocused by remember { mutableStateOf(false) }
+        if (playPrewarm != null && prewarmTarget != null) {
+            LaunchedEffect(playFocused, prewarmTarget) {
+                if (playFocused) {
+                    kotlinx.coroutines.delay(PLAY_PREWARM_DWELL_MS)
+                    playPrewarm.prewarm(prewarmTarget.first, prewarmTarget.second)
+                }
+            }
+            DisposableEffect(playFocused, prewarmTarget.first) {
+                onDispose { if (playFocused) playPrewarm.release(prewarmTarget.first) }
+            }
+        }
+        val prewarmFocus = Modifier.onFocusChanged { playFocused = it.hasFocus }
         val playPill: @Composable () -> Unit = {
             WebDetailPill(
                 label = playLabel,
@@ -7440,7 +7526,7 @@ private fun VideoDetailActions(
                 },
                 exportLabel = smartDescription ?: "Play $title",
                 exportRole = if (work.kind == WorkKind.Movie && episode == null) "link" else "button",
-                modifier = Modifier.focusRequester(playFocus).then(
+                modifier = Modifier.focusRequester(playFocus).then(prewarmFocus).then(
                     if (smartDescription != null) Modifier.semantics { contentDescription = smartDescription } else Modifier,
                 ),
             )
@@ -7715,8 +7801,8 @@ internal fun SeriesEpisodeBrowser(
         modifier = modifier
             .then(
                 if (isTelevision) {
-                    // shortcut: the web centres the first track in its scroll box, so a short stack (static seed) sits 222 dp lower than a tall one; only the short case is matched, upgrade with a clamped initial scroll.
-                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp + 16.5.dp * tabletDetail, top = 357.dp + 244.5.dp * tabletDetail)
+                    // The web centres the first track in its scroll box (a short stack sits lower than a tall one); that content-dependent offset is not reproduced, so no static-seed shortcut is applied.
+                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp + 16.5.dp * tabletDetail, top = 357.dp)
                 } else {
                     Modifier.glass(RoundedCornerShape(16.dp), WebGlass.Panel).padding(14.dp)
                 },
@@ -9314,12 +9400,13 @@ internal class ExperiencePlayerViewModel @Inject constructor(
             return
         }
         activeRequest = request
+        android.os.Trace.beginSection("pl:play_entered"); android.os.Trace.endSection()
         prepareJob?.cancel()
         switchJob?.cancel()
         prepareJob = viewModelScope.launch {
             // The saved position and the server lookup are independent network calls: start both now, not one after the other.
-            val progressCall = async { runCatching { api.getWatchProgress(mediaFileId) }.getOrNull() }
-            val serverCall = async { runCatching { serverAccessResolver.forMedia(mediaFileId).serverUrl }.getOrNull() }
+            val progressCall = async(PlayarrFetchDispatcher) { runCatching { api.getWatchProgress(mediaFileId) }.getOrNull() }
+            val serverCall = async(PlayarrFetchDispatcher) { runCatching { serverAccessResolver.forMedia(mediaFileId).serverUrl }.getOrNull() }
             if (activeMediaFileId != null) persistProgress(ensureCompletion = true)
             closeActiveSessionAndWait(PlaybackStopReason.UserStopped)
             activeMediaFileId = mediaFileId
@@ -9366,17 +9453,19 @@ internal class ExperiencePlayerViewModel @Inject constructor(
 
             val selectedQuality = launchSettings?.qualityId ?: parsePlayarrQualityDefault(defaults.qualityId)
             val prewarmed = takePrewarm(mediaFileId, resumePosition, launchSettings)
-            _state.value = when (val result = prewarmed ?: getPlaybackInfo(
-                mediaFileId = mediaFileId,
-                containers = playarrAndroidContainers,
-                videoCodecs = playarrAndroidVideoCodecs,
-                audioCodecs = playarrAndroidAudioCodecs,
-                profile = launchSettings?.profile ?: selectedQuality.takeUnless { it == "original" },
-                forceTranscode = launchSettings?.forceTranscode ?: (selectedQuality != "original"),
-                startPositionMs = resumePosition,
-                audioStreamIndex = launchSettings?.audioStreamIndex,
-                ignoreSavedPreferences = launchSettings == null && selectedQuality == "original",
-            )) {
+            _state.value = when (val result = prewarmed ?: withContext(PlayarrFetchDispatcher) {
+                getPlaybackInfo(
+                    mediaFileId = mediaFileId,
+                    containers = playarrAndroidContainers,
+                    videoCodecs = playarrAndroidVideoCodecs,
+                    audioCodecs = playarrAndroidAudioCodecs,
+                    profile = launchSettings?.profile ?: selectedQuality.takeUnless { it == "original" },
+                    forceTranscode = launchSettings?.forceTranscode ?: (selectedQuality != "original"),
+                    startPositionMs = resumePosition,
+                    audioStreamIndex = launchSettings?.audioStreamIndex,
+                    ignoreSavedPreferences = launchSettings == null && selectedQuality == "original",
+                )
+            }) {
                 is PlayarrResult.Success -> {
                     prepareNegotiatedPlayback(
                         result.value,
@@ -9420,9 +9509,10 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         val result: PlayarrResult<PlaybackInfoResponse>?,
     )
 
-    private class PlayarrPrewarm(val mediaFileId: String, val deferred: kotlinx.coroutines.Deferred<PlayarrPrewarmed>)
+    private class PlayarrPrewarm(val mediaFileId: String, val launchSettings: PlayarrPlaybackLaunchSettings?, val deferred: kotlinx.coroutines.Deferred<PlayarrPrewarmed>)
 
     private var prewarm: PlayarrPrewarm? = null
+    private var prewarmEpoch = 0
 
     /**
      * During the up-next countdown (never before STATE_ENDED, so it cannot
@@ -9431,17 +9521,19 @@ internal class ExperiencePlayerViewModel @Inject constructor(
      * opens the new item's own fresh session; [play] consumes it, anything
      * else closes it ([discardPrewarm]). Local downloads need no negotiation.
      */
-    fun prewarmNext(mediaFileId: String, defaults: PlayarrPlayerDefaults) {
-        if (prewarm?.mediaFileId == mediaFileId) return
+    fun prewarmNext(mediaFileId: String, defaults: PlayarrPlayerDefaults, launchSettings: PlayarrPlaybackLaunchSettings? = null) {
+        prewarmEpoch++
+        if (prewarm?.mediaFileId == mediaFileId && prewarm?.launchSettings == launchSettings) return
         if (castingMediaFileId.value != null) return
         discardPrewarm()
-        val deferred = viewModelScope.async {
+        val deferred = viewModelScope.async(PlayarrFetchDispatcher) {
             val resume = runCatching { api.getWatchProgress(mediaFileId) }.getOrNull()
                 ?.takeIf { it.state == WatchState.PartWatched }?.positionMs ?: 0L
             if (runCatching { downloadRepository.localFile(mediaFileId) }.getOrNull() != null) {
                 return@async PlayarrPrewarmed(resume, null)
             }
-            val quality = parsePlayarrQualityDefault(defaults.qualityId)
+            // The same request play() makes for these launch settings.
+            val quality = launchSettings?.qualityId ?: parsePlayarrQualityDefault(defaults.qualityId)
             PlayarrPrewarmed(
                 resume,
                 getPlaybackInfo(
@@ -9449,15 +9541,28 @@ internal class ExperiencePlayerViewModel @Inject constructor(
                     containers = playarrAndroidContainers,
                     videoCodecs = playarrAndroidVideoCodecs,
                     audioCodecs = playarrAndroidAudioCodecs,
-                    profile = quality.takeUnless { it == "original" },
-                    forceTranscode = quality != "original",
+                    profile = launchSettings?.profile ?: quality.takeUnless { it == "original" },
+                    forceTranscode = launchSettings?.forceTranscode ?: (quality != "original"),
                     startPositionMs = resume,
-                    audioStreamIndex = null,
-                    ignoreSavedPreferences = quality == "original",
+                    audioStreamIndex = launchSettings?.audioStreamIndex,
+                    ignoreSavedPreferences = launchSettings == null && quality == "original",
                 ),
             )
         }
-        prewarm = PlayarrPrewarm(mediaFileId, deferred)
+        prewarm = PlayarrPrewarm(mediaFileId, launchSettings, deferred)
+    }
+
+    /**
+     * The Play pill lost focus or left the screen: close its negotiation unless play() takes it. Select navigates away in the
+     * same frame, so the release waits for play() to claim it first.
+     */
+    fun releasePrewarmLater(mediaFileId: String) {
+        val epoch = prewarmEpoch
+        viewModelScope.launch {
+            delay(PREWARM_RELEASE_GRACE_MS)
+            // A re-focus (the pill briefly loses focus while the page lays out again) asks for it again and keeps it.
+            if (prewarm?.mediaFileId == mediaFileId && prewarmEpoch == epoch) discardPrewarm()
+        }
     }
 
     /** Drops an unused prewarmed negotiation and closes the session it opened. */
@@ -9482,7 +9587,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         val got = runCatching { pending.deferred.await() }.getOrNull()
         val result = got?.result
         if (got != null && result is PlayarrResult.Success &&
-            playarrPrewarmUsable(pending.mediaFileId, got.resumePositionMs, mediaFileId, resumePositionMs, launchSettings != null)
+            playarrPrewarmUsable(pending.mediaFileId, got.resumePositionMs, mediaFileId, resumePositionMs, pending.launchSettings != launchSettings)
         ) {
             Log.i(PLAYBACK_STATS_TAG, "event=prewarm_used media_file_id=$mediaFileId")
             return result
@@ -9654,6 +9759,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         val selectedAudioLanguage = playback.audioTracks
             .firstOrNull { it.id == playback.selectedAudioTrackId }
             ?.language
+        android.os.Trace.beginSection("pl:player_prepare"); android.os.Trace.endSection()
         player.prepare(
             resolvePlayarrPlaybackUrl(activeServerUrl, playback.url),
             if (playback.mode == io.playarr.shared.data.model.PlaybackMode.Hls) StreamFormat.Hls else StreamFormat.Direct,
@@ -11061,9 +11167,12 @@ private fun rememberPlayarrNowPlayingArtwork(work: Work?, fallbackServerUrl: Str
             .apply { if (!token.isNullOrBlank()) httpHeaders(NetworkHeaders.Builder().set("Authorization", "Bearer $token").build()) }
             .build()
         val image = (coil3.SingletonImageLoader.get(context).execute(request) as? coil3.request.SuccessResult)?.image ?: return@LaunchedEffect
-        bytes = runCatching {
-            java.io.ByteArrayOutputStream().also { image.toBitmap().compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, it) }.toByteArray()
-        }.getOrNull()
+        // Reading a hardware bitmap back and encoding it took ~120 ms on Main right as playback starts: do it off the UI thread.
+        bytes = withContext(Dispatchers.Default) {
+            runCatching {
+                java.io.ByteArrayOutputStream().also { image.toBitmap().compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, it) }.toByteArray()
+            }.getOrNull()
+        }
     }
     return bytes
 }

@@ -397,7 +397,7 @@ internal enum class PlayarrString(
     CalendarSubscribeQrLabel("Scan to subscribe on your phone", "สแกนเพื่อสมัครบนโทรศัพท์", "スマートフォンで読み取って購読"),
     CalendarJumpTo("Jump to month and year","ไปยังเดือนและปี","月と年へ移動"),
     CalendarLinkTitle("Calendar link", "ลิงก์ปฏิทิน", "カレンダーリンク"),
-    CalendarLinkIntro("Your personal calendar link. Add it to Google, Apple or Outlook calendar to see your releases there.", "ลิงก์ปฏิทินส่วนตัวของคุณ เพิ่มลงใน Google, Apple หรือ Outlook เพื่อดูรายการเผยแพร่", "あなた専用のカレンダーリンクです。Google、Apple、Outlookのカレンダーに追加すると、リリースがそこに表示されます。"),
+    CalendarLinkIntro("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.", "ลิงก์ปฏิทินส่วนตัวของคุณ เพิ่มลงใน Google, Apple หรือ Outlook เพื่อดูรายการเผยแพร่", "あなた専用のカレンダーリンクです。Google、Apple、Outlookのカレンダーに追加すると、リリースがそこに表示されます。"),
     CalendarLinkReset("Reset link", "รีเซ็ตลิงก์", "リンクをリセット"),
     CalendarLinkResetTitle("Reset the link?", "รีเซ็ตลิงก์หรือไม่", "リンクをリセットしますか?"),
     CalendarLinkResetBody("The current link stops working straight away. Calendars using it must be updated with the new link.", "ลิงก์ปัจจุบันจะใช้งานไม่ได้ทันที ปฏิทินที่ใช้ลิงก์นี้ต้องอัปเดตด้วยลิงก์ใหม่", "現在のリンクはすぐに使えなくなります。使用中のカレンダーは新しいリンクに更新する必要があります。"),

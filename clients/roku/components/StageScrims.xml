@@ -2,8 +2,8 @@
 <!--
   StageScrims: the web stage gradients as stretched alpha ramps tinted with the page surface colour.
     .tv-key-art::after = 90deg surface -> transparent over 22 % (422 px); 0deg surface -> transparent over the bottom 22 %
-    (238 px) and surface at the top from 82 % (the top 194 px); .tv-stage-wash = 90deg surface 94 % over 31 % (595 px) and
-    270deg surface 50 % over 34 % (653 px).
+    (238 px) and surface at the top from 82 % (the top 194 px); .tv-stage-wash (global.css, opaque stops) = 90deg surface solid to
+    36 % (691.2 px) then to transparent at 52 % (998.4 px), and 270deg surface to transparent at 17 % (326.4 px).
 -->
 <component name="StageScrims" extends="Group">
   <interface>
@@ -14,8 +14,9 @@
     <Poster id="rampKeyLeft" translation="[0,0]" width="422" height="1080" uri="pkg:/images/ramp-l.png" loadDisplayMode="scaleToFill" />
     <Poster id="rampKeyBottom" translation="[0,842]" width="1920" height="238" uri="pkg:/images/ramp-b.png" loadDisplayMode="scaleToFill" />
     <Poster id="rampKeyTop" translation="[0,0]" width="1920" height="194" uri="pkg:/images/ramp-t.png" loadDisplayMode="scaleToFill" />
-    <Poster id="rampWashLeft" translation="[0,0]" width="595" height="1080" uri="pkg:/images/ramp-l.png" opacity="0.94" loadDisplayMode="scaleToFill" />
-    <Poster id="rampWashRight" translation="[1267,0]" width="653" height="1080" uri="pkg:/images/ramp-r.png" opacity="0.5" loadDisplayMode="scaleToFill" />
+    <Rectangle id="washLeftSolid" translation="[0,0]" width="691.2" height="1080" color="0xffffffff" />
+    <Poster id="rampWashLeft" translation="[691.2,0]" width="307.2" height="1080" uri="pkg:/images/ramp-l.png" loadDisplayMode="scaleToFill" />
+    <Poster id="rampWashRight" translation="[1593.6,0]" width="326.4" height="1080" uri="pkg:/images/ramp-r.png" loadDisplayMode="scaleToFill" />
     <Group id="frostLayer" visible="false">
       <Poster id="frostLight" translation="[729.6,0]" width="1190.4" height="1080" uri="pkg:/images/home-rail-frost-light.png" loadDisplayMode="scaleToFill" visible="false" />
       <Poster id="frostDark" translation="[729.6,0]" width="1190.4" height="1080" uri="pkg:/images/home-rail-frost-dark.png" loadDisplayMode="scaleToFill" visible="true" />

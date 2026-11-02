@@ -243,14 +243,19 @@ internal static class LayoutExport
     }
 
     /// <summary>
-    /// A fill with alpha over the backdrop, in the web exporter's arithmetic (layout-dump.mjs over): doubles on the 0..255 scale and the CSS alpha (a
-    /// float 0.7f must not become 0.699999988, which tips a half-way channel the other way). Hex255 rounds like the web's hex2.
+    /// A fill with alpha over the backdrop: ordinary source-over composition of the native colour (8-bit channels, the alpha as CSS states it) in doubles on
+    /// the 0..255 scale. Nothing here imitates the browser's computed-style serialisation: the web dump parses its own strings, this reads the live NUI colour.
+    /// Hex255 is the schema conversion to the hex string (halves round up, as JS Math.round).
+    /// </summary>
+    /// <summary>
+    /// Plain source-over of a view colour on what is already drawn under it. The renderer stores the colour as 8-bit RGBA, so the alpha that blends is
+    /// the 8-bit one (0.7f * 255 = 178.4999 -> 178), the same alpha the device pixels carry; the exporter adds nothing else.
     /// </summary>
     private static (double R, double G, double B) Over((double R, double G, double B) bg, Color c)
     {
-        double a = Math.Round(c.A, 3);
-        // a translucent mix reaches the dumper as a computed color(srgb r g b / a) whose channels are serialised with six decimals, so a channel that sits on a half-way tie lands a hair either side of it
-        double Ch(double back, double top) { var b = Math.Floor(top * 255.0 + 0.5); if (a < 1) b = Math.Round(b / 255.0, 6) * 255.0; return (b * a + back * (1 - a)) / (a + 1 * (1 - a)); }
+        double a = Math.Floor((double)c.A * 255.0 + 0.5) / 255.0; // double: 0.7f * 255 is 178.49999 here, but the float product 0.7f * 255f rounds up to 178.5 and would give 179
+        // The framebuffer holds 8-bit channels, so every layer is quantised (nearest) before the next one blends over it, as the GPU's blend output is.
+        double Ch(double back, double top) => Math.Floor(Math.Floor(top * 255.0 + 0.5) * a + back * (1 - a) + 0.5);
         return (Ch(bg.R, c.R), Ch(bg.G, c.G), Ch(bg.B, c.B));
     }
 

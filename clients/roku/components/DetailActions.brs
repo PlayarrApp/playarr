@@ -57,21 +57,24 @@ sub buildTiles()
         A11yStamp(fill, true)
         ic = invalid
         plus = invalid
-        ' Web: a glyph, 8.8 px, then the label, centred as a group in the pill. Widths are the web's own glyph and text advances.
-        gw = 7.7
-        glyphSize = 12.81
-        if t.icon = "nav-playlists.png" then gw = 11.5
+        ' Web (global.css .tv-detail-play / .tv-detail-playback-settings): a glyph, the CSS gap, then the label, centred as a group in the
+        ' pill. The glyph advance is the symbol font's own (hmtx units over unitsPerEm 2048: play 1575, sliders mark 1836) or Nunito Sans's
+        ' plus; the gap is 0.65rem on the play pill and 0.55rem on the others.
+        ' Font sizes are the CSS values: the pill's clamp(0.54rem, 0.62 * --vw, 0.78rem) and clamp(0.5rem, 0.58 * --vw, 0.72rem), the glyph span 0.85em (play) or 1.15em.
+        playFont = WebClamp(8.64, 0.62 * WebVw(), 12.48)
+        settingsFont = WebClamp(8.0, 0.58 * WebVw(), 11.52)
+        glyphSize = 1.15 * settingsFont
+        gw = PlayarrTextWidth("+", glyphSize, 400, 0)
+        if t.icon = "nav-playlists.png" then gw = 1836 * glyphSize / 2048
         if t.icon = "player-play.png"
-            gw = 8.2
-            glyphSize = 10.12
-            if t.ink = true and m.top.layoutKind = "series" then gw = 7.8
+            glyphSize = 0.85 * playFont
+            gw = 1575 * glyphSize / 2048
         end if
-        labelSize = 11.14
-        if t.primary or t.ink = true then labelSize = 11.9
+        labelSize = settingsFont
+        if t.primary or t.ink = true then labelSize = playFont
         lw = PlayarrTextWidth(t.text, labelSize, 700, 0)
-        gap = 8.8
-        if t.ink = true then gap = 11.1
-        if t.ink = true and m.top.layoutKind = "series" then gap = 10.3
+        gap = 0.55 * 16.0
+        if t.ink = true then gap = 0.65 * 16.0
         startX = t.x + (t.w - (gw + gap + lw)) / 2
         centreY = t.y + t.h / 2
         glyphRole = "brandInk"
@@ -87,18 +90,17 @@ sub buildTiles()
         if t.icon <> ""
             ' The web draws these glyphs as text: play from the symbol font, the sliders mark for Playback.
             ch = "☷"
-            rectH = 18.0
-            if t.icon = "player-play.png"
-                ch = "▶"
-                rectH = 14.84
-                if m.top.layoutKind = "series" then rectH = 14.0
-            end if
+            if t.icon = "player-play.png" then ch = "▶"
+            ' The glyph's span is a flex item one Nunito Sans line (PlayarrContentHeight) tall, centred on the pill; the web baseline falls
+            ' Int(1.011 em + 0.5) below its top. The native symbol Label's baseline is its integer-size font ascent (hhea 1901 / 2048) below its top.
+            rectH = PlayarrContentHeight(glyphSize)
+            nativeAscent = (1901 * Int(glyphSize + 0.5) + 2047) \ 2048
             ic = CreateObject("roSGNode", "WebLabel")
             ic.setFields({ size: glyphSize, weight: 400, symbol: true })
             ic.text = ch
             ic.color = ThemeColor(glyphRole)
             ThemeSetRole(ic, glyphRole)
-            ic.translation = [startX, centreY - 0.65 - rectH / 2]
+            ic.translation = [startX, centreY - rectH / 2 + Int(1.011 * glyphSize + 0.5) - nativeAscent]
             m.tilesGroup.AppendChild(ic)
         else
             plus = CreateObject("roSGNode", "WebLabel")
@@ -106,7 +108,7 @@ sub buildTiles()
             plus.text = "+"
             plus.color = ThemeColor("brandInk")
             ThemeSetRole(plus, "brandInk")
-            plus.translation = [startX, centreY - 0.65 - 9]
+            plus.translation = [startX, centreY - PlayarrContentHeight(glyphSize) / 2]
             m.tilesGroup.AppendChild(plus)
         end if
         label = CreateObject("roSGNode", "WebLabel")
@@ -114,7 +116,7 @@ sub buildTiles()
         label.text = t.text
         label.color = ThemeColor(labelRole)
         ThemeSetRole(label, labelRole)
-        label.translation = [startX + gw + gap, centreY - 0.95 - Int(labelSize * 1.011 + 0.5) / 2 - Int(labelSize * 0.353 + 0.5) / 2]
+        label.translation = [startX + gw + gap, centreY - PlayarrContentHeight(labelSize) / 2]
         m.tilesGroup.AppendChild(label)
         t.gw = gw
         t.gap = gap

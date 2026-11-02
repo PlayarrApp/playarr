@@ -30,6 +30,8 @@ frame("black-band-wide", lambda d: d.rectangle((0, 624, 200, 627), fill=(0, 0, 0
 frame("black-letterbox", lambda d: d.rectangle((0, 624, 719, 631), fill=(0, 0, 0)))
 frame("black-short-run", lambda d: d.rectangle((0, 624, 40, 627), fill=(0, 0, 0)))
 frame("black-header-bits", lambda d: d.rectangle((60, 124, 63, 127), fill=(0, 0, 0)))
+frame("vm-green-bar", lambda d: d.rectangle((324, 180, 379, 187), fill=(0, 160, 104)))
+frame("poster-green", lambda d: d.rectangle((324, 180, 379, 187), fill=(20, 220, 20)))
 frame("black-only", lambda d: d.rectangle((0, 400, 63, 463), fill=(0, 0, 0)))
 frame("black-short-green", lambda d: (d.rectangle((0, 400, 63, 463), fill=(0, 0, 0)), d.rectangle((64, 400, 66, 410), fill=G)))
 PY
@@ -44,6 +46,8 @@ ok black-band-wide || fail "wide black line rejected"
 ok black-letterbox || fail "full-width black line rejected"
 ok black-short-run || fail "short black run rejected"
 bad black-header-bits || fail "black bits in the header band accepted"
+bad vm-green-bar || fail "thin VM green band accepted"
+ok poster-green || fail "bright poster green rejected"
 ok black-only || fail "black art without a green edge rejected"
 ok black-short-green || fail "short green run beside black rejected"
 echo "nogreen mocked regression checks passed"

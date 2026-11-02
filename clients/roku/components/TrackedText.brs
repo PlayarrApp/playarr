@@ -93,9 +93,7 @@ sub onSpecChange()
                 glyph.font = font
                 glyph.width = 0
                 glyph.height = 0
-                ' A single line is as tall as the web's text box (rounded ascent plus descent). The Label is scaled to the web's fractional
-                ' size, so its own height is that box divided by the scale; the glyphs stay top-aligned where they were.
-                if lines.Count() = 1 and spec.symbol <> true then glyph.height = PlayarrContentHeight(size) / PlayarrScaleFor(size)
+                ' The Label keeps the height the firmware lays out for its glyph run; nothing here prescribes a box, the export reads what is drawn.
                 ' The Font node is a whole pixel size: scale the Label to the web's fractional size about its top-left corner.
                 glyph.scaleRotateCenter = [0, 0]
                 glyph.scale = [PlayarrScaleFor(size), PlayarrScaleFor(size)]
@@ -114,6 +112,8 @@ sub onSpecChange()
                 else
                     glyph.id = glyph.id + "~c"
                 end if
+                ' A space in the app's own string before this Label is stamped (`_`): the Labels hold no spaces, so the export cannot recover them from gaps.
+                if i > 1 and not part.tail and Mid(line, i - 1, 1) = " " then glyph.id = glyph.id + "_"
                 role = "text"
                 if spec.aria <> invalid and spec.aria <> "" then role = spec.aria
                 if role <> "text" then glyph.id = glyph.id + "|" + role

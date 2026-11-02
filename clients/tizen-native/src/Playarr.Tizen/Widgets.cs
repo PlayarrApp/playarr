@@ -563,16 +563,29 @@ internal sealed class KeyArt
                 foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
                 var dark = _t.Name == "dark";
                 // web .tv-key-art img: 900 px wide from the nav clearance, 106 % tall, grayscale + contrast + brightness, opacity .72 dark / .24 light
-                var img = Ui.FilteredImage(file, 133, -22.9f, 900, 1190.6f, dark ? 0.82f : 0.88f, dark ? 0.6f : 1.1f, fadeStartX: 0.72f);
+                // Element box from the CSS at 1920 x 1080 in Blink 1/64 px LayoutUnits: x = --tv-nav-clearance (nav edge clamp(18, 2.2vw, 44) + 64 + 2 x 0.4rem + 14),
+                // width = (52vw - clearance) and height = 106 % of the stage, both then scaled by transform: scale(1.04) about the left centre.
+                static float Lu(float v) => MathF.Floor(v * 64f) / 64f;
+                var vw = TizenClient.DesignWidth / 100f;
+                var clearance = Lu(Math.Clamp(2.2f * vw, 18f, 44f) + 64f + 2 * 0.4f * 16f + 14f);
+                var imgW = Lu(52f * vw - clearance); var imgH = Lu(TizenClient.DesignHeight * 1.06f);
+                var img = Ui.FilteredImage(file, clearance, imgH / 2f - imgH * 1.04f / 2f, imgW * 1.04f, imgH * 1.04f, dark ? 0.82f : 0.88f, dark ? 0.6f : 1.1f, fadeStartX: 0.72f);
                 img.Opacity = dark ? 0.72f : 0.24f;
                 Root.Add(img);
+                // Stage layers, resolved against the current CSS (global.css .tv-key-art::after, .tv-stage-wash: opaque --surface stops fading to
+                // transparent). Over a surface-coloured page these layers compose to exactly --surface wherever no artwork lies beneath
+                // (Chromium 151, calibrated with a flat gradient page: one colour over all 1920x1080 px), so drawing a surface-to-clear PNG
+                // there only adds 8-bit premultiply noise. The wash is opaque from 0 to 36 % of the width (691.2 px), which hides the artwork
+                // and the .tv-key-art::after side fade (133 to 526 px) completely. The artwork ends at 133 + 900 px. So only the band from the
+                // wash fade start to the artwork end carries a gradient; left of it one opaque surface box, right of it nothing.
                 var s = _t.Surface; var clear = new Rgba(s.R, s.G, s.B, 0);
-                // web .tv-key-art::after (from the nav clearance), then .tv-stage-wash over it
-                Root.Add(Ui.Gradient(133, 0, 1787, 1080, true, (0, s), (0.22f, clear), (1, clear)));
-                Root.Add(Ui.Gradient(133, 0, 1787, 1080, false, (0, s), (0.22f, clear), (0.82f, clear), (1, s)));
-                Rgba A(float a) => new(s.R, s.G, s.B, a);
-                Root.Add(Ui.Gradient(0, 0, 1920, 1080, true, (0, A(0.94f)), (0.36f, A(0.90f)), (0.52f, A(0)), (1, A(0))));
-                Root.Add(Ui.Gradient(0, 0, 1920, 1080, true, (0, A(0)), (0.66f, A(0)), (1, A(0.5f))));
+                const float washOpaque = 691f, artEnd = 1033f, washEnd = 998.4f;
+                // .tv-key-art::after vertical fade (surface 0 to 22 % from the bottom, 82 to 100 % at the top), only where the art is still visible.
+                Root.Add(Ui.Gradient(washOpaque, 0, artEnd - washOpaque, 1080, false, (0, s), (0.22f, clear), (0.82f, clear), (1, s)));
+                // .tv-stage-wash fade from 36 % (opaque) to 52 % (transparent), starting at the first pixel the opaque stop does not cover.
+                var w = washEnd - washOpaque;
+                Root.Add(Ui.Gradient(washOpaque, 0, w, 1080, true, (0, s), (1, clear)));
+                Root.Add(Sem.Overlay(Ui.Box(0, 0, washOpaque, 1080, s)));
             });
         });
     }
@@ -641,7 +654,7 @@ internal sealed class DetailsPanel
         var ky = _flow ? 286.6f : 259.2f; var tsize = _flow ? 49.92f : 69.12f; var tlh = _flow ? 47.424f : 62.208f; var tw = _flow ? 420f : 369f; var ty = _flow ? 330.9f : 303.5f;
         Root.Add(Ui.Text(kicker ?? card.Kicker, 153.6f, ky, 12.288f, 860, t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
         var lines = Ui.Paragraph(Root, card.Title, 153.6f, ty, tsize, 600, t.Ink, tw, tlh, _flow ? -3f : -4.98f, titleMaxLines, balance: true, role: "heading");
-        var metaY = ty + tlh * lines + (_flow ? 27f : 22.6f) + (_library ? 4f : 0); // library panels: measured 4 px lower on web
+        var metaY = ty + tlh * lines + (_flow ? 27f : 22.6f);
         var metaSize = _library ? 13.056f : 12.864f;
         var meta = string.Join("   ", new[] { lead, runtimeMs is > 0 ? Runtime(runtimeMs.Value) : null }.Where(s => !string.IsNullOrEmpty(s)));
         if (meta.Length > 0) Ui.MetaRow(Root, meta, 153.6f, metaY, metaSize, 600, Soft(t), _library ? 19.584f : 18);

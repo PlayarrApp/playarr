@@ -1,0 +1,1 @@
+- Roku: the stage wash is drawn from the web CSS (surface solid to 36 % of the width, clear at 52 %; right edge clear at 17 %, opaque stops) instead of a 94 % ramp over 31 %, so the baked key art no longer shows through the left of the browse and detail pages.

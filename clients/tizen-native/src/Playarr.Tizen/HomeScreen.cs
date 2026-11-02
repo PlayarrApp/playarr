@@ -58,7 +58,7 @@ internal sealed class HomeScreen : IPage
         clip.Add(_stack);
         _root.Add(clip);
         _root.Add(Ui.EdgeFade(ClipX, TizenClient.DesignHeight, TizenClient.DesignWidth - ClipX, _t.Surface, atTop: false));
-        _root.Add(Ui.HorizontalEdgeFade(TizenClient.DesignWidth, 0, TizenClient.DesignHeight, _t.Surface, atLeft: false));
+        _root.Add(Ui.HorizontalEdgeFade(TizenClient.DesignWidth, 0, TizenClient.DesignHeight, Ui.PanelEdgeColour(_t), atLeft: false));
         _ = LoadAsync();
     }
 

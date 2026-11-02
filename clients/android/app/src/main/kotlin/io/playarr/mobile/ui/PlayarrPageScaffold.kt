@@ -653,6 +653,9 @@ internal fun resetParityClockConsumptionMarker() {
 /** Debug builds: the route the app opens on (`parity_route` launch extra), for D-pad-only parity captures. */
 internal var parityRoute: String? = null
 
+/** Debug builds: the navigation route the app is on right now (query stripped); the layout export names it so the capture driver can check it describes the screen it asked for. */
+@Volatile internal var parityCurrentRoute: String = ""
+
 /** Debug builds with `parity_route`: state the device-parity suite driver reads back with `logcat -s PlayarrParity` (where the app is, in web terms). */
 internal fun parityLog(message: String) {
     if (parityRoute != null) android.util.Log.i("PlayarrParity", message)

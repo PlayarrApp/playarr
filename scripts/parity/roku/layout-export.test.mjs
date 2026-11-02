@@ -29,9 +29,14 @@ test("loaded server artwork hides a surface and a label painted before it", () =
 });
 
 test("a tail Label continues its word without a space", () => {
-  const els = doc(`<Label name="f400s10~w" text="hel" bounds="{0, 0, 20, 12}" /><Label name="f400s10~t" text="lo" bounds="{25, 0, 8, 12}" /><Label name="f400s10~w" text="you" bounds="{40, 0, 20, 12}" />`);
+  const els = doc(`<Label name="f400s10~w" text="hel" bounds="{0, 0, 20, 12}" /><Label name="f400s10~t" text="lo" bounds="{25, 0, 8, 12}" /><Label name="f400s10~w_" text="you" bounds="{40, 0, 20, 12}" />`);
   assert.equal(els[0].text, "hello you");
   assert.equal(els[0].rect.w, 60);
+});
+
+test("a gap between Labels is never read as a space; only the app's stamp is", () => {
+  const els = doc(`<Label name="f400s10~c" text="a" bounds="{0, 0, 5, 12}" /><Label name="f400s10~c" text="b" bounds="{40, 0, 5, 12}" />`);
+  assert.equal(els[0].text, "ab");
 });
 
 test("a transparent Rectangle that only carries an a11y stamp is not a row", () => {

@@ -235,8 +235,9 @@ internal val PLAYER_SUGGESTION_ARTWORK_KINDS = listOf(
 
 /**
  * A prewarmed playback negotiation is reusable only for the same media file at
- * the same resume position and when the play request carries no custom launch
- * settings (quality/audio overrides negotiate differently).
+ * the same resume position and when the play request carries the same launch
+ * settings as the prewarm (quality/audio overrides negotiate differently);
+ * [hasLaunchSettings] says they differ.
  */
 internal fun playarrPrewarmUsable(
     prewarmedMediaFileId: String,

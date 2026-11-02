@@ -24,21 +24,46 @@ phys_w, phys_h = (int(v) for v in size[-1])
 density = int(dens[-1]) / 160.0
 dev_w, dev_h = phys_w / density, phys_h / density
 
-cap_id = uuid.uuid4().hex
-sh("shell", f"run-as {pkg} rm -f files/parity-layout.json")
-before = sh("exec-out", "screencap", "-p", binary=True)
-sh("shell", "am", "broadcast", "-a", "io.playarr.mobile.PARITY_LAYOUT", "-p", pkg, "--es", "screen", screen, "--es", "theme", theme, "--es", "id", cap_id, "--ez", "rendered", "true")
-raw = ""
-for _ in range(30):
+def export_once():
+    cap_id = uuid.uuid4().hex
+    sh("shell", f"run-as {pkg} rm -f files/parity-layout.json")
+    before = sh("exec-out", "screencap", "-p", binary=True)
+    sh("shell", "am", "broadcast", "-a", "io.playarr.mobile.PARITY_LAYOUT", "-p", pkg, "--es", "screen", screen, "--es", "theme", theme, "--es", "id", cap_id, "--ez", "rendered", "true")
+    raw = ""
+    for _ in range(30):
+        time.sleep(0.5)
+        raw = sh("exec-out", f"run-as {pkg} cat files/parity-layout.json")
+        if raw.startswith("{"): break
+    if not raw.startswith("{"): sys.exit(f"layout export failed for {screen} {theme}")
+    after = sh("exec-out", "screencap", "-p", binary=True)
+    if before != after: sys.exit(f"screen changed while the layout of {screen} {theme} was exported")
+    d = json.loads(raw)
+    if d.get("captureId") != cap_id or d.get("screen") != screen or d.get("theme") != theme:
+        sys.exit(f"layout export for {screen} {theme} is not the one requested (id {d.get('captureId')!r}, screen {d.get('screen')!r}, theme {d.get('theme')!r})")
+    return d, after
+
+# The route the app reports (its navigation state) has to be the one the requested screen lives on; otherwise the export is of another screen's tree.
+ROUTE = {"home": "home", "movies": "movies", "series": "series", "music": "music", "search": "search", "settings": "settings", "profiles": "profiles",
+         "calendar-month": "calendar", "calendar-week": "calendar", "calendar-agenda": "calendar", "calendar-link": "calendar",
+         "film-detail": "experience-detail/{workId}", "series-detail": "experience-detail/{workId}", "actions": "movies", "filters": "movies"}
+def route_ok(d):
+    want = ROUTE.get(screen) if dev == "phone" else None
+    return want is None or d.get("route") == want
+
+# Determinism guard: the compose tree can lag the frame on screen (a page still settling after navigation). The export is accepted only when two exports
+# in a row, half a second apart, describe the same elements; nothing is edited, a tree that never settles fails the capture.
+def same(x, y):
+    return {k: v for k, v in x.items() if k != "captureId"} == {k: v for k, v in y.items() if k != "captureId"}
+doc, after = export_once()
+for attempt in range(8):
+    if not route_ok(doc):
+        time.sleep(1); doc, after = export_once(); continue
     time.sleep(0.5)
-    raw = sh("exec-out", f"run-as {pkg} cat files/parity-layout.json")
-    if raw.startswith("{"): break
-if not raw.startswith("{"): sys.exit(f"layout export failed for {screen} {theme}")
-after = sh("exec-out", "screencap", "-p", binary=True)
-if before != after: sys.exit(f"screen changed while the layout of {screen} {theme} was exported")
-doc = json.loads(raw)
-if doc.get("captureId") != cap_id or doc.get("screen") != screen or doc.get("theme") != theme:
-    sys.exit(f"layout export for {screen} {theme} is not the one requested (id {doc.get('captureId')!r}, screen {doc.get('screen')!r}, theme {doc.get('theme')!r})")
+    again, after2 = export_once()
+    if same(doc, again) and after == after2 and route_ok(again): break
+    doc, after = again, after2
+else:
+    sys.exit(f"layout of {screen} {theme} did not settle (two exports in a row never matched)")
 if doc.get("paletteDark") != (theme == "dark") or not isinstance(doc.get("occluded"), int): sys.exit(f"layout export for {screen} is in the wrong theme or incomplete")
 vw, vh = doc["viewport"]["w"], doc["viewport"]["h"]
 if abs(vw - dev_w) > 1 or abs(vh - dev_h) > 1: sys.exit(f"exported viewport {vw}x{vh} differs from the device {r2(dev_w)}x{r2(dev_h)} CSS px")
@@ -60,6 +85,8 @@ def hidden_shot(windows, ids):
         time.sleep(0.5)
 
 shown = Image.open(io.BytesIO(after)).convert("RGB")
+# The app lays out and exports in its own css px (physical width / the css viewport width it exported): map rectangles back with that scale, not the rounded wm density.
+density = phys_w / vw
 def changed_fraction(e, other):
     r = e["rect"]
     x0, y0 = max(0, int(r["x"] * density)), max(0, int(r["y"] * density))
@@ -79,7 +106,7 @@ def samples_changed(e, other):
         for fx in (0.2, 0.5, 0.8):
             px, py = min(shown.width - 1, int(x0 + (x1 - x0) * fx)), min(shown.height - 1, int(y0 + (y1 - y0) * fy))
             p, q = shown.getpixel((px, py)), other.getpixel((px, py))
-            if abs(p[0] - q[0]) + abs(p[1] - q[1]) + abs(p[2] - q[2]) <= 24: return False
+            if p == q: return False
     return True
 
 flagged = [e for e in doc["elements"] if e.get("covered")]
@@ -107,6 +134,7 @@ doc["elements"] = [e for e in doc["elements"] if id(e) not in drop]
 doc["occluded"] = len(drop)
 print("occluded", len(drop), "of", len(flagged), "flagged", file=sys.stderr)
 os.makedirs(os.path.dirname(out), exist_ok=True)
+doc.pop("route", None)
 json.dump(doc, open(out, "w"))
 # The screenshot the export was verified against (taken before and after the broadcast, byte-identical) is the one to publish with it.
 png = os.environ.get("PARITY_PNG_OUT")

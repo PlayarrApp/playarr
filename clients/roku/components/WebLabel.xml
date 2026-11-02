@@ -25,7 +25,6 @@
     <!-- A glyph from the symbol fonts (arrows, play, check) rather than Nunito Sans text. -->
     <field id="symbol" type="boolean" value="false" />
     <field id="aria" type="string" value="" />
-    <field id="fitWidth" type="float" value="0" onChange="refresh" />
     <field id="textWidth" type="float" value="0" />
     <field id="lineCount" type="integer" value="0" />
   </interface>

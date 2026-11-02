@@ -89,12 +89,15 @@ internal object PlayarrLayoutExport {
         return roots
     }
 
+    /** The density the app lays css px out with (a web viewport is a whole number of css px wide); null when the platform density is used. */
+    @Volatile internal var cssDensity: Float? = null
+
     private class Item(val window: Int, val json: JSONObject, val x: Float, val y: Float, val w: Float, val h: Float, var occludes: Boolean, val hook: Boolean = false, val boxId: Int = -1, val controlBoxes: Set<Int>? = null, val order: Int = -1, val end: Int = -1, val chain: List<Int> = emptyList())
 
     private fun export(activity: Activity, screen: String, theme: String, captureId: String, file: File, candidates: Boolean) {
         val mainView = activity.window.decorView
         val width = mainView.width.toFloat(); val height = mainView.height.toFloat()
-        val unit = 1f / activity.resources.displayMetrics.density
+        val unit = 1f / (cssDensity ?: activity.resources.displayMetrics.density)
         val main = IntArray(2).also { mainView.getLocationOnScreen(it) }
         val items = mutableListOf<Item>()
         // A dialog window is hosted in the activity (web: inside the shell), so its fills composite over the first window's outermost painted box, not over white.
@@ -119,12 +122,12 @@ internal object PlayarrLayoutExport {
                         // A layer alpha is not an element: its alpha is multiplied into everything below it.
                         if (box.kind == "alpha") continue
                         val x = b.left + ctx.dx; val y = b.top + ctx.dy
-                        val e = JSONObject().put("text", if (box.kind == "video") ownerLabel(tree, box.id) else "").put("role", if (box.kind == "image") "image" else if (box.kind == "fill") "container" else if (box.kind == "img") (if (ownerIsImage(tree, box.id)) "img" else "container") else box.kind)
+                        val e = JSONObject().put("text", if (box.kind == "video" || ((box.kind == "img" || box.kind == "image") && ownerIsImage(tree, box.id))) ownerLabel(tree, box.id) else "").put("role", if (box.kind == "image") "image" else if (box.kind == "fill") "container" else if (box.kind == "img") (if (ownerIsImage(tree, box.id)) "img" else "container") else box.kind)
                             .put("rect", rect(x, y, b.width, b.height, unit)).put("color", JSONObject.NULL).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
                         val drawn = box.drawnRadiusPx ?: tree.own.values.firstOrNull { box.id in it }?.firstNotNullOfOrNull { ctx.boxes[it]?.drawnRadiusPx }
                         // A plain-rectangle paint inside a clipping parent keeps the clip's declared radius.
-                        if (drawn != null && drawn > 0f) e.put("radius", radius(drawn * box.scale(), b.width, b.height, unit))
-                        else if (box.radius > 0f) e.put("radius", radius(box.radius * box.density * box.scale(), b.width, b.height, unit))
+                        if (drawn != null && drawn > 0f) e.put("radius", radius(drawn * box.scale(), b.width, b.height, unit, box.cssShortSide))
+                        else if (box.radius > 0f) e.put("radius", radius(box.radius * box.density * box.scale(), b.width, b.height, unit, box.cssShortSide))
                         val effective = box.opacity * ctx.layerAlpha(ctx.boxChain(box.id), except = box.id)
                         if (effective <= 0f) continue
                         if (effective < 1f) e.put("opacity", effective.toDouble())
@@ -135,7 +138,7 @@ internal object PlayarrLayoutExport {
                         // A box that paints nothing (a layout wrapper, a surface without a fill) is not an element: only painted containers are exported.
                         if ((box.kind == "fill" || box.kind == "container") && !painted) continue
                         pending += Triple(e, box.id, painted)
-                        ctx.add(e, x, y, b.width, b.height, occludes = (box.kind == "container" || box.kind == "fill") && painted && ((box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha >= 0.5f) || (box.fill == androidx.compose.ui.graphics.Color.Unspecified && box.brushPainted)), hook = true, boxId = box.id)
+                        ctx.add(e, x, y, b.width, b.height, occludes = (box.kind == "container" || box.kind == "fill") && painted && ((box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha > 0f) || (box.fill == androidx.compose.ui.graphics.Color.Unspecified && box.brushPainted)), hook = true, boxId = box.id)
                     }
                 }
                 // Like the browser's backdrop: the fills of the box's own tree ancestors (and its own), outer to inner. A box that paints nothing
@@ -188,7 +191,7 @@ internal object PlayarrLayoutExport {
         } else unique.filter { it !in nominated }
         val ordered = kept.sortedWith(compareBy({ it.y }, { it.x }, { it.json.getString("role") }, { it.json.getString("text") }, { it.w })).map { it.json }
         val doc = JSONObject()
-            .put("screen", screen).put("theme", theme).put("captureId", captureId).put("paletteDark", PlayarrWebTheme.palette.dark)
+            .put("screen", screen).put("theme", theme).put("captureId", captureId).put("route", parityCurrentRoute).put("paletteDark", PlayarrWebTheme.palette.dark)
             .put("viewport", JSONObject().put("w", r2(width * unit)).put("h", r2(height * unit)).put("dpr", 1))
             .put("clockPinned", parityClock != null).put("occluded", if (candidates) 0 else unique.size - kept.size)
             .put("elements", JSONArray().also { arr -> ordered.forEach { arr.put(it) } })
@@ -316,7 +319,7 @@ internal object PlayarrLayoutExport {
     private fun r2(v: Float) = Math.round(v * 100) / 100.0
     private fun rect(x: Float, y: Float, w: Float, h: Float, unit: Float) = JSONObject().put("x", r2(x * unit)).put("y", r2(y * unit)).put("w", r2(w * unit)).put("h", r2(h * unit))
     /** A declared corner radius (px) clamped to half the short side, as the drawn shape resolves it. */
-    private fun radius(px: Float, w: Float, h: Float, unit: Float) = r2(minOf(px, minOf(w, h) / 2f) * unit)
+    private fun radius(px: Float, w: Float, h: Float, unit: Float, cssShortSide: Float? = null) = r2(minOf(px * unit, (cssShortSide ?: (minOf(w, h) * unit)) / 2f))
 
     private fun hex(argb: Int): String =
         "#%02x%02x%02x".format((argb shr 16) and 255, (argb shr 8) and 255, argb and 255) + if ((argb ushr 24) < 255) "%02x".format(argb ushr 24) else ""
@@ -333,7 +336,9 @@ internal object PlayarrLayoutExport {
             if (layout != null) {
                 val input = layout.layoutInput
                 val style = input.style
-                val role = if (config.contains(SemanticsProperties.Heading)) "heading" else "text"
+                // A web line text sits in a WebLineFrame that carries the caller's modifiers, so a heading() mark lands on its frame node (the text node's parent).
+                val parentConfig = node.parent?.config
+                val role = if (config.contains(SemanticsProperties.Heading) || (parentConfig != null && parentConfig.contains(SemanticsProperties.Heading) && !parentConfig.contains(SemanticsProperties.Text))) "heading" else "text"
                 val raw = input.text.text
                 val layerAlpha = ctx.layerAlpha(ctx.chainOf(node))
                 val spans = input.text.spanStyles
@@ -402,7 +407,10 @@ internal object PlayarrLayoutExport {
                             if (advance != null && advance > 0f) hiEnd = maxOf(hiEnd, lo + advance)
                         }
                         // The run's four corners through the node's transform (a rotation or unequal scale still gives its bounding box).
-                        val corners = listOf(lo to baseline - ascent, hiEnd to baseline - ascent, lo to baseline + descent, hiEnd to baseline + descent).map { (cx, cy) -> coords.localToRoot(androidx.compose.ui.geometry.Offset(cx, cy)) }
+                        // Text the app laid out as its css content area (LineBreak.Simple marks it) is read to its laid-out line box: the line's own top and bottom.
+                        val boxTop = if (style.lineBreak == androidx.compose.ui.text.style.LineBreak.Simple) layout.getLineTop(i) else baseline - ascent
+                        val boxBottom = if (style.lineBreak == androidx.compose.ui.text.style.LineBreak.Simple) layout.getLineBottom(i) else baseline + descent
+                        val corners = listOf(lo to boxTop, hiEnd to boxTop, lo to boxBottom, hiEnd to boxBottom).map { (cx, cy) -> coords.localToRoot(androidx.compose.ui.geometry.Offset(cx, cy)) }
                         val x = corners.minOf { it.x } + ctx.dx; val y = corners.minOf { it.y } + ctx.dy; val w = corners.maxOf { it.x } - corners.minOf { it.x }; val h = corners.maxOf { it.y } - corners.minOf { it.y }
                         // A run wholly outside the node's clipped bounds (a scroll or clip ancestor) is not drawn.
                         val vis = node.boundsInRoot; if (x - ctx.dx >= vis.right || x - ctx.dx + w <= vis.left || y - ctx.dy >= vis.bottom || y - ctx.dy + h <= vis.top) continue
@@ -410,7 +418,8 @@ internal object PlayarrLayoutExport {
                             .put("color", hex(colour.toArgb()))
                             .put("fontSize", r2(size * ctx.unit)).put("fontWeight", runStyle.fontWeight?.weight ?: 400)
                         // A text that paints its own pill (kind textfill on the text node itself, as the web span does) carries that outline: the drawn corners of its own paint, never a copy from another node.
-                        ctx.ownBoxes(node).lastOrNull { b -> b.kind == "textfill" }?.let { pill ->
+                        // The pill may sit on the text's line frame (its parent node): fall back to the textfill boxes of the chain, nearest first.
+                        (ctx.ownBoxes(node).lastOrNull { b -> b.kind == "textfill" } ?: ctx.chainOf(node).asReversed().firstNotNullOfOrNull { id -> ctx.boxes[id]?.takeIf { b -> b.kind == "textfill" } })?.let { pill ->
                             val pb = pill.bounds(); val d = pill.drawnRadiusPx
                             if (pb != null && d != null && d > 0f) e.put("radius", radius(d * pill.scale(), pb.width, pb.height, ctx.unit))
                         }
@@ -450,7 +459,7 @@ internal object PlayarrLayoutExport {
             }
             // An image the app tagged for the export and also exposes through semantics on the same node is one element: the tagged record carries the alpha.
             // The label the control itself declares wins over the descriptions and text merged up from its children (those are exported as their own elements).
-            val name = if (kind == "dialog") ctx.tree.ownLabel[node.id]?.joinToString(" ").orEmpty() else ctx.tree.ownLabel[node.id]?.joinToString(" ")?.takeIf { it.isNotBlank() }
+            val name = if (kind == "dialog") ctx.tree.ownLabel[node.id]?.joinToString(" ").orEmpty().ifBlank { config.getOrNull(SemanticsProperties.PaneTitle).orEmpty() } else ctx.tree.ownLabel[node.id]?.joinToString(" ")?.takeIf { it.isNotBlank() }
                 ?: config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString(" ")?.takeIf { it.isNotBlank() }
                 ?: (if (editable) config.getOrNull(SemanticsProperties.EditableText)?.text else null)
                 ?: config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }.orEmpty()

@@ -250,13 +250,31 @@ fn rgba(c: &gdk::RGBA) -> [f32; 4] {
     [c.red(), c.green(), c.blue(), c.alpha()]
 }
 
-fn over(top: [f32; 4], under: [f32; 3]) -> [f32; 3] {
-    let a = top[3];
-    [
-        top[0] * a + under[0] * (1.0 - a),
-        top[1] * a + under[1] * (1.0 - a),
-        top[2] * a + under[2] * (1.0 - a),
-    ]
+/// A background colour as the layout document defines it: sRGB channels in 0..255, every ancestor fill composited over white.
+type Bg = [f64; 3];
+
+/// One composite step over the colour behind (every ancestor fill composited over white, in 0..255). The fill's channels are
+/// the 8-bit values it was declared with and its alpha is the declared one.
+fn over(top: [f32; 4], under: Bg) -> Bg {
+    let a = (f64::from(top[3]) * 1000.0).round() / 1000.0;
+    let ch = |v: f32| {
+        let t = f64::from(v) * 255.0;
+        if (t - t.round()).abs() < 0.01 {
+            t.round()
+        } else {
+            t
+        }
+    };
+    let mix = |i: usize| ch(top[i]) * a + under[i] * (1.0 - a);
+    [mix(0), mix(1), mix(2)]
+}
+
+/// The `#rrggbb` of a background, rounded once to 8 bits. This is only the fallback for a fill whose drawn pixel cannot be
+/// read back (a gradient above it, or no clear point); a flat fill is reported as the renderer drew it (`Walk::drawn`), so
+/// no tie rule is assumed for the themes. An exact half rounds down here, as before.
+fn hex_bg(c: Bg) -> String {
+    let b = |v: f64| (v - 0.5 - 1.0e-6).ceil().clamp(0.0, 255.0) as u8;
+    format!("#{:02x}{:02x}{:02x}", b(c[0]), b(c[1]), b(c[2]))
 }
 
 impl Fill {
@@ -346,6 +364,10 @@ struct Walk<'a> {
     root: &'a gtk4::Widget,
     viewport: Rect,
     items: Vec<Item>,
+    /// The screen as the renderer draws it, for reading the colour a flat fill really shows.
+    frame: Option<Frame>,
+    /// A gradient is in the ancestor chain of the widget being visited: its backdrop is not a flat colour.
+    under_gradient: bool,
 }
 
 /// The opacity GTK applies to the whole widget: opacity nodes on the path from the snapshot root down.
@@ -394,7 +416,7 @@ impl Walk<'_> {
         c[2] > 0.0 && c[3] > 0.0
     }
 
-    fn visit(&mut self, w: &gtk4::Widget, clip: Rect, inherited: f32, parent_bg: [f32; 3]) {
+    fn visit(&mut self, w: &gtk4::Widget, clip: Rect, inherited: f32, parent_bg: Bg) {
         if !w.is_mapped() || !w.is_visible() {
             return;
         }
@@ -435,6 +457,14 @@ impl Walk<'_> {
         } else {
             (false, parent_bg)
         };
+        let outer_gradient = self.under_gradient;
+        if lp
+            .fills
+            .iter()
+            .any(|f| !f.border && f.gradient.is_some() && near(f.b, b, 0.55))
+        {
+            self.under_gradient = true;
+        }
         // A scale or progress bar paints its trough and fills itself; they are listed once, from the widget.
         let mut child = if w.is::<gtk4::Scale>() || w.is::<gtk4::ProgressBar>() {
             None
@@ -445,8 +475,82 @@ impl Walk<'_> {
             self.visit(&c, clip, inherited * factor, bg);
             child = c.next_sibling();
         }
+        self.under_gradient = outer_gradient;
         if emitted {
             self.items[start].end = self.items.len();
+        }
+    }
+
+    /// The colour the renderer drew inside a flat-fill widget: a pixel of the rendered screen away from its edges, its text and
+    /// its children. It is accepted only when it lies within one level of the composite of the declared fills (so an overlay,
+    /// an image or a shadow under the point is never read as the fill); otherwise the composite stands.
+    fn drawn(&self, w: &gtk4::Widget, b: Rect, radius: f32, composite: Bg) -> Option<Bg> {
+        let (tw, th, buf) = self.frame.as_ref()?;
+        let sx = *tw as f32 / self.viewport[2].max(1.0);
+        let sy = *th as f32 / self.viewport[3].max(1.0);
+        let mut busy: Vec<Rect> = Vec::new();
+        let mut stack: Vec<gtk4::Widget> = w.first_child().into_iter().collect();
+        while let Some(c) = stack.pop() {
+            if let Some(cb) = c.compute_bounds(self.root) {
+                let cb = rect_of(&cb);
+                // A label's box is mostly empty: only its glyphs (the ink of its layout) are kept clear.
+                if let Some(l) = c.downcast_ref::<gtk4::Label>() {
+                    let (ox, oy) = l.layout_offsets();
+                    let (ink, _) = l.layout().pixel_extents();
+                    busy.push([
+                        cb[0] + ox as f32 + ink.x() as f32,
+                        cb[1] + oy as f32 + ink.y() as f32,
+                        ink.width() as f32,
+                        ink.height() as f32,
+                    ]);
+                } else {
+                    busy.push(cb);
+                }
+            }
+            stack.extend(c.first_child());
+            stack.extend(c.next_sibling());
+        }
+        // A rounded corner is clear of the fill's edge by r * (1 - 1/sqrt 2) along the diagonal.
+        let inset = radius.max(0.0) * 0.3 + 3.0;
+        if b[2] <= 2.0 * inset || b[3] <= 2.0 * inset {
+            return None;
+        }
+        let inner = [b[0] + inset, b[1] + inset, b[2] - 2.0 * inset, b[3] - 2.0 * inset];
+        let vis = clip_rect(inner, self.viewport);
+        if vis[2] <= 0.0 || vis[3] <= 0.0 {
+            return None;
+        }
+        let mut seen: Vec<[u8; 3]> = Vec::new();
+        for fy in [0.5_f32, 0.25, 0.75, 0.1, 0.9] {
+            for fx in [0.5_f32, 0.25, 0.75, 0.1, 0.9] {
+                let (x, y) = (vis[0] + vis[2] * fx, vis[1] + vis[3] * fy);
+                if busy
+                    .iter()
+                    .any(|r| x >= r[0] - 2.0 && x <= r[0] + r[2] + 2.0 && y >= r[1] - 2.0 && y <= r[1] + r[3] + 2.0)
+                {
+                    continue;
+                }
+                let (ix, iy) = (((x * sx) as usize).min(tw - 1), ((y * sy) as usize).min(th - 1));
+                let o = (iy * tw + ix) * 4;
+                if buf[o + 3] != 255 {
+                    continue;
+                }
+                let px = [buf[o + 2], buf[o + 1], buf[o]];
+                if (0..3).all(|i| (f64::from(px[i]) - composite[i]).abs() <= 1.0) {
+                    seen.push(px);
+                    if seen.len() == 2 {
+                        break;
+                    }
+                }
+            }
+            if seen.len() == 2 {
+                break;
+            }
+        }
+        // Two points must agree: a lone pixel could be a stray mark.
+        match seen.as_slice() {
+            [a, b2] if a == b2 => Some([f64::from(a[0]), f64::from(a[1]), f64::from(a[2])]),
+            _ => None,
         }
     }
 
@@ -458,9 +562,9 @@ impl Walk<'_> {
         clip: Rect,
         inherited: f32,
         factor: f32,
-        parent_bg: [f32; 3],
+        parent_bg: Bg,
         lp: &Paints,
-    ) -> (bool, [f32; 3]) {
+    ) -> (bool, Bg) {
         let own = lp
             .fills
             .iter()
@@ -470,6 +574,12 @@ impl Walk<'_> {
         // `background` is the background colour: a gradient is an image on top of it and leaves it as it is.
         if let Some(f) = own.filter(|f| f.gradient.is_none()) {
             bg = over(f.at(b[0] + b[2] / 2.0, b[1] + b[3] / 2.0), parent_bg);
+            // Where nothing but this flat fill is drawn, the colour is what the renderer drew: read it back.
+            if !self.under_gradient {
+                if let Some(px) = self.drawn(w, b, f.radius, bg) {
+                    bg = px;
+                }
+            }
         }
         let mut radius = own.map(|f| f.radius).filter(|r| *r > 0.0);
         if radius.is_none() {
@@ -487,11 +597,11 @@ impl Walk<'_> {
                 .find(|(cb, r)| *r > 0.0 && near(*cb, b, 0.55))
                 .map(|(_, r)| *r);
         }
-        let base = |role: &str, text: &str, rect: Rect, opacity: f32, bgc: [f32; 3]| {
+        let base = |role: &str, text: &str, rect: Rect, opacity: f32, bgc: Bg| {
             let mut el = json!({
                 "text": text, "role": role,
                 "rect": {"x": rect[0], "y": rect[1], "w": rect[2], "h": rect[3]},
-                "color": Value::Null, "background": hex([bgc[0], bgc[1], bgc[2], 1.0], false),
+                "color": Value::Null, "background": hex_bg(bgc),
                 "fontSize": Value::Null, "fontWeight": Value::Null,
             });
             if (opacity - 1.0).abs() > 0.004 {
@@ -518,12 +628,6 @@ impl Walk<'_> {
             // One record per shaped style run (a run holds one font and one colour); neighbours on a line with the same
             // colour are one record. Text is each run's own, the ellipsis run reading as the ellipsis.
             let mut recs: Vec<(Rect, String, [f32; 4], f32)> = Vec::new();
-            // A text box is the CSS content area of the element's own (first available) font: its ascent and descent
-            // around the baseline, whichever face draws a glyph. The web sizes the box of a glyph that comes from a
-            // fallback face (an arrow, a play triangle) this way; Pango's run rectangle carries the fallback face's smaller
-            // ascent and descent instead, which is the named font difference.
-            let ctx = layout.context();
-            let primary = ctx.metrics(ctx.font_description().as_ref(), None);
             let mut it = layout.iter();
             loop {
                 if let Some(run) = it.run_readonly() {
@@ -552,19 +656,12 @@ impl Walk<'_> {
                         }
                     }
                     // The label's real transform to the root (an ancestor's CSS scale is part of it), applied to the run's
-                    // logical rectangle exactly as Pango laid it out (a fallback face keeps its own extents).
-                    let (top, height) =
-                        if item.analysis().flags() & PANGO_FLAG_IS_ELLIPSIS != 0 || primary.height() <= 0 {
-                            (lg.y(), lg.height())
-                        } else {
-                            let base = it.baseline();
-                            (base - primary.ascent(), primary.ascent() + primary.descent())
-                        };
+                    // logical rectangle exactly as Pango measured it; the run's own vertical extent is exported as it is.
                     let local = graphene::Rect::new(
                         ox as f32 + x0 as f32 / s,
-                        oy as f32 + top as f32 / s,
+                        oy as f32 + lg.y() as f32 / s,
                         (x1 - x0) as f32 / s,
-                        height as f32 / s,
+                        lg.height() as f32 / s,
                     );
                     let r = match w.compute_transform(self.root) {
                         Some(t) => to_root(&t, &local),
@@ -712,6 +809,33 @@ impl Walk<'_> {
     }
 }
 
+/// The text a label displays: the laid-out runs in order, the ellipsis run reading as the ellipsis. A label that is not
+/// ellipsized shows its whole text; the web names a control by what it displays (innerText), ellipsis included.
+fn shown_text(l: &gtk4::Label) -> String {
+    let layout = l.layout();
+    if !layout.is_ellipsized() {
+        return l.text().to_string();
+    }
+    let text = layout.text().to_string();
+    let mut out = String::new();
+    let mut it = layout.iter();
+    loop {
+        if let Some(run) = it.run_readonly() {
+            let item = run.item();
+            if item.analysis().flags() & PANGO_FLAG_IS_ELLIPSIS != 0 {
+                out.push('\u{2026}');
+            } else {
+                let o = item.offset() as usize;
+                out.push_str(text.get(o..o + item.length() as usize).unwrap_or(""));
+            }
+        }
+        if !it.next_run() {
+            break;
+        }
+    }
+    out
+}
+
 /// The text of the labels inside a control, the name a screen reader falls back to.
 fn child_text(w: &gtk4::Widget) -> String {
     let mut parts = Vec::new();
@@ -722,7 +846,7 @@ fn child_text(w: &gtk4::Widget) -> String {
         }
         if let Some(l) = n.downcast_ref::<gtk4::Label>() {
             if !l.text().is_empty() && !is_decorative(&n) {
-                parts.push(l.text().to_string());
+                parts.push(shown_text(l));
             }
             continue;
         }
@@ -868,8 +992,10 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
         root,
         viewport,
         items: Vec::new(),
+        frame: render(root).ok(),
+        under_gradient: false,
     };
-    walk.visit(root, [-1.0e6, -1.0e6, 2.0e6, 2.0e6], 1.0, [1.0, 1.0, 1.0]);
+    walk.visit(root, [-1.0e6, -1.0e6, 2.0e6, 2.0e6], 1.0, [255.0, 255.0, 255.0]);
     // Occlusion as the web scorer samples it: nine points of the visible box; hidden when each lies under a later box
     // that paints (alpha of 0.5 or more) and is not part of the element.
     let n = walk.items.len();
@@ -941,10 +1067,18 @@ mod tests {
     use gtk4::AccessibleRole as R;
 
     #[test]
+    fn a_translucent_fill_composites_as_the_renderer_draws_it() {
+        // Surface #211d21 at 70 % over the page #1b181b: the green channel is exactly 27.5, which GTK draws as 27 (#1f1b1f).
+        let under = [27.0, 24.0, 27.0];
+        let fill = [33.0 / 255.0, 29.0 / 255.0, 33.0 / 255.0, 0.7];
+        assert_eq!(hex_bg(over(fill, under)), "#1f1b1f");
+        // An opaque fill replaces what is under it.
+        assert_eq!(hex_bg(over([1.0, 1.0, 1.0, 1.0], under)), "#ffffff");
+    }
+
+    // GTK must only be used from the thread that initialised it, and the test harness runs each test on its own thread, so the
+    // two GTK checks run in sequence inside `gtk_checks` (two tests initialising GTK on two threads crashed with SIGSEGV).
     fn same_native_role_exports_same_role() {
-        if gtk4::init().is_err() {
-            return;
-        }
         let a = gtk4::Box::builder().accessible_role(R::Group).build();
         let b = gtk4::Frame::builder().accessible_role(R::Group).build();
         let c = gtk4::Box::builder().accessible_role(R::Generic).build();
@@ -983,10 +1117,15 @@ mod tests {
     }
 
     #[test]
-    fn a_failed_probe_render_is_an_error_not_a_blank_frame() {
+    fn gtk_checks() {
         if gtk4::init().is_err() {
             return;
         }
+        same_native_role_exports_same_role();
+        a_failed_probe_render_is_an_error_not_a_blank_frame();
+    }
+
+    fn a_failed_probe_render_is_an_error_not_a_blank_frame() {
         // Never shown, so it has no size and no renderer: a render must fail, and the visibility check with it.
         let root = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         assert!(render(root.upcast_ref()).is_err());
