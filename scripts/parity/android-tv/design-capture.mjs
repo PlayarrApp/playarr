@@ -22,11 +22,16 @@ const settingsRow = (n) => ["settings", downN(n)];
 const SCREENS = {
   sites: ["sites", []],
   "music-detail": ["music", ["select"]],
-  "search-results": ["search", []],
+  "search-results": ["search", ["type:the"]],
+  "home--focus-second-rail": ["home", ["down"]],
+  "profiles--add": ["profiles", ["right"]],
+  // The pinned film played through the player route; the debug build pauses at 0:02, and the controls auto-hide while we wait.
+  player: ["player/FILE", ["wait:20000"]],
+  "search--keyboard": ["search", ["select"]],
   watchlist: ["watchlist", []],
   requests: ["requests", []],
-  playlists: ["playlists", []],
-  "playlist-detail": ["playlists", ["select"]],
+  playlists: ["playlists", ["down", "down"]],
+  "playlist-detail": ["playlists", ["down", "down", "select"]],
   folders: ["folders", []],
   downloads: ["downloads", []],
   "settings-appearance": settingsRow(0),
@@ -40,6 +45,16 @@ const SCREENS = {
   "settings-your-data": settingsRow(8),
   "settings-home": settingsRow(9),
 };
+// Media file of the pinned film (the web refs open the same one), looked up through the API as the parity account.
+async function pinnedFile() {
+  const { readSecrets } = await import("../dpad-account.mjs");
+  const suite = JSON.parse((await import("node:fs")).readFileSync(new URL("../suite.json", import.meta.url), "utf8"));
+  const srv = process.env.PARITY_SERVER_URL.replace(/\/$/, "");
+  const lr = await fetch(`${srv}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-design", username: process.env.PARITY_ACCOUNT_NAME, password: readSecrets().PLAYARR_PARITY_STATIC_PASSWORD }) });
+  const token = (await lr.json()).access_token;
+  const film = await (await fetch(`${srv}/api/v1/catalog/${suite.screens.find((x) => x.id === "film-detail").open.split("/").pop()}`, { headers: { authorization: `Bearer ${token}` } })).json();
+  return film.media_file_id;
+}
 const ids = only.length ? only : Object.keys(SCREENS);
 
 const driver = createDriver({ readinessTimeoutMs: Number(process.env.PARITY_READINESS_TIMEOUT_MS ?? 120_000) });
@@ -50,11 +65,15 @@ const failed = [];
 for (const id of ids) {
   const spec = SCREENS[id];
   if (!spec) { console.error(`unknown screen ${id}`); failed.push(id); continue; }
-  const [route, keys] = spec;
+  let [route, keys] = spec;
+  if (route === "player/FILE") route = "player/" + await pinnedFile();
   try {
     // A screen with nothing focusable (an empty list) never settles focus: the app is already launched, so capture it as it is.
     try { await driver.route("/" + route); } catch (e) { if (!/no stable accessibility focus/.test(e.message)) throw e; console.log(`note ${id}: no focusable node, captured unfocused`); }
-    for (const k of keys) await driver.key(k);
+    for (const k of keys) {
+      if (k.startsWith("wait:")) await sleep(Number(k.slice(5)));
+      else if (k.startsWith("type:")) { adb("shell", "input", "text", k.slice(5)); await sleep(3000); } else await driver.key(k);
+    }
     await sleep(Number(process.env.DESIGN_SETTLE_MS ?? 4000));
     // Two identical frames in a row (artwork loaded, no focus animation left).
     let prev = null, shot = null;
