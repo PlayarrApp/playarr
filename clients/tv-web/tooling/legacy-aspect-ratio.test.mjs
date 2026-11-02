@@ -50,3 +50,15 @@ test("a box shorter than width / ratio gets a min-height, a taller one is left a
   assert.equal(auto.style.minHeight, undefined);
   assert.equal(stale.style.minHeight, "");
 });
+
+test("the fractional layout width is used, not the rounded offsetWidth; a scaled box falls back to offsetWidth", () => {
+  const fractional = fakeElement({ width: 327, height: 10, ratio: "16 / 9" });
+  fractional.getBoundingClientRect = () => ({ width: 327.171875 });
+  const scaled = fakeElement({ width: 320, height: 10, ratio: "16 / 9" });
+  scaled.getBoundingClientRect = () => ({ width: 331.2 });
+  const doc = { querySelectorAll: (selector) => (selector === "[data-lc-ar]" ? [] : [fractional, scaled]) };
+  const win = { getComputedStyle: (el) => ({ getPropertyValue: () => el.ratio, overflowY: "visible" }) };
+  assert.equal(applyAspectRatios(doc, [".x"], win), 2);
+  assert.equal(fractional.style.minHeight, `${327.171875 / (16 / 9)}px`);
+  assert.equal(scaled.style.minHeight, "180px");
+});
