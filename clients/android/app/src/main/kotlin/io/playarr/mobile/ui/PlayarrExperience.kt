@@ -87,7 +87,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -3738,7 +3737,7 @@ internal fun ExperienceMediaRail(
             itemsIndexed(rail.works, key = { _, work -> work.id }) { itemIndex, work ->
                 val onDeck = rail.onDeckByWork[work.id]
                 val episode = onDeck?.episode
-                androidx.compose.runtime.CompositionLocalProvider(LocalHomeRailArtTopCss provides (geo?.artTopCss(railIndex) ?: Float.NaN)) {
+                androidx.compose.runtime.CompositionLocalProvider(LocalHomeRailArtTopCss provides (geo?.artTopCss(railIndex) ?: Float.NaN), LocalHomeRailDotPx provides geo?.unseenDotOffsetPx(railIndex, itemIndex, webClamp(7f, 0.55f * 19.2f, 11f), webClamp(9f, 0.68f * 19.2f, 13f))) {
                 ExperienceLandscapeCard(
                     modifier = (if (rails != null) Modifier.tvRailItem(rails, railIndex, itemIndex) else Modifier)
                         // Web paints the art at the column's snapped left edge and the snapped card width; the cell is the distance to the next column's edge.
@@ -3801,6 +3800,9 @@ internal fun ExperienceMediaRail(
 }
 
 /** The art top (css px) of the Home rail card being composed; NaN away from the 1920 x 1080 television Home. */
+/** Offset in px of the Home rail card's unwatched dot from the art's top left (see [HomeRailGeometry.unseenDotOffsetPx]), or null off the TV rail. */
+internal val LocalHomeRailDotPx = androidx.compose.runtime.compositionLocalOf<Pair<Int, Int>?> { null }
+
 internal val LocalHomeRailArtTopCss = androidx.compose.runtime.compositionLocalOf { Float.NaN }
 
 /**
@@ -3832,6 +3834,14 @@ internal class HomeRailGeometry(
     fun itemHeightPx(index: Int) = px(top(index + 1)) - px(top(index))
     fun artTopRelPx(index: Int) = px(artTopCss(index)) - px(top(index))
     fun cardWidthPx() = px(cardWidth)
+    /**
+     * Web `.tv-watch-unseen` (position absolute; top/right clamp(7px, 0.55vw, 11px), width clamp(9px, 0.68vw, 13px)) inside the art box, as the offset
+     * from the snapped art's top left: the dot's own css edges are LayoutUnit sums from the fractional art, each rounded once.
+     */
+    fun unseenDotOffsetPx(index: Int, column: Int, insetCss: Float, sizeCss: Float): Pair<Int, Int> {
+        val left = columnOrigin + column * (cardWidth + columnGap) + cardWidth - insetCss - sizeCss
+        return (px(left) - columnLeftPx(column)) to (px(artTopCss(index) + insetCss) - px(artTopCss(index)))
+    }
     fun columnLeftPx(column: Int) = px(columnOrigin + column * (cardWidth + columnGap))
 }
 
@@ -3995,13 +4005,15 @@ internal fun ExperienceLandscapeCard(
                 )
             }
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) (if (LocalStageScale.current != 1f) (3f / LocalStageScale.current).dp else 3.08.dp) else 3.dp).parityBackground("image", Color.White.copy(alpha = 0.2f)).semantics { role = Role.Image }) {
+                val watchedDescription = playarrString(PlayarrString.ResumePercentWatched, "percent" to Math.round(it.fraction * 100f))
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) (if (LocalStageScale.current != 1f) (3f / LocalStageScale.current).dp else 3.08.dp) else 3.dp).parityBackground(if (webTvStyle) "img" else "image", Color.White.copy(alpha = 0.2f)).semantics { role = Role.Image; contentDescription = watchedDescription }) {
                     // Web `.tv-watch-progress` (white 20%) and its `i` fill: `--brand` (#cf3157) in both themes.
                     Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", Color(0xFFCF3157)))
                 }
             }
             if (showUnwatched && stackCount <= 1 && shouldShowPlayarrUnwatchedDot(progress, progressLoaded = true)) {
-                PlayarrUnwatchedDot(Modifier.align(Alignment.TopEnd).padding(if (webPhone) 7.dp else if (webTvStyle) 10.5.dp else 8.dp).then(if (webTvStyle && !webPhone) Modifier.offset(x = 1.dp) else Modifier), size = if (webPhone) 9.dp else if (webTvStyle) 13.dp else 12.dp, halo = webPhone)
+                PlayarrUnwatchedDot((LocalHomeRailDotPx.current?.takeIf { webTvStyle && !webPhone }?.let { (dx, dy) -> Modifier.align(Alignment.TopStart).offset { androidx.compose.ui.unit.IntOffset(dx, dy) } }
+                    ?: Modifier.align(Alignment.TopEnd).padding(if (webPhone) 7.dp else if (webTvStyle) 10.5.dp else 8.dp).then(if (webTvStyle && !webPhone) Modifier.offset(x = 1.dp) else Modifier)), size = if (webPhone) 9.dp else if (webTvStyle) 13.dp else 12.dp, halo = webPhone)
             }
             if (stackCount > 1) {
                 Text(
@@ -6861,6 +6873,8 @@ private fun ExperienceVideoDetailContent(
                     afterMeta = availabilityLag
                         ?.takeIf { it.averageSeconds != null }
                         ?.let { lag -> { PlayarrAvailabilityLagLine(lag, webTv = true) } },
+                    // Web: `.tv-detail-actions` margin-top clamp(24, 3.5vu, 46), `.tv-detail-watchlist` (the series row) 0.75rem.
+                    actionsMarginCss = if (selectedEpisode != null) webLayoutUnit(0.75f * 16f) else webClamp(24f, 3.5f * webVu(0f, 1f, Float.MAX_VALUE).value, 46f),
                 )
                 VideoDetailActions(
                     work = detail.work,
@@ -6880,7 +6894,7 @@ private fun ExperienceVideoDetailContent(
                     autoFocusPlay = series == null,
                     playFocus = playFocus,
                     television = true,
-                    modifier = Modifier.padding(top = (if (selectedEpisode != null) 10.3.dp else 37.8.dp) + (if (LocalStageScale.current != 1f) (if (selectedEpisode != null) 6.dp else 9.dp) else 0.dp)),
+                    modifier = Modifier.padding(top = if (LocalStageScale.current != 1f) (if (selectedEpisode != null) 16.3.dp else 46.8.dp) else 0.dp),
                 )
               }
             }
@@ -7358,6 +7372,32 @@ private fun PhoneDetailActions(
     }
 }
 
+/**
+ * A web block flow laid out in LayoutUnits: each child is a block with a css margin above it and a line height (per line); the heights are the measured line
+ * counts times that line height, positions are the exact css sums from the container's fractional [originCss] and each is rounded once to a device pixel
+ * (the container's own box starts at the origin rounded). The height includes [gapAfterCss], the margin of whatever follows.
+ */
+@Composable
+internal fun WebCssStack(originCss: Float, gapAfterCss: Float, specs: List<Pair<Float, Float>>, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    androidx.compose.ui.layout.Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val d = density
+        val originPx = Math.round(originCss * d)
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        var y = 0f
+        val placed = measurables.mapIndexed { i, m ->
+            val (margin, line) = specs[i]
+            val p = m.measure(loose)
+            val lines = Math.max(1, Math.round(p.height / (line * d)))
+            y += webLayoutUnit(margin)
+            val at = Math.round((originCss + y) * d) - originPx
+            y += lines * webLayoutUnit(line)
+            p to at
+        }
+        val height = Math.round((originCss + y + gapAfterCss) * d) - originPx
+        layout(placed.maxOfOrNull { it.first.width } ?: 0, height) { placed.forEach { (p, at) -> p.place(0, at) } }
+    }
+}
+
 @Composable
 private fun VideoDetailCopy(
     work: Work,
@@ -7368,6 +7408,8 @@ private fun VideoDetailCopy(
     isTelevision: Boolean,
     /** Television: drawn between the meta chips and the synopsis (web puts the availability note there). */
     afterMeta: (@Composable () -> Unit)? = null,
+    /** Television at 1920: css margin between the copy's last line box and the actions row below it (the stack reports it as part of its height). */
+    actionsMarginCss: Float = 0f,
 ) {
     val language = LocalPlayarrLanguage.current
     val episodeNumber = episode?.episode?.episodeNumber
@@ -7396,7 +7438,16 @@ private fun VideoDetailCopy(
             }
             addAll(work.genres.take(3))
         }.filter(String::isNotBlank)
-        Column(Modifier.width(455.dp)) {
+        val cssStack = LocalStageScale.current == 1f
+        val stackSpecs = buildList {
+            add(0f to webLayoutUnit(1.5f * webVw(9.28f, 0.64f, 12.48f).value))
+            add(webClamp(18f, 2.4f * webVu(0f, 1f, Float.MAX_VALUE).value, 34f) to webLayoutUnit(0.9f * 69.12f))
+            if (episode?.episode?.title != null) add(webClamp(14f, 1.8f * webVu(0f, 1f, Float.MAX_VALUE).value, 24f) to webLayoutUnit(1.15f * 21.12f))
+            add(webClamp(18f, 2.5f * webVu(0f, 1f, Float.MAX_VALUE).value, 34f) to webLayoutUnit(1.5f * webVw(7.68f, 0.55f, 10.88f).value))
+            if (afterMeta != null) add(5.5f to 16f)
+            add(webClamp(16f, 2f * webVu(0f, 1f, Float.MAX_VALUE).value, 28f) to webLayoutUnit(1.58f * webVw(9.28f, 0.67f, 13.44f).value))
+        }
+        val stackBody: @Composable () -> Unit = {
             Text(
                 if (episodeNumber != null) {
                     "S${seasonNumber.toString().padStart(2, '0')} \u00B7 E${episodeNumber.toString().padStart(2, '0')}"
@@ -7411,7 +7462,7 @@ private fun VideoDetailCopy(
                 maxLines = 1,
                 modifier = if (episodeNumber != null) Modifier else Modifier,
             )
-            WebHeroTitle(work.title, Modifier.padding(top = if (LocalStageScale.current != 1f) 29.6.dp else webVu(18f, 2.4f, 34f)))
+            WebHeroTitle(work.title, Modifier.padding(top = if (!cssStack) 29.6.dp else 0.dp))
             episode?.episode?.title?.let { title ->
                 Text(
                     title,
@@ -7420,11 +7471,11 @@ private fun VideoDetailCopy(
                     fontWeight = FontWeight(570),
                     letterSpacing = (-0.739).sp,
                     maxLines = 1,
-                    modifier = Modifier.padding(top = if (LocalStageScale.current != 1f) 19.3.dp else webVu(14f, 1.8f, 24f)).semantics { heading() }, // web: h2 margin-top clamp(14px, 1.8vu, 24px)
+                    modifier = Modifier.padding(top = if (!cssStack) 19.3.dp else 0.dp).semantics { heading() }, // web: h2 margin-top clamp(14px, 1.8vu, 24px), placed by the css stack
                 )
             }
             androidx.compose.foundation.layout.FlowRow(
-                modifier = Modifier.padding(top = if (LocalStageScale.current != 1f) 26.dp else webVu(18f, 2.5f, 34f)),
+                modifier = Modifier.padding(top = if (!cssStack) 26.dp else 0.dp),
                 // 13.6 css px between chips; each chip's width is rounded up to a pixel, so the drift is cancelled by a gap 0.5 px shorter.
                 horizontalArrangement = io.playarr.shared.designsystem.page.FractionalSpacedArrangement(13.1.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -7442,7 +7493,7 @@ private fun VideoDetailCopy(
                     )
                 }
             }
-            afterMeta?.let { Box(Modifier.padding(top = 5.5.dp)) { it() } }
+            afterMeta?.let { Box(Modifier.padding(top = if (!cssStack) 5.5.dp else 0.dp)) { it() } }
             Text(
                 episode?.episode?.overview?.takeIf(String::isNotBlank)
                     ?: work.overview?.takeIf(String::isNotBlank)
@@ -7456,9 +7507,12 @@ private fun VideoDetailCopy(
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
                 // Tablet web measured at 1280 x 800 for series episodes: the synopsis is 3 dp lower and 347 dp wide (the actions row below keeps its place).
-                modifier = Modifier.padding(top = (if (LocalStageScale.current != 1f) (if (episode != null) 21.7.dp else 22.7.dp) + (if (episode != null) 3.dp else 0.dp) else webVu(16f, 2f, 28f))).widthIn(max = if (LocalStageScale.current != 1f && episode != null) 347.dp else 324.dp),
+                modifier = Modifier.padding(top = (if (!cssStack) (if (episode != null) 21.7.dp else 22.7.dp) + (if (episode != null) 3.dp else 0.dp) else 0.dp)).widthIn(max = if (LocalStageScale.current != 1f && episode != null) 347.dp else 324.dp),
             )
         }
+        if (cssStack) {
+            WebCssStack(originCss = webLayoutUnit(0.24f * 1080f), gapAfterCss = actionsMarginCss, specs = stackSpecs, modifier = Modifier.width(455.dp), content = stackBody)
+        } else Column(Modifier.width(455.dp)) { stackBody() }
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -11344,3 +11398,4 @@ internal class FractionalColumnArrangement(private val item: androidx.compose.ui
         for (i in sizes.indices) outPositions[i] = Math.round(i * pitch)
     }
 }
+

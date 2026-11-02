@@ -142,7 +142,7 @@ fun Text(
             )
         }
     } else androidx.compose.material3.Text(
-    text = text, modifier = modifier.cssText(webStyle(style, fontSize, lineHeight)), color = color, fontSize = fontSize, fontStyle = fontStyle, fontWeight = fontWeight, fontFamily = fontFamily, letterSpacing = letterSpacing, textDecoration = textDecoration, textAlign = textAlign, lineHeight = lineHeight, overflow = overflow, softWrap = softWrap, maxLines = maxLines, minLines = minLines, onTextLayout = onTextLayout, style = webStyle(style, fontSize, lineHeight),
+    text = text, modifier = modifier.cssText(webStyle(style, fontSize, lineHeight).withOverrides(fontSize, lineHeight, fontFamily, fontWeight, fontStyle)), color = color, fontSize = fontSize, fontStyle = fontStyle, fontWeight = fontWeight, fontFamily = fontFamily, letterSpacing = letterSpacing, textDecoration = textDecoration, textAlign = textAlign, lineHeight = lineHeight, overflow = overflow, softWrap = softWrap, maxLines = maxLines, minLines = minLines, onTextLayout = onTextLayout, style = webStyle(style, fontSize, lineHeight),
     )
 }
 
@@ -173,6 +173,15 @@ fun Text(
             )
         }
     } else androidx.compose.material3.Text(
-    text = text, modifier = modifier.cssText(webStyle(style, fontSize, lineHeight)), color = color, fontSize = fontSize, fontStyle = fontStyle, fontWeight = fontWeight, fontFamily = fontFamily, letterSpacing = letterSpacing, textDecoration = textDecoration, textAlign = textAlign, lineHeight = lineHeight, overflow = overflow, softWrap = softWrap, maxLines = maxLines, minLines = minLines, onTextLayout = onTextLayout, style = webStyle(style, fontSize, lineHeight),
+    text = text, modifier = modifier.cssText(webStyle(style, fontSize, lineHeight).withOverrides(fontSize, lineHeight, fontFamily, fontWeight, fontStyle)), color = color, fontSize = fontSize, fontStyle = fontStyle, fontWeight = fontWeight, fontFamily = fontFamily, letterSpacing = letterSpacing, textDecoration = textDecoration, textAlign = textAlign, lineHeight = lineHeight, overflow = overflow, softWrap = softWrap, maxLines = maxLines, minLines = minLines, onTextLayout = onTextLayout, style = webStyle(style, fontSize, lineHeight),
     )
 }
+
+/** The style the text is really drawn with: the explicit size, line height, family, weight and slant given to [Text] win over the ambient style the css line placement reads. */
+private fun TextStyle.withOverrides(fontSize: TextUnit, lineHeight: TextUnit, fontFamily: FontFamily?, fontWeight: FontWeight?, fontStyle: FontStyle?): TextStyle = copy(
+    fontSize = if (fontSize.isSpecified) fontSize else this.fontSize,
+    lineHeight = if (lineHeight.isSpecified) lineHeight else this.lineHeight,
+    fontFamily = fontFamily ?: this.fontFamily,
+    fontWeight = fontWeight ?: this.fontWeight,
+    fontStyle = fontStyle ?: this.fontStyle,
+)

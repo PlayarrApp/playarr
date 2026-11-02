@@ -207,3 +207,43 @@ internal fun FractionalPlacement(
         }
     }
 }
+
+/**
+ * Web TV week entry body (`.calendar-entry`: 1 px border + 0.5rem padding, `align-items: center`): children are poster, title, subtitle and meta row.
+ * The text column is title lines, subtitle lines and the meta row with [gapCss] between; the poster is centred on that column. Every offset is a
+ * LayoutUnit sum from the css line boxes ([lineCss]) and is rounded once, here. The card is as tall as the column plus the padding, never under the incoming minimum.
+ */
+@Composable
+internal fun WebEntryBody(
+    leftCss: Float,
+    columnLeftCss: Float,
+    padCss: Float,
+    lineCss: Float,
+    gapCss: Float,
+    metaHeightCss: Float,
+    columnRightInsetCss: Float,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    androidx.compose.ui.layout.Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val d = density
+        val maxW = (constraints.maxWidth - Math.round(columnLeftCss * d) - Math.round(columnRightInsetCss * d)).coerceAtLeast(0)
+        val poster = measurables[0].measure(androidx.compose.ui.unit.Constraints())
+        val title = measurables[1].measure(androidx.compose.ui.unit.Constraints(maxWidth = maxW))
+        val subtitle = measurables[2].measure(androidx.compose.ui.unit.Constraints(maxWidth = maxW))
+        val meta = measurables[3].measure(androidx.compose.ui.unit.Constraints(maxWidth = maxW))
+        val titleLines = Math.max(1, Math.round(title.height / (lineCss * d)))
+        val subtitleLines = Math.max(1, Math.round(subtitle.height / (lineCss * d)))
+        val subtitleTop = padCss + titleLines * lineCss + gapCss
+        val metaTop = subtitleTop + subtitleLines * lineCss + gapCss
+        val body = metaTop + metaHeightCss - padCss
+        val posterTop = padCss + (body - poster.height / d) / 2f
+        val height = Math.max(constraints.minHeight, Math.round((body + 2 * padCss) * d))
+        layout(constraints.maxWidth, height) {
+            poster.place(Math.round(leftCss * d), Math.round(posterTop * d))
+            title.place(Math.round(columnLeftCss * d), Math.round(padCss * d))
+            subtitle.place(Math.round(columnLeftCss * d), Math.round(subtitleTop * d))
+            meta.place(Math.round(columnLeftCss * d), Math.round(metaTop * d))
+        }
+    }
+}

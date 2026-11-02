@@ -695,21 +695,17 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
             // Web `.calendar-entry-meta` is a flex row whose items stretch: each text sits at the row top, the taller pill sets the row height.
             Row(Modifier, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = if (m === TvCalendarMetrics) Alignment.Top else Alignment.CenterVertically) { metaTexts() }
         }
-        if (tvWeek && !agenda && !wrapTitles && rowSubtitle.isNotEmpty()) {
+        if (tvWeek && !agenda && rowSubtitle.isNotEmpty()) {
             // Web TV week entry, in LayoutUnits (1/64 px) and rounded once where it is placed: 1 px border + 0.5rem padding above the body,
-            // the body is a column of two 1.8 line boxes (28.8) and the meta row with 0.15rem (2.4) gaps, the poster is centred in it (`align-items: center`).
-            val line = webLayoutUnit(1.8f * 16f)
-            val gap = webLayoutUnit(0.15f * 16f)
-            val metaTop = 2 * (line + gap)
-            val pillHeight = webLayoutUnit(18.8f + 2 * 2.88f + 2f)
-            val bodyHeight = metaTop + pillHeight
-            val padTop = 1f + webLayoutUnit(0.5f * 16f)
-            val posterTop = padTop + (bodyHeight - m.poster.second) / 2f
-            val left = if (selected) 16f else 15.6f
-            val columnLeft = left + m.poster.first + webLayoutUnit(0.9f * 16f)
-            FractionalPlacement(
-                positions = listOf(left to posterTop, columnLeft to padTop, columnLeft to padTop + line + gap, columnLeft to padTop + metaTop),
-                columnRightInset = 12f,
+            // the body is a column of the title and subtitle line boxes (1.8 = 28.8 each) and the meta row with 0.15rem (2.4) gaps, the poster is centred in it (`align-items: center`).
+            WebEntryBody(
+                leftCss = if (selected) 16f else 15.6f,
+                columnLeftCss = (if (selected) 16f else 15.6f) + m.poster.first + webLayoutUnit(0.9f * 16f),
+                padCss = 1f + webLayoutUnit(0.5f * 16f),
+                lineCss = webLayoutUnit(1.8f * 16f),
+                gapCss = webLayoutUnit(0.15f * 16f),
+                metaHeightCss = webLayoutUnit(18.8f + 2 * 2.88f + 2f),
+                columnRightInsetCss = 12f,
             ) {
                 posterBlock(); titleText(); subtitleText(); metaRow()
             }
