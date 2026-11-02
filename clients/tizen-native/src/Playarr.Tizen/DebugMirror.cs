@@ -166,7 +166,7 @@ internal sealed class DebugMirror
                             }
                             break;
                         // parity tooling: hide the own pixels of the candidate indices (/hide?idx=1,2) for a screen grab, and restore them (/unhide)
-                        case "/hide": LayoutExport.Hide(global::Tizen.NUI.Window.Instance.GetDefaultLayer(), (q["idx"] ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse), q["whole"] == "1"); break;
+                        case "/hide": LayoutExport.Hide(global::Tizen.NUI.Window.Instance.GetDefaultLayer(), (q["idx"] ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse), q["whole"] == "1", q["box"] == "1"); break;
                         case "/unhide": LayoutExport.Unhide(); break;
                         // parity tooling: natural single-line width of /measure?text=&size=&weight=&spacing= as the app would lay it out
                         case "/measure": measured = Ui.TextWidth(q["text"] ?? "", float.Parse(q["size"] ?? "16", System.Globalization.CultureInfo.InvariantCulture), int.Parse(q["weight"] ?? "400"), float.Parse(q["spacing"] ?? "0", System.Globalization.CultureInfo.InvariantCulture)); break;

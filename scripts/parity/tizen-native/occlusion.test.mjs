@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { changedInside, diffMask, planBatches, restoredDrift } from "./occlusion.mjs";
+import { changedAtSamples, changedInside, diffMask, planBatches, restoredDrift } from "./occlusion.mjs";
 
 const image = (w, h, fill = 10) => ({ width: w, height: h, data: new Uint8Array(w * h * 4).fill(fill) });
 const paint = (img, x0, y0, x1, y1, v) => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const o = (y * img.width + x) * 4; img.data[o] = img.data[o + 1] = img.data[o + 2] = v; } };
@@ -28,4 +28,17 @@ test("pixels that differ between two unchanged grabs are ignored", () => {
   assert.equal(changedInside([0, 0, 10, 10], a, b, noise), false);
   assert.equal(restoredDrift(a, b, noise), 0);
   assert.equal(restoredDrift(a, b, new Uint8Array(100)), 100);
+});
+
+test("web occluded() rule: nine clamped sample points decide, an edge-crossing box is judged on its on-screen part", () => {
+  const base = image(100, 100); const hidden = image(100, 100);
+  const noise = new Uint8Array(100 * 100);
+  paint(hidden, 0, 0, 100, 100, 200); // everything changed where the box is topmost
+  assert.equal(changedAtSamples([-50, 40, 80, 20], base, hidden, noise), true); // on-screen part x 0..30 is sampled
+  const covered = image(100, 100); // nothing changes: all nine samples covered
+  assert.equal(changedAtSamples([-50, 40, 80, 20], base, covered, noise), false);
+  assert.equal(changedAtSamples([-50, 40, 40, 20], base, hidden, noise), true); // no on-screen area: kept
+  const one = image(100, 100); paint(one, 50, 50, 51, 51, 99); // only the centre sample moves
+  assert.equal(changedAtSamples([20, 30, 60, 40], base, one, noise), true);
+  assert.equal(changedAtSamples([20, 30, 60, 40], base, one, Object.assign(new Uint8Array(100 * 100), { [50 * 100 + 50]: 1 })), false);
 });

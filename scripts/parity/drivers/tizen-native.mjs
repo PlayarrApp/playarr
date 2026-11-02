@@ -10,7 +10,7 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertDeviceTestIdentity, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl } from "../device-test-guard.mjs";
 import { captureWallTime } from "../capture-timezone.mjs";
-import { changedInside, decode as decodePng, diffMask, planBatches, restoredDrift } from "../tizen-native/occlusion.mjs";
+import { changedAtSamples, changedInside, decode as decodePng, diffMask, planBatches, restoredDrift } from "../tizen-native/occlusion.mjs";
 
 const SDB = process.env.PLAYARR_SDB ?? "sdb";
 const SERIAL = process.env.PLAYARR_TIZEN_SERIAL ?? "emulator-26101";
@@ -168,9 +168,9 @@ export async function createDriver({ request = call, delay = sleep, env = proces
           const noise = diffMask(decodePng(readFileSync(first)), base);
           const keep = new Set();
           const probe = `${file}.occlusion.png`;
-          const toggle = async (indices, whole) => {
+          const toggle = async (indices, whole, box = false) => {
             for (const batch of planBatches(indices.map((i) => doc.cands[i])).map((b) => b.map((k) => indices[k]))) {
-              await request("POST", `/hide?idx=${batch.join(",")}${whole ? "&whole=1" : ""}`);
+              await request("POST", `/hide?idx=${batch.join(",")}${whole ? "&whole=1" : ""}${box ? "&box=1" : ""}`);
               // the emulator can lag a frame behind a property change: take the grab once two consecutive grabs of the changed screen are identical
               let hidden = null;
               for (let attempt = 0; attempt < 8; attempt++) {
@@ -182,7 +182,7 @@ export async function createDriver({ request = call, delay = sleep, env = proces
                 if (settledGrab) break;
               }
               await request("POST", "/unhide");
-              for (const index of batch) if (changedInside(doc.cands[index], base, hidden, noise)) keep.add(index);
+              for (const index of batch) if (changedAtSamples(doc.cands[index], base, hidden, noise)) keep.add(index);
             }
           };
           try {
@@ -190,10 +190,8 @@ export async function createDriver({ request = call, delay = sleep, env = proces
             await toggle(all, false);
             // a container whose own fill is covered by what it holds (a poster over its card) is still visible through its content
             await toggle(all.filter((i) => !keep.has(i) && doc.cands[i][4] === 1), true);
-            // A box that crosses the screen edge cannot be settled by a pixel diff: the part that would show an occluder is outside the rendered
-            // screen, and a label whose first rows are blank (a line box taller than its ink) shows nothing in the strip that is on screen. The web
-            // dump lists it (it is in the DOM), so it stays unless the diff already proved it visible (nothing is learned by dropping it).
-            all.forEach((i) => { const [cx, cy, cw, ch] = doc.cands[i]; if (cx < 0 || cy < 0 || cx + cw > base.width || cy + ch > base.height) keep.add(i); });
+            // the box probe: the whole box painted loud shows where the box is topmost even when it has no ink there (a label's blank rows)
+            await toggle(all.filter((i) => !keep.has(i)), false, true);
           } finally { await request("POST", "/unhide"); rmSync(probe, { force: true }); }
           await delay(OCCLUSION_RENDER_MS);
           capture(probe);

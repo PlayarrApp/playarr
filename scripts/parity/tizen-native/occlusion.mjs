@@ -55,6 +55,25 @@ export function changedInside(rect, base, hidden, noise) {
   return false;
 }
 
+/**
+ * The web dump's occluded() rule on the real screen: its nine sample points (0.2, 0.5, 0.8 of the box clamped to the screen on each axis) decide visibility, and a
+ * candidate is visible when any of them shows a change in the grab with the candidate hidden or painted loud. A box with no on-screen area is never occluded
+ * (the web hit test finds nothing at a point outside the viewport and so keeps it).
+ */
+export function changedAtSamples(rect, base, hidden, noise) {
+  const l = Math.max(rect[0], 0), t = Math.max(rect[1], 0), r = Math.min(rect[0] + rect[2], base.width), b = Math.min(rect[1] + rect[3], base.height);
+  if (!(r > l) || !(b > t)) return true;
+  const fr = [0.2, 0.5, 0.8];
+  for (const a of fr) for (const c of fr) {
+    const x = Math.min(base.width - 1, Math.floor(l + (r - l) * a)), y = Math.min(base.height - 1, Math.floor(t + (b - t) * c));
+    const i = y * base.width + x;
+    if (noise[i]) continue;
+    const o = i * 4;
+    if (base.data[o] !== hidden.data[o] || base.data[o + 1] !== hidden.data[o + 1] || base.data[o + 2] !== hidden.data[o + 2]) return true;
+  }
+  return false;
+}
+
 /** Count of pixels (outside the unstable mask) whose colour moved by more than 8 on any channel between two grabs of what should be the same screen. */
 export function restoredDrift(base, after, noise) {
   let n = 0;

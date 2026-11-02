@@ -81,7 +81,7 @@ internal static class LayoutExport
     /// a container that only paints a fill, border or shadow has that paint turned into opaque magenta, so a fill that matches the colour beneath it still shows up when it is
     /// not covered, and what the container holds keeps drawing. With <paramref name="whole"/> every candidate is hidden with its subtree (a container counts as visible when it or what it holds is topmost somewhere, as the web's element lookup treats it). <see cref="Unhide"/> restores everything.
     /// </summary>
-    public static void Hide(Container root, IEnumerable<int> indices, bool whole = false)
+    public static void Hide(Container root, IEnumerable<int> indices, bool whole = false, bool box = false)
     {
         Unhide();
         var ctx = Collect(root);
@@ -90,6 +90,16 @@ internal static class LayoutExport
         {
             if (index < 0 || index >= ctx.Nodes.Count) continue;
             var n = ctx.Nodes[index]; var v = ctx.Views[n.Id];
+            if (box)
+            {
+                // box probe: the candidate's whole box is painted opaque magenta (behind its own ink), so where the box is topmost the real screen shows it even when the
+                // box has no ink there (a label's blank first rows). Images and paint-only fills have their own probes in the other passes.
+                if (v is ImageView || n.PaintOnly) continue;
+                var bc = v.BackgroundColor; var fill = new Color(bc.R, bc.G, bc.B, bc.A);
+                v.BackgroundColor = loud;
+                Restores.Add(() => v.BackgroundColor = fill);
+                continue;
+            }
             if (v is TextField input && !whole)
             {
                 // an input draws nothing of its own while it is empty (its placeholder is a sibling label), so hiding it changes no pixel: its box is painted loud instead, which shows on the real screen only where the field is topmost
@@ -207,7 +217,9 @@ internal static class LayoutExport
             {
                 // a section whose top edge is drawn as a hairline child (a top border) is a painted container
                 var hairline = role == "container" && child.Children.OfType<View>().Any(c => c.PositionY < 1 && c.Size.Height <= 1.5f && c.Size.Width >= size.Width * 0.95f && c.BackgroundColor.A > 0.02f);
-                var painted = fills || border || shadow || hairline; // a shadow-only helper is a candidate like any painted view: the toggle-and-diff on the real screen decides whether it shows
+                // a colour-only layer whose composite equals what is already under it adds no paint (docs/parity/LAYOUT.md; the web dump's visibleFill): it is not a fill
+                var sameAsUnder = fills && !border && !shadow && !hairline && Hex255(cbg) == Hex255(bg);
+                var painted = (fills && !sameAsUnder) || border || shadow || hairline; // a shadow-only helper is a candidate like any painted view: the toggle-and-diff on the real screen decides whether it shows
                 var control = role is not null and not ("container" or "none" or "text" or "img");
                 if (child is ImageView)
                     ctx.Nodes.Add(new Node(role == "video" ? name ?? "" : "", role is null or "none" ? "image" : role, cx, cy, w, h, null, Hex255(bg), null, null, radius, cop, id, role == "container" && Sem.IsOverlay(child)));

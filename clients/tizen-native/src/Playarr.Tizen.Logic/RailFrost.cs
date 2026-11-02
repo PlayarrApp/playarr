@@ -5,7 +5,7 @@ namespace Playarr.Tizen.Logic;
 /// <summary>
 /// The web's rail frost (global.css .tv-rail-surface, .tv-library-grid-panel): a pre-rendered 1 px high RGBA strip, one pixel per CSS pixel, drawn at
 /// the panel's left edge over whatever lies beneath. This reads the very same asset and composites it premultiplied, as the browser does, with no
-/// dither (see <c>Over</c> for the rounding).
+/// dither (see <c>Over</c>).
 /// </summary>
 public static class RailFrost
 {
@@ -54,15 +54,11 @@ public static class RailFrost
     }
 
     /// <summary>
-    /// Premultiplied source-over as the browser's raster does it, fitted against the web reference pixels (measured over the empty panel of Home, 93 %
-    /// dark and 96 % light exact bytes against 60 % and 83 % for round-both): the strip colour is premultiplied with round(c * a / 255) and the backdrop
-    /// share baseValue * (255 - a) / 255 is truncated on the side facing away from the strip colour, floor when the strip colour is the lighter one, ceiling when it is darker.
+    /// Premultiplied source-over on 8-bit channels, the plain definition: the strip colour is premultiplied (round(c * a / 255)), the backdrop keeps
+    /// round(baseValue * (255 - a) / 255), and the two add. No rule is chosen from reference pixels.
     /// </summary>
-    private static int Over(int c, int a, int baseValue)
-    {
-        var share = baseValue * (255 - a) / 255.0;
-        return (int)Math.Floor(c * a / 255.0 + 0.5) + (int)(c >= baseValue ? Math.Floor(share) : Math.Ceiling(share));
-    }
+    private static int Over(int c, int a, int baseValue) =>
+        (int)Math.Floor(c * a / 255.0 + 0.5) + (int)Math.Floor(baseValue * (255 - a) / 255.0 + 0.5);
 
     /// <summary>
     /// Columns [<paramref name="from"/>, <paramref name="to"/>) of the strip (strip-local) composited over the flat opaque colour
