@@ -2109,6 +2109,7 @@ private const val NAV_GAP_CSS = 2f
 private const val NAV_LINK_CSS = 44f
 private const val NAV_LINK_HEIGHT_CSS = 46f
 private const val NAV_ICON_CSS = 21f
+private const val NAV_PROFILE_NAME_CSS = 6.72f
 
 @Composable
 private fun ExperienceNavigation(
@@ -2184,11 +2185,12 @@ private fun ExperienceNavigation(
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.webAbs(left, linkTop, NAV_LINK_CSS, NAV_LINK_HEIGHT_CSS).semantics { contentDescription = tvProfile.description }.parityShape(14f),
                     ) {
-                        // The avatar's top keeps the inherited scaffold offset (9.3 css px under the link top); its box is snapped from css edges.
+                        // Web's profile link is a flex column (justify-content: center, gap 0) holding the 21px avatar and the name block (0.42rem high), so the
+                        // avatar sits (46 - 21 - NAV_PROFILE_NAME_CSS) / 2 under the link top; its box is snapped from css edges.
                         WebAbsoluteLayout(left, linkTop, NAV_LINK_CSS, NAV_LINK_HEIGHT_CSS) {
                             PlayarrProfileAvatar(
                                 userId = tvProfile.userId, preference = tvProfile.avatar,
-                                modifier = Modifier.webAbs(left + (NAV_LINK_CSS - NAV_ICON_CSS) / 2f, linkTop + 9.3f, NAV_ICON_CSS, NAV_ICON_CSS).parityBox("container", radius = 999f, cssShortSide = NAV_ICON_CSS),
+                                modifier = Modifier.webAbs(left + (NAV_LINK_CSS - NAV_ICON_CSS) / 2f, linkTop + (NAV_LINK_HEIGHT_CSS - NAV_ICON_CSS - NAV_PROFILE_NAME_CSS) / 2f, NAV_ICON_CSS, NAV_ICON_CSS).parityBox("container", radius = 999f, cssShortSide = NAV_ICON_CSS),
                                 artworkModifier = Modifier.parityBox("image"), glyphSize = 13.sp,
                             )
                         }
