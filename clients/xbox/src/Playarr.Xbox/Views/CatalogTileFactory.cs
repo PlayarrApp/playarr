@@ -236,6 +236,7 @@ namespace Playarr.Xbox.Views
                 CornerRadius = new CornerRadius(12.48),
                 Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
             };
+            PaintSnap.Attach(art); // the web paints the art on whole device pixels while its layout box stays fractional
             var episode = work.OnDeckEpisode;
             if (episode == null && work.Image(cover ? ImageKind.Poster : ImageKind.Thumb) == null && work.Image(ImageKind.Backdrop) == null && work.Image(ImageKind.Thumb) == null)
             {

@@ -219,18 +219,15 @@ namespace Playarr.Xbox.Views
         private static void ApplyHalo(Panel card, Grid art, bool focused, double ringOutset)
         {
             SetSoftGlow(card, art, focused, ringOutset);
-            if (!(art.RenderTransform is ScaleTransform scale))
-            {
-                scale = new ScaleTransform { ScaleX = 1, ScaleY = 1 };
-                art.RenderTransform = scale;
-                art.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
-            }
+            PaintSnap.Attach(art);
+            var scale = PaintSnap.FocusScale(art)!;
 
             var target = focused ? 1.025 : 1;
             if (ParityClock.IsPinned)
             {
                 // A parity capture shows the settled state: the end value is set directly so the frame never depends on when an animated transform was last re-rasterised.
                 scale.ScaleX = scale.ScaleY = target;
+                PaintSnap.Update(art);
                 return;
             }
 

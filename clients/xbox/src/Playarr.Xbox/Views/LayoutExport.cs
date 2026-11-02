@@ -83,6 +83,7 @@ namespace Playarr.Xbox.Views
             // A page that paints an opaque solid background (the player's black stage) hides the window ground behind it.
             _rootCovered = FindPage(root) is { Background: SolidColorBrush { Color.A: 255 } };
             Candidates.Clear();
+            PaintSnap.RefreshAll();
             // Images arrive and fade in on their own clock: read the layout only once the rendered frame has been identical
             // for three looks in a row, so the walk, the visibility pass and the screenshot all describe the same screen.
             for (var look = 0; look < 80 && !await SettledAsync(); look++)
@@ -90,7 +91,16 @@ namespace Playarr.Xbox.Views
                 await Task.Delay(400);
             }
 
-            Walk(root, root, scale, elements);
+            PaintSnap.Suspend(); // the boxes are the CSS layout; the art's pixel snap is paint only
+            try
+            {
+                Walk(root, root, scale, elements);
+            }
+            finally
+            {
+                PaintSnap.RefreshAll();
+            }
+
             var frame = await FrameHashAsync();
             var (kept, occluded) = await KeepVisibleAsync(root, elements);
             elements = kept;

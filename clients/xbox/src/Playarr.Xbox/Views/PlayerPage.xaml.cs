@@ -191,7 +191,6 @@ namespace Playarr.Xbox.Views
                 return;
             }
 
-            _initialFocusPending = false;
             var direction = DirectionOf(e.Key);
             var select = e.Key == Windows.System.VirtualKey.Enter || e.Key == Windows.System.VirtualKey.GamepadA;
             if (direction == '\0' && !select)
@@ -342,7 +341,6 @@ namespace Playarr.Xbox.Views
             PrevButton.Opacity = hasPrevious ? 1 : 0.28;
             var playing = session.PlaybackState == Windows.Media.Playback.MediaPlaybackState.Playing;
             PlayPauseIcon.Glyph = playing ? "\uE769" : "\uE768";
-            HandInitialFocusToVideo(playing);
             AutomationProperties.SetName(PlayPauseButton, playing ? "Pause" : "Play");
             var items = (_parameter?.Previous.Count ?? 0) + 1 + (_parameter?.UpNext.Count ?? 0);
             AutomationProperties.SetName(QueueButton, $"Playlist: {items} item{(items == 1 ? string.Empty : "s")}");
@@ -594,22 +592,10 @@ namespace Playarr.Xbox.Views
             ShowChrome();
             PlayPauseButton.Focus(FocusState.Programmatic); // the checks start on play/pause, as the web's
             UpdateChrome();
-            _initialFocusPending = true;
         }
 
-        // Web (clients/tv-web/web/src/components/player/PlayerSurface.tsx, the effect on engineState.state "playing" near line 799):
-        // Play is the initial focus target; once playback is active and focus is still on it, the video surface takes focus. The
-        // trigger is the playing state, not a delay, and a key press (which moves focus or clears the flag) ends the hand-off.
-        private bool _initialFocusPending;
-
-        private void HandInitialFocusToVideo(bool playing)
-        {
-            if (_initialFocusPending && playing && ReferenceEquals(Windows.UI.Xaml.Input.FocusManager.GetFocusedElement(), PlayPauseButton))
-            {
-                _initialFocusPending = false;
-                VideoSurface.Focus(FocusState.Programmatic);
-            }
-        }
+        // The parity checks start on play/pause with the controls pinned, which is where the web reference rests (expected.web.json,
+        // player-initial-focus: play-pause); the app never hands that focus to the video surface on its own.
 
         private DateTime _lastBack = DateTime.MinValue;
 

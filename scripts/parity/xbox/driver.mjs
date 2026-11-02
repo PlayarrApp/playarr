@@ -267,7 +267,7 @@ export async function createDriver() {
     async playerReady() {
       await requireTestAccount();
       run("write", "parity.resume", "1");
-      await until((t) => t.screen === "playback" && t.play === "playing" && /play|pause|video playback surface/i.test(t.focus ?? ""), 30, "the player playing with focus on play/pause or the video surface (the web hands focus to the video once playing)");
+      await until((t) => t.screen === "playback" && t.play === "playing" && /play|pause/.test(t.focus ?? ""), 30, "the player playing with focus on play/pause");
     },
     async playhead() { return trace().pos ?? 0; },
     async panelOpen() { return trace().playerPanel === true; },

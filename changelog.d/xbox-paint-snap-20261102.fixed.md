@@ -1,0 +1,1 @@
+- Xbox: library and rail card art paints on whole device pixels as the web does (layout box unchanged), and the player parity checks start on play/pause as the web reference does.
