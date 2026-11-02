@@ -38,6 +38,16 @@ function collectSelectors(styleSheets) {
   return [...selectors];
 }
 
+/**
+ * The box width as layout has it. `offsetWidth` is rounded to a whole pixel, so a 327.17px box gave a 327 / (16 / 9) = 183.94px
+ * height where `aspect-ratio` gives 327.17 / (16 / 9) = 184.03px. The fractional border-box width comes from the bounding rect;
+ * when a transform scales the box (the rect then no longer tracks the layout width) the rounded offsetWidth is used.
+ */
+function layoutWidth(element) {
+  const rect = element.getBoundingClientRect?.().width;
+  return rect !== undefined && Math.abs(rect - element.offsetWidth) <= 1 ? rect : element.offsetWidth;
+}
+
 /** Applies the fallback to the elements of `documentObject`; reads happen in one pass, writes in another, so it costs two layouts at most. */
 export function applyAspectRatios(documentObject, selectors, windowObject = window) {
   const elements = [];
@@ -60,7 +70,7 @@ export function applyAspectRatios(documentObject, selectors, windowObject = wind
     const style = windowObject.getComputedStyle(element);
     const ratio = parseRatio(style.getPropertyValue(PROPERTY));
     if (!ratio || element.offsetWidth === 0) continue;
-    const needed = element.offsetWidth / ratio;
+    const needed = layoutWidth(element) / ratio;
     const clips = style.overflowY !== "visible";
     if (clips ? Math.abs(element.offsetHeight - needed) > 0.5 : element.offsetHeight < needed - 0.5) writes.push([element, needed, clips]);
   }

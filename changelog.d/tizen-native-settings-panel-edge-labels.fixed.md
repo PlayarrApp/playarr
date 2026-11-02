@@ -1,0 +1,1 @@
+- Tizen native: Settings library panel is one opaque image over the page background (no key art lies beneath, the translucent left half was one level off on about half the columns); the layout dump keeps labels and buttons whose box crosses the screen edge (the web lists them from the DOM, a pixel diff of the visible strip cannot show them occluded).

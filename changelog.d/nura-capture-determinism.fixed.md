@@ -1,0 +1,1 @@
+- Nura parity captures are deterministic across a long route sequence: the capture repaint now resets the renderer caches, and the capture script needs two agreeing frames separated by a full repaint.

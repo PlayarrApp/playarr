@@ -312,8 +312,6 @@ button.pa-entry.week.have, button.pa-entry.week.have:hover { border-left-color: 
 button.pa-entry.week.missing, button.pa-entry.week.missing:hover { border-left-color: @pa_muted; }
 button.pa-entry.week .pa-chip-status { margin-top: 1px; margin-bottom: -1px; margin-left: 1px; min-height: 19px; }
 
-/* The web agenda sits on a faint wash with a lighter corner at the top left (white over the page, so invisible on the light theme) */
-.pa-agenda-bg { background: radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 150px), linear-gradient(180deg, rgba(255, 255, 255, 0.057) 0px, rgba(255, 255, 255, 0.057) 350px, rgba(255, 255, 255, 0) 450px); }
 
 /* The web's rail stack on a film page: a faint panel from the first rail down, brighter over its heading block and towards the right */
 .pa-rail-band { background: linear-gradient(90deg, rgba(255, 255, 255, 0.005), rgba(255, 255, 255, 0.057) 150px, rgba(255, 255, 255, 0.062) 360px) top / 100% 28px no-repeat, linear-gradient(90deg, rgba(255, 255, 255, 0.005), rgba(255, 255, 255, 0.03) 150px, rgba(255, 255, 255, 0.057) 360px); }

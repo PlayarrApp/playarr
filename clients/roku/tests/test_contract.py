@@ -62,6 +62,10 @@ class ApiContractTests(unittest.TestCase):
 
 
 class NavigationContractTests(unittest.TestCase):
+    def test_tv_stage_applies_the_theme_frost_at_init(self) -> None:
+        stage = (ROOT / "components" / "TvStage.brs").read_text(encoding="utf-8")
+        self.assertIn('m.global.observeField("themeMode", "onStageThemeChanged")\n    onStageThemeChanged()', stage)
+
     def test_calendar_posters_use_the_entry_provider_poster_and_never_leak_session_headers(self) -> None:
         self.assertGreaterEqual(PAGES.count("calendarArtworkUrl(entry)"), 1)
         self.assertIn("image.tmdb.org/t/p/w185/", PAGES)

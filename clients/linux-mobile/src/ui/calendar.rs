@@ -157,7 +157,7 @@ struct Cal {
     range_label: gtk4::Label,
     /// The period controls; the web sits them 18 px lower on week and month than on the agenda.
     controls: gtk4::Box,
-    /// Carries the agenda's backdrop wash.
+    /// The agenda page content.
     page: gtk4::Box,
     body: gtk4::Box,
     days_view: gtk4::ScrolledWindow,
@@ -796,11 +796,6 @@ impl Cal {
         } else {
             gtk4::Align::Start
         });
-        if v == View::Agenda {
-            self.page.add_css_class("pa-agenda-bg");
-        } else {
-            self.page.remove_css_class("pa-agenda-bg");
-        }
         // The web paints the rail surface only behind the agenda; month and week sit on the plain page surface.
         if let Some(scroll) = self.page.ancestor(gtk4::ScrolledWindow::static_type()) {
             if v == View::Agenda {

@@ -131,10 +131,8 @@ internal sealed class MediaCard
 
     private View? _stackNear, _stackFar, _shadow2; private TextLabel? _sub;
     private float _titleY, _subY;
-    /// <summary>Web Home: the focused card's caption rises 8 px with the card (the art's own lift is part of that).</summary>
-    public float FocusCaptionLift { get; init; }
-    /// <summary>Extra lift of the sub caption over the title's (web's two caption lines rise by slightly different amounts).</summary>
-    public float FocusSubExtraLift { get; init; }
+    /// <summary>Web: the selected caption takes --ink-max. The caption itself moves only with its card link (CSS translateY and scale), nothing is added per text.</summary>
+    public bool FocusInk { get; init; }
     /// <summary>Web Library: the focused card's link scales 1.015 and lifts 5 px (the layout export reports it; the art animates itself).</summary>
     public float LinkFocusScale { get; init; } = 1f;
     public float LinkFocusLift { get; init; }
@@ -188,11 +186,8 @@ internal sealed class MediaCard
         Box.PositionY = _boxY + (linkMoves ? ll : focused ? _boxLift : 0);
         Art.Scale = focused ? new Vector3(_scale / ls, _scale / ls, 1) : new Vector3(1, 1, 1);
         Art.PositionY = _artDy + (focused ? Local(_lift, _artDy + H / 2 - hb / 2) : 0);
-        if (FocusCaptionLift != 0)
+        if (FocusInk)
         {
-            var d = focused ? FocusCaptionLift : 0; var th = Title.Size.Height / Ui.TextScale;
-            Title.PositionY = _titleY + (focused ? Local(d, _titleY + th / 2 - hb / 2) : 0);
-            if (_sub is not null) _sub.PositionY = _subY + (focused ? Local(d + FocusSubExtraLift, _subY + 6.6f - hb / 2) : 0);
             // web: the selected caption takes --ink-max (white in dark, black in light)
             var max = _t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1);
             Title.TextColor = focused || keepInk ? max : Ui.C(_t.Ink); if (_sub is not null) _sub.TextColor = focused || keepInk ? max : Ui.C(_t.InkMuted);
@@ -407,7 +402,7 @@ internal sealed class MediaCard
     {
         var l = layout ?? CardLayout.From("thumbnail", "medium");
         return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: true, titleInset: 1.9f, scale: 1.025f, lift: -6, blur: 52, shadowY: 26, shadowAlpha: 0.32f, restBlur: 22,
-            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -5.93f, FocusSubExtraLift = -0.8f, LinkFocusLift = -6f };
+            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusInk = true, LinkFocusLift = -6f };
     }
 
     /// <summary>Web cover view: the poster is the art (poster first, backdrop as the fallback); an On deck episode keeps its frame.</summary>
@@ -478,7 +473,7 @@ internal sealed class MediaCard
     {
         var l = layout ?? CardLayout.Library(false, "medium");
         var media = new MediaCard(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: false, titleInset: 1.9f, scale: 1.04f, lift: -5.1f, blur: 48, shadowY: 24, shadowAlpha: 0.30f, restBlur: 20,
-            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -3.5f, LinkFocusScale = 1.015f, LinkFocusLift = -5f };
+            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusInk = true, LinkFocusScale = 1.015f, LinkFocusLift = -5f };
         media.Box.CornerRadius = 12; // web: the library card's link is 12 px rounded
         return media;
     }

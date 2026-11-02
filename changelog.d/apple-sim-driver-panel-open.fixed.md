@@ -1,0 +1,1 @@
+- Apple TV and Mac parity driver: report whether the player audio and subtitle panel is open (panelOpen) from the app state, so the player panel keys check panel:open or panel:closed instead of the focus label.

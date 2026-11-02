@@ -243,20 +243,13 @@ internal static class LayoutExport
     }
 
     /// <summary>
-    /// A fill with alpha over the backdrop: ordinary source-over composition of the native colour (8-bit channels, the alpha as CSS states it) in doubles on
-    /// the 0..255 scale. Nothing here imitates the browser's computed-style serialisation: the web dump parses its own strings, this reads the live NUI colour.
-    /// Hex255 is the schema conversion to the hex string (halves round up, as JS Math.round).
-    /// </summary>
-    /// <summary>
-    /// Plain source-over of a view colour on what is already drawn under it. The renderer stores the colour as 8-bit RGBA, so the alpha that blends is
-    /// the 8-bit one (0.7f * 255 = 178.4999 -> 178), the same alpha the device pixels carry; the exporter adds nothing else.
+    /// Plain source-over of a view colour on what is already drawn under it, in doubles on the 0..255 scale from the live NUI colour (the floats the app
+    /// set), the same arithmetic as the web dump's over(): no 8-bit quantisation of the alpha or of the layers in between. Only the final Hex255 rounds.
     /// </summary>
     private static (double R, double G, double B) Over((double R, double G, double B) bg, Color c)
     {
-        double a = Math.Floor((double)c.A * 255.0 + 0.5) / 255.0; // double: 0.7f * 255 is 178.49999 here, but the float product 0.7f * 255f rounds up to 178.5 and would give 179
-        // The framebuffer holds 8-bit channels, so every layer is quantised (nearest) before the next one blends over it, as the GPU's blend output is.
-        double Ch(double back, double top) => Math.Floor(Math.Floor(top * 255.0 + 0.5) * a + back * (1 - a) + 0.5);
-        return (Ch(bg.R, c.R), Ch(bg.G, c.G), Ch(bg.B, c.B));
+        double a = c.A;
+        return (c.R * 255.0 * a + bg.R * (1 - a), c.G * 255.0 * a + bg.G * (1 - a), c.B * 255.0 * a + bg.B * (1 - a));
     }
 
     private static string Hex255((double R, double G, double B) c) => $"#{(int)Math.Floor(c.R + 0.5):x2}{(int)Math.Floor(c.G + 0.5):x2}{(int)Math.Floor(c.B + 0.5):x2}"; // JS Math.round: halves up

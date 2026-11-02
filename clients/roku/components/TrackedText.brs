@@ -15,7 +15,8 @@ sub onSpecChange()
     weight = spec.weight
     tracking = 0.0
     if spec.tracking <> invalid then tracking = spec.tracking
-    font = PlayarrMakeFont(weight, size)
+    m.mono = (spec.mono = true)
+    font = PlayarrMakeFont(weight, size, m.mono)
     m.measure.font = font
     m.size = size
     m.weight = weight
@@ -102,6 +103,8 @@ sub onSpecChange()
                 end if
                 ' The font actually drawn (the bundled instance's weight, the integer pixel size the Font node takes), readable through ECP query/app-ui (node names are printed; fonts are not).
                 drawnWeight = PlayarrDrawnWeight(weight, Int(size + 0.5))
+                if m.mono then drawnWeight = 400
+                if m.mono and weight >= 600 then drawnWeight = 700
                 if spec.symbol = true then drawnWeight = PlayarrSymbolWeight(piece, weight)
                 glyph.id = "f" + Str(drawnWeight).Trim() + "s" + Str(Int(size + 0.5)).Trim()
                 ' Untracked text is set a word per Label, tracked text a character per Label: the export joins words with a space and characters directly.
@@ -164,11 +167,11 @@ end function
 
 ' Width of `prefix` as the web sets it (web advances at the real size, kerning included; fonts/NunitoSans-<w>.json).
 function advanceOf(prefix as String) as Float
-    return PlayarrTextWidth(prefix, m.size, m.weight, 0)
+    return PlayarrTextWidth(prefix, m.size, m.weight, 0, m.mono)
 end function
 
 function lineWidth(line as String, tracking as Float) as Float
-    return PlayarrTextWidth(line, m.size, m.weight, tracking)
+    return PlayarrTextWidth(line, m.size, m.weight, tracking, m.mono)
 end function
 
 ' Greedy word wrap into `width`; with `balance`, the narrowest width that keeps the same number of lines (CSS text-wrap: balance).

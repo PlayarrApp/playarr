@@ -1,0 +1,1 @@
+- Android phone parity audit corrections: the exporter drops rows hidden under a translucent cover (dark calendar-link Outlook line), the page title line height and month foot row follow the CSS, and fitted offsets are removed.

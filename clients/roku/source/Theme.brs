@@ -445,6 +445,19 @@ end function
 '   card                  16:9 art, --card-copy-gap 0.72rem, one title line (--card-title-size at line-height 1.5); the detail line hangs out of flow
 '   --tv-track-gap-section clamp(62px, 8.4 * --viewport-unit, 108px)
 ' (--viewport-unit is 1vh = 10.8 px on the 1080 px stage, 1rem is 16 px.) This is 365.859375.
+' --library-rail-top: clamp(128px, 15 * --viewport-unit, 174px), the padding above Home's first rail (.tv-home-rails.is-vertical-tracks).
+function WebLibraryRailTop() as Float
+    return WebClamp(128.0, 15.0 * 10.8, 174.0)
+end function
+
+' Top of the first Home card's art: the first track starts at --library-rail-top and the art follows the heading line box,
+' the heading margin-bottom and the rail's 18 px padding-top (the same terms WebHomeRailHeadingTop climbs back up).
+function WebHomeFirstArtTop() as Float
+    headingLine = WebLayoutUnit(1.5 * WebClamp(12.16, 0.92 * WebVw(), 18.88))
+    headingGap = WebLayoutUnit(WebClamp(12.0, 1.6 * 10.8, 20.0))
+    return WebLibraryRailTop() + headingLine + headingGap + 18.0
+end function
+
 function WebHomeRailPitch() as Float
     unit = 10.8
     headingLine = WebLayoutUnit(1.5 * WebClamp(12.16, 0.92 * WebVw(), 18.88))
@@ -544,10 +557,10 @@ function WebGridColumnShift(col as Integer) as Float
 end function
 
 ' The grid advances each row by the whole-pixel pitch (itemSize is laid out at Int(pitch): row 3 of a 240.41 pitch sits at 720, not 721), while the web
-' places row `row` at round(row * pitch). The card moves down by the difference (the grid's own y is a whole pixel).
+' places row `row` at row * pitch in LayoutUnits (1/64 px; the card top of row 1 is 402.41, not 402). The card moves down by the difference
+' (the grid's own y is a whole pixel).
 function WebGridRowShift(row as Integer) as Float
-    y = row * WebGridPitchY()
-    return Int(y + 0.5) - row * Int(WebGridPitchY())
+    return WebLayoutUnit(row * WebGridPitchY()) - row * Int(WebGridPitchY())
 end function
 
 ' Home rail cell: the card plus the 8 px focus-ring inset PosterCard keeps on each side (cardContentInsetX) = 343. Pitch stays web card + rail gap.

@@ -92,7 +92,7 @@ internal object PlayarrLayoutExport {
     /** The density the app lays css px out with (a web viewport is a whole number of css px wide); null when the platform density is used. */
     @Volatile internal var cssDensity: Float? = null
 
-    private class Item(val window: Int, val json: JSONObject, val x: Float, val y: Float, val w: Float, val h: Float, var occludes: Boolean, val hook: Boolean = false, val boxId: Int = -1, val controlBoxes: Set<Int>? = null, val order: Int = -1, val end: Int = -1, val chain: List<Int> = emptyList())
+    private class Item(val window: Int, val json: JSONObject, val x: Float, val y: Float, val w: Float, val h: Float, var occludes: Boolean, val hook: Boolean = false, val boxId: Int = -1, val controlBoxes: Set<Int>? = null, val order: Int = -1, val end: Int = -1, val chain: List<Int> = emptyList(), val paintAlpha: Float = 1f)
 
     private fun export(activity: Activity, screen: String, theme: String, captureId: String, file: File, candidates: Boolean) {
         val mainView = activity.window.decorView
@@ -138,7 +138,7 @@ internal object PlayarrLayoutExport {
                         // A box that paints nothing (a layout wrapper, a surface without a fill) is not an element: only painted containers are exported.
                         if ((box.kind == "fill" || box.kind == "container") && !painted) continue
                         pending += Triple(e, box.id, painted)
-                        ctx.add(e, x, y, b.width, b.height, occludes = (box.kind == "container" || box.kind == "fill") && painted && ((box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha > 0f) || (box.fill == androidx.compose.ui.graphics.Color.Unspecified && box.brushPainted)), hook = true, boxId = box.id)
+                        ctx.add(e, x, y, b.width, b.height, occludes = (box.kind == "container" || box.kind == "fill") && painted && ((box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha > 0f) || (box.fill == androidx.compose.ui.graphics.Color.Unspecified && box.brushPainted)), hook = true, boxId = box.id, paintAlpha = if (box.fill != androidx.compose.ui.graphics.Color.Unspecified) box.fill.alpha * effective else 1f * effective)
                     }
                 }
                 // Like the browser's backdrop: the fills of the box's own tree ancestors (and its own), outer to inner. A box that paints nothing
@@ -187,7 +187,7 @@ internal object PlayarrLayoutExport {
         }.toMap()
         val kept = if (candidates) unique.also {
             nominated.forEach { it.json.put("covered", true) }
-            sameWindow.forEach { (c, covers) -> c.json.put("covered", true).put("coverIds", JSONArray(covers.map { it.boxId })).put("chainIds", JSONArray(c.chain)) }
+            sameWindow.forEach { (c, covers) -> c.json.put("covered", true).put("coverIds", JSONArray(covers.map { it.boxId })).put("coverAlpha", covers.maxOf { it.paintAlpha }.toDouble()).put("chainIds", JSONArray(c.chain)) }
         } else unique.filter { it !in nominated }
         val ordered = kept.sortedWith(compareBy({ it.y }, { it.x }, { it.json.getString("role") }, { it.json.getString("text") }, { it.w })).map { it.json }
         val doc = JSONObject()
@@ -250,10 +250,10 @@ internal object PlayarrLayoutExport {
             return hex(c.toArgb())
         }
         /** Adds an element unless it lies wholly outside the viewport. Rectangles are in window px. */
-        fun add(json: JSONObject, x: Float, y: Float, w: Float, h: Float, occludes: Boolean = false, hook: Boolean = false, boxId: Int = -1, controlBoxes: Set<Int>? = null, nodeId: Int = -1) {
+        fun add(json: JSONObject, x: Float, y: Float, w: Float, h: Float, occludes: Boolean = false, hook: Boolean = false, boxId: Int = -1, controlBoxes: Set<Int>? = null, nodeId: Int = -1, paintAlpha: Float = 1f) {
             if (w <= 0f || h <= 0f || x >= width || y >= height || x + w <= 0f || y + h <= 0f) return
             val owner = if (nodeId >= 0) nodeId else if (boxId >= 0) tree.own.entries.firstOrNull { boxId in it.value }?.key ?: -1 else -1
-            items += Item(window, json, x, y, w, h, occludes, hook, boxId, controlBoxes, tree.order[owner] ?: -1, tree.end[owner] ?: -1, if (owner >= 0) tree.chain[owner].orEmpty() else emptyList())
+            items += Item(window, json, x, y, w, h, occludes, hook, boxId, controlBoxes, tree.order[owner] ?: -1, tree.end[owner] ?: -1, if (owner >= 0) tree.chain[owner].orEmpty() else emptyList(), paintAlpha)
         }
     }
 
