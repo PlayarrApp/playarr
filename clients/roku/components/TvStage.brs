@@ -9,8 +9,13 @@
 sub init()
     PlayarrFontifyTree(m.top, "TvStage")
     ThemeSetRole(m.top.findNode("keyArtFade"), "bg")
-    ThemeSetRole(m.top.findNode("homeRailFrostLight"), "homeRailFrost")
-    ThemeSetRole(m.top.findNode("homeRailFrostDark"), "homeRailFrost")
+    m.homeRailFrostLight = m.top.findNode("homeRailFrostLight")
+    m.homeRailFrostDark = m.top.findNode("homeRailFrostDark")
+    ThemeSetRole(m.homeRailFrostLight, "homeRailFrost")
+    ThemeSetRole(m.homeRailFrostDark, "homeRailFrost")
+    ' The frost is the web .tv-rail-surface background (a container painting a gradient): stamp it as a container box, as the card art backing does.
+    m.homeRailFrostLight.id = "a11y|container|0|"
+    m.homeRailFrostDark.id = "a11y|container|0|"
     ThemeInitComponent()
     m.global.observeField("themeMode", "onStageThemeChanged")
     onStageThemeChanged()
@@ -48,8 +53,8 @@ sub onContentBaseChange()
 end sub
 
 sub onStageThemeChanged()
-    m.top.findNode("homeRailFrostLight").visible = m.global.themeMode = "light"
-    m.top.findNode("homeRailFrostDark").visible = m.global.themeMode <> "light"
+    m.homeRailFrostLight.visible = m.global.themeMode = "light"
+    m.homeRailFrostDark.visible = m.global.themeMode <> "light"
 end sub
 
 ' Restores the pre-entrance (hidden/offset) state of every animated layer so

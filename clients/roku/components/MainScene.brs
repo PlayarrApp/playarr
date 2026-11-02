@@ -3819,6 +3819,12 @@ sub buildRailContent(row as Object, works as Object, isActive as Boolean, cardSc
         item.focusRingOutsideArt = homeRailIndex(row) >= 0
         item.AddField("homeCardFocusStyle", "boolean", false)
         item.homeCardFocusStyle = homeRailIndex(row) >= 0
+        ' The RowList lays its items out at a whole-pixel pitch (352), the web rail at card + gap (352.13): card i moves right by i * the remainder.
+        item.AddField("colShift", "float", false)
+        if homeRailIndex(row) >= 0 and m.homeCover <> true
+            railPitch = WebCardWidth() + WebRailGap()
+            item.colShift = artCardIndex * (railPitch - Int(railPitch))
+        end if
         ' Home and Similar Titles pass scaled art dimensions to match their
         ' respective web cards. homeCardFocusStyle separates Home's 6px /
         ' 1.025 focus transform from the larger layout scale.
