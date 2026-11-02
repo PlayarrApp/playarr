@@ -100,12 +100,15 @@ for route in "$@"; do
 
   # Redraw the whole surface, then wait for the app to take the request: a frame built from partial redraws can differ
   # in a few shadow pixels from a full one (see the repaint control in the app).
-  "$SSH" "printf %s repaint > $control_q" || { echo "failed to request repaint for route: $route" >&2; exit 1; }
-  for ((attempt=1; attempt<=ACK_ATTEMPTS; attempt++)); do
-    "$SSH" "[ ! -e $control_q ]" && break
+  repaint() {
+    "$SSH" "printf %s repaint > $control_q" || { echo "failed to request repaint for route: $route" >&2; return 1; }
+    for ((a=1; a<=ACK_ATTEMPTS; a++)); do
+      "$SSH" "[ ! -e $control_q ]" && break
+      sleep 2
+    done
     sleep 2
-  done
-  sleep 2
+  }
+  repaint || exit 1
   # Once per route, before the first screenshot: the idle wait above is what stalls the display (see nudge.sh).
   "$NUDGE" || { echo "display nudge failed for route: $route" >&2; exit 1; }
 
@@ -135,7 +138,13 @@ for route in "$@"; do
       continue
     fi
     previous=$current
-    if [ "$attempt" -lt "$STABILITY_ATTEMPTS" ]; then sleep "$STABILITY_DELAY"; fi
+    if [ "$attempt" -lt "$STABILITY_ATTEMPTS" ]; then
+      sleep "$STABILITY_DELAY"
+      # The two frames that agree must be separated by a full repaint: a display tile caught part-painted (a green or
+      # black block, first-draw shadow pixels) stays identical across plain captures and only a repaint clears it.
+      repaint || exit 1
+      "$NUDGE" || true
+    fi
   done
   if [ "$stable" -ne 1 ]; then
     echo "capture did not stabilise for route: $route" >&2

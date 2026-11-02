@@ -175,7 +175,7 @@ fi
 expect_error "$TEST_ROOT/nudge-failure.log" 'display nudge failed'
 
 run_case stable > "$TEST_ROOT/stable.log" 2>&1 || fail "stable capture failed"
-[ "$(wc -l < "$TEST_ROOT/nudge.log")" -eq 1 ] || fail "display was not nudged exactly once for the route"
+[ "$(wc -l < "$TEST_ROOT/nudge.log")" -eq 2 ] || fail "display was not nudged once before the first frame and once after the repaint between the two"
 [ -s "$TEST_ROOT/out/stable/DONE" ] || fail "stable capture did not write DONE"
 [ "$(wc -l < "$TEST_ROOT/identity.log")" -eq 3 ] || fail "identity verifier did not run before route and both screenshots"
 if run_case theme-only theme:dark > "$TEST_ROOT/theme-only.log" 2>&1; then
