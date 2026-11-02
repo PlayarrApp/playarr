@@ -7,16 +7,26 @@
  *   cmd=route&path=/movies         go to a web route (library pages, calendar views, settings, profiles)
  *   cmd=open&kind=movies&id=<id>   open a title's detail page by work id
  *   cmd=play&file=<media file id>  start playback of a media file
- *   cmd=armPause&ms=<n>            pause the player at n ms of playback, on the app's own clock
+ *   cmd=armPause&ms=<n>[&at=<m>]   pause the player at n ms of playback, on the app's own clock; at=<m> then puts the position on m ms
  *   cmd=stop                       stop playback and close the player
  *   cmd=theme&name=dark|light      set the in-app theme preference
  *   cmd=clock&now=<ISO instant>    freeze the app clock (shown in UTC, en-GB, like the web refs); `now` empty releases it
  */
-import {Linking} from 'react-native';
+import {Animated, Linking} from 'react-native';
 import {FocusManager} from '@amazon-devices/react-native-kepler';
 import {appNow, isClockFrozen, setParityClock} from '../shell/clock';
 
 export const PARITY_CONTROL = process.env.PLAYARR_PARITY_CONTROL === '1';
+
+// A parity capture must be the same frame on every run. Every timed animation (focus lift, stage entrance, scroll reveals)
+// is a moving source whose last few frames differ by a few levels between runs, so in a parity build each one jumps
+// straight to its end state: the app lands on the same frame it settles to, only without the motion.
+if (PARITY_CONTROL && Animated?.timing) {
+  const timing = Animated.timing;
+  const instant = ((value: Animated.Value | Animated.ValueXY, config: Animated.TimingAnimationConfig) =>
+    timing(value, {...config, duration: 0, delay: 0})) as typeof Animated.timing;
+  Object.defineProperty(Animated, 'timing', {value: instant, configurable: true, writable: true});
+}
 
 export interface FocusReport {
   label: string;
@@ -98,10 +108,10 @@ export interface ParityHooks {
   open(kind: string, id: string): void;
   play(file: string): void;
   stop(): void;
-  /** cmd=armPause&ms=<n>: pause the player itself the first time its position reaches n ms (ms empty disarms). */
-  armPause(ms: number | null): void;
+  /** cmd=armPause&ms=<n>: pause the player itself the first time its position reaches n ms (ms empty disarms); with atMs the position is then set to atMs, so the controls show the same position in every run. */
+  armPause(ms: number | null, atMs?: number | null): void;
   setTheme(name: 'dark' | 'light'): void;
-  player(): {state: string; positionSeconds: number; durationSeconds: number; error?: string};
+  player(): {state: string; positionSeconds: number; durationSeconds: number; bufferedSeconds?: number; error?: string};
   theme(): string;
   /** The layout document of the screen as drawn now, as JSON text (cmd=layout). */
   layout?(debug: string): Promise<string>;
@@ -128,6 +138,17 @@ export function parseCommand(url: string): Record<string, string> | null {
     if (key) out[decodeURIComponent(key)] = decodeURIComponent(value);
   }
   return out.cmd ? out : null;
+}
+
+/** The focused item as the state answer reports it: the last report, unless the native focus has moved to another reported item. */
+export function currentFocus(): FocusReport | null {
+  if (!PARITY_CONTROL) return null;
+  const nativeFocusTag = FocusManager.getFocused();
+  let focus = lastFocus;
+  if (focus?.eventTag !== undefined && focus.eventTag !== nativeFocusTag) {
+    focus = nativeFocusTag === undefined ? null : focusReportsByEventTag.get(nativeFocusTag)?.focus ?? null;
+  }
+  return focus;
 }
 
 export function installParityControl(hooks: ParityHooks): () => void {
@@ -157,7 +178,7 @@ export function installParityControl(hooks: ParityHooks): () => void {
         case 'play': hooks.play(command.file ?? ''); break;
         case 'stop': hooks.stop(); break;
         case 'cover': hooks.cover?.(command.on === '1'); break;
-        case 'armPause': hooks.armPause(command.ms ? Number(command.ms) : null); break;
+        case 'armPause': hooks.armPause(command.ms ? Number(command.ms) : null, command.at ? Number(command.at) : null); break;
         case 'theme': hooks.setTheme(command.name === 'light' ? 'light' : 'dark'); break;
         // `parityNow` is the campaign's name for the same freeze; both take now=<ISO> and the clock stays frozen (it does not tick).
         case 'parityNow':
@@ -171,11 +192,8 @@ export function installParityControl(hooks: ParityHooks): () => void {
     // Every command answers with the state, so the driver needs one read after it.
     setTimeout(() => {
       const nativeFocusTag = command.cmd === 'state' ? FocusManager.getFocused() : undefined;
-      let focus = lastFocus;
-      if (command.cmd === 'state' && focus?.eventTag !== undefined && focus.eventTag !== nativeFocusTag) {
-        focus = nativeFocusTag === undefined ? null : focusReportsByEventTag.get(nativeFocusTag)?.focus ?? null;
-      }
-      const state = {cmd: command.cmd, seq: command.seq ?? null, route: hooks.location(), focus, player: hooks.player(), theme: hooks.theme(), clock: isClockFrozen() ? appNow().toISOString() : null};
+      const focus = command.cmd === 'state' ? currentFocus() : lastFocus;
+      const state = {cmd: command.cmd, seq: command.seq ?? null, route: hooks.location(), focus, panel: Boolean(queries.playerMenu), player: hooks.player(), theme: hooks.theme(), clock: isClockFrozen() ? appNow().toISOString() : null};
       console.log('PARITY ' + JSON.stringify(command.cmd === 'state' ? {...state, nativeFocusTag} : state));
     }, command.cmd === 'state' ? 0 : 1500);
   };

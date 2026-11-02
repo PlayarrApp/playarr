@@ -2,7 +2,7 @@
 //   Web app: PLAYARR_WEB_URL (an already hosted build), else the built tv-web dist (PLAYARR_WEB_DIST, default clients/tv-web/web/dist) served
 //   from a local static server, else https://playarr.app. The device-test server serves only the API and admin, never the web app.
 //   PLAYARR_SERVER_URL, PLAYARR_USERNAME, PLAYARR_PASSWORD,
-//   PARITY_CHROME (browser path, default Playwright's), PLAYARR_WEB_MOBILE=1, PLAYARR_WEB_NO_DOWNLOADS=1 (hide Downloads like a device without storage), PLAYARR_WEB_USER_AGENT, and
+//   PARITY_CHROME (browser path, default Playwright's), PLAYARR_WEB_MOBILE=1, PLAYARR_WEB_NO_DOWNLOADS=1 (hide Downloads like a device without storage), PLAYARR_WEB_USER_AGENT, PLAYARR_WEB_PLAYBACK_QUERY (JSON, replaces playback-negotiation query parameters), and
 //   PLAYARR_WEB_VIEWPORT_WIDTH/HEIGHT/DPR (TV defaults 1920/1080/1; mobile defaults 390/844/3). Sessions are never shared: every run signs in fresh (new
 //   browser profile, so a new device id); login tokens stay in that browser context and are never written to disk.
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -410,6 +410,16 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       ...(mobile ? { isMobile: true, hasTouch: true } : {}),
       ...(session ? { storageState: session } : {}) });
     await ctx.addInitScript((t) => localStorage.setItem("playarr-theme", t), theme);
+    // PLAYARR_WEB_PLAYBACK_QUERY: JSON of playback-negotiation query parameters (audio_codecs, containers, ...) that replace the browser's own,
+    // so the web reference shows what the server negotiates for a native client's capability profile (the Fire TV D-pad reference).
+    if (env.PLAYARR_WEB_PLAYBACK_QUERY) {
+      const overrides = JSON.parse(env.PLAYARR_WEB_PLAYBACK_QUERY);
+      await ctx.route(/\/api\/v1\/playback\/[^/?]+(\?|$)/, (route) => {
+        const url = new URL(route.request().url());
+        for (const [key, value] of Object.entries(overrides)) url.searchParams.set(key, String(value));
+        return route.continue({ url: url.toString() });
+      });
+    }
     if (fixedNow) await ctx.addInitScript(installVisualDate, fixedNow);
     if (hashMode) await ctx.addInitScript((u) => { window.PlayarrPackagedConfig = { apiBaseUrl: u }; }, String(trustedServerUrl).replace(/\/$/, "")); // what the packaged app reads from its runtime config
     if (disableAnimations) await ctx.addInitScript(() => {

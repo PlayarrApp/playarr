@@ -18,7 +18,7 @@ mkdir -p "$out"
 rm -f "$out"/*.ttf
 # Latin, Latin-1, Latin Extended-A/B, general punctuation, arrows, currency, letterlike, geometric shapes, dingbats.
 unicodes='U+0020-007E,U+00A0-024F,U+2000-206F,U+20A0-20CF,U+2100-214F,U+2190-21FF,U+25A0-25FF,U+2713,U+2714,U+2715,U+2605,U+2606'
-for w in 300 400 480 560 610 640 680 720 760 820 900; do
+for w in 300 400 480 500 560 570 580 590 600 610 640 650 680 690 700 720 750 760 820 860 900; do
   "$py" -m fontTools.varLib.instancer "$src/NunitoSans-wght-web.ttf" wght=$w -q -o "$out/.tmp.ttf"
   "$py" -m fontTools.subset "$out/.tmp.ttf" --unicodes="$unicodes" --layout-features='kern,liga,calt,ccmp,locl,mark,mkmk' --output-file="$out/NunitoSans-w$w.ttf"
 done

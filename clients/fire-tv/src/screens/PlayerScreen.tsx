@@ -67,6 +67,8 @@ import {useApiClient} from '../api/ApiClientProvider';
 import {ensureFireTvAccessToken} from '../auth/session';
 import {useAppForeground, useRemoteKey} from '../platform';
 import {TvFocusScope, focusNode} from '../platform/focus';
+import {reportQuery} from '../debug/parityControl';
+import {audioCodecName, audioTrackLabel} from '../lib/trackLabels';
 import {useBackLayer} from '../navigation/backPolicy';
 import {DarkSurface} from '../theme/ThemeProvider';
 import {PlayerChrome, type ChromeControl} from '../player/PlayerChrome';
@@ -90,6 +92,8 @@ export interface PlayerLaunchOptions {
   /** The saved quality for the file: its id and the transcoding profile (`null` or missing plays the original). */
   qualityId?: string;
   profile?: string | null;
+  /** The titles that play one after another (an episode list, a playlist), in order; the launched file is one of them. Empty or missing is a single title. */
+  queue?: {mediaFileId: string; title: string}[];
 }
 
 export interface PlayerScreenHandle {
@@ -145,7 +149,9 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
   const [visible, setVisible] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [focusedControl, setFocusedControl] = useState<ChromeControl | null>('play');
-  const [menu, setMenu] = useState<'quality' | 'subtitles' | null>(null);
+  // What the native focus really is (set by the controls' own onFocus), for the retries that put it on Play.
+  const nativeControl = useRef<ChromeControl | null>(null);
+  const [menu, setMenu] = useState<'quality' | 'subtitles' | 'audio' | 'playlist' | 'info' | 'cast' | null>(null);
   const [seekTarget, setSeekTarget] = useState<number | null>(null);
   const [quality, setQuality] = useState<{id: string; profile?: string}>({id: 'original'});
   const [engineState, setEngineState] = useState<PlaybackEngineState>(() => engine.getState());
@@ -417,8 +423,16 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
   const lastInputAt = useRef(Date.now());
   const qualityPillRef = useRef<View>(null);
   const playRef = useRef<View>(null);
+  const keyedSinceOpen = useRef(false);
   const rootRef = useRef<View>(null);
   const subtitlesRef = useRef<View>(null);
+
+  // Hiding the controls must not take focus away from Play: a Back with nothing focused is not delivered to the layer below.
+  useEffect(() => {
+    if (!visible || controlsVisible) return undefined;
+    const timer = setTimeout(() => focusNode(playRef), 60);
+    return () => clearTimeout(timer);
+  }, [visible, controlsVisible]);
 
   const reveal = useCallback(() => {
     lastInputAt.current = Date.now();
@@ -428,11 +442,22 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
   // Back unwinds one layer per press: an open menu closes first (its own layer), then the controls hide, then playback exits.
   useBackLayer(visible, () => {
     if (controlsRef.current) {
+      // The ref moves now, not at the next render: a second Back right behind the first must find the controls hidden.
+      controlsRef.current = false;
       setControlsVisible(false);
       return;
     }
-    void stop().then(() => onClose?.());
+    // The player leaves the route at once; the bounded save of the progress runs behind it.
+    const stopped = stop();
+    onClose?.();
+    void stopped;
   });
+
+  // The parity driver reads whether the quality, audio or subtitles panel (the web's .player-quality-menu) is open.
+  useEffect(() => {
+    reportQuery('playerMenu', menu === 'quality' || menu === 'subtitles' || menu === 'audio' ? menu : null);
+    return () => reportQuery('playerMenu', null);
+  }, [menu]);
 
   // Auto-hide after about five seconds without input while playing; never while paused or with a menu open.
   useEffect(() => {
@@ -446,9 +471,18 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
   // The page under the player stays mounted and focusable: put focus on Play once the controls are up (the focus guide traps the D-pad).
   useEffect(() => {
     if (!visible) return undefined;
-    const timer = setTimeout(() => focusNode(playRef), 150);
+    // The engine can place focus on another control while the row mounts: retry until Play really holds it.
+    nativeControl.current = null;
+    keyedSinceOpen.current = false;
+    // The engine can also move focus later (the first focusable to mount wins): until the first key, Play takes it back.
+    const timer = setInterval(() => {
+      if (keyedSinceOpen.current || nativeControl.current === 'play') return;
+      focusNode(playRef);
+    }, 150);
+    const stopTimer = setTimeout(() => clearInterval(timer), 8000);
     return () => {
-      clearTimeout(timer);
+      clearInterval(timer);
+      clearTimeout(stopTimer);
     };
   }, [visible]);
 
@@ -490,6 +524,7 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
 
   useRemoteKey((key) => {
     if (!visible) return;
+    keyedSinceOpen.current = true;
     // The dedicated Play/Pause key always toggles playback and shows the controls.
     if (key === 'playPause') {
       reveal();
@@ -504,6 +539,8 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
     if (key === 'back' || key === 'menu') return;
     // The first input with the controls hidden only reveals them: it must not pause, seek or activate anything.
     if (!controlsRef.current) {
+      // The native focus engine still walks on this key although the controls are hidden; the web keeps focus where it was.
+      setTimeout(() => focusNode(playRef), 60);
       swallowPress.current = true;
       setTimeout(() => {
         swallowPress.current = false;
@@ -512,7 +549,10 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
       return;
     }
     reveal();
+    // The web's Down from the seek bar focuses Play (the row's first control), not the nearest view below.
+    if (focusedControl === 'scrubber' && menu === null && key === 'down') setTimeout(() => focusNode(playRef), 40);
     if (focusedControl === 'scrubber' && menu === null && (key === 'left' || key === 'right')) stepSeek(key === 'right' ? 1 : -1, true);
+    if (focusedControl === 'volume' && menu === null && (key === 'left' || key === 'right')) stepVolume(key === 'right' ? 1 : -1);
   });
 
   const guarded = useCallback((action: () => void) => () => {
@@ -527,7 +567,7 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
     const opener = menu;
     setMenu(null);
     // Focus returns to the control that opened the menu.
-    setTimeout(() => focusNode(opener === 'quality' ? qualityPillRef : subtitlesRef), 50);
+    setTimeout(() => focusNode(opener === 'quality' ? qualityPillRef : opener === 'subtitles' ? subtitlesRef : playRef), 50);
   }, [menu]);
 
   const selectQuality = useCallback(
@@ -540,6 +580,35 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
       setTimeout(() => focusNode(qualityPillRef), 50);
     },
     [quality.id],
+  );
+
+  // The queue: previous and next play the neighbours of the current file; a single title has neither.
+  const queue = launchOptions.queue ?? [];
+  const queueIndex = mediaFileId ? queue.findIndex((entry) => entry.mediaFileId === mediaFileId) : -1;
+  const hasPrev = queueIndex > 0;
+  const hasNext = queueIndex >= 0 && queueIndex < queue.length - 1;
+  const playQueueItem = useCallback(
+    (index: number) => {
+      const entry = queue[index];
+      if (!entry) return;
+      show(entry.mediaFileId, {queue, title: entry.title});
+    },
+    [queue, show],
+  );
+  // As the web does for HLS: the audio list is the one the server negotiated (source tracks plus any dub), labelled the web's way.
+  const sourceAudio = negotiation.status === 'ready' ? negotiation.data.audio_tracks : [];
+  const audioTracks: {id: string; label: string; language?: string | null}[] =
+    sourceAudio.length > 0
+      ? sourceAudio.map((track) => ({id: track.id, label: audioTrackLabel({label: track.label, language: track.language, codec: track.codec_label?.trim() || audioCodecName(track.codec), channels: track.channels}), language: track.language}))
+      : engineState.audioTracks;
+  const selectedAudioId = sourceAudio.length > 0 ? (negotiation.status === 'ready' ? negotiation.data.selected_audio_track_id : null) ?? sourceAudio[0].id : engineState.selectedAudioTrackId;
+  const audioLabel = audioTracks.length > 0 ? audioTracks.find((track) => track.id === selectedAudioId)?.label ?? audioTracks[0].label : null;
+  const stepVolume = useCallback(
+    (direction: 1 | -1) => {
+      engine.setMuted(false);
+      engine.setVolume(Math.round((engineState.volume + direction * 0.05) * 100) / 100);
+    },
+    [engine, engineState.volume],
   );
 
   const qualityOptions = negotiation.status === 'ready' ? negotiation.data.quality_options : [];
@@ -603,13 +672,31 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
           subtitlesOn={engineState.selectedSubtitleTrackId !== null}
           focused={focusedControl}
           onFocusControl={(control) => {
+            nativeControl.current = control;
+            // Focus that moves while the controls are hidden is the engine walking on the revealing key: Play keeps it, as on the web.
+            if (!controlsRef.current && control !== 'play') setTimeout(() => focusNode(playRef), 60);
             setFocusedControl(control);
-            reveal();
+            // Focus put back on Play while the controls are hidden must not raise them again (the next Back would only hide them once more); keys reveal on their own.
+            if (controlsRef.current) reveal();
           }}
           onTogglePlay={guarded(togglePlay)}
           onClose={guarded(() => void stop().then(() => onClose?.()))}
           onOpenQuality={guarded(() => setMenu('quality'))}
           onOpenSubtitles={guarded(() => setMenu('subtitles'))}
+          volume={engineState.volume}
+          muted={engineState.muted}
+          hasPrev={hasPrev}
+          hasNext={hasNext}
+          onPrev={guarded(() => playQueueItem(queueIndex - 1))}
+          onNext={guarded(() => playQueueItem(queueIndex + 1))}
+          onToggleMute={guarded(() => engine.setMuted(!engineState.muted))}
+          audioLabel={audioLabel}
+          onOpenAudio={guarded(() => setMenu('audio'))}
+          queueCount={Math.max(1, queue.length)}
+          onOpenPlaylist={guarded(() => setMenu('playlist'))}
+          onOpenInfo={guarded(() => setMenu('info'))}
+          onOpenCast={guarded(() => setMenu('cast'))}
+          onToggleFullscreen={guarded(() => setControlsVisible(false))}
           qualityRef={qualityPillRef}
           playRef={playRef}
           subtitlesRef={subtitlesRef}
@@ -642,6 +729,53 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
               }}
             />
           ))}
+        </Sheet>
+      ) : null}
+      {menu === 'audio' ? (
+        <Sheet title="Audio" onClose={closeMenu}>
+          {audioTracks.map((track) => (
+            <SheetOption
+              key={track.id}
+              label={track.label}
+              detail={track.language ?? undefined}
+              selected={selectedAudioId === track.id}
+              hasTVPreferredFocus={selectedAudioId === track.id}
+              onPress={() => {
+                if (engineState.audioTracks.some((candidate) => candidate.id === track.id)) void engine.selectAudioTrack(track.id);
+                closeMenu();
+              }}
+            />
+          ))}
+        </Sheet>
+      ) : null}
+      {menu === 'playlist' ? (
+        <Sheet title="Playlist" onClose={closeMenu}>
+          {(queue.length > 0 ? queue : [{mediaFileId: mediaFileId ?? '', title: launchOptions.title ?? 'Now playing'}]).map((entry, index) => (
+            <SheetOption
+              key={`${entry.mediaFileId}-${index}`}
+              label={entry.title}
+              selected={index === Math.max(0, queueIndex)}
+              hasTVPreferredFocus={index === Math.max(0, queueIndex)}
+              onPress={() => {
+                setMenu(null);
+                if (index !== queueIndex && queue.length > 0) playQueueItem(index);
+              }}
+            />
+          ))}
+        </Sheet>
+      ) : null}
+      {menu === 'info' ? (
+        <Sheet title="Info and playback health" onClose={closeMenu}>
+          <SheetOption label={`State: ${engineState.state}`} onPress={closeMenu} hasTVPreferredFocus />
+          <SheetOption label={`Position: ${formatClock(engineState.currentTimeSeconds)} of ${formatClock(engineState.durationSeconds)}`} onPress={closeMenu} />
+          <SheetOption label={`Buffered to: ${formatClock(engineState.bufferedSeconds)}`} onPress={closeMenu} />
+          <SheetOption label={`Quality: ${qualityLabel}`} onPress={closeMenu} />
+          <SheetOption label={`Volume: ${engineState.muted ? 'muted' : `${Math.round(engineState.volume * 100)}%`}`} onPress={closeMenu} />
+        </Sheet>
+      ) : null}
+      {menu === 'cast' ? (
+        <Sheet title="Play on another device" onClose={closeMenu}>
+          <SheetOption label="No other devices are paired with this one" onPress={closeMenu} hasTVPreferredFocus />
         </Sheet>
       ) : null}
     </View>

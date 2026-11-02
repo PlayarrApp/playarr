@@ -11,10 +11,72 @@ import {useTheme} from '../theme/ThemeProvider';
 import {PARITY_CONTROL} from '../debug/parityControl';
 import {registerLines} from '../debug/layoutExport';
 
-/** One web CSS pixel in device pixels. */
+/**
+ * The shared CSS length rule. Blink keeps every layout length as a LayoutUnit, a fixed-point number in 1/64 px that truncates
+ * the computed length (0.36rem = 5.76 px is laid out as 5.75 px). Every length resolved from the web CSS (vw, vh, rem and
+ * clamp()) goes through `layoutUnit`, so the sums the app lays out equal the sums Blink lays out before either snaps to a pixel.
+ */
+export function layoutUnit(px: number): number {
+  return Math.trunc(px * 64 + Math.sign(px) * 1e-6) / 64;
+}
+
+/** The web reference viewport the CSS lengths are resolved against: 1920 x 1080 CSS px, 1rem = 16 px. */
+const WEB_VIEWPORT = {width: 1920, height: 1080, rem: 16} as const;
+
+/** `N vw` of the web reference viewport, as a layout length in web px. */
+export function cssVw(n: number): number {
+  return layoutUnit((n * WEB_VIEWPORT.width) / 100);
+}
+
+/** `N vh` (the web's `--viewport-unit`) of the web reference viewport, as a layout length in web px. */
+export function cssVh(n: number): number {
+  return layoutUnit((n * WEB_VIEWPORT.height) / 100);
+}
+
+/** `N rem` as a layout length in web px. */
+export function cssRem(n: number): number {
+  return layoutUnit(n * WEB_VIEWPORT.rem);
+}
+
+/** `clamp(min, value, max)` over web px lengths already resolved with the helpers above. */
+export function cssClamp(min: number, value: number, max: number): number {
+  return layoutUnit(Math.min(max, Math.max(min, value)));
+}
+
+/**
+ * Page-layout lengths resolved from the web CSS (`page-layout.css`, `global.css`) with the rule above; nothing here is measured.
+ * `--page-start`, `.tv-home-feature` (top 24 %), `.tv-provider` margin-bottom and the hero paragraph margin-top.
+ */
+export const PAGE_START = cssClamp(102, cssVw(8), 160);
+export const HERO_TOP = cssVh(24);
+export const HERO_PROVIDER_GAP = cssClamp(18, cssVh(2.4), 34);
+export const HERO_COPY_GAP = cssClamp(16, cssVh(2), 28);
+/** `--page-control-height` and `--page-header-gap`: Back is as tall as the title line, the title follows after the gap. */
+export const PAGE_CONTROL = cssClamp(44, cssVw(2.8), 50);
+export const PAGE_HEADER_GAP = cssClamp(14, cssVw(1.2), 24);
+/** The right-hand column (`--stage-rail-vw` 62) and its paddings (`--card-pad-left`, `--card-pad-right`), and the library grid card sums. */
+export const RAIL_WIDTH = (62 * WEB_VIEWPORT.width) / 100;
+export const RAIL_LEFT = WEB_VIEWPORT.width - RAIL_WIDTH;
+/** Unsnapped: the web ref puts the first grid column at 783.36 (729.6 + 53.76), not on the 1/64 grid. */
+export const CARD_PAD_LEFT = Math.min(54, Math.max(28, (2.8 * WEB_VIEWPORT.width) / 100));
+const DIRECTORY_EDGE = cssClamp(5, cssVw(0.65), 14);
+export const ALPHABET_WIDTH = 56;
+export const CARD_PAD_RIGHT = layoutUnit(DIRECTORY_EDGE + Math.max(cssClamp(48, cssVw(3.6), 62), ALPHABET_WIDTH) + cssClamp(18, cssVw(1.5), 30));
+export const CARD_GRID_GAP = cssClamp(14, cssVw(1.35), 28);
+export const CARD_GRID_GAP_COVER = cssClamp(12, cssVw(1), 20);
+/** `--card-w` / `--card-w-cover`: the rail less its paddings and gaps, split into `cols` columns. */
+export function cardWidth(cols: number, gap: number): number {
+  return layoutUnit((RAIL_WIDTH - CARD_PAD_LEFT - CARD_PAD_RIGHT - (cols - 1) * gap) / cols);
+}
+/** The library alphabet column (`.tv-directory .tv-alphabet`): its top, its right edge and the grid's bottom padding. */
+export const ALPHABET_TOP = cssClamp(214, cssVh(25), 286);
+export const ALPHABET_X = layoutUnit(1920 - DIRECTORY_EDGE - ALPHABET_WIDTH);
+export const RAIL_BOTTOM = cssClamp(48, cssVh(6), 78);
+
+/** One web CSS pixel in device pixels, on the web's 1/64 px layout grid. */
 export function u(value: number): number {
   const scale = Dimensions.get('window').width / 1920;
-  return value * scale;
+  return layoutUnit(value * scale);
 }
 
 /** One web CSS pixel in device pixels without snapping to the pixel grid: font sizes, letter spacing and line heights stay fractional. */
@@ -92,11 +154,20 @@ export interface TProps {
  */
 export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines, heading, generic, group, style, onTextLayout, children}: TProps): React.ReactElement {
   const content = contentHeight(size, mono);
-  const single = lh !== undefined && (lines === 1 || lh < content);
+  // Parity builds: a run that laid out as one line is given the single-line form too (below), so its view box is the glyph run.
+  const [solo, setSolo] = useState(false);
+  const single = lh !== undefined && (lines === 1 || lh < content || solo);
   const run = textRun(uf(size), weight, {letterSpacing: ls === undefined ? undefined : uf(ls), lineHeight: lh === undefined ? undefined : uf(single ? content : lh), mono});
   const lead = lh === undefined ? 0 : (lh - content) / 2;
-  // Parity builds record the CSS size, weight and laid-out lines of every run for the layout exporter.
+  // Parity builds record the laid-out lines of every run for the layout exporter. A run that wraps is then drawn as one real Text
+  // per line (the renderer reports one box per Text, not per wrapped line), so every line's own bounds are measured. The last
+  // line keeps the rest of the source, so a run that was cut short with an ellipsis is still cut short.
   const node = React.useRef<object | null>(null);
+  const [pieces, setPieces] = useState<string[] | null>(null);
+  React.useEffect(() => {
+    setPieces(null);
+    setSolo(false);
+  }, [children]);
   const parity = PARITY_CONTROL
     ? {
         ref: (instance: object | null) => {
@@ -105,9 +176,38 @@ export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines
         onTextLayout: (event: NativeSyntheticEvent<TextLayoutEventData>) => {
           registerLines(node.current, event.nativeEvent.lines);
           onTextLayout?.(event);
+          const found = event.nativeEvent.lines;
+          if (found.length === 1 && lh !== undefined && !single) setSolo(true);
+          if (lines !== 1 && typeof children === 'string' && found.length > 1 && !pieces) {
+            const out: string[] = [];
+            let at = 0;
+            found.forEach((line, index) => {
+              if (index === found.length - 1) {
+                out.push(children.slice(at).trim());
+                return;
+              }
+              const text = (line as {text?: string}).text ?? '';
+              const hit = text ? children.indexOf(text.trim(), at) : -1;
+              if (hit < 0) return;
+              out.push(text.trim());
+              at = hit + text.trim().length;
+            });
+            if (out.length === found.length) setPieces(out);
+          }
         },
       }
     : {onTextLayout};
+  if (pieces) {
+    return (
+      <>
+        {pieces.map((piece, index) => (
+          <T key={index} size={size} weight={weight} ls={ls} lh={lh} dy={dy} color={color} upper={upper} mono={mono} lines={1} heading={heading} generic={generic} group={group} style={style}>
+            {piece}
+          </T>
+        ))}
+      </>
+    );
+  }
   return (
     <Text
       numberOfLines={lines}

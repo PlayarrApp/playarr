@@ -9,7 +9,7 @@ import {getSharedVegaPlaybackEngine} from '../platform/media/VegaPlaybackEngine'
 import type {PlayerScreenHandle} from '../screens/PlayerScreen';
 import {useTheme} from '../theme/ThemeProvider';
 import {exportLayout, LayoutProbe, setCover} from './layoutExport';
-import {currentQuery, installParityControl, PARITY_CONTROL, setPendingQuery} from './parityControl';
+import {currentFocus, currentQuery, installParityControl, PARITY_CONTROL, setPendingQuery} from './parityControl';
 
 /** The slice of the navigation container ref this host uses (the typed ref's route-name union is narrower than the strings it is given). */
 export interface NavRefLike {
@@ -88,13 +88,14 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
         playerRef.current?.show(file);
       },
       stop: () => void playerRef.current?.stop(),
-      armPause: (ms) => {
+      armPause: (ms, atMs) => {
         armedPause = ms;
+        armedPauseAt = atMs ?? null;
       },
       setTheme: (name) => setPreferenceRef.current(name),
       player: () => {
         const state = engine.getState();
-        return {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, error: state.error?.message};
+        return {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, bufferedSeconds: state.bufferedSeconds, error: state.error?.message};
       },
       theme: () => schemeRef.current,
       cover: setCover,
@@ -117,13 +118,19 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
       if (state.state === 'playing' && state.currentTimeSeconds * 1000 >= armedPause) {
         armedPause = null;
         // Paused on the player's own reported position (no seek: a seek while paused leaves the video plane black on Vega).
-        void engine.pause();
+        // The pause lands a variable few frames after the armed position, and the controls draw that position (label, bar fill):
+        // put it on the requested one so every run shows the same controls. The video frame under the controls is a listed
+        // exclusion (the video plane), so it may differ.
+        const at = armedPauseAt;
+        // Seek first, pause straight after: the player then decodes the target frame and holds it (a seek while already paused
+        // leaves the video plane on the old frame).
+        void (at === null ? Promise.resolve() : engine.seek(at / 1000)).then(() => engine.pause());
       }
     }, 10);
     const timer = setInterval(() => {
       if (!playerRef.current?.isVisible()) return;
       const state = engine.getState();
-      console.log('PARITY ' + JSON.stringify({cmd: 'tick', t: Date.now(), route: `/player/${lastPlayed}`, player: {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, error: state.error?.message}}));
+      console.log('PARITY ' + JSON.stringify({cmd: 'tick', t: Date.now(), route: `/player/${lastPlayed}`, focus: currentFocus(), player: {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, bufferedSeconds: state.bufferedSeconds, error: state.error?.message}}));
     }, 2000);
     return () => {
       clearInterval(timer);
@@ -137,3 +144,5 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
 let lastPlayed = '';
 /** A position (ms) at which the player pauses itself, set by cmd=armPause. */
 let armedPause: number | null = null;
+/** The position (ms) to put the paused player on, set by cmd=armPause&at. */
+let armedPauseAt: number | null = null;

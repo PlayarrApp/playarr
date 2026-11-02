@@ -4,7 +4,7 @@
  * its resolved style and window rect. `cmd=layout` logs the document in chunks the driver reassembles.
  */
 import React from 'react';
-import {Dimensions, StyleSheet, Text} from 'react-native';
+import {Dimensions, StyleSheet} from 'react-native';
 
 const textLines = new WeakMap<object, Array<{x: number; y: number; width: number; height: number}>>();
 
@@ -12,58 +12,13 @@ export function registerLines(instance: object | null, lines: Array<{x: number; 
   if (instance) textLines.set(instance, lines);
 }
 
-export interface FontExtent {
-  ascender: number;
-  descender: number;
-}
-
-/**
- * Hosts invisible probe Texts. The renderer reports the font's real ascender and descender (device px) for a Text without a line
- * height; the exporter asks for one per font file and size, so text bounds are measured and not computed from a metrics table.
- */
-export class LayoutProbe extends React.Component<unknown, {wanted: string[]}> {
-  state = {wanted: [] as string[]};
-  private extents = new Map<string, FontExtent>();
-  private waiting = new Map<string, Array<(e: FontExtent) => void>>();
+/** Anchors the exporter in the React tree: its fiber leads to the root. It renders nothing. */
+export class LayoutProbe extends React.Component {
   render(): React.ReactNode {
-    return this.state.wanted.map((key) => {
-      const [family, size] = key.split('|');
-      return (
-        <Text
-          key={key}
-          allowFontScaling={false}
-          style={{position: 'absolute', left: -4000, top: 0, opacity: 0, fontFamily: family, fontSize: Number(size), includeFontPadding: false}}
-          onTextLayout={(event) => {
-            const line = event.nativeEvent.lines[0] as {ascender?: number; descender?: number} | undefined;
-            if (!line || typeof line.ascender !== 'number' || typeof line.descender !== 'number') return;
-            // RN reports the descender as a positive distance below the baseline on some renderers and negative on others.
-            const extent = {ascender: Math.abs(line.ascender), descender: Math.abs(line.descender)};
-            this.extents.set(key, extent);
-            this.waiting.get(key)?.forEach((done) => done(extent));
-            this.waiting.delete(key);
-          }}
-        >
-          Hxg
-        </Text>
-      );
-    });
+    return null;
   }
   fiber(): any {
     return (this as any)._reactInternals;
-  }
-  /** The renderer's ascender and descender of a font file at a size (device px). */
-  extent(family: string, size: number): Promise<FontExtent | null> {
-    const key = `${family}|${size}`;
-    const known = this.extents.get(key);
-    if (known) return Promise.resolve(known);
-    return new Promise((resolve) => {
-      const timer = setTimeout(() => resolve(null), 15000);
-      this.waiting.set(key, [...(this.waiting.get(key) ?? []), (e) => {
-        clearTimeout(timer);
-        resolve(e);
-      }]);
-      if (!this.state.wanted.includes(key)) this.setState((s) => ({wanted: [...s.wanted, key]}));
-    });
   }
 }
 
@@ -267,14 +222,6 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
     }
     return false;
   });
-  const extents = new Map<string, FontExtent | null>();
-  const wanted = new Map<string, [string, number]>();
-  for (const h of hosts) {
-    if (String(h.fiber.type) !== 'RCTText') continue;
-    const st = StyleSheet.flatten(h.fiber.memoizedProps?.style) ?? {};
-    if (st.fontFamily && st.fontSize) wanted.set(`${st.fontFamily}|${st.fontSize}`, [String(st.fontFamily), st.fontSize]);
-  }
-  await Promise.all([...wanted].map(async ([key, [family, size]]) => extents.set(key, await probe.extent(family, size))));
   hosts.forEach((h, i) => {
     const r = rects[i];
     if (!r || r[2] < 0.5 || r[3] < 0.5) return;
@@ -306,25 +253,18 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
         if (debug) emit({...(base as LayoutElement), text: textOf(f), role: 'debug-no-lines', rect, color: null, fontSize: null, fontWeight: null, src});
         return;
       }
-      const text = textOf(f);
-      if (!text) return;
-      // One export entry per laid-out line, everything read from the renderer: the font file (family name) gives the weight, a probe
-      // Text of that file and size gives the real ascender and descender (the glyph run's height), the style gives size and colour,
-      // measureInWindow gives the view box and onTextLayout gives each line's x, width and height. Vega draws the first line's glyphs
-      // from the top of the view (the app keeps every line height at or above the content area, checked against screenshot ink),
-      // and each further line one laid-out line height lower.
+      // The app draws one real Text per line (T splits a wrapped run), so a Text with a single reported line is measured whole: the
+      // view box is the measured line box and onTextLayout gives the glyph run's own x and width. A Text still holding several
+      // lines has no per-line bounds to read and is not exported.
+      if (lines.length !== 1) {
+        if (debug) emit({...(base as LayoutElement), text: textOf(f), role: 'debug-multi-line', rect, color: null, fontSize: null, fontWeight: null, src});
+        return;
+      }
+      const line = lines[0]!;
+      const lineText = ((line as {text?: string}).text ?? '').replace(/\s+/g, ' ').trim();
+      if (!lineText) return;
       const family = String(style.fontFamily ?? '');
-      const extent = extents.get(`${family}|${style.fontSize}`);
-      const size = round2((style.fontSize ?? 0) / scale);
       const m = /-w(\d+)$/.exec(family);
-      // Glyph runs sit on whole device pixels: the ascent and descent each count in whole pixels.
-      // The glyph run's height: the probe's ascender and descender for this font file and size; where the probe could not lay out
-      // (it never does while the player is up), each line's own reported ascender and descender.
-      const runHeight = (line: unknown): number | null => {
-        const own = line as {ascender?: number; descender?: number};
-        if (extent) return Math.round(extent.ascender / scale) + Math.round(extent.descender / scale);
-        return typeof own.ascender === 'number' && typeof own.descender === 'number' ? Math.round(Math.abs(own.ascender) / scale) + Math.round(Math.abs(own.descender) / scale) : null;
-      };
       // The renderer draws the transformed text; onTextLayout reports the source text.
       const transform = (value: string): string =>
         style.textTransform === 'uppercase'
@@ -334,30 +274,16 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
             : style.textTransform === 'capitalize'
               ? value.replace(/(^|\s)(\S)/g, (_m, space: string, letter: string) => `${space}${letter.toUpperCase()}`)
               : value;
-      const native = lines;
-      // The view box is measured with the transforms of its ancestors, the line geometry of onTextLayout is not: the ratio of the
-      // measured height to the laid-out line heights is the scale the text is drawn at (a card scaled on focus).
-      let laidOut = 0;
-      for (const l of native) laidOut += l.height;
-      const k = laidOut > 0 && Math.abs(r[3] / laidOut - 1) > 0.01 && Math.abs(r[3] / laidOut - 1) < 0.25 ? r[3] / laidOut : 1;
-      let above = 0;
-      native.forEach((line, index) => {
-        const lineTop = above;
-        above += (line.height * k) / scale;
-        const lineText = ((line as {text?: string}).text ?? '').replace(/\s+/g, ' ').trim();
-        if (!lineText) return;
-        const runH = runHeight(line);
-        if (runH === null) return;
-        emit({
-          ...(base as LayoutElement),
-          text: transform(lineText),
-          role: webRole && webRole !== 'text' && webRole !== 'none' ? webRole : 'text',
-          rect: {x: round2(rect.x + (line.x * k) / scale), y: round2(rect.y + lineTop), w: round2((line.width * k) / scale), h: round2(runH * k)},
-          color: hex(style.color),
-          fontSize: size,
-          fontWeight: m ? Number(m[1]) : 400,
-          ...(debug && index === 0 ? {src: JSON.stringify({view: rect, size, lines, top: style.top, probe: extent, family})} : null),
-        });
+      const k = drawnScale[i]!;
+      emit({
+        ...(base as LayoutElement),
+        text: transform(lineText),
+        role: webRole && webRole !== 'text' && webRole !== 'none' ? webRole : 'text',
+        rect: {x: round2(rect.x + (line.x * k) / scale), y: rect.y, w: round2((line.width * k) / scale), h: rect.h},
+        color: hex(style.color),
+        fontSize: round2((style.fontSize ?? 0) / scale),
+        fontWeight: m ? Number(m[1]) : 400,
+        ...(debug ? {src: JSON.stringify({view: rect, lines, family})} : null),
       });
       return;
     }

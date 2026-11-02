@@ -6,6 +6,7 @@
  * discovery titles open native detail; remote titles expose request/watchlist actions where the web does.
  */
 import React, {useContext, useEffect, useMemo, useRef, useState} from 'react';
+import {PARITY_CONTROL} from '../debug/parityControl';
 import {Animated, Easing, Pressable, TextInput, View} from 'react-native';
 import type {DiscoverTitle, PlaylistResponse, WatchProgress, Work} from '@playarr-tv/api-client';
 import {useAsyncData} from '@playarr-tv/api-client/react';
@@ -49,10 +50,8 @@ const COL_PITCH = 353.1;
 const ROW_PITCH = 251.2;
 const ART_W = 327.2;
 const ART_H = 184;
-const GRID_CLIP_TOP = 150;
-/** The web grid reserves room for the focused card's lift, ring and glow (48 px left, the full header height above): the clip bleeds by that much, the fades keep the old edge. */
+/** The web grid reserves room for the focused card's lift, ring and glow (48 px left): the clip bleeds by that much. */
 const GRID_CLIP_BLEED_X = 48;
-const GRID_CLIP_BLEED_TOP = GRID_CLIP_TOP;
 
 export interface SearchScreenNavigation {
   navigate: (route: RouteName, params?: Record<string, unknown>) => void;
@@ -79,7 +78,7 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
   const [drawerFocused, setDrawerFocused] = useState(false);
   const filtersRef = useRef<View>(null);
   const filtersWereOpen = useRef(false);
-  const scrollY = useRef(new Animated.Value(u(-GRID_CLIP_TOP))).current;
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const wasOpen = filtersWereOpen.current;
@@ -133,7 +132,7 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
 
   useEffect(() => {
     const target = Math.max(0, row * ROW_PITCH - 120);
-    Animated.timing(scrollY, {toValue: u(-GRID_CLIP_TOP) - u(target), duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: false}).start();
+    Animated.timing(scrollY, {toValue: -u(target), duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: false}).start();
   }, [row, scrollY]);
 
   const kindLabel = (work: Work): string =>
@@ -227,7 +226,11 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
           {...lx('textbox', t('pages.search.searchPlaceholder'))}
           returnKeyType="search"
           hasTVPreferredFocus
-          style={{flex: 1, marginLeft: u(13), padding: 0, height: u(60), color: colour.ink, fontSize: u(17.28), textAlignVertical: 'center', ...sans(400)}}
+          // Parity builds draw no blinking caret (the web refs set caret-color transparent), so two captures match. This platform's input
+          // ignores caretHidden and cursorColor and draws the caret in the text colour, so an empty input is given a transparent text colour
+          // there (the placeholder is separate Text, and typed text keeps the ink colour).
+          {...(PARITY_CONTROL ? {caretHidden: true, cursorColor: 'transparent', selectionColor: 'transparent'} : null)}
+          style={{flex: 1, marginLeft: u(13), padding: 0, height: u(60), color: PARITY_CONTROL && query.length === 0 ? 'transparent' : colour.ink, fontSize: u(17.28), textAlignVertical: 'center', ...sans(400)}}
         />
         {/* The placeholder is drawn as a native Text over the empty input, so the row is laid-out text the exporter can read. */}
         {query.length === 0 ? (
@@ -350,8 +353,8 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
         </Box>
       ) : null}
 
-      <Box x={GRID_X - 20 - GRID_CLIP_BLEED_X} y={GRID_CLIP_TOP - GRID_CLIP_BLEED_TOP} w={1920 - GRID_X + 20 + GRID_CLIP_BLEED_X} h={1080 - GRID_CLIP_TOP + GRID_CLIP_BLEED_TOP} style={{overflow: 'hidden'}} pointerEvents="box-none">
-        <Animated.View style={{position: 'absolute', left: u(-(GRID_X - 20 - GRID_CLIP_BLEED_X)), top: Animated.add(scrollY, new Animated.Value(u(GRID_CLIP_BLEED_TOP))), width: u(1920)}} pointerEvents="box-none">
+      <Box x={GRID_X - 20 - GRID_CLIP_BLEED_X} y={0} w={1920 - GRID_X + 20 + GRID_CLIP_BLEED_X} h={1080} style={{overflow: 'hidden'}} pointerEvents="box-none">
+        <Animated.View style={{position: 'absolute', left: u(-(GRID_X - 20 - GRID_CLIP_BLEED_X)), top: scrollY, width: u(1920)}} pointerEvents="box-none">
           {discoveryExtras.length > 0 ? <Box x={GRID_X} y={GRID_Y + Math.floor(discoveryHeaderIndex / COLUMNS) * ROW_PITCH} w={800}>
             <T size={17.664} weight={610} color={colour.ink}>{mediaType === 'game' ? t('discovery.extras.gamesTitle') : t('discovery.extras.title')}</T>
           </Box> : null}
