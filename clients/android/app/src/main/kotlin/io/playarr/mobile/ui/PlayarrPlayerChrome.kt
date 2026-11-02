@@ -848,8 +848,7 @@ private fun PlayarrPlayerControlBar(
     val durationMs = timeline.durationMs.coerceAtLeast(0L)
     val displayedPositionMs = (scrubPositionMs ?: timeline.positionMs).coerceIn(0L, durationMs.coerceAtLeast(0L))
     val bufferedProgress = if (durationMs > 0L) {
-        // Parity captures (debug pause extra): the static web ref's video has buffered 46.6 s of the clip, the local player all of it.
-        (if (parityPauseAtMs != null) minOf(timeline.bufferedPositionMs, 22_840L) else timeline.bufferedPositionMs).toFloat() / durationMs.toFloat()
+        timeline.bufferedPositionMs.toFloat() / durationMs.toFloat()
     } else {
         0f
     }
