@@ -179,3 +179,32 @@ internal fun webPhoneMonth(monthTopCss: Float, viewportHeightCss: Float, weeks: 
     val rows = webTrackEdges(0f, webFrTracks(body, weeks))
     return WebPhoneMonth(header, pad, line, columns, rows)
 }
+
+/** A child's absolute css rectangle in the page, read by [WebAbsoluteLayout]. */
+internal class WebAbsRect(val x: Float, val y: Float, val w: Float, val h: Float)
+
+/** Declares where a child of [WebAbsoluteLayout] sits: absolute page css px (left, top, width, height). */
+internal fun Modifier.webAbs(x: Float, y: Float, w: Float, h: Float): Modifier =
+    this.then(object : androidx.compose.ui.layout.ParentDataModifier {
+        override fun androidx.compose.ui.unit.Density.modifyParentData(parentData: Any?): Any = WebAbsRect(x, y, w, h)
+    })
+
+/**
+ * Children at absolute web css rectangles ([webAbs]). The browser snaps every box edge once, from its summed css position
+ * (`round(css * dpr)`), so a box's device width is the difference of two snapped edges, not a rounded width. This layout is
+ * [widthCss] by [heightCss] with its own top-left at ([originXCss], [originYCss]) in the page.
+ */
+@Composable
+internal fun WebAbsoluteLayout(originXCss: Float, originYCss: Float, widthCss: Float, heightCss: Float, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    androidx.compose.ui.layout.Layout(content = content, modifier = modifier) { measurables, _ ->
+        val d = density
+        val bx = Math.round(originXCss * d); val by = Math.round(originYCss * d)
+        val placed = measurables.map { m ->
+            val r = m.parentData as WebAbsRect
+            val x0 = Math.round(r.x * d); val x1 = Math.round((r.x + r.w) * d)
+            val y0 = Math.round(r.y * d); val y1 = Math.round((r.y + r.h) * d)
+            Triple(x0 - bx, y0 - by, m.measure(androidx.compose.ui.unit.Constraints.fixed(x1 - x0, y1 - y0)))
+        }
+        layout(Math.round((originXCss + widthCss) * d) - bx, Math.round((originYCss + heightCss) * d) - by) { placed.forEach { (x, y, p) -> p.placeRelative(x, y) } }
+    }
+}

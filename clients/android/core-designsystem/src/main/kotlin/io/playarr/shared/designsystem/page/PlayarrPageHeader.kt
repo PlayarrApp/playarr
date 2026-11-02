@@ -117,8 +117,9 @@ internal fun PlayarrPageHeaderRow(
     val reservedStartPx = if (tv) with(density) { (PlayarrClockReservedStart - metrics.start).roundToPx() } else null
     SubcomposeLayout(modifier) { constraints ->
         val loose = Constraints()
-        val backSize = metrics.controlWidth.roundToPx()
-        val backHeight = metrics.control.roundToPx()
+        // Phone: Back is a css box whose two edges a browser snaps from their summed positions (left `--page-start`, top 14 + 2).
+        val backSize = if (tv) metrics.controlWidth.roundToPx() else (Math.round((metrics.start + metrics.controlWidth).value * density.density) - Math.round(metrics.start.value * density.density))
+        val backHeight = if (tv) metrics.control.roundToPx() else (Math.round((PHONE_TOP_INSET_CSS + metrics.headerTop.value + metrics.control.value) * density.density) - Math.round((PHONE_TOP_INSET_CSS + metrics.headerTop.value) * density.density))
         val gap = metrics.headerGap.roundToPx()
         val back = spec.back?.let { b ->
             subcompose("back") {

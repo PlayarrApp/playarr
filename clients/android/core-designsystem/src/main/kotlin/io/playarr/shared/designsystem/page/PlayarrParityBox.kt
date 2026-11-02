@@ -20,7 +20,7 @@ var parityLayoutEnabled = false
  * A painted box the layout export reads: only its measured bounds (through every layer transform), its kind (container, image or img)
  * and the alpha and corner radius the composable itself draws with. [fill] is set at paint time by [parityBackground], from the colour handed to the draw call.
  */
-class ParityBox(val view: View, var kind: String, var radius: Float, var opacity: Float, var fillAlpha: Float = 1f) {
+class ParityBox(val view: View, var kind: String, var radius: Float, var opacity: Float, var fillAlpha: Float = 1f, var cssShortSide: Float? = null) {
     /** True once a gradient or other brush fill was handed to the draw call (its colour is not one value, so [fill] stays unspecified). */
     var brushPainted = false
     val id: Int = nextParityBoxId.incrementAndGet()
@@ -83,15 +83,16 @@ val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<
  * Records this node's bounds for the layout export (docs/parity/LAYOUT.md). Only for something the composable paints itself: a filled or
  * clipped container (`container`), an image or icon (`image`) or a status dot (`img`). Controls, headings and text are read from the semantics tree.
  * [fillAlpha] is the alpha of the fill the box paints; a box painted at 0.5 or more covers what lies under it in lower windows.
- * [radius] is the dp corner radius the shape really uses (999 for a CircleShape); the export clamps it to half the measured short side.
+ * [radius] is the dp corner radius the shape really uses (999 for a CircleShape); the export clamps it to half the measured short side,
+ * or to half [cssShortSide] (the css px short side of a box placed at fractional css edges) when given: a browser clamps a pill to the css box, not the snapped device one.
  */
-fun Modifier.parityBox(kind: String, radius: Float = 0f, opacity: Float = 1f, fillAlpha: Float = 1f): Modifier =
+fun Modifier.parityBox(kind: String, radius: Float = 0f, opacity: Float = 1f, fillAlpha: Float = 1f, cssShortSide: Float? = null): Modifier =
     if (!parityLayoutEnabled) this else composed {
         val view = androidx.compose.ui.platform.LocalView.current
         // An image slot whose picture is not there (artwork placeholder) paints a container, not an image.
         val kind = if (kind == "image" && LocalParityImagePlaceholder.current) "container" else kind
         val box = remember { ParityBox(view, kind, radius, opacity, fillAlpha) }
-        box.density = androidx.compose.ui.platform.LocalDensity.current.density; box.kind = kind; box.radius = radius; box.opacity = opacity; box.fillAlpha = fillAlpha
+        box.density = androidx.compose.ui.platform.LocalDensity.current.density; box.kind = kind; box.radius = radius; box.opacity = opacity; box.fillAlpha = fillAlpha; box.cssShortSide = cssShortSide
         DisposableEffect(box) { parityBoxes.add(box); onDispose { box.coordinates = null; parityBoxes.remove(box) } }
         onGloballyPositioned { box.coordinates = it }.semantics { this[box.semanticsKey] = box.id }.hideWhenAsked(box)
     }
