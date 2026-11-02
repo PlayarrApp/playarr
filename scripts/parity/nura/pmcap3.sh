@@ -133,7 +133,7 @@ for route in "$@"; do
     fi
     if ! frame_clean "$image"; then
       echo "green artefact in capture for route: $route (attempt $attempt), repainting" >&2
-      previous=
+      # `previous` stays: the last clean frame came before the repaint, which is the pair the check wants.
       "$NUDGE" || true
       continue
     fi
