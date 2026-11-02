@@ -162,6 +162,7 @@ struct TVPlayerView: View {
         state.upcoming = viewModel.upcoming
         state.currentTitle = viewModel.currentTitle.isEmpty ? title : viewModel.currentTitle
         state.healthLines = viewModel.healthLines
+        state.panel = interaction.panel
         return state
     }
 
@@ -172,6 +173,11 @@ struct TVPlayerView: View {
         chrome.onMinimise = { dismiss() } // there is no mini player: minimising leaves playback, as Back does
         chrome.onTogglePlay = { handleSelect() }
         chrome.onToggleQualityMenu = { handleSelect() }
+        chrome.onOpenPanel = { title, control in
+            interaction.panel = interaction.panel == nil ? title : nil
+            if let control { interaction.focus = control }
+            interaction.reveal()
+        }
         chrome.onPrevious = { viewModel.playPrevious() }
         chrome.onNext = { viewModel.playNext() }
         chrome.onMute = { viewModel.toggleMute() }
@@ -263,6 +269,9 @@ struct TVPlayerView: View {
             .onChange(of: focusedControl) { _, control in
                 if let control { interaction.focus = control }
             }
+            #if DEBUG && (os(tvOS) || os(macOS))
+            .onChange(of: interaction.panel) { _, open in TVParityState.setPanel(open != nil) }
+            #endif
             #if os(tvOS)
             .defaultFocus($focusedControl, .surface)
             #endif

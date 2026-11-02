@@ -24,6 +24,8 @@ struct TVPlayerChromeState {
     var upcoming: [PlaybackQueueEntry] = []
     var currentTitle = ""
     var healthLines: [String] = []
+    /// The icon menu whose panel is open on a parity run (its title), nil when none: the system Menu popup cannot be observed.
+    var panel: String?
 
     var audioLabel: String {
         guard !audioTracks.isEmpty else { return "Audio: Unavailable" }
@@ -72,6 +74,8 @@ struct TVPlayerChrome: View {
     var onClose: () -> Void = {}
     var onTogglePlay: () -> Void = {}
     var onToggleQualityMenu: () -> Void = {}
+    /// Opens an icon menu's panel on a parity run (title, control).
+    var onOpenPanel: (String, TVPlayerControl?) -> Void = { _, _ in }
     var onMinimise: () -> Void = {}
     var onPrevious: () -> Void = {}
     var onNext: () -> Void = {}
@@ -114,6 +118,7 @@ struct TVPlayerChrome: View {
                 transport
                 rightGroup
                 if state.menuOpen { qualityMenu }
+                if let panel = state.panel { iconPanel(panel) }
             }
             .parityOpacity(controlsVisible ? 1 : 0)
             .parityScrim(Color.black, frame: CGRect(x: 0, y: 561.6, width: 1920, height: 518.4), stops: [(0, 0), (1, 0.82)]) // the scrim drawn above
@@ -251,17 +256,46 @@ struct TVPlayerChrome: View {
 
     /// An icon that opens a menu of choices (audio, subtitles, playlist, info).
     private func iconMenu<Items: View>(_ symbol: String, x: CGFloat, name: String, control: TVPlayerControl? = nil, @ViewBuilder items: () -> Items) -> some View {
-        Menu {
-            items()
-        } label: {
-            iconLabel(symbol, opacity: 0.92, enabled: true, name: name)
+        iconMenuBody(symbol, name: name, control: control, items: items)
+            .buttonStyle(TVFocusableCardButtonStyle())
+            .focusEffectDisabled()
+            .accessibilityLabel(name)
+            .modifier(TVOptionalFocusTag(binding: focus, control: control))
+            .macPlayerMenuTarget(name, name: control == .audio ? "audio" : nil)
+            .placed(x: x - 22, y: 958, w: 64, h: 64, alignment: .center)
+    }
+
+    /// A parity run opens an app-owned panel (its open state is what the driver reads); playback uses the system Menu.
+    @ViewBuilder
+    private func iconMenuBody<Items: View>(_ symbol: String, name: String, control: TVPlayerControl?, @ViewBuilder items: () -> Items) -> some View {
+        if TVParityLaunch.isParityRun {
+            Button { onOpenPanel(name, control) } label: { iconLabel(symbol, opacity: 0.92, enabled: true, name: name) }
+        } else {
+            Menu { items() } label: { iconLabel(symbol, opacity: 0.92, enabled: true, name: name) }
         }
-        .buttonStyle(TVFocusableCardButtonStyle())
-        .focusEffectDisabled()
-        .accessibilityLabel(name)
-        .modifier(TVOptionalFocusTag(binding: focus, control: control))
-        .macPlayerMenuTarget(name, name: control == .audio ? "audio" : nil)
-        .placed(x: x - 22, y: 958, w: 64, h: 64, alignment: .center)
+    }
+
+    /// The rows an icon menu offers, for the app-owned panel.
+    private func panelRows(_ title: String) -> [String] {
+        if title == state.audioLabel { return state.audioTracks.isEmpty ? ["No audio tracks to choose from"] : state.audioTracks.map(\.displayName) }
+        if title == state.subtitleLabel { return ["Off"] + state.subtitleTracks.map(\.displayName) }
+        if title == state.playlistLabel { return ["Now playing: \(state.currentTitle)"] + state.upcoming.map(\.title) }
+        return state.healthLines
+    }
+
+    private func iconPanel(_ title: String) -> some View {
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color(red: 18 / 255, green: 14 / 255, blue: 17 / 255).opacity(0.9))
+                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.white.opacity(0.08), lineWidth: 1))
+                .placed(x: 1074.8, y: 540, w: 620, h: 408)
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(panelRows(title).enumerated()), id: \.offset) { _, row in
+                    Text(row).font(TVTheme.font(size: 12.48, weight: .bold)).foregroundStyle(Color.white).lineLimit(1)
+                }
+            }
+            .placed(x: 1095.5, y: 560, w: 580, h: 368, alignment: .topLeading)
+        }
     }
 
     private static func clock(_ seconds: Double) -> String {
@@ -326,13 +360,13 @@ struct TVPlayerChrome: View {
                     Button((track.id == state.selectedAudioID ? "\u{2713} " : "") + track.displayName) { onSelectAudio(track.id) }
                 }
             }
-            iconMenu("text.rectangle", x: 1323.5 + shift, name: state.subtitleLabel) {
+            iconMenu("text.rectangle", x: 1323.5 + shift, name: state.subtitleLabel, control: .subtitles) {
                 Button((state.selectedSubtitleID == nil ? "\u{2713} " : "") + "Off") { onSelectSubtitle(nil) }
                 ForEach(state.subtitleTracks) { track in
                     Button((track.id == state.selectedSubtitleID ? "\u{2713} " : "") + track.displayName) { onSelectSubtitle(track.id) }
                 }
             }
-            iconMenu("text.line.last.and.arrowtriangle.forward", x: 1401.1 + shift, name: state.playlistLabel) {
+            iconMenu("text.line.last.and.arrowtriangle.forward", x: 1401.1 + shift, name: state.playlistLabel, control: .playlist) {
                 Text("Now playing: \(state.currentTitle)")
                 ForEach(state.upcoming) { entry in
                     Button(entry.title) { onPlayEntry(entry) }
@@ -367,7 +401,7 @@ struct TVPlayerChrome: View {
             .macPlayerTag("Quality: \(state.qualityLabel)")
             .accessibilityLabel("Quality: \(state.qualityLabel)")
             .placed(x: 1456.6 + shift, y: 959.8, w: 173.4, h: 60.5)
-            iconMenu("info.circle", x: 1652.8 + shift, name: "Info and playback health") {
+            iconMenu("info.circle", x: 1652.8 + shift, name: "Info and playback health", control: .info) {
                 ForEach(state.healthLines, id: \.self) { Text($0) }
             }
             icon("macbook.and.iphone", x: 1730.4 + shift, name: "Play on another device", action: onCast ?? {})
@@ -555,6 +589,9 @@ enum TVPlayerControl: Hashable {
     /// The video itself (web: the player's opening focus, named "video playback surface").
     case surface
     case audio
+    case subtitles
+    case playlist
+    case info
     case scrubber
     case play
     case quality
@@ -582,8 +619,14 @@ struct TVPlayerInteraction: Equatable {
     var focus: TVPlayerControl? = .surface
     var controlsVisible = true
     var menuOpen = false
+    /// The open icon menu panel (parity runs): Back closes it first and leaves focus on the control that opened it.
+    var panel: String?
 
     mutating func back() -> BackResult {
+        if panel != nil {
+            panel = nil
+            return .closedMenu
+        }
         if menuOpen {
             menuOpen = false
             focus = .quality
@@ -614,7 +657,7 @@ struct TVPlayerInteraction: Equatable {
             return nil
         }
         switch focus {
-        case .audio: return nil
+        case .audio, .subtitles, .playlist, .info: return nil
         case .surface, .scrubber, .play: return .togglePlayPause
         case .quality:
             openQualityMenu()

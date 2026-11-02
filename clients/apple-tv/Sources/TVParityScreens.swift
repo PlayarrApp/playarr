@@ -515,8 +515,12 @@ enum TVParityState {
     private static var playback: [String: Any]?
     private static var items: Int?
     private static var note: String?
+    private static var panel = false
 
     /// A short diagnostic the driver prints when a route is not reached (the Mac log only passes whitelisted markers).
+    /// Whether a player panel (audio, subtitles, playlist, info) is open: the driver's panelOpen.
+    static func setPanel(_ open: Bool) { panel = open; write() }
+
     static func setNote(_ text: String?) { note = text; write() }
 
     /// How many titles the open library page holds (nil off a library page): the driver waits for a loaded library before a capture.
@@ -675,7 +679,7 @@ enum TVParityState {
         let found = focusState()
         let state: [String: Any] = ["route": route, "userID": currentUserID, "focused": (tag ?? found.label) as Any, "item": found.item as Any,
                                     "at": Date().timeIntervalSince1970, "playback": playback as Any, "position": position as Any,
-                                    "items": items as Any, "note": note as Any]
+                                    "items": items as Any, "note": note as Any, "panel": panel]
         // `-PlayarrParityState <path>`: an explicit file (the Mac driver); otherwise the app's Documents folder.
         guard let data = try? JSONSerialization.data(withJSONObject: state), let target = stateURL else { return }
         do { try data.write(to: target, options: .atomic) } catch { NSLog("PlayarrParity: cannot write %@: %@", target.path, String(describing: error)) }
