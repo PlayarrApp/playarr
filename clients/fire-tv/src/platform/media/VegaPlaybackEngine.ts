@@ -208,6 +208,9 @@ export class VegaPlaybackEngine extends BasePlaybackEngine implements PlaybackEn
 
   private readBufferedEnd(player: VegaVideoPlayerLike): number {
     const {buffered} = player;
+    // Shaka's own account of the SourceBuffer (the ranges it appended) is read first: the element's `buffered` was seen to lag it by minutes while paused.
+    const shakaTotal = this.shakaPlayer?.getBufferedInfo?.().total;
+    if (shakaTotal && shakaTotal.length > 0) return shakaTotal[shakaTotal.length - 1].end;
     return buffered.length > 0 ? buffered.end(buffered.length - 1) : this.state.bufferedSeconds;
   }
 
@@ -304,8 +307,7 @@ export class VegaPlaybackEngine extends BasePlaybackEngine implements PlaybackEn
     player.addEventListener('error', handleError);
     player.addEventListener('volumechange', handleVolumeChange);
 
-    // The Vega player's `buffered` keeps growing while paused but it raises no `progress` event then (probed: the video reported 0-60 s
-    // while the state still held 3.9 s), so read the real range once a second as well; the value is the player's, nothing is inferred.
+    // No `progress` event is raised while paused (probed: the range reached 0-60 s while the state still held 3.9 s), so read the range once a second as well.
     const bufferedPoll = setInterval(handleProgress, 1000);
 
     this.activeCleanup.push(() => {

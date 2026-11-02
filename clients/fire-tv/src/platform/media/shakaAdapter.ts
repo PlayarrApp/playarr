@@ -81,6 +81,7 @@ export interface ShakaPlayerLike {
     forced?: boolean
   ): Promise<ShakaTrack>;
   seekRange(): {start: number; end: number};
+  getBufferedInfo?(): {total: Array<{start: number; end: number}>};
 }
 
 export interface ShakaRequestTypeEnum {
