@@ -361,14 +361,14 @@ export async function createDriver({ out } = {}) {
     async location() {
       return (await state()).route;
     },
-    // Known state for the player checks, as the web's playerReady: the controls are up and Play holds the focus (its label reads
-    // play or pause). The raising Right of playerControls can have walked the focus on to Mute: Left walks it back.
+    // Known state for the player checks, as the web's playerReady: the controls are up and Play holds the focus (it reads pause while the clip plays,
+    // as on the web). The raising Right of playerControls can have walked the focus on to Mute: Left walks it back.
     async playerReady() {
       for (let i = 0; i < 8; i++) {
         const f = await this.focused();
-        if (/^(play|pause)$/.test(f?.label ?? "")) return;
-        await this.key("left");
-        await sleep(800);
+        if (f?.label === "pause") return; // playing, Play focused: the web's playerReady state
+        if (f?.label === "play") await this.key("select"); else await this.key("left");
+        await sleep(1500);
       }
       throw new Error("the Vega player did not focus play/pause");
     },
