@@ -7510,6 +7510,23 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
     linear-gradient(0deg, var(--bg), transparent 26%);
 }
 
+/* The TV stage (exactly 1920x1080) draws the page background and the ::before edge fades from one pre-rendered image
+   (scripts/generate-gradient-assets.mjs): CSS gradients are dithered per engine, a decoded PNG is the same bytes everywhere.
+   Every other viewport keeps the CSS gradients above (the image would stretch). */
+@media (width: 1920px) and (height: 1080px) {
+  .profiles-page {
+    background: url("../assets/gradients/profiles-bg-light-1920x1080.png") 0 0 / 100% 100% no-repeat;
+  }
+
+  :root[data-theme="dark"] .profiles-page {
+    background: url("../assets/gradients/profiles-bg-dark-1920x1080.png") 0 0 / 100% 100% no-repeat;
+  }
+
+  .profiles-page::before {
+    content: none;
+  }
+}
+
 .profiles-heading {
   position: absolute;
   z-index: 3;

@@ -126,11 +126,44 @@ export function agendaFadeColumn(theme, h) {
   return col;
 }
 
+
+// .profiles-page: the page background (a radial brand glow over a 145deg surface-to-bg wash) plus the ::before edge fades
+// (`linear-gradient(90deg, bg, transparent 25%)` over `linear-gradient(0deg, bg, transparent 26%)`) in one opaque image, the page
+// being the whole 1920x1080 stage. Every layer is evaluated at the pixel centre in straight float RGB with CSS's premultiplied
+// interpolation (the glow and fades keep one colour, only alpha ramps) and rounded once, so no engine dithers it.
+export const profilesWidth = 1920;
+export const profilesHeight = 1080;
+export function profilesImage(theme, w, h) {
+  const { tok } = themes[theme];
+  const brand = themes.light.tok.brand, bg = tok.bg, surface = tok.surface;
+  const img = Buffer.alloc(w * h * 4);
+  const ang = (145 * Math.PI) / 180, dx = Math.sin(ang), dy = -Math.cos(ang);
+  const len = Math.abs(w * dx) + Math.abs(h * dy);
+  const cx = w * 0.5, cy = h * 0.48;
+  const rad = Math.hypot(Math.max(cx, w - cx), Math.max(cy, h - cy)); // circle, farthest-corner
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const px = x + 0.5, py = y + 0.5;
+      const lt = Math.min(Math.max(0.5 + ((px - w / 2) * dx + (py - h / 2) * dy) / len, 0), 0.72) / 0.72;
+      let c = [0, 1, 2].map((i) => surface[i] + (bg[i] - surface[i]) * lt);
+      const ra = 0.13 * (1 - Math.min(Math.hypot(px - cx, py - cy) / rad / 0.34, 1));
+      c = c.map((v, i) => v * (1 - ra) + brand[i] * ra);
+      const ya = 1 - Math.min((h - py) / h / 0.26, 1); // 0deg runs bottom to top
+      c = c.map((v, i) => v * (1 - ya) + bg[i] * ya);
+      const xa = 1 - Math.min(px / w / 0.25, 1);
+      c = c.map((v, i) => v * (1 - xa) + bg[i] * xa);
+      img.set([Math.round(c[0]), Math.round(c[1]), Math.round(c[2]), 255], (y * w + x) * 4);
+    }
+  }
+  return img;
+}
+
 export function buildAssets() {
   const out = new Map();
   for (const theme of Object.keys(themes)) {
     for (const w of widths) out.set(`rail-frost-${theme}-${w}.png`, encodePng(w, 1, railFrostRow(theme, w)));
     out.set(`details-scrim-${theme}-${scrimWidth}x${scrimHeight}.png`, encodePng(scrimWidth, scrimHeight, scrimImage(theme, scrimWidth, scrimHeight)));
+    out.set(`profiles-bg-${theme}-${profilesWidth}x${profilesHeight}.png`, encodePng(profilesWidth, profilesHeight, profilesImage(theme, profilesWidth, profilesHeight)));
     out.set(`agenda-fade-${theme}-${agendaFadeHeight}.png`, encodePng(1, agendaFadeHeight, agendaFadeColumn(theme, agendaFadeHeight)));
   }
   return out;
