@@ -212,7 +212,7 @@ button.pa-entry .pa-chip-status.agenda { min-height: 21px; }
 /* Week cards keep their earlier look until measured against the web week */
 button.pa-entry.week, button.pa-entry.week:hover { background: @pa_surface_strong; border-color: @pa_line; }
 button.pa-entry.week.missing { border-left-color: @pa_brand_ink; }
-.pa-today-chip { font-size: 11.2px; letter-spacing: 1px; font-weight: 640; padding: 0 10px; min-height: 20px; color: @pa_day; }
+.pa-today-chip { font-size: 11.2px; letter-spacing: 0.896px; font-weight: 640; padding: 0 10px; min-height: 20px; color: @pa_day; }
 .pa-thumb { border-radius: 6px; }
 .pa-thumb-img { border-radius: 6px; }
 
@@ -249,7 +249,7 @@ button.pa-letter { background: none; border: none; box-shadow: none; padding: 0;
 .pa-search text { caret-color: transparent; }
 
 /* Month grid, as the web's calendar-month cells */
-.pa-mday { font-size: 12px; letter-spacing: 1.3px; color: @pa_muted; padding: 14px 6px 6px; }
+.pa-mday { font-size: 12px; letter-spacing: 0.96px; color: @pa_muted; padding: 14px 6px 6px; }
 .pa-mcell { border: 1px solid @pa_line; padding: 1px 5px 1px; }
 .pa-mcell.outside { background: #241f23; color: @pa_muted; }
 .pa-mcell.today { box-shadow: inset 0 0 0 2px @pa_accent; }

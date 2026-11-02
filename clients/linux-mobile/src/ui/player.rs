@@ -587,8 +587,12 @@ fn start_pipeline(
             set_icon(&toggle, "p-play");
         }
         let pos = player.position_ms();
+        // The web lays the time out as flex items with a 0.35rem (5.6 px) gap and no tracking. A space plus Pango letter
+        // spacing gives each gap the same advance, derived from the font's own space width.
+        let space = times_inner.create_pango_layout(Some(" ")).size().0;
+        let gap = ((5.6 * f64::from(gtk4::pango::SCALE)) as i32 - space).max(0);
         times_inner.set_markup(&format!(
-            "{}<span foreground=\"#a5969e\" letter_spacing=\"2048\"> / </span>{}",
+            "{}<span letter_spacing=\"{gap}\"> </span><span foreground=\"#a5969e\">/</span><span letter_spacing=\"{gap}\"> </span>{}",
             super::detail::fmt_clock(pos),
             super::detail::fmt_clock(dur)
         ));
