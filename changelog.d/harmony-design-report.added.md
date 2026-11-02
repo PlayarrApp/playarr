@@ -1,0 +1,1 @@
+- HarmonyOS TV and phone: a design_report option on the Harmony capture workflow also captures the watchlist, requests, playlists, downloads and sites pages and every Settings section, for the design report.

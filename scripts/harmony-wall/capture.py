@@ -20,6 +20,7 @@ THEME = sys.argv[4] if len(sys.argv) > 4 else "dark"  # phone: the Previewer sta
 TV_SCREENS_RAW = os.environ.get("TV_SCREENS", "all").strip()
 SKIP_PLAYER_REQUESTED = os.environ.get("SKIP_PLAYER", "false").lower() == "true"
 PHONE_CORE_ONLY_REQUESTED = os.environ.get("PHONE_CORE_ONLY", "false").lower() == "true"
+DESIGN_REPORT = os.environ.get("DESIGN_REPORT", "false").lower() == "true"  # design report: also capture the screens beyond the parity set
 PLAYER_FIXTURE_OVERRIDE = os.environ.get("HARMONY_PLAYER_FIXTURE_ID", "")
 PLAYER_FIXTURE_SOURCE = None
 CTL = "http://127.0.0.1:" + ("40117" if device == "phone" else "40017")
@@ -305,6 +306,25 @@ route("home", 20)
 SCREENS_TV = None
 
 
+def design_routes(folder, floor):
+    """Design report: the app's other route-reached pages (each guarded; a failure lists the screen as missing, never stops the run)."""
+    for name, r in (("watchlist", "watchlist"), ("requests", "requests"), ("playlists", "playlists"),
+                    ("downloads", "downloads"), ("sites", "library:site")):
+        guarded(name, lambda name=name, r=r: (route(r, 15), snap(name, folder, floor)))
+
+
+def design_settings(folder, first_x, first_y, pitch, floor, done=()):
+    """Design report: each Settings section panel, opened by tapping its row in the section list (Settings.ets SECTION_ORDER)."""
+    order = ("settings-appearance", "settings-profile-avatar", "settings-language", "settings-player", "settings-server",
+             "settings-profile-lock", "settings-invite", "settings-remote", "settings-your-data", "settings-home")
+    for i, name in enumerate(order):
+        if name in done:
+            continue
+        def one(name=name, y=first_y + pitch * i):
+            route("profiles", 8); route("settings", 12); click(first_x, int(y)); time.sleep(5); snap(name, folder, floor)
+        guarded(name, one)
+
+
 def extra_screens(folder):
     """Screens a click cannot reach in one step: the actions drawer (long press on a card) and the player controls."""
     try:
@@ -476,6 +496,9 @@ def walk(folder, suffix):
         open_detail("movies", (946, 254), 12); snap(n("film-detail"), folder); leave_detail()
         open_detail("series", (946, 254), 12); focus_first_card(); snap(n("series-detail"), folder); leave_detail()
     extra_screens(folder)
+    if DESIGN_REPORT and device == "tv":
+        design_routes(folder, 150000)
+        design_settings(folder, 394, 208, 91.89, 100000)
     if os.environ.get("MOTION") == "true" and device == "tv":
         motion_walk(os.path.join(out, "motion", "dark" if folder.endswith("dark") else "light"))
     if os.environ.get("POSTER_MODE") == "true" and device == "tv":
@@ -859,6 +882,10 @@ else:
     guarded("calendar-period", period_picker)
     for nm, yy in (("settings-appearance", 347), ("settings-player", 1139), ("settings-server", 1403)):
         guarded(nm, lambda nm=nm, yy=yy: settings_panel(nm, yy))
+
+    if DESIGN_REPORT:
+        design_routes(folder, 40000)
+        design_settings(folder, 540, 347, 264, 40000, done=("settings-appearance", "settings-player", "settings-server"))
 
     # Round 3 poster mode: Settings > Appearance > Home screen artwork = Covers, then each artwork size, and Home in each (the setting
     # lives in the Previewer's in-memory preferences, so it takes effect for the Home routes that follow in this run). Buttons at 3 px per vp.

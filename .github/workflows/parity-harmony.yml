@@ -51,6 +51,10 @@ on:
         description: Round 3 motion bursts (Home scroll, rails, Filters by swipes), TV only
         type: boolean
         default: false
+      design_report:
+        description: Design report - also capture the route-reached pages and every Settings section (watchlist, requests, playlists, downloads, sites, settings-*)
+        type: boolean
+        default: false
       rail_patch:
         description: Apply the preview-only MediaRail @Prop patch (turn off to test whether the app needs it)
         type: boolean
@@ -139,6 +143,7 @@ jobs:
       PHONE_CORE_ONLY: ${{ inputs.phone_core_only == true && 'true' || 'false' }}
       MOTION: ${{ inputs.motion == true && 'true' || 'false' }}
       POSTER_MODE: ${{ inputs.poster == true && 'true' || 'false' }}
+      DESIGN_REPORT: ${{ inputs.design_report == true && 'true' || 'false' }}
       MESA_VERSION: 26.2.4
       THEME: ${{ matrix.theme }}
       SDK_BUILD: "31" # the public SDK is 6.1.0.<build>; split so the env-data guard does not read it as an IPv4 address
