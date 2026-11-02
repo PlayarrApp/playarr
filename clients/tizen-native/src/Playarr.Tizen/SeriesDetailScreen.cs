@@ -50,7 +50,7 @@ internal sealed class SeriesDetailScreen : IPage
         
         _root.Add(Sem.Tag(Ui.PanelWash(_t), "container")); // web: the right rail panel frosts the key art (the page top is not a surface fade)
         _root.Add(_content);
-        _root.Add(Ui.HorizontalEdgeFade(TizenClient.DesignWidth, 0, TizenClient.DesignHeight, _t.Surface, atLeft: false));
+        _root.Add(Ui.HorizontalEdgeFade(TizenClient.DesignWidth, 0, TizenClient.DesignHeight, Ui.PanelEdgeColour(_t), atLeft: false));
         _root.Add(Ui.EdgeFade(ClipX, TizenClient.DesignHeight, TizenClient.DesignWidth - ClipX, _t.Surface, atTop: false));
         _ = LoadAsync();
     }
