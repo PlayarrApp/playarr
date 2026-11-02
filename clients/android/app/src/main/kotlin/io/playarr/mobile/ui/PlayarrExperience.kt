@@ -3213,8 +3213,7 @@ private fun ExperienceHomeScreen(
                     // Web centres the focused rail on the viewport, so a taller card (portrait posters, small thumbnails) lifts the row by half
                     // the extra height: measured on web at all three sizes in both modes, 389.9 dp at the 327.2 x 184 dp medium thumbnail.
                     val homeCentredTop = (389.9.dp - (homeCardHeight - 184.05.dp) / 2f) * homeStageVerticalScale()
-                    // The rail heading is drawn 12.1 dp below the list's content top (see the heading offset in ExperienceMediaRail), so the list
-                    // starts that much above web's --library-rail-top for the heading box to open on it.
+                    // The Home rail list opens exactly at web --library-rail-top: the rail geometry in LayoutUnits (HomeRailGeometry) places everything below it.
                     val homeFirstTop = homeFirstRailTop(homeTvStage, homeCentredTop, webVu(128f, 15f, 174f))
                     val homeLiftPx = if (homeTvStage) with(LocalDensity.current) { (homeCentredTop - homeFirstTop).toPx().toInt() } else 0
                     LaunchedEffect(focusedRailKey) {
@@ -3246,7 +3245,7 @@ private fun ExperienceHomeScreen(
                             // Web `.tv-home-rails` padding-block is half the viewport on both ends, so the last rail can reach the same anchor as the first.
                             bottom = if (isTelevision) 540.dp * homeStageVerticalScale() else 98.dp,
                         ),
-                        verticalArrangement = Arrangement.spacedBy(if (!isTelevision) 54.7.dp else if (LocalStageScale.current == 1f) 52.8.dp else webVu(38f, 5f, 64f) - 6.5.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (!isTelevision) 54.7.dp else if (LocalStageScale.current == 1f) 0.dp else webVu(38f, 5f, 64f) - 6.5.dp),
                     ) {
                         itemsIndexed(current.value, key = { _, rail -> rail.key }) { railIndex, rail ->
                             ExperienceMediaRail(
@@ -3301,11 +3300,11 @@ private fun ExperienceHomeScreen(
 }
 
 /**
- * Top of the Home rails list. Television opens the first rail at web's `--library-rail-top`, less the 12.1 dp the heading is
- * drawn below the list top; a tablet keeps its own anchor, the centred one less 255 dp.
+ * Top of the Home rails list. Television opens the first rail at web's `--library-rail-top`.
+ * a tablet keeps its own anchor, the centred one less 255 dp.
  */
 internal fun homeFirstRailTop(tvStage: Boolean, centredTop: Dp, libraryRailTop: Dp): Dp =
-    if (tvStage) libraryRailTop - 12.1.dp else centredTop - 255.dp
+    if (tvStage) libraryRailTop else centredTop - 255.dp
 
 @Composable
 private fun ExperienceStage(
@@ -3619,17 +3618,31 @@ internal fun ExperienceMediaRail(
     val density = LocalDensity.current
     val collection = playarrString(PlayarrString.LibraryCollectionTitles)
     val railTitle = rail.literalTitle ?: rail.title?.let { playarrString(it) }.orEmpty()
+    // 1920 x 1080 television: the whole rail stack is laid out in LayoutUnits from the web css and each edge is rounded once (see [HomeRailGeometry]).
+    val geo = if (isTelevision && LocalStageScale.current == 1f) {
+        val cover = homeView == PlayarrHomeViewPreference.Cover
+        val cardWidthCss = webLayoutUnit(tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = cover).value)
+        val vuCss = webVu(0f, 1f, Float.MAX_VALUE).value
+        HomeRailGeometry(
+            density = density.density,
+            railTop = webLayoutUnit(webVu(128f, 15f, 174f).value),
+            headingLine = webLayoutUnit(1.5f * webVw(12.16f, 0.92f, 18.88f).value),
+            headingGap = webLayoutUnit(webVu(12f, 1.6f, 20f).value),
+            cardWidth = cardWidthCss,
+            artHeight = webLayoutUnit(if (cover) cardWidthCss * 1.5f else cardWidthCss * 9f / 16f),
+            trackGap = webLayoutUnit(webVu(62f, 8.4f, 108f).value),
+            columnOrigin = webLayoutUnit(1920f * (1f - 0.62f) + webVw(28f, 2.8f, 54f).value),
+            columnGap = webLayoutUnit(webVw(14f, 1.3f, 26f).value),
+        ).also { check(vuCss > 0f) }
+    } else null
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (geo != null) Modifier.height(with(density) { geo.itemHeightPx(railIndex).toDp() }).wrapContentHeight(Alignment.Top, unbounded = true) else Modifier)
             .onFocusChanged { if (it.hasFocus) onRailFocused() }
     ) {
         if (isTelevision) {
             // Web `.tv-home-rail h2`: 17.664 px / 610, no count line; cards start 58.9 px below the heading top.
-            // Guarded TV geometry places the web h2 box at y=402px; the native rail Text starts at the
-            // LazyColumn content top y=389.9dp. The TV context maps dp 1:1 to pixels, so translate the
-            // heading's drawing by that measured difference without changing its line box or card origin.
-            val headingInkOffset = 402.dp - 389.9.dp
             // Web clamp(0.76rem, 0.92 vw, 1.18rem): 17.664 px at 1920, 12.16 css px on a 1280 tablet (stage units).
             val headingSize = webVw(12.16f, 0.92f, 18.88f).value
             Text(
@@ -3640,7 +3653,7 @@ internal fun ExperienceMediaRail(
                 letterSpacing = (-0.03f * headingSize).sp,
                 lineHeight = (if (LocalStageScale.current != 1f) headingSize * 1.316f else headingSize * 1.5f).sp,
                 maxLines = 1,
-                modifier = Modifier.graphicsLayer { translationY = headingInkOffset.toPx() - (if (railIndex > 0) 2.2.dp.toPx() else 0f) }.semantics { heading() },
+                modifier = (if (geo != null) Modifier.height(with(density) { geo.headingHeightPx().toDp() }) else Modifier).semantics { heading() },
             )
         } else {
             // Web phone rail heading: 24 px tall, 16 px / 610; the active rail's title is drawn 1.16x, lifted 1 px.
@@ -3671,13 +3684,16 @@ internal fun ExperienceMediaRail(
         val tvHeadroomAdjustment = tvTrackHeadroom - (6f * cssDp).dp
         // Matched 1920x1080 captures put focused artwork 2px below the web reference in both themes; trim the TV
         // track's outer top offset without changing its content headroom or artwork transform.
-        val tvOuterTopPadding = ((if (railIndex == 0) 43.2f else 41.2f) * cssDp).dp - tvHeadroomAdjustment - (2f * cssDp).dp
+        val tvOuterTopPadding = if (geo != null) 0.dp else ((if (railIndex == 0) 43.2f else 41.2f) * cssDp).dp - tvHeadroomAdjustment - (2f * cssDp).dp
         // Keep the pre-existing 10dp card origin exact: integer-pixel headroom avoids a fractional-density rounding drift.
         val phoneFocusTopHeadroomPx = with(density) { 24.dp.roundToPx() }
         val phoneFocusBottomHeadroomPx = with(density) { 80.dp.roundToPx() }
         val phoneFocusTopHeadroom = with(density) { phoneFocusTopHeadroomPx.toDp() }
         val phoneFocusBottomHeadroom = with(density) { phoneFocusBottomHeadroomPx.toDp() }
-        val trackModifier = if (isTelevision) {
+        val trackModifier = if (geo != null) {
+            // The track scroller opens `tvTrackHeadroom` above the art; the art top is a LayoutUnit sum rounded once (the heading line, gap and 18 px pad above it).
+            Modifier.fillMaxWidth().extendStart(trackGutter).offset { androidx.compose.ui.unit.IntOffset(0, geo.artTopRelPx(railIndex) - geo.headingHeightPx() - tvTrackHeadroom.roundToPx()) }
+        } else if (isTelevision) {
             Modifier.fillMaxWidth().extendStart(trackGutter).padding(top = tvOuterTopPadding)
                 // Tablet static refs (1280 x 800): the cards sit 6.4 css px higher than the 1080 tuning gives.
                 .then(if (LocalStageScale.current != 1f) Modifier.offset(y = -(7.4f * cssDp).dp) else Modifier)
@@ -3710,19 +3726,26 @@ internal fun ExperienceMediaRail(
             fadeCrossAxisStartInset = if (isTelevision) 0.dp else phoneFocusTopHeadroom,
             fadeCrossAxisEndInset = if (isTelevision) 0.dp else phoneFocusBottomHeadroom,
             modifier = trackModifier,
-            contentPadding = if (isTelevision) PaddingValues(start = trackGutter, end = tabletTrackEnd(20.dp), top = tvTrackHeadroom, bottom = (12f * cssDp).dp) else PaddingValues(
+            contentPadding = if (isTelevision) PaddingValues(start = if (geo != null) with(density) { (geo.columnLeftPx(0) - (Math.round(1920f * density.density) - Math.round(1190.4f * density.density))).toDp() } else trackGutter, end = tabletTrackEnd(20.dp), top = tvTrackHeadroom, bottom = (12f * cssDp).dp) else PaddingValues(
                 start = 16.dp,
                 end = 48.dp,
                 top = 10.dp + phoneFocusTopHeadroom,
                 bottom = phoneFocusBottomHeadroom,
             ),
-            horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 25.dp else 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (geo != null) 0.dp else if (isTelevision) 25.dp else 12.dp),
         ) {
             itemsIndexed(rail.works, key = { _, work -> work.id }) { itemIndex, work ->
                 val onDeck = rail.onDeckByWork[work.id]
                 val episode = onDeck?.episode
+                androidx.compose.runtime.CompositionLocalProvider(LocalHomeRailArtTopCss provides (geo?.artTopCss(railIndex) ?: Float.NaN)) {
                 ExperienceLandscapeCard(
                     modifier = (if (rails != null) Modifier.tvRailItem(rails, railIndex, itemIndex) else Modifier)
+                        // Web paints the art at the column's snapped left edge and the snapped card width; the cell is the distance to the next column's edge.
+                        .then(if (geo != null) Modifier.layout { measurable, constraints ->
+                            val cardPx = geo.cardWidthPx()
+                            val placeable = measurable.measure(constraints.copy(minWidth = cardPx, maxWidth = cardPx))
+                            layout(geo.columnLeftPx(itemIndex + 1) - geo.columnLeftPx(itemIndex), placeable.height) { placeable.place(0, 0) }
+                        } else Modifier)
                         // `.tv-home-card > small { height: 1.3em; margin: 0.16rem 0 calc(-1.3em - 0.16rem) }` hangs below the card box, but the flex row still
                         // lays the card out with it: the rail is taller than the card rect by the small's margin-top plus its line (6.88 px * 1.3).
                         .then(if (!isTelevision && homeView == PlayarrHomeViewPreference.Thumbnail) Modifier.layout { measurable, constraints ->
@@ -3769,10 +3792,46 @@ internal fun ExperienceMediaRail(
                         )
                     } ?: work.playarrKindYearLabel(),
                 )
+                }
             }
         }
         }
     }
+}
+
+/** The art top (css px) of the Home rail card being composed; NaN away from the 1920 x 1080 television Home. */
+internal val LocalHomeRailArtTopCss = androidx.compose.runtime.compositionLocalOf { Float.NaN }
+
+/**
+ * Web `.tv-home-rails` at the 1920 x 1080 television stage, resolved in Blink LayoutUnits (1/64 css px). Rail `i` opens at
+ * `--library-rail-top + i * pitch`; the pitch is the heading line (1.5 x the h2 font), its margin (1.6 vu), the track's 18 px pad,
+ * the card (art, 0.72 rem copy gap, one title line) and the section track gap (8.4 vu). The scroller's 24 px lift padding and its
+ * negative margins cancel. Every edge is rounded to a device pixel once from these sums, never per element.
+ */
+internal class HomeRailGeometry(
+    private val density: Float,
+    private val railTop: Float,
+    private val headingLine: Float,
+    private val headingGap: Float,
+    val cardWidth: Float,
+    private val artHeight: Float,
+    private val trackGap: Float,
+    private val columnOrigin: Float,
+    private val columnGap: Float,
+) {
+    private val trackPad = 18f
+    private val copyGap = webLayoutUnit(0.72f * 16f)
+    private val titleLine = webLayoutUnit(1.5f * 11.904f)
+    private val pitch = headingLine + headingGap + trackPad + (artHeight + copyGap + titleLine) + trackGap
+
+    private fun px(css: Float) = Math.round(css * density)
+    private fun top(index: Int) = railTop + index * pitch
+    fun artTopCss(index: Int) = top(index) + headingLine + headingGap + trackPad
+    fun headingHeightPx() = px(headingLine)
+    fun itemHeightPx(index: Int) = px(top(index + 1)) - px(top(index))
+    fun artTopRelPx(index: Int) = px(artTopCss(index)) - px(top(index))
+    fun cardWidthPx() = px(cardWidth)
+    fun columnLeftPx(column: Int) = px(columnOrigin + column * (cardWidth + columnGap))
 }
 
 @Composable
@@ -3972,6 +4031,31 @@ internal fun ExperienceLandscapeCard(
             val homeScale = LocalStageScale.current
             val homeTitle = if (tabletHome) webVw(8.8f, 0.62f, 12.48f).value else 11.904f
             val homeMeta = if (tabletHome) webVw(6.88f, 0.46f, 8.96f).value else 8.832f
+            val railArtTop = LocalHomeRailArtTopCss.current
+            if (!tabletHome && !railArtTop.isNaN()) {
+                // Rail card copy in LayoutUnits from the art's fractional top: title at art + 0.72 rem, meta 0.16 rem under the title line; each rounded once.
+                val artH = webLayoutUnit(width.value * (if (homeView == PlayarrHomeViewPreference.Cover) 1.5f else 9f / 16f))
+                val titleAt = railArtTop + artH + webLayoutUnit(0.72f * 16f)
+                val metaAt = titleAt + webLayoutUnit(1.5f * homeTitle) + webLayoutUnit(0.16f * 16f)
+                val copyBox = (11.52f + 17.856f).dp
+                androidx.compose.ui.layout.Layout(
+                    content = {
+                        Text(displayTitle, color = if (focused) Color.White else WebInk, fontSize = homeTitle.sp, fontWeight = FontWeight(610), letterSpacing = (-0.17856f).sp, lineHeight = 17.856.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 1.9.dp))
+                        Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = homeMeta.sp, lineHeight = 13.248.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 1.9.dp))
+                    },
+                    modifier = Modifier.height(copyBox),
+                ) { measurables, constraints ->
+                    val loose = constraints.copy(minWidth = 0, minHeight = 0, maxHeight = androidx.compose.ui.unit.Constraints.Infinity)
+                    val placed = measurables.map { it.measure(loose) }
+                    val artTopPx = Math.round(railArtTop * density)
+                    layout(constraints.maxWidth, constraints.maxHeight.coerceAtMost(copyBox.roundToPx())) {
+                        // Positions are relative to the art's bottom edge (the copy's origin): the art is its rounded px tall.
+                        val artBottomPx = artTopPx + Math.round(artH * density).let { it }
+                        placed[0].place(0, Math.round(titleAt * density) - artBottomPx)
+                        placed[1].place(0, Math.round(metaAt * density) - artBottomPx)
+                    }
+                }
+            } else
             Column(Modifier.height(if (tabletHome) ((11.52f + homeTitle * homeScale * 1.504f) / homeScale).dp else (11.52f + 17.856f).dp).wrapContentHeight(Alignment.Top, unbounded = true)) {
             Text(displayTitle, color = if (focused) Color.White else WebInk, fontSize = homeTitle.sp, fontWeight = FontWeight(610), letterSpacing = (if (tabletHome) -0.015f * homeTitle else -0.17856f).sp, lineHeight = (if (tabletHome) homeTitle * 1.504f else 17.856f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (11.52f / homeScale).dp else 11.52.dp, start = 1.9.dp))
             Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = homeMeta.sp, lineHeight = (if (tabletHome) homeMeta * 1.3f else 13.248f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (2.56f / homeScale).dp else 2.56.dp, start = 1.9.dp))

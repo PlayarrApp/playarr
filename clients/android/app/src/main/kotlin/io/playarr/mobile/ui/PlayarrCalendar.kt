@@ -187,7 +187,7 @@ private fun ExperienceCalendarScreen(
     val language = LocalPlayarrLanguage.current
     val holder = viewModel.calendar
     val today = remember { playarrToday() }
-    val zone = remember { ZoneId.systemDefault() }
+    val zone = remember { playarrZone() }
     val ready = (state.load as? CalendarLoad.Ready)?.response
     val loading = state.load == CalendarLoad.Loading
     val filtered = remember(ready, state.filters) {
@@ -669,35 +669,63 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
         // Web `.calendar-entry` (phone agenda): 1 px border + 0.5rem padding = 9 px above and below, 4 px left border + 0.75rem padding = 16 px at the start,
         // `align-items: center`, height from its content (min-height 64): nothing here is a stored entry height.
         val phoneAgenda = agenda && m === PhoneCalendarMetrics
-        Row(
+        val lineGap = if (phoneAgenda) webLayoutUnit(0.15f * 16f).dp else 2.4.dp
+        val posterBlock: @Composable () -> Unit = {
+            if (measureOnly) Spacer(Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp))
+            else CalendarPoster(entry.posterUrl, Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp), measuredRadius = 6f, clip = RoundedCornerShape(6.dp))
+        }
+        val metaTexts: @Composable () -> Unit = {
+            Text(time, color = WebInkMuted, fontSize = (if (tvWeek) 12.8f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
+            Text(calendarReleaseTypeLabel(entry.releaseType), color = WebInkMuted, fontSize = (if (tvWeek) 12.8f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
+            Text(
+                if (kind == CalendarMediaKind.Episode) playarrString(PlayarrString.CalendarDetailKindEpisode) else kind?.let { calendarKindLabel(it) } ?: entry.mediaKind,
+                color = WebInkMuted, fontSize = (if (tvWeek) 12.8f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle, modifier = Modifier,
+            )
+            if (m === TvCalendarMetrics) CalendarTonePill(calendarItemTone(item, LocalCalendarToday.current, zone))
+            else CalendarTonePill(calendarItemTone(item, LocalCalendarToday.current, zone), phone = true)
+        }
+        val titleText: @Composable () -> Unit = {
+            Text(item.title, color = WebInk, fontSize = titleSp.sp, lineHeight = titleLine.sp, fontWeight = FontWeight(640), style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier)
+        }
+        val subtitleText: @Composable () -> Unit = {
+            Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis, modifier = Modifier)
+        }
+        val metaRow: @Composable () -> Unit = {
+            // Web `.calendar-entry-meta` is a flex row whose items stretch: each text sits at the row top, the taller pill sets the row height.
+            Row(Modifier, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = if (m === TvCalendarMetrics) Alignment.Top else Alignment.CenterVertically) { metaTexts() }
+        }
+        if (tvWeek && !agenda && !wrapTitles && rowSubtitle.isNotEmpty()) {
+            // Web TV week entry, in LayoutUnits (1/64 px) and rounded once where it is placed: 1 px border + 0.5rem padding above the body,
+            // the body is a column of two 1.8 line boxes (28.8) and the meta row with 0.15rem (2.4) gaps, the poster is centred in it (`align-items: center`).
+            val line = webLayoutUnit(1.8f * 16f)
+            val gap = webLayoutUnit(0.15f * 16f)
+            val metaTop = 2 * (line + gap)
+            val pillHeight = webLayoutUnit(18.8f + 2 * 2.88f + 2f)
+            val bodyHeight = metaTop + pillHeight
+            val padTop = 1f + webLayoutUnit(0.5f * 16f)
+            val posterTop = padTop + (bodyHeight - m.poster.second) / 2f
+            val left = if (selected) 16f else 15.6f
+            val columnLeft = left + m.poster.first + webLayoutUnit(0.9f * 16f)
+            FractionalPlacement(
+                positions = listOf(left to posterTop, columnLeft to padTop, columnLeft to padTop + line + gap, columnLeft to padTop + metaTop),
+                columnRightInset = 12f,
+            ) {
+                posterBlock(); titleText(); subtitleText(); metaRow()
+            }
+        } else Row(
             if (phoneAgenda) Modifier.padding(start = 16.dp, end = 12.dp, top = 9.dp, bottom = 9.dp) else Modifier.padding(start = if (selected) 16.dp else 15.6.dp, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (measureOnly) Spacer(Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp))
-            else CalendarPoster(entry.posterUrl, Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp), measuredRadius = 6f, clip = RoundedCornerShape(6.dp))
-            val lineGap = if (phoneAgenda) webLayoutUnit(0.15f * 16f).dp else 2.4.dp
-            val metaTexts: @Composable () -> Unit = {
-                Text(time, color = WebInkMuted, fontSize = (if (tvWeek) 12.8f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
-                Text(calendarReleaseTypeLabel(entry.releaseType), color = WebInkMuted, fontSize = (if (tvWeek) 12.8f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
-                Text(
-                    if (kind == CalendarMediaKind.Episode) playarrString(PlayarrString.CalendarDetailKindEpisode) else kind?.let { calendarKindLabel(it) } ?: entry.mediaKind,
-                    color = WebInkMuted, fontSize = (if (tvWeek) 12.8f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle, modifier = Modifier,
-                )
-                if (m === TvCalendarMetrics) CalendarTonePill(calendarItemTone(item, LocalCalendarToday.current, zone))
-                else CalendarTonePill(calendarItemTone(item, LocalCalendarToday.current, zone), phone = true)
-            }
-            run {
+            posterBlock()
             Column(Modifier.weight(1f).padding(start = 14.4.dp)) {
-                Text(item.title, color = WebInk, fontSize = titleSp.sp, lineHeight = titleLine.sp, fontWeight = FontWeight(640), style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier)
+                titleText()
                 Spacer(Modifier.height(lineGap))
                 if (rowSubtitle.isNotEmpty()) {
-                    Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis, modifier = Modifier)
+                    subtitleText()
                     Spacer(Modifier.height(lineGap))
                 }
-                // Web `.calendar-entry-meta` is a flex row whose items stretch: each text sits at the row top, the taller pill sets the row height.
-                Row(Modifier, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = if (m === TvCalendarMetrics) Alignment.Top else Alignment.CenterVertically) { metaTexts() }
-            }
+                metaRow()
             }
         }
     }

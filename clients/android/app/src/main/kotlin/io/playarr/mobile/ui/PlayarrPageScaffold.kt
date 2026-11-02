@@ -670,10 +670,13 @@ internal fun playarrInstant(): java.time.Instant = parityClock?.also {
     }
 } ?: java.time.Instant.now()
 
-internal fun playarrNow(zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): java.time.LocalDateTime =
+/** The zone the screens show the clock in: UTC while the parity clock is frozen (the fixture is a UTC instant, the device zone must not shift it), else the device zone. */
+internal fun playarrZone(): java.time.ZoneId = if (parityClock != null) java.time.ZoneOffset.UTC else java.time.ZoneId.systemDefault()
+
+internal fun playarrNow(zone: java.time.ZoneId = playarrZone()): java.time.LocalDateTime =
     java.time.LocalDateTime.ofInstant(playarrInstant(), zone)
 
-internal fun playarrToday(zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): java.time.LocalDate = playarrNow(zone).toLocalDate()
+internal fun playarrToday(zone: java.time.ZoneId = playarrZone()): java.time.LocalDate = playarrNow(zone).toLocalDate()
 
 /** The web page body does not follow the top inset: it starts where a 24 dp status bar leaves it. */
 @androidx.compose.runtime.Composable

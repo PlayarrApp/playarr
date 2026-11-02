@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.unit.Density
 
 /**
@@ -178,4 +179,31 @@ internal fun webPhoneMonth(monthTopCss: Float, viewportHeightCss: Float, weeks: 
     val columns = webTrackEdges(0f, webFrTracks(720f, 7))
     val rows = webTrackEdges(0f, webFrTracks(body, weeks))
     return WebPhoneMonth(header, pad, line, columns, rows)
+}
+
+/**
+ * Children placed at fractional offsets from this box's top start (dp, 1 dp = 1 px on the television): each position is a LayoutUnit sum
+ * from the web css and is rounded once, here. The first child keeps its own size; the rest are given the width left of the last
+ * child's left edge less [columnRightInset].
+ */
+@Composable
+internal fun FractionalPlacement(
+    positions: List<Pair<Float, Float>>,
+    columnRightInset: Float,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    androidx.compose.ui.layout.Layout(content = content, modifier = modifier.fillMaxSize()) { measurables, constraints ->
+        val d = density
+        val placeables = measurables.mapIndexed { i, m ->
+            if (i == 0) m.measure(androidx.compose.ui.unit.Constraints())
+            else {
+                val maxW = (constraints.maxWidth - Math.round(positions[i].first * d) - Math.round(columnRightInset * d)).coerceAtLeast(0)
+                m.measure(androidx.compose.ui.unit.Constraints(maxWidth = maxW))
+            }
+        }
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            placeables.forEachIndexed { i, p -> p.place(Math.round(positions[i].first * d), Math.round(positions[i].second * d)) }
+        }
+    }
 }

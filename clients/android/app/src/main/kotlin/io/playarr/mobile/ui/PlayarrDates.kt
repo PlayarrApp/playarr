@@ -16,7 +16,7 @@ import java.util.Locale
  * month short, year numeric and so on), so "7 Oct 2026" in en-GB and "Oct 7, 2026" in en-US, never a hard-coded
  * pattern. Calendar days are formatted in UTC (they carry no zone); instants in [zone].
  */
-internal class PlayarrDateFormat(private val skeleton: String, private val locale: Locale, private val zone: ZoneId = ZoneId.systemDefault()) {
+internal class PlayarrDateFormat(private val skeleton: String, private val locale: Locale, private val zone: ZoneId = playarrZone()) {
     // android.icu is missing from plain JVM unit tests; java.time then stands in with the nearest standard pattern.
     private val utc: DateFormat? = runCatching {
         DateFormat.getInstanceForSkeleton(skeleton, locale).also { it.timeZone = TimeZone.getTimeZone("UTC") }

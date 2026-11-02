@@ -7,7 +7,7 @@ import org.junit.Test
 class PlayarrHomeRailsLayoutTest {
     @Test
     fun `television opens the first rail at the library rail top`() {
-        assertEquals(149.9.dp.value, homeFirstRailTop(true, 389.9.dp, 162.dp).value, 0.001f)
+        assertEquals(162.dp.value, homeFirstRailTop(true, 389.9.dp, 162.dp).value, 0.001f)
     }
 
     @Test
