@@ -99,8 +99,10 @@ enum WMGradientBitmap {
 }
 #endif
 
-/// A photo scaled to fill its box. Parity captures resample it once on the CPU and blit the result at one pixel per
-/// pixel: the GPU texture filter rounds a few pixels differently on each runner host.
+/// A photo scaled to fill its box. Parity captures resample it once on the CPU, to the box snapped to whole device pixels
+/// (as Blink paints an image: round the edges of the fractional layout rect), and blit the result at one pixel per pixel
+/// on that snapped rect: the GPU texture filter rounds a few pixels differently on each runner host, and drawing a bitmap at
+/// the fractional size would resample it a second time.
 struct WMFillImage: View {
     let image: UIImage
 
@@ -108,8 +110,16 @@ struct WMFillImage: View {
         #if DEBUG
         if ParityLaunch.zeroInsets {
             GeometryReader { proxy in
-                if let scaled = WMFillBitmap.image(image, size: proxy.size) {
-                    Image(uiImage: scaled).resizable().frame(width: proxy.size.width, height: proxy.size.height)
+                let scale = UIScreen.main.scale
+                let global = proxy.frame(in: .global)
+                let left = (global.minX * scale).rounded(), right = (global.maxX * scale).rounded()
+                let top = (global.minY * scale).rounded(), bottom = (global.maxY * scale).rounded()
+                let pixels = CGSize(width: max(right - left, 1), height: max(bottom - top, 1))
+                if let scaled = WMFillBitmap.image(image, pixels: pixels, scale: scale) {
+                    Image(uiImage: scaled).resizable()
+                        .frame(width: pixels.width / scale, height: pixels.height / scale)
+                        .offset(x: left / scale - global.minX, y: top / scale - global.minY)
+                        .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
                 }
             }
         } else {
@@ -126,20 +136,22 @@ struct WMFillImage: View {
 enum WMFillBitmap {
     private static var cache: [String: (source: UIImage, scaled: UIImage)] = [:]
 
-    static func image(_ source: UIImage, size: CGSize) -> UIImage? {
-        guard size.width > 0, size.height > 0, source.size.width > 0, source.size.height > 0 else { return nil }
-        let key = "\(ObjectIdentifier(source).hashValue)|\(size.width)x\(size.height)"
+    static func image(_ source: UIImage, pixels: CGSize, scale: CGFloat) -> UIImage? {
+        guard pixels.width > 0, pixels.height > 0, source.size.width > 0, source.size.height > 0 else { return nil }
+        let key = "\(ObjectIdentifier(source).hashValue)|\(pixels.width)x\(pixels.height)"
         if let cached = cache[key], cached.source === source { return cached.scaled }
         let format = UIGraphicsImageRendererFormat()
-        format.scale = UIScreen.main.scale
+        format.scale = 1
         format.opaque = false
-        let factor = max(size.width / source.size.width, size.height / source.size.height)
+        let factor = max(pixels.width / source.size.width, pixels.height / source.size.height)
         let drawn = CGSize(width: source.size.width * factor, height: source.size.height * factor)
-        let rect = CGRect(x: (size.width - drawn.width) / 2, y: (size.height - drawn.height) / 2, width: drawn.width, height: drawn.height)
-        let scaled = UIGraphicsImageRenderer(size: size, format: format).image { context in
+        let rect = CGRect(x: (pixels.width - drawn.width) / 2, y: (pixels.height - drawn.height) / 2, width: drawn.width, height: drawn.height)
+        let raster = UIGraphicsImageRenderer(size: pixels, format: format).image { context in
             context.cgContext.interpolationQuality = .high
             source.draw(in: rect)
         }
+        guard let cg = raster.cgImage else { return nil }
+        let scaled = UIImage(cgImage: cg, scale: scale, orientation: .up)
         cache[key] = (source, scaled)
         return scaled
     }
