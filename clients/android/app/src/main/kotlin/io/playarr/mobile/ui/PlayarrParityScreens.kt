@@ -1946,6 +1946,8 @@ private fun TelevisionProfilesStage(
                 fontWeight = FontWeight(820),
                 letterSpacing = (0.13f * eyebrowFont).sp,
                 lineHeight = (1.5f * eyebrowFont).sp,
+                maxLines = 1,
+                style = cssLine(),
             )
             Text(
                 playarrString(PlayarrString.ProfilesHeading),
@@ -1954,6 +1956,8 @@ private fun TelevisionProfilesStage(
                 fontWeight = FontWeight.Medium,
                 letterSpacing = (-0.072f * headingFont).sp,
                 lineHeight = (0.95f * headingFont).sp,
+                maxLines = 1,
+                style = cssLine(),
                 modifier = Modifier.padding(top = 7.2.dp).offset(x = 3.5.dp, y = if (tablet) (-11.75).dp else 0.dp).semantics { heading() },
             )
         }

@@ -3638,6 +3638,7 @@ internal fun ExperienceMediaRail(
                 fontWeight = FontWeight(610),
                 letterSpacing = (-0.03f * headingSize).sp,
                 lineHeight = (if (LocalStageScale.current != 1f) headingSize * 1.316f else headingSize * 1.5f).sp,
+                maxLines = 1,
                 modifier = Modifier.graphicsLayer { translationY = headingInkOffset.toPx() - (if (railIndex > 0) 2.2.dp.toPx() else 0f) }.semantics { heading() },
             )
         } else {
@@ -7302,6 +7303,7 @@ private fun VideoDetailCopy(
                 fontWeight = FontWeight(820),
                 letterSpacing = 0.983.sp,
                 lineHeight = 18.432.sp,
+                maxLines = 1,
                 modifier = if (episodeNumber != null) Modifier else Modifier,
             )
             WebHeroTitle(work.title, Modifier.padding(top = if (LocalStageScale.current != 1f) 29.6.dp else webVu(18f, 2.4f, 34f)))
@@ -7312,6 +7314,7 @@ private fun VideoDetailCopy(
                     fontSize = 21.sp,
                     fontWeight = FontWeight(570),
                     letterSpacing = (-0.739).sp,
+                    maxLines = 1,
                     modifier = Modifier.padding(top = 17.dp + (if (LocalStageScale.current != 1f) 2.3.dp else 0.dp)).semantics { heading() },
                 )
             }
@@ -7329,6 +7332,7 @@ private fun VideoDetailCopy(
                         // Web `.tv-detail-meta`: clamp(7.68, 0.55 vw, 10.88) css px (10.56 at 1920).
                         fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp,
                         lineHeight = (webVw(7.68f, 0.55f, 10.88f).value * 1.5f).sp,
+                        maxLines = 1,
                         fontWeight = if (index == 0) FontWeight(680) else FontWeight.Normal,
                     )
                 }
