@@ -306,11 +306,23 @@ route("home", 20)
 SCREENS_TV = None
 
 
+def design_snap(name, folder):
+    """Design report frame: the screen as drawn (empty states included), without the parity plausibility guards."""
+    settle()
+    if b"[JsEngine Crash]" in open(log, "rb").read():
+        raise RuntimeError("the Previewer's JS engine crashed: every later frame would be the frozen last one")
+    img = png()
+    debug('snap-' + name, img)
+    os.makedirs(folder, exist_ok=True)
+    img.save(os.path.join(folder, name + ".png"))
+    print("design capture", name, flush=True)
+
+
 def design_routes(folder, floor):
     """Design report: the app's other route-reached pages (each guarded; a failure lists the screen as missing, never stops the run)."""
     for name, r in (("watchlist", "watchlist"), ("requests", "requests"), ("playlists", "playlists"),
                     ("downloads", "downloads"), ("sites", "library:site")):
-        guarded(name, lambda name=name, r=r: (route(r, 15), snap(name, folder, floor)))
+        guarded(name, lambda name=name, r=r: (route(r, 15), design_snap(name, folder)))
 
 
 def design_settings(folder, first_x, first_y, pitch, floor, done=()):
@@ -321,7 +333,10 @@ def design_settings(folder, first_x, first_y, pitch, floor, done=()):
         if name in done:
             continue
         def one(name=name, y=first_y + pitch * i):
-            route("profiles", 8); route("settings", 12); click(first_x, int(y)); time.sleep(5); snap(name, folder, floor)
+            route("profiles", 8); route("settings", 12); scroll = 0
+            if y > 2300:  # below the first screen: scroll the list up first, the row moves up by the same distance
+                scroll = 1200; get("/swipe", x1=540, y1=2000, x2=540, y2=2000 - scroll, steps=12, ms=300); time.sleep(2)
+            click(first_x, int(y - scroll)); time.sleep(5); design_snap(name, folder)
         guarded(name, one)
 
 
@@ -976,5 +991,5 @@ settle_preview_telemetry()
 json.dump(manifest, open(os.path.join(out, "build.json"), "w"))
 if MISSING:
     print("INCOMPLETE: missing required screens: " + ", ".join(MISSING), flush=True)
-    sys.exit(2)
+    sys.exit(0 if DESIGN_REPORT else 2)  # the design report keeps what it captured; the missing list is in the log
 print("done")
