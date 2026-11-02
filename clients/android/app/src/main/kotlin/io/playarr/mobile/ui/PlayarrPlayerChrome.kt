@@ -770,7 +770,7 @@ private fun PlayarrPlayerTopButton(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = if (isTelevision && iconOnly) Arrangement.Center else Arrangement.spacedBy(if (isTelevision) 8.8.dp else 8.dp),
         ) {
-            Icon(icon, contentDescription = accessibilityLabel, modifier = Modifier.size(if (isTelevision && iconOnly) 13.dp else if (isTelevision) 20.dp else 22.dp).parityBox("image"))
+            Icon(icon, contentDescription = accessibilityLabel, modifier = (if (isTelevision && iconOnly) Modifier.size(14.dp, 22.dp) else Modifier.size(if (isTelevision) 20.dp else 22.dp)).parityBox("image"))  // web `.player-close svg`: 22 px tall flex item squeezed to the 14 px content box (48 - 2 border - 32 padding)
             if (isTelevision && !iconOnly) {
                 Text(label, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, maxLines = 1, style = WebTextStyle)
             }
@@ -1186,7 +1186,7 @@ internal fun PlayarrTelevisionControlBar(
                     // re-enabling it never gives focus back, which threw focus off the scrubber after a seek.
                     enabled = durationMs > 0L,
                     interactionSource = scrubSource,
-                    thumb = {},
+                    thumb = { Spacer(Modifier.size(0.dp)) },
                     // The track slot fills the box, so the slider's own node is the whole 44 px seek target (web `.player-seek`), not a 4 px sliver.
                     track = { Spacer(Modifier.fillMaxSize()) },
                     modifier = Modifier

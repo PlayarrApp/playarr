@@ -1923,7 +1923,8 @@ internal fun PlayarrExperience(
         }
         if (isTelevision) {
             // Keep the TV layout tree and its focus order unchanged.
-            Box(modifier = Modifier.fillMaxSize().parityBackground("container", WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+            // The web player route paints one black stage and nothing under it: the page background is not a layer there.
+            Box(modifier = Modifier.fillMaxSize().then(if (isPlayer) Modifier.background(WebBackground) else Modifier.parityBackground("container", WebBackground)).onFocusChanged { appFocusState.value = it.hasFocus }) {
                 backgroundContent()
                 if (shouldShowPlayarrMiniPlayer(isPlayer, activePlaybackItem != null, persistentPlayerState is ExperienceLoad.Ready && !playbackFailed)) {
                     PlayarrMiniPlayer(
@@ -3971,9 +3972,9 @@ internal fun ExperienceLandscapeCard(
             val homeScale = LocalStageScale.current
             val homeTitle = if (tabletHome) webVw(8.8f, 0.62f, 12.48f).value else 11.904f
             val homeMeta = if (tabletHome) webVw(6.88f, 0.46f, 8.96f).value else 8.832f
-            Column(Modifier.height(if (tabletHome) ((11.52f + homeTitle * homeScale * 1.504f) / homeScale).dp else 29.36.dp).wrapContentHeight(Alignment.Top, unbounded = true)) {
-            Text(displayTitle, color = if (focused) Color.White else WebInk, fontSize = homeTitle.sp, fontWeight = FontWeight(610), letterSpacing = (if (tabletHome) -0.015f * homeTitle else -0.17856f).sp, lineHeight = (if (tabletHome) homeTitle * 1.504f else 17.856f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (11.52f / homeScale).dp else 9.9.dp, start = 1.9.dp))
-            Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = homeMeta.sp, lineHeight = (if (tabletHome) homeMeta * 1.3f else 13.248f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (2.56f / homeScale).dp else 2.6.dp, start = 1.9.dp))
+            Column(Modifier.height(if (tabletHome) ((11.52f + homeTitle * homeScale * 1.504f) / homeScale).dp else (11.52f + 17.856f).dp).wrapContentHeight(Alignment.Top, unbounded = true)) {
+            Text(displayTitle, color = if (focused) Color.White else WebInk, fontSize = homeTitle.sp, fontWeight = FontWeight(610), letterSpacing = (if (tabletHome) -0.015f * homeTitle else -0.17856f).sp, lineHeight = (if (tabletHome) homeTitle * 1.504f else 17.856f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (11.52f / homeScale).dp else 11.52.dp, start = 1.9.dp))
+            Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = homeMeta.sp, lineHeight = (if (tabletHome) homeMeta * 1.3f else 13.248f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (2.56f / homeScale).dp else 2.56.dp, start = 1.9.dp))
             }
         } else if (webPhone && webHome) {
             // Web `.tv-home-card`: the card box ends under the one title line (padding-top --card-copy-gap 0.72rem, 8.8 px / 610 at line-height 1.5, inline padding

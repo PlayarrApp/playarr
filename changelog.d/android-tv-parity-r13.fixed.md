@@ -1,0 +1,1 @@
+- Android TV: parity pass deriving the home card title gap, player close icon box, seek track and player stage layers from the web CSS.
