@@ -1,0 +1,1 @@
+- Design report capture: `scripts/parity/capture-design.mjs` photographs every screen of the owner's screen list (design-screens.json, read by suite-design.mjs) in dark and light on web-tv, web-tablet and web-phone, and the web driver gained `withPage`, `plainShot`, `allowApiErrors` and `signedOutOptions` for the signed-out and outside-shell screens.
