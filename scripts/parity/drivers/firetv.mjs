@@ -47,7 +47,7 @@ const TAIL_KEYS = {
 };
 // Where the engine is told to pause: its pause lands about 0.25 s later (a few frames), on the 2.000 s frame.
 const ARM_PAUSE_MS = Number(process.env.PLAYARR_FIRETV_ARM_PAUSE_MS ?? 1750);
-let readyPlaying = false;
+let readyStart = false;
 const KEYS = { up: "Up", down: "Down", left: "Left", right: "Right", select: "Return", back: "Escape" };
 
 const scratch = mkdtempSync(join(tmpdir(), "firetv-"));
@@ -246,15 +246,20 @@ export async function createDriver({ out } = {}) {
       const key = KEYS[name];
       if (!key) throw new Error(`unknown key ${name}`);
       // A playing video never settles (and the player hides its controls after 5 s): do not wait on it.
-      // The key that follows playerReady's playing clip goes out at once (see there); every other key waits for the screen to settle.
-      const immediate = readyPlaying; readyPlaying = false;
-      if (immediate && name === "select") {
-        // The playing clip hides its controls 5 s after the last input and a loaded host takes that long between playerReady and this key:
-        // a hidden row takes the first key only to raise it, so raise it first, as a viewer would.
-        const answer = await state().catch(() => ({}));
-        if (answer.player?.state === "playing" && answer.controls === false) { await press(KEYS.select); await sleep(900); }
+      // player-ok-toggle's key starts the clip and toggles it in one call (see below); every other key waits for the screen to settle.
+      const start = readyStart; readyStart = false;
+      if (start && name === "select") {
+        // player-ok-toggle: the web starts the clip and toggles it at once. A loaded host answers state reads in seconds (a 60 s clip then
+        // ends, or the controls hide, between a read and the key), so both selects go out in this one call with no state read between.
+        // The first starts the paused clip with the controls up and Play focused; the second is the key under test. If the first had
+        // not started the clip, the second would start it and the label would stay "pause": the check is as strict as before.
+        await press(KEYS.select);
+        await sleep(1500);
+        await press(KEYS.select);
+        await sleep(900);
+        return;
       }
-      if (!immediate && (await state(8000).catch(() => ({}))).player?.state !== "playing") await settled();
+      if ((await state(8000).catch(() => ({}))).player?.state !== "playing") await settled();
       if (long) {
         // Menu is the long press on Vega (opens the title actions drawer). It acts on the focused card, so look at the focus right
         // before it: wait for the focus to be a real card and to hold still across two reads, and keep it in the run log.
@@ -378,9 +383,9 @@ export async function createDriver({ out } = {}) {
       return (await state()).route;
     },
     // Known state for the player checks, as the web's playerReady: the controls are up and Play holds the focus. The clip stays paused
-    // (the controls then stay up; a playing clip hides them after 5 s) except for player-ok-toggle, which toggles a playing clip as on the web.
+    // (the controls then stay up; a playing clip hides them after 5 s) and player-ok-toggle's key starts it and toggles it in one call, as on the web.
     async playerReady(id) {
-      const wantPlaying = id === "player-ok-toggle";
+      const wantStart = id === "player-ok-toggle";
       for (let i = 0; i < 10; i++) {
         // One answer carries both the focus and the player state: the controls of a playing clip hide 5 s after the last input, and a
         // loaded host answers slowly, so the check's key must follow this read as closely as possible.
@@ -388,10 +393,10 @@ export async function createDriver({ out } = {}) {
         const f = answer.focus;
         const playing = answer.player?.state === "playing";
         if (/^(play|pause)$/.test(f?.label ?? "")) {
-          if (playing === wantPlaying) { readyPlaying = wantPlaying; return; }
+          if (!playing) { readyStart = wantStart; return; }
           await press(KEYS.select);
         } else await this.key("left");
-        await sleep(wantPlaying ? 300 : 1500);
+        await sleep(1500);
       }
       throw new Error("the Vega player did not focus play/pause");
     },
