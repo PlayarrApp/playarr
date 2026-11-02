@@ -58,7 +58,7 @@ sub init()
     m.profilesTitle = m.top.findNode("profilesTitle")
     if m.profilesKicker <> invalid
         m.profilesKicker.ObserveField("textWidth", "centerProfilesKicker")
-        m.profilesKicker.spec = { text: "PROFILES", size: 10.37, weight: 820, tracking: 1.342, role: "brandInk", upper: true }
+        m.profilesKicker.spec = { text: "PROFILES", size: 10.37, weight: 820, tracking: 0.13 * 10.37, role: "brandInk", upper: true }
     end if
     if m.profilesTitle <> invalid
         m.profilesTitle.ObserveField("textWidth", "centerProfilesTitle")
@@ -2977,7 +2977,7 @@ sub updateBrowsePreview(work as Object)
     end if
     m.browsePreviewKind.translation = [153.6, PlayarrTextTop(WebPanelTop(), WebPanelKickerSize(), WebPanelKickerLineHeight())]
     m.browsePreviewTitle.translation = [153.6, PlayarrTextTop(WebPanelTitleLineTop(), 69.12, WebPanelTitleLineHeight())]
-    m.browsePreviewKind.spec = { text: kicker, size: 12.29, weight: 860, tracking: 0.97, role: "brandInk", upper: true }
+    m.browsePreviewKind.spec = { text: kicker, size: 12.29, weight: 860, tracking: 0.08 * 12.29, role: "brandInk", upper: true }
     m.browsePreviewTitle.spec = { text: work.title, size: 69.12, weight: 560, tracking: -0.072 * 69.12, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true, aria: "heading" }
     year = ""
     ' Web LibraryPreview: release year only (never the added date).
@@ -6135,7 +6135,7 @@ sub updateSeriesEpisodeHeader()
     if epTitle = "" then epTitle = "Episode " + ep.episode_number.ToStr()
     m.detailEpisodeTitle.visible = true
     m.detailEpisodeTitle.translation = [153.6, titleBottom + 17.5]
-    m.detailEpisodeTitle.spec = { text: epTitle, size: 21.12, weight: 570, tracking: -0.743, role: "inkSoft", aria: "heading", width: 312, lineHeight: 24.3, maxLines: 1 }
+    m.detailEpisodeTitle.spec = { text: epTitle, size: 21.12, weight: 570, tracking: -0.035 * 21.12, role: "inkSoft", aria: "heading", width: 312, lineHeight: 24.3, maxLines: 1 }
     metaY = titleBottom + 70.7
     parts = []
     parts.Push({ text: "Season " + season.season_number.ToStr(), role: "inkSoft", weight: 680 })

@@ -134,7 +134,9 @@ const pictureCache = new Map();
 /** A bundled picture that paints every pixel of its box: opaque PNG whose aspect matches the box (read from the app's own asset). */
 function opaquePicture(it) {
   // Loaded server artwork (loadStatus 3 = ready, as the ECP tree reports it) is a JPEG the app zooms to fill its box.
-  if (/^https?:\/\//.test(it.node.attrs.uri ?? "")) return it.node.attrs.loadStatus === "3";
+  // A `style=` bake (the stage key art) is a PNG with alpha baked in by the backend (at most 0.72 dark, 0.4 light, transparent edge),
+  // so it never hides what lies beneath it.
+  if (/^https?:\/\//.test(it.node.attrs.uri ?? "")) return it.node.attrs.loadStatus === "3" && !/[?&]style=/.test(it.node.attrs.uri);
   const m = /^pkg:\/images\/([\w.-]+\.png)$/.exec(it.node.attrs.uri ?? "");
   if (!m || m[1].endsWith(".9.png")) return false;
   if (!pictureCache.has(m[1])) {
