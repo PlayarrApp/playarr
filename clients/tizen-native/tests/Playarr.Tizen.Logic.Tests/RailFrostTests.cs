@@ -31,7 +31,7 @@ public class RailFrostTests
     }
 
     [Fact]
-    public void OpaqueCompositesPremultipliedWithHalvesRoundedUp()
+    public void OpaqueCompositesPremultipliedWithTheBackdropShareTruncatedAwayFromTheStrip()
     {
         var (_, rgba) = RailFrost.Decode(Asset("dark", 1190));
         var under = (27, 24, 27);
@@ -40,8 +40,8 @@ public class RailFrostTests
         for (var i = 0; i < w; i++)
         {
             var o = (300 + i) * 4; int a = rgba[o + 3];
-            Assert.Equal((int)Math.Floor(rgba[o] * a / 255.0 + 0.5) + (int)Math.Floor(under.Item1 * (255 - a) / 255.0 + 0.5), px[i * 4]);
-            Assert.Equal((int)Math.Floor(rgba[o + 1] * a / 255.0 + 0.5) + (int)Math.Floor(under.Item2 * (255 - a) / 255.0 + 0.5), px[i * 4 + 1]);
+            Assert.Equal((int)Math.Floor(rgba[o] * a / 255.0 + 0.5) + (int)Math.Floor(under.Item1 * (255 - a) / 255.0), px[i * 4]);
+            Assert.Equal((int)Math.Floor(rgba[o + 1] * a / 255.0 + 0.5) + (int)Math.Floor(under.Item2 * (255 - a) / 255.0), px[i * 4 + 1]);
             Assert.Equal(255, px[i * 4 + 3]);
         }
     }

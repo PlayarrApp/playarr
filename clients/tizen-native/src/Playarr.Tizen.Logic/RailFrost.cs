@@ -5,7 +5,7 @@ namespace Playarr.Tizen.Logic;
 /// <summary>
 /// The web's rail frost (global.css .tv-rail-surface, .tv-library-grid-panel): a pre-rendered 1 px high RGBA strip, one pixel per CSS pixel, drawn at
 /// the panel's left edge over whatever lies beneath. This reads the very same asset and composites it premultiplied, as the browser does, with no
-/// dither: out = round(c * a / 255) + round(base * (255 - a) / 255), JavaScript Math.round semantics (halves go up).
+/// dither (see <c>Over</c> for the rounding).
 /// </summary>
 public static class RailFrost
 {
@@ -53,8 +53,16 @@ public static class RailFrost
         return (w, px);
     }
 
-    private static int Over(int c, int a, int baseValue) =>
-        (int)Math.Floor(c * a / 255.0 + 0.5) + (int)Math.Floor(baseValue * (255 - a) / 255.0 + 0.5);
+    /// <summary>
+    /// Premultiplied source-over as the browser's raster does it, fitted against the web reference pixels (measured over the empty panel of Home, 93 %
+    /// dark and 96 % light exact bytes against 60 % and 83 % for round-both): the strip colour is premultiplied with round(c * a / 255) and the backdrop
+    /// share baseValue * (255 - a) / 255 is truncated on the side facing away from the strip colour, floor when the strip colour is the lighter one, ceiling when it is darker.
+    /// </summary>
+    private static int Over(int c, int a, int baseValue)
+    {
+        var share = baseValue * (255 - a) / 255.0;
+        return (int)Math.Floor(c * a / 255.0 + 0.5) + (int)(c >= baseValue ? Math.Floor(share) : Math.Ceiling(share));
+    }
 
     /// <summary>
     /// Columns [<paramref name="from"/>, <paramref name="to"/>) of the strip (strip-local) composited over the flat opaque colour
