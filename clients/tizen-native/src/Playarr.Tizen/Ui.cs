@@ -297,8 +297,8 @@ internal static class Ui
         var dir = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";
         Directory.CreateDirectory(dir);
         var under = UnderPanel(t);
-        var leftPath = dir + $"frost-{t.Name}-{stripWidth}-left-v4.png";
-        var rightPath = dir + $"frost-{t.Name}-{stripWidth}-right-{under.R}-{under.G}-{under.B}-v4.png";
+        var leftPath = dir + $"frost-{t.Name}-{stripWidth}-left-v5.png";
+        var rightPath = dir + $"frost-{t.Name}-{stripWidth}-right-{under.R}-{under.G}-{under.B}-v5.png";
         if (!File.Exists(leftPath)) File.WriteAllBytes(leftPath, RailFrost.Translucent(strip.Rgba, 0, cut));
         if (!File.Exists(rightPath)) File.WriteAllBytes(rightPath, RailFrost.Opaque(strip.Rgba, cut, strip.Width, under));
         root.Add(Sem.Tag(Sem.Overlay(new ImageView(leftPath) { PositionX = 0, PositionY = 0, Size = new Size(cut, TizenClient.DesignHeight), SynchronousLoading = true }), "container"));

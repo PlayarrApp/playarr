@@ -26,6 +26,9 @@ internal sealed class ProfilesScreen : IPage
     {
         _env = env; _t = env.Theme;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
+        // .profiles-page background (global.css 7427-7512: brand glow over the 145deg surface-to-bg wash, plus the two ::before edge fades) as the one opaque
+        // 1920x1080 image evaluated from that CSS (the web's own generate-gradient-assets profilesImage), drawn 1:1 behind everything
+        _root.Add(Sem.Tag(Sem.Overlay(new ImageView(Ui.ResPath($"gradients/profiles-bg-{_t.Name}-1920x1080.png")) { PositionX = 0, PositionY = 0, Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight), SynchronousLoading = true }), "container"));
         _root.Add(new ImageView(Ui.ResPath("logo.png")) { PositionX = 60.6f, PositionY = 60.2f, Size = new Size(42, 42) });
         _root.Add(Ui.Text("Profiles", 0, 162, 10.368f, 800, _t.BrandInk, 1920, 15.552f, HorizontalAlignment.Center, upper: true, spacing: 0.13f * 10.368f));
         _root.Add(Sem.Tag(Ui.Text("Who’s watching?", 0, 184.8f, 80.64f, 500, _t.Ink, 1920, 76.6f, HorizontalAlignment.Center, spacing: -0.072f * 80.64f), "heading"));
