@@ -409,6 +409,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
     async location() { await sleep(300); return state().route ?? "/"; },
     // The Mac's focus settles a moment after a key (the layer settle step): wait up to 4 s for a focused item, never report an empty
     // answer straight away. Bounded, so a screen that really has no focus still ends the check.
+    async panelOpen() { await sleep(300); return state().panel === true; },
     async focused() {
       let s = state();
       if (mac) for (let i = 0; i < 16 && s.focused == null; i += 1) { await sleep(250); s = state(); }
