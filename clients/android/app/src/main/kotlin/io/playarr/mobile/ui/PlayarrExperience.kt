@@ -2109,7 +2109,6 @@ private const val NAV_GAP_CSS = 2f
 private const val NAV_LINK_CSS = 44f
 private const val NAV_LINK_HEIGHT_CSS = 46f
 private const val NAV_ICON_CSS = 21f
-private const val NAV_PROFILE_NAME_CSS = 6.72f
 
 @Composable
 private fun ExperienceNavigation(
@@ -2166,6 +2165,8 @@ private fun ExperienceNavigation(
         val barLeftCss = maxOf(10.dp, sideInsets.calculateLeftPadding(androidx.compose.ui.platform.LocalLayoutDirection.current)).value
         val barWidthCss = Math.round(androidx.compose.ui.platform.LocalContext.current.resources.displayMetrics.widthPixels / density).toFloat() - barLeftCss - maxOf(10.dp, sideInsets.calculateRightPadding(androidx.compose.ui.platform.LocalLayoutDirection.current)).value
         val barTopCss = Math.round(heightPx / density).toFloat() - maxOf(8.dp, systemBottom).value - NAV_BAR_HEIGHT_CSS
+        val vwCss = androidx.compose.ui.platform.LocalContext.current.resources.displayMetrics.widthPixels / density / 100f
+        val profileNameCss = (0.46f * vwCss).coerceIn(0.42f * 16f, 0.56f * 16f)
         val slots = (if (tvProfile != null) 1 else 0) + destinations.size
         val linksWidthCss = slots * NAV_LINK_CSS + (slots - 1) * NAV_GAP_CSS
         val innerCss = barWidthCss - 2 * NAV_PAD_CSS
@@ -2185,12 +2186,12 @@ private fun ExperienceNavigation(
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.webAbs(left, linkTop, NAV_LINK_CSS, NAV_LINK_HEIGHT_CSS).semantics { contentDescription = tvProfile.description }.parityShape(14f),
                     ) {
-                        // Web's profile link is a flex column (justify-content: center, gap 0) holding the 21px avatar and the name block (0.42rem high), so the
+                        // Web's profile link is a flex column (justify-content: center, gap 0) holding the 21px avatar and the name label (font-size clamp(0.42rem, 0.46vw, 0.56rem), line-height 1, display block by the profile-link rule), so the
                         // avatar sits (46 - 21 - NAV_PROFILE_NAME_CSS) / 2 under the link top; its box is snapped from css edges.
                         WebAbsoluteLayout(left, linkTop, NAV_LINK_CSS, NAV_LINK_HEIGHT_CSS) {
                             PlayarrProfileAvatar(
                                 userId = tvProfile.userId, preference = tvProfile.avatar,
-                                modifier = Modifier.webAbs(left + (NAV_LINK_CSS - NAV_ICON_CSS) / 2f, linkTop + (NAV_LINK_HEIGHT_CSS - NAV_ICON_CSS - NAV_PROFILE_NAME_CSS) / 2f, NAV_ICON_CSS, NAV_ICON_CSS).parityBox("container", radius = 999f, cssShortSide = NAV_ICON_CSS),
+                                modifier = Modifier.webAbs(left + (NAV_LINK_CSS - NAV_ICON_CSS) / 2f, linkTop + (NAV_LINK_HEIGHT_CSS - NAV_ICON_CSS - profileNameCss) / 2f, NAV_ICON_CSS, NAV_ICON_CSS).parityBox("container", radius = 999f, cssShortSide = NAV_ICON_CSS),
                                 artworkModifier = Modifier.parityBox("image"), glyphSize = 13.sp,
                             )
                         }
