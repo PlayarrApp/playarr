@@ -704,7 +704,7 @@ final class TVPlayerViewModel {
         }
         duration = Double(info.durationMS) / 1000
         if audioTracks.isEmpty { // no stream yet (parity): the server's own list stands in for the engine's
-            audioTracks = info.audioTracks.map { PlayerTrack(id: $0.id, languageCode: $0.language, displayName: $0.label, isDefault: $0.isDefault) }
+            audioTracks = info.audioTracks.map { PlayerTrack(id: $0.id, languageCode: $0.language, displayName: TVTrackLabels.audio(label: $0.label, language: $0.language, codec: $0.codec, channels: $0.channels.map(Int.init)), isDefault: $0.isDefault) }
             selectedAudioID = info.selectedAudioTrackID ?? audioTracks.first(where: \.isDefault)?.id ?? audioTracks.first?.id
         }
     }
@@ -737,5 +737,70 @@ final class TVPlayerViewModel {
         activeMediaFileID = nil
         state = .idle
         return flush
+    }
+}
+
+
+/// The player's audio menu labels, the port of the web `lib/trackLabels.ts` (`audioTrackLabel`): the language name, the track's own title
+/// when it adds something, the codec name and the channel layout joined with " · ".
+enum TVTrackLabels {
+    private static let separator = " \u{00B7} "
+    private static let bibliographic: [String: String] = [
+        "fre": "fra", "ger": "deu", "dut": "nld", "chi": "zho", "cze": "ces", "gre": "ell", "ice": "isl", "mac": "mkd",
+        "mao": "mri", "may": "msa", "per": "fas", "rum": "ron", "slo": "slk", "tib": "bod", "wel": "cym", "arm": "hye",
+        "baq": "eus", "bur": "mya", "geo": "kat", "alb": "sqi",
+    ]
+
+    static func languageName(_ code: String?) -> String? {
+        guard let trimmed = code?.trimmingCharacters(in: .whitespaces).lowercased(), !trimmed.isEmpty, trimmed != "und" else { return nil }
+        let canonical = bibliographic[trimmed] ?? trimmed
+        if let name = Locale(identifier: "en").localizedString(forLanguageCode: canonical), name.lowercased() != canonical {
+            return name.prefix(1).uppercased() + name.dropFirst()
+        }
+        return trimmed
+    }
+
+    static func title(_ label: String, code: String?, name: String?) -> String? {
+        let title = label.trimmingCharacters(in: .whitespaces)
+        if title.isEmpty { return nil }
+        let normalised = title.lowercased()
+        if normalised == code?.trimmingCharacters(in: .whitespaces).lowercased() { return nil }
+        if let name, normalised.contains(name.lowercased()) { return nil }
+        if normalised.range(of: #"^(audio|subtitles?)\s*\d+$"#, options: .regularExpression) != nil { return nil }
+        return title
+    }
+
+    static func codecName(_ codec: String?) -> String? {
+        guard let value = codec?.trimmingCharacters(in: .whitespaces).lowercased(), !value.isEmpty else { return nil }
+        if value.hasPrefix("pcm") { return "PCM" }
+        switch value {
+        case "ac3": return "AC3"
+        case "eac3": return "E-AC3"
+        case "truehd": return "TrueHD"
+        case "opus": return "Opus"
+        case "vorbis": return "Vorbis"
+        default: return value.uppercased()
+        }
+    }
+
+    static func channelLayout(_ channels: Int?) -> String? {
+        switch channels {
+        case nil, 0: return nil
+        case 1: return "Mono"
+        case 2: return "Stereo"
+        case 3: return "2.1"
+        case 4: return "4.0"
+        case 5: return "5.0"
+        case 6: return "5.1"
+        case 7: return "6.1"
+        case 8: return "7.1"
+        default: return "\(channels ?? 0) ch"
+        }
+    }
+
+    static func audio(label: String, language: String?, codec: String?, channels: Int?) -> String {
+        let name = languageName(language)
+        let parts = [name, title(label, code: language, name: name), codecName(codec), channelLayout(channels)].compactMap { $0 }
+        return parts.isEmpty ? label : parts.joined(separator: separator)
     }
 }

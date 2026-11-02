@@ -2201,7 +2201,7 @@ struct TVLibraryKindView: View {
                         .parityLayout(text: work.title, size: TVWeb.cardTitleSize, weight: Int(TVWeb.cardTitleWeight), color: isSelected ? Color.white : DesignTokens.Color.textPrimary, tracking: -0.18) // web: the focused card's text is white
                         .lineLimit(1)
                         .padding(.leading, 1.91) // web: the title sits 1.91 pt inside the card
-                        .frame(width: width, height: 17.9, alignment: .topLeading) // web: a 17.9 pt caption line, so the card is 213.4 tall
+                        .frame(width: width, height: 17.9, alignment: .leading) // web: a 17.9 pt caption line (card 213.4 tall) with the glyphs centred in it, CSS half-leading
                 }
             }
             .frame(width: width, alignment: .leading)

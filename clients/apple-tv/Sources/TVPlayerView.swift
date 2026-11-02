@@ -254,20 +254,26 @@ struct TVPlayerView: View {
                 case (.scrubber, .left):
                     viewModel.seek(by: -10)
                     interaction.seeked()
+                    focusedControl = .scrubber // a seek never moves focus
                 case (.scrubber, .right):
                     viewModel.seek(by: 10)
                     interaction.seeked()
+                    focusedControl = .scrubber
                 case (.scrubber, .down):
                     focusedControl = .play
                 case (_, .up) where focusedControl != .scrubber:
                     focusedControl = .scrubber
                 default: break
                 }
-                // A seek never moves focus: keep it on the control the user left it on.
-                if focusedControl != interaction.focus { focusedControl = interaction.focus }
+                if let next = focusedControl { interaction.focus = next }
             }
             .onChange(of: focusedControl) { _, control in
                 if let control { interaction.focus = control }
+                #if DEBUG && os(tvOS)
+                // The surface and the seek bar are bare focus targets: name them from the focus state the player owns.
+                if control == .surface { TVParityState.setFocus("video playback surface", true) }
+                if control == .scrubber { TVParityState.setFocus("Seek", true) }
+                #endif
             }
             #if DEBUG && (os(tvOS) || os(macOS))
             .onChange(of: interaction.panel) { _, open in TVParityState.setPanel(open != nil) }
