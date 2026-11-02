@@ -304,7 +304,12 @@ export class VegaPlaybackEngine extends BasePlaybackEngine implements PlaybackEn
     player.addEventListener('error', handleError);
     player.addEventListener('volumechange', handleVolumeChange);
 
+    // The Vega player's `buffered` keeps growing while paused but it raises no `progress` event then (probed: the video reported 0-60 s
+    // while the state still held 3.9 s), so read the real range once a second as well; the value is the player's, nothing is inferred.
+    const bufferedPoll = setInterval(handleProgress, 1000);
+
     this.activeCleanup.push(() => {
+      clearInterval(bufferedPoll);
       player.removeEventListener('loadedmetadata', handleLoadedMetadata);
       player.removeEventListener('durationchange', handleLoadedMetadata);
       player.removeEventListener('timeupdate', handleTimeUpdate);
