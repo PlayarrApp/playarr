@@ -22,7 +22,7 @@ button.pa-profile:focus-visible .pa-avatar, button.pa-profile.selected .pa-avata
   box-shadow: 0 10px 22px rgba(56, 38, 33, 0.16), 0 3px 9px rgba(56, 38, 33, 0.1);
 }
 .pa-art-title { font-size: 9.28px; color: @pa_muted; }
-.pa-cap-title { font-size: 8.8px; font-weight: 610; letter-spacing: -0.13px; color: @pa_ink; }
+.pa-cap-title { font-size: 8.8px; font-weight: 610; letter-spacing: -0.132px; color: @pa_ink; }
 .pa-cap-meta { font-weight: 400; font-size: 6.88px; color: @pa_muted; margin-top: 3px; margin-bottom: -12px; }
 .pa-unseen { min-width: 5px; min-height: 5px; border-radius: 999px; background: @pa_brand; border: 2px solid rgba(255, 255, 255, 0.94); box-shadow: 0 2px 9px rgba(31, 14, 20, 0.45), 0 0 0 1px alpha(@pa_brand, 0.35); }
 .pa-art.selected { box-shadow: 0 0 0 3px @pa_focus_glow, 0 0 20px 4px alpha(@pa_focus_glow, 0.45), 0 24px 48px rgba(56, 38, 33, 0.3), 0 10px 20px rgba(56, 38, 33, 0.2); }
@@ -95,7 +95,7 @@ button.pa-cell.selected { background: @pa_accent; color: @pa_on_accent; }
 button.pa-entry, button.pa-entry:hover { background: @pa_surface; padding: 8px 12px; border-radius: 10px; }
 
 /* Web page header (mobile): round back button, 21.6px title, tinted subtitle, square action button */
-.pa-h1 { font-size: 21.6px; font-weight: 580; letter-spacing: -1px; color: @pa_ink; }
+.pa-h1 { font-size: 21.6px; font-weight: 580; letter-spacing: -0.972px; color: @pa_ink; }
 .pa-subtitle { font-size: 10.56px; font-weight: 820; color: @pa_brand_ink; letter-spacing: 1px; }
 button.pa-hbtn { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; box-shadow: none; padding: 0; min-width: 42px; min-height: 42px; }
 button.pa-hbtn.round { border-radius: 999px; }
@@ -220,18 +220,18 @@ button.pa-entry.week.missing { border-left-color: @pa_brand_ink; }
 /* The web Drawer: `color-mix(in srgb, var(--surface-strong) 94%, transparent)`. */
 .pa-panel { background: alpha(@pa_surface_strong, 0.94); }
 button.pa-close.ring { outline: 2px solid @pa_ring; outline-offset: 2px; }
-.pa-panel-kicker { font-size: 7.04px; font-weight: 720; letter-spacing: 0.5632px; color: @pa_muted; }
-.pa-panel-title { font-size: 22.4px; font-weight: 590; letter-spacing: -1.3px; }
+.pa-panel-kicker { font-size: 7.04px; font-weight: 720; letter-spacing: 0.4928px; color: @pa_muted; }
+.pa-panel-title { font-size: 22.4px; font-weight: 590; letter-spacing: -1.232px; }
 button.pa-close { min-width: 46px; min-height: 46px; }
 button.pa-close.soft { background: @pa_soft; min-width: 42px; min-height: 42px; border: 1px solid alpha(@pa_ink, 0.15); }
-.pa-section-label { font-size: 7.04px; font-weight: 720; letter-spacing: 0.55px; margin-top: 12px; margin-bottom: 3px; }
+.pa-section-label { font-size: 7.04px; font-weight: 720; letter-spacing: 0.4928px; margin-top: 12px; margin-bottom: 3px; }
 .pa-seg-tile { min-height: 38px; background: alpha(@pa_soft, 0.64); border: none; border-radius: 12px; font-size: 11.52px; font-weight: 680; color: @pa_muted; padding: 4px 10px 6px; }
 .pa-seg-tile:checked { background: @pa_ink; color: @pa_body; }
 button.pa-row { background: @pa_soft; border: none; border-radius: 14px; min-height: 68px; padding: 0 18px; font-size: 16px; font-weight: 700; }
 
 /* Profiles, measured from the web */
-.pa-kicker-s { font-size: 7.36px; font-weight: 820; letter-spacing: 1px; color: @pa_brand_ink; }
-.pa-who { font-size: 39.6px; font-weight: 500; color: @pa_ink; letter-spacing: -3.05px; }
+.pa-kicker-s { font-size: 7.36px; font-weight: 820; letter-spacing: 0.9568px; color: @pa_brand_ink; }
+.pa-who { font-size: 39.6px; font-weight: 500; color: @pa_ink; letter-spacing: -2.8512px; }
 .pa-profile-name { font-size: 13.12px; font-weight: 680; color: @pa_ink; }
 .pa-tiny { font-size: 6.72px; font-weight: 690; color: @pa_muted; letter-spacing: 0.3024px; }
 button.pa-pill.small { font-size: 7.68px; padding: 0 20px; }
@@ -275,7 +275,7 @@ dropdown.pa-filter arrow, dropdown.pa-filter image { -gtk-icon-size: 8px; min-wi
 
 /* Search empty state */
 .pa-empty-ring { border: 1px solid @pa_line; border-radius: 999px; }
-.pa-empty-text { letter-spacing: -0.24px; font-size: 11.52px; font-weight: 650; color: @pa_ink; }
+.pa-empty-text { letter-spacing: -0.2304px; font-size: 11.52px; font-weight: 650; color: @pa_ink; }
 
 
 /* Detail hero fades, as the web phone's .tv-key-art::after and .tv-stage-wash */

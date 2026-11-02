@@ -1,0 +1,1 @@
+- Nura text tracking now equals the web's em value times the font size: profile heading (-0.072em), PROFILES kicker (0.13em), panel title (-0.055em), panel kicker and section headings (0.07em, one rule instead of two fitted values), page heading (-0.045em), card title (-0.015em) and the empty-search heading (-0.02em).
