@@ -1,6 +1,7 @@
 package io.playarr.mobile.ui
 
 import io.playarr.shared.designsystem.page.parityBackground
+import io.playarr.shared.designsystem.page.playarrLink
 import io.playarr.shared.designsystem.page.parityShape
 import io.playarr.shared.designsystem.page.parityBox
 import io.playarr.shared.designsystem.page.parityPainted
@@ -376,9 +377,11 @@ internal fun setPlayarrWebFont(enabled: Boolean) {
     if (enabled && webFontFamily == null) {
         webFontFamily = variableFamily(io.playarr.mobile.R.font.nunito_sans, 200..1000 step 10)
         webMonoFamily = variableFamily(io.playarr.mobile.R.font.jetbrains_mono, 100..800 step 10)
+        io.playarr.shared.designsystem.page.PlayarrWebMonoFamily = webMonoFamily
     } else if (!enabled) {
         webFontFamily = null
         webMonoFamily = null
+        io.playarr.shared.designsystem.page.PlayarrWebMonoFamily = null
     }
 }
 
@@ -1464,7 +1467,7 @@ internal val WebTextStyle: androidx.compose.ui.text.TextStyle
     // Chromium lays glyphs out with unhinted, fractional advances; Compose's default hints them (about 4% narrower at
     // 11 sp). The animated text motion turns hinting off and positions glyphs at subpixel offsets.
     textMotion = if (webFontFamily != null) androidx.compose.ui.text.style.TextMotion.Animated else null,
-    // The phone derives the line box from Chromium's rules per size (PlayarrWebText); the tablet keeps the plain centre.
+    // The phone and the television derive the line box from Chromium's rules per size (PlayarrWebText, CssText); the tablet keeps the plain centre.
     lineHeightStyle = if (webFontFamily != null) io.playarr.shared.designsystem.page.WebLineBox else androidx.compose.ui.text.style.LineHeightStyle(androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center, androidx.compose.ui.text.style.LineHeightStyle.Trim.None),
 )
 
@@ -1832,6 +1835,8 @@ internal fun PlayarrExperience(
         val phoneDrawerNavigationAbovePane = isPhoneDrawerNavigationAbovePane(phoneDrawerHost.activePane, activeNavRoute)
         val drawerBlurRadius = with(LocalDensity.current) { 38.dp.toPx() }
         val backgroundContent: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {
+            // Web `.page-shell` (global.css): the full-viewport section behind every page paints --surface (the clock and the navigation sit outside it, over --bg).
+            Box(if (isTelevision && !isPlayer && !isProfiles) Modifier.fillMaxSize().parityBackground("container", WebSurface) else Modifier.fillMaxSize()) {
             ExperienceNavHost(
                 navController,
                 serverUrl,
@@ -1845,6 +1850,7 @@ internal fun PlayarrExperience(
                 viewModel,
                 playerViewModel,
             )
+            }
 
             val remainingMinutes = householdRemainingMinutes(household, playarrInstant())
             if (remainingMinutes != null && !isPlayer && !isProfiles && householdBlock == null) {
@@ -1905,16 +1911,21 @@ internal fun PlayarrExperience(
                 )
                 if (isTelevision) {
                     ShellLogo(Modifier.align(Alignment.TopStart))
-                    // Web `.app-clock` is right-aligned to x = 710.4 (its left edge moves with the text width).
-                    if (LocalStageScale.current == 1f) Box(Modifier.align(Alignment.TopStart).padding(top = 68.2.dp).width(634.dp), contentAlignment = Alignment.TopEnd) { ExperienceClock() }
-                    // Web `.app-clock` (page-layout.css): top `--page-header-top`, as tall as the 44 px page controls, its grid centred in that height, gap 0.7 rem.
+                    // Web `.app-clock` (page-layout.css): top `--page-header-top`, as tall as the page controls (`--page-control-height` clamp(44, 2.8vw, 50)), its grid centred in that height,
+                    // right edge `calc(65% + clamp(18px, 2vw, 38px))` from the viewport's right, i.e. at 35% of the width less that gap; gap 0.7rem.
+                    if (LocalStageScale.current == 1f) {
+                        val rightGap = webVw(18f, 2f, 38f)
+                        val edge = (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp * 0.35f).dp - rightGap
+                        Box(Modifier.align(Alignment.TopStart).padding(top = webVu(34f, 5.2f, 66f)).height(webVw(44f, 2.8f, 50f)).width(edge), contentAlignment = Alignment.CenterEnd) { ExperienceClock() }
+                    }
                     else Box(Modifier.align(Alignment.TopStart).padding(top = webVu(34f, 5.2f, 66f)).height((44f / LocalStageScale.current).dp).width(634.dp), contentAlignment = Alignment.CenterEnd) { ExperienceClock() }
                 }
             }
         }
         if (isTelevision) {
             // Keep the TV layout tree and its focus order unchanged.
-            Box(modifier = Modifier.fillMaxSize().parityBackground("container", WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+            // The web player route paints one black stage and nothing under it: the page background is not a layer there.
+            Box(modifier = Modifier.fillMaxSize().then(if (isPlayer) Modifier.background(WebBackground) else Modifier.parityBackground("container", WebBackground)).onFocusChanged { appFocusState.value = it.hasFocus }) {
                 backgroundContent()
                 if (shouldShowPlayarrMiniPlayer(isPlayer, activePlaybackItem != null, persistentPlayerState is ExperienceLoad.Ready && !playbackFailed)) {
                     PlayarrMiniPlayer(
@@ -2307,14 +2318,14 @@ private class TvNavMetrics(
             return TvNavMetrics(
                 left = (2.2f * vw).coerceIn(18f, 44f).dp,
                 top = ((5.2f * vu).coerceIn(34f, 66f) + 44f + (1.2f * vu).coerceIn(6.4f, 14.4f)).dp,
-                bottom = ((3.2f * vu).coerceIn(22f, 46f) - 2.3f).dp, // the version label ends 2.3 css px lower in web
+                bottom = (3.2f * vu).coerceIn(22f, 46f).dp,
                 groupGap = (1.26f * vu).coerceIn(4f, 13.6f).dp,
                 groupPadding = PaddingValues(horizontal = 6.76.dp, vertical = ((if (short) 4.48f else 6.72f) + 1f).dp),
                 linkGap = (if (short) 4f else (0.889f * vu).coerceIn(2.4f, 9.6f)).dp,
                 linkHeight = linkHeight.dp,
                 labelSize = labelSize.sp,
                 iconTop = iconTop.dp,
-                labelGap = (iconGap - 2.3f).coerceAtLeast(0f).dp, // measured: the web label sits 2.3 css px higher than the icon gap alone puts it
+                labelGap = iconGap.dp, // web `.app-nav-link` gap between the icon and the label line box
             )
         }
     }
@@ -2337,7 +2348,7 @@ private fun TelevisionNavigationContent(
     // Web `.app-nav`: the groups start at y 119.1 under the logo; the profile group and the version sit at its foot.
     Column(
         modifier = modifier.fillMaxHeight().padding(
-            start = web?.left ?: 42.2.dp, top = web?.top ?: 119.1.dp, bottom = web?.bottom ?: 34.5.dp,
+            start = web?.left ?: 42.2.dp, top = web?.top ?: 119.1.dp, bottom = web?.bottom ?: if (profile != null) 0.dp else 34.5.dp,
         ),
     ) {
         groups.forEachIndexed { groupIndex, group ->
@@ -2374,24 +2385,36 @@ private fun TelevisionNavigationContent(
                     PlayarrProfileAvatar(userId = profile.userId, preference = profile.avatar, modifier = Modifier.size(20.dp).parityBox("container", radius = 999f), artworkModifier = Modifier.parityBox("image"), glyphSize = 10.sp, artworkFraction = 1f)
                 }
             }
+            // Web `.app-user-version`: 700 clamp(0.38rem, 0.42vw, 0.5rem)/1 mono, 0.04em tracking, 0.35rem under the profile group, and the
+            // rail ends `clamp(22px, 3.2vu, 46px)` above the viewport foot. On the television the three lengths are one LayoutUnit sum
+            // from the foot, and the text frame is snapped once from it.
+            val versionCss = webLayoutUnit(0.42f * androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp / 100f).coerceIn(6.08f, 8f)
+            val footCss = if (web == null) webLayoutUnit((3.2f * androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp / 100f).coerceIn(22f, 46f)) else 0f
+            val gapCss = webLayoutUnit(5.6f)
             Text(
                 profileVersionLabel(BuildConfig.VERSION_NAME),
                 color = WebInk,
-                fontSize = if (web == null) 8.sp else 6.08.sp,
-                lineHeight = if (web == null) 8.sp else 6.08.sp,
+                fontSize = if (web == null) versionCss.sp else 6.08.sp,
+                lineHeight = if (web == null) versionCss.sp else 6.08.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = if (web == null) 0.32.sp else 0.2432.sp,
+                letterSpacing = if (web == null) (0.04f * versionCss).sp else 0.2432.sp,
                 fontFamily = webMonoFamily,
                 softWrap = false,
                 maxLines = 1,
-                modifier = Modifier.padding(top = if (web == null) 2.6.dp else (8.4f - minOf(8.4f, tabletPull)).dp)
+                modifier = (if (web == null) Modifier.layout { measurable, constraints ->
+                    val lineCss = webLayoutUnit(versionCss)
+                    val below = Math.round((gapCss + lineCss + footCss) * density)
+                    val placeable = measurable.measure(androidx.compose.ui.unit.Constraints())
+                    val w = 77.5.dp.roundToPx()
+                    layout(w, below) { placeable.place((w - placeable.width) / 2, below - Math.round((lineCss + footCss) * density)) }
+                } else Modifier.padding(top = (8.4f - minOf(8.4f, tabletPull)).dp)
                     .layout { measurable, constraints ->
                         // Tablet web: the profile group ends 1.4 css px above the version, the rail drew it 8.3 px above (see tabletPull).
                         val cut = (tabletPull - 8.4f).coerceAtLeast(0f).dp.roundToPx()
                         val placeable = measurable.measure(constraints)
                         layout(placeable.width, (placeable.height - cut).coerceAtLeast(0)) { placeable.place(0, -cut) }
                     }
-                    .width(77.5.dp).wrapContentWidth(unbounded = true),
+                    .width(77.5.dp).wrapContentWidth(unbounded = true)),
             )
         }
     }
@@ -2458,6 +2481,7 @@ private fun TvNavTile(
             .then(if (entryFocus != null) Modifier.focusRequester(entryFocus) else Modifier)
             .onFocusChanged { focused = it.isFocused }
             .then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier)
+            .playarrLink()
             // RIGHT lands directly in the page's default target, as on web.
             .onPreviewKeyEvent { event ->
                 val target = contentEntry.requester
@@ -2492,7 +2516,7 @@ private fun TvNavTile(
                         ),
                     ),
                 ),
-                modifier = Modifier.padding(top = (web?.labelGap ?: 3.3.dp), start = 4.dp, end = 4.dp),
+                modifier = Modifier.padding(top = (web?.labelGap ?: 4.8.dp), start = 4.dp, end = 4.dp),
             )
         }
     }
@@ -2509,7 +2533,7 @@ private fun ExperienceClock(modifier: Modifier = Modifier) {
             now = playarrNow()
         }
     }
-    Row(modifier.offset(1.dp, 0.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (LocalStageScale.current != 1f) (9.2f + 4.7f / LocalStageScale.current).dp else 9.2.dp)) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (LocalStageScale.current != 1f) (9.2f + 4.7f / LocalStageScale.current).dp else 9.2.dp)) {
         Text(
             now.format(DateTimeFormatter.ofPattern("HH:mm")),
             color = WebInk,
@@ -2518,6 +2542,7 @@ private fun ExperienceClock(modifier: Modifier = Modifier) {
             fontWeight = FontWeight(760),
             letterSpacing = (-0.03f * webVw(13.12f, 0.9f, 17.6f).value).sp,
             lineHeight = (1.5f * webVw(13.12f, 0.9f, 17.6f).value).sp,
+            maxLines = 1, softWrap = false,
             modifier = Modifier,
         )
         Text(
@@ -2527,7 +2552,8 @@ private fun ExperienceClock(modifier: Modifier = Modifier) {
             fontWeight = FontWeight(640),
             letterSpacing = (0.04f * webVw(8.32f, 0.58f, 11.52f).value).sp,
             lineHeight = (1.1f * webVw(8.32f, 0.58f, 11.52f).value).sp,
-            modifier = Modifier.offset(y = (-0.4).dp),
+            maxLines = 1, softWrap = false,
+            modifier = Modifier,
         )
     }
 }
@@ -3515,7 +3541,6 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
                 letterSpacing = 0.983.sp,
                 lineHeight = 18.432.sp,
                 style = glow,
-                modifier = Modifier.offset(y = 1.dp),
             )
             WebHeroTitle(work.title, Modifier.padding(top = 25.9.dp + (if (tabletHero) 3.7.dp else 0.dp)))
             val runtime = runtimeMs?.let { formatPlayarrVideoRuntime(it, language) }
@@ -3624,6 +3649,7 @@ internal fun ExperienceMediaRail(
                 fontWeight = FontWeight(610),
                 letterSpacing = (-0.03f * headingSize).sp,
                 lineHeight = (if (LocalStageScale.current != 1f) headingSize * 1.316f else headingSize * 1.5f).sp,
+                maxLines = 1,
                 modifier = Modifier.graphicsLayer { translationY = headingInkOffset.toPx() - (if (railIndex > 0) 2.2.dp.toPx() else 0f) }.semantics { heading() },
             )
         } else {
@@ -3846,6 +3872,7 @@ internal fun ExperienceLandscapeCard(
                     )
                 },
             )
+            .playarrLink(webTvStyle)
             .then(if (contentLabel != null) Modifier.clearAndSetSemantics { contentDescription = contentLabel } else Modifier),
     ) {
     // The lift is applied here, inside the focus target, so focus search keeps the unlifted bounds.
@@ -3955,9 +3982,9 @@ internal fun ExperienceLandscapeCard(
             val homeScale = LocalStageScale.current
             val homeTitle = if (tabletHome) webVw(8.8f, 0.62f, 12.48f).value else 11.904f
             val homeMeta = if (tabletHome) webVw(6.88f, 0.46f, 8.96f).value else 8.832f
-            Column(Modifier.height(if (tabletHome) ((11.52f + homeTitle * homeScale * 1.504f) / homeScale).dp else 29.36.dp).wrapContentHeight(Alignment.Top, unbounded = true)) {
-            Text(displayTitle, color = if (focused) Color.White else WebInk, fontSize = homeTitle.sp, fontWeight = FontWeight(610), letterSpacing = (if (tabletHome) -0.015f * homeTitle else -0.17856f).sp, lineHeight = (if (tabletHome) homeTitle * 1.504f else 17.856f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (11.52f / homeScale).dp else 9.9.dp, start = 1.9.dp))
-            Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = homeMeta.sp, lineHeight = (if (tabletHome) homeMeta * 1.3f else 13.248f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (2.56f / homeScale).dp else 2.6.dp, start = 1.9.dp))
+            Column(Modifier.height(if (tabletHome) ((11.52f + homeTitle * homeScale * 1.504f) / homeScale).dp else (11.52f + 17.856f).dp).wrapContentHeight(Alignment.Top, unbounded = true)) {
+            Text(displayTitle, color = if (focused) Color.White else WebInk, fontSize = homeTitle.sp, fontWeight = FontWeight(610), letterSpacing = (if (tabletHome) -0.015f * homeTitle else -0.17856f).sp, lineHeight = (if (tabletHome) homeTitle * 1.504f else 17.856f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (11.52f / homeScale).dp else 11.52.dp, start = 1.9.dp))
+            Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = homeMeta.sp, lineHeight = (if (tabletHome) homeMeta * 1.3f else 13.248f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (2.56f / homeScale).dp else 2.56.dp, start = 1.9.dp))
             }
         } else if (webPhone && webHome) {
             // Web `.tv-home-card`: the card box ends under the one title line (padding-top --card-copy-gap 0.72rem, 8.8 px / 610 at line-height 1.5, inline padding
@@ -4045,6 +4072,7 @@ internal fun WebDetailPill(
             .parityShape(999f)
             // The glyph is decoration: the control is named by its label (or the web aria-label the caller passes).
             .semantics { contentDescription = exportLabel ?: label }
+            .playarrLink(exportRole == "link")
             .webFocusRing(focused, offset = 2.dp)
             .onFocusChanged { focused = it.isFocused }
             // The accessible name is the words alone: the decorative glyph beside them is not read.
@@ -4123,11 +4151,33 @@ internal fun LibraryResults(
     // Television: web's first column starts at x 783.4 (measured on the live grid).
     // Web `--library-rail-top` clamp(128, 15 vu, 174) less the 140 dp the header already takes, and the row gap clamp(22, 2.5 vu, 36).
     val tvGridTop = webVu(128f, 15f, 174f) - 140.dp
-    // Web's rows sit 240.33 px apart at 1080p (213.33 block + 27 gap); the grid rounds whole pixels, so the rows are trimmed below.
+    // Web `.tv-title-grid`: rows `--library-rail-top` (162 css px at 1080p) down, `gap: clamp(22, 2.5vu, 36) --card-grid-gap`. A card is the 16/9 art of `--card-w` plus its copy,
+    // every length a LayoutUnit; each row's top and bottom edge is rounded once from its summed css position (see phoneLibraryCardCss for the same block).
     val tvRowGap = webVu(22f, 2.5f, 36f)
-    val tvRowPitchPx = if (isTelevision && artworkSize == LibraryArtworkSize.Medium && LocalStageScale.current == 1f) with(LocalDensity.current) { (213.33.dp + tvRowGap).toPx() } else 0f
-    val tvRail = if (LocalStageScale.current != 1f) webLibraryRail() else null
-    val screenPadding = if (isTelevision) PaddingValues(start = tvRail?.start ?: 52.7.dp /* web's first column paints at x 783 (rounded), not 784 */, end = tvRail?.end ?: 103.3.dp, top = tvGridTop, bottom = 104.dp) else padding
+    val tvRows = isTelevision && artworkSize == LibraryArtworkSize.Medium && LocalStageScale.current == 1f
+    val tvRailCss = webLibraryRail()
+    val tvViewportCss = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.toFloat()
+    val tvCardCss = webLayoutUnit(tvRailCss.cardWidth(fixedColumns ?: 3, false).value)
+    val tvRowPitchCss = phoneLibraryCardCss(tvCardCss, tvViewportCss) + tvRowGap.value
+    val tvGridTopCss = webVu(128f, 15f, 174f).value
+    val tvRail = if (LocalStageScale.current != 1f || tvRows) tvRailCss else null
+    // Web `.tv-title-grid`: the pane is the right 1190.4 css px (left edge 729.6), its grid starts `start` in, and every column edge is snapped once to a device pixel from
+    // that fractional sum (the art paints 327 or 328 px wide). The pane box itself is an integer px, so the column cells carry the exact snapped edges.
+    val tvCols = fixedColumns ?: 3
+    val tvPaneCss = 1190.4f
+    val tvPaneLeftCss = tvViewportCss - tvPaneCss
+    val tvColLeftCss = List(tvCols) { webLayoutUnit(tvPaneLeftCss + tvRailCss.start.value + it * (tvCardCss + tvRailCss.gap.value)) }
+    val tvDensity = androidx.compose.ui.platform.LocalDensity.current.density
+    val tvPaneLeftPx = Math.round(tvViewportCss * tvDensity) - Math.round(tvPaneCss * tvDensity)
+    val tvColLeftPx = tvColLeftCss.map { Math.round(it * tvDensity) }
+    // The art paints at the snapped left edge and the snapped width (327 px at every column; the right edge is not snapped from the fractional sum).
+    val tvColRightPx = tvColLeftPx.map { it + Math.round(tvCardCss * tvDensity) }
+    val tvPadStart = if (tvRows) ((tvColLeftPx[0] - tvPaneLeftPx) / tvDensity).dp else tvRail?.start ?: 52.7.dp
+    val tvCells = object : GridCells {
+        override fun androidx.compose.ui.unit.Density.calculateCrossAxisCellSizes(availableSize: Int, spacing: Int): List<Int> =
+            List(tvCols) { c -> (if (c + 1 < tvCols) tvColLeftPx[c + 1] else tvColRightPx[c]) - tvColLeftPx[c] }
+    }
+    val screenPadding = if (isTelevision) PaddingValues(start = tvPadStart, end = tvRail?.end ?: 103.3.dp, top = tvGridTop, bottom = 104.dp) else padding
     when (viewMode) {
         LibraryViewMode.Screen -> {
         val phoneViewportDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
@@ -4136,13 +4186,13 @@ internal fun LibraryResults(
         val phoneCardCss = phoneLibraryCardCss(phonePosterCardWidth().value, phoneViewportDp.toFloat())
         val phoneRowPitchCss = phoneCardCss + PHONE_LIBRARY_ROW_GAP_CSS
         LazyVerticalGrid(
-            columns = fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth) else GridCells.Fixed(phonePosterColumns(artworkSize, androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp)),
+            columns = if (tvRows) tvCells else fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth) else GridCells.Fixed(phonePosterColumns(artworkSize, androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp)),
             state = gridState,
             // Phone too: web's scroll-edge mask (floor 0.3) dims the grid at both edges over the page background.
             modifier = Modifier.fillMaxSize().playarrEdgeFades(gridState.canScrollBackward, gridState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical, panel = if (isTelevision) null else WebBackground),
             contentPadding = screenPadding,
-            horizontalArrangement = Arrangement.spacedBy(if (isTelevision) tvRail?.gap ?: 25.92.dp else 12.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 0.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (tvRows) 0.dp else if (isTelevision) tvRail?.gap ?: 25.92.dp else 12.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isTelevision && !tvRows) tvRowGap else 0.dp),
         ) {
             itemsIndexed(works, key = { _, work -> work.id }) { index, work ->
                 val openLabel = playarrString(PlayarrString.LibraryOpenWork, "title" to work.title)
@@ -4155,15 +4205,18 @@ internal fun LibraryResults(
                     onSelected = { onSelected(work) },
                     onClick = { onOpen(work) },
                     modifier = (if (grid != null) Modifier.tvGridItem(grid, index) else Modifier)
-                        // Web's cards are 327.17 px wide at 1080p; the grid hands out whole-pixel cells of 328 and 327, so the poster would be 1 px too tall in every other column.
-                        .then(if (tvRowPitchPx > 0f) Modifier.requiredWidth(327.17.dp) else Modifier.fillMaxWidth())
-                        .then(if (tvRowPitchPx > 0f) Modifier.layout { measurable, constraints ->
-                            // Web's rows sit apart by a fractional device pixel count; Lazy grids round every row to whole pixels, which drifts. Trim a pixel from the rows where the drift crosses one.
-                            val placeable = measurable.measure(constraints)
-                            val row = index / phoneColumns
-                            val pitch = placeable.height + tvRowGap.roundToPx()
-                            val cut = pitch - (Math.round((row + 1) * tvRowPitchPx) - Math.round(row * tvRowPitchPx))
-                            layout(placeable.width, placeable.height - cut) { placeable.place(0, 0) }
+                        .then(if (tvRows) Modifier else Modifier.fillMaxWidth())
+                        .then(if (tvRows) Modifier.layout { measurable, constraints ->
+                            val d = density
+                            val rowTop = tvGridTopCss + (index / phoneColumns) * tvRowPitchCss
+                            val top = Math.round(rowTop * d)
+                            val cardPx = Math.round((rowTop + tvRowPitchCss - tvRowGap.value) * d) - top
+                            val cellPx = Math.round((rowTop + tvRowPitchCss) * d) - top
+                            val col = index % tvCols
+                            val cardWidthPx = tvColRightPx[col] - tvColLeftPx[col]
+                            val placeable = measurable.measure(constraints.copy(minWidth = cardWidthPx, maxWidth = cardWidthPx, minHeight = cardPx, maxHeight = cardPx))
+                            val cellWidthPx = (if (col + 1 < tvCols) tvColLeftPx[col + 1] else tvColRightPx[col]) - tvColLeftPx[col]
+                            layout(cellWidthPx, cellPx) { placeable.place(0, 0) }
                         } else Modifier)
                         .then(if (!isTelevision && phoneViewportDp < 540) Modifier.layout { measurable, constraints ->
                             // Web phone `.tv-title-card`: the browser snaps each box edge once, from its summed css position. Row r starts at
@@ -4953,6 +5006,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                     // Tablet (stage-scaled canvas): the web tablet keeps 44 css px buttons from y 222 and 14.5 px from the edge, unscaled.
                     val alphaTablet = LocalStageScale.current != 1f
                     val alphaCss = if (alphaTablet) 1f / LocalStageScale.current else 1f
+                    val symbolsLabel = playarrString(PlayarrString.LibraryNumbersAndSymbols)
                     Column(
                         modifier = Modifier.align(Alignment.TopEnd)
                             .padding(top = if (alphaTablet) 222.dp * alphaCss else 278.dp, end = if (alphaTablet) 14.5.dp * alphaCss else 18.5.dp)
@@ -4973,7 +5027,9 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                                     .onFocusChanged { letterFocused = it.isFocused }
                                     .parityShape(999f)
                                     .clip(CircleShape)
-                                    .clickable { activeLetter = letter },
+                                    .clickable { activeLetter = letter }
+                                    // Web: the "#" button is labelled "Numbers and symbols", the others by their letter.
+                                    .semantics { if (letter == "#") contentDescription = symbolsLabel },
                                 contentAlignment = Alignment.Center,
                             ) {
                             val disc = WebInk.copy(alpha = 0.78f)
@@ -4989,9 +5045,11 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                                     letter,
                                     color = if (active) WebBackground else WebInkMuted,
                                     fontSize = if (alphaTablet) (6.88f * alphaCss).sp else 9.216.sp,
+                                    // Web `line-height: 1`: the line box is the font size, the 12 px content area overhangs it by the floored half leading.
+                                    lineHeight = if (alphaTablet) androidx.compose.ui.unit.TextUnit.Unspecified else 9.216.sp,
                                     fontWeight = FontWeight.Normal,
-                                    // Chromium rounds the glyph box (12 px) and sets its baseline 0.5 dp higher than the unrounded 12.57 dp box Compose centres.
-                                    modifier = if (alphaTablet) Modifier else Modifier.offset(y = (-0.5).dp),
+                                    // Phone/TV: the text carries the browser's baseline itself (page Text), no offset.
+                                    modifier = if (alphaTablet) Modifier else Modifier,
                                 )
                             }
                             }
@@ -6716,6 +6774,8 @@ private fun ExperienceVideoDetailContent(
                     .padding(start = playarrPageMetrics(true).start, top = tvHeroTop(), end = 28.dp, bottom = 64.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
+              // The page scaffold gives every scaffolded page the css line box; the detail copy column is not inside one.
+              androidx.compose.material3.ProvideTextStyle(androidx.compose.material3.LocalTextStyle.current.copy(lineHeightStyle = io.playarr.shared.designsystem.page.WebLineBox)) {
                 VideoDetailCopy(
                     detail.work,
                     selectedSeason?.season?.seasonNumber,
@@ -6747,6 +6807,7 @@ private fun ExperienceVideoDetailContent(
                     television = true,
                     modifier = Modifier.padding(top = (if (selectedEpisode != null) 10.3.dp else 37.8.dp) + (if (LocalStageScale.current != 1f) (if (selectedEpisode != null) 6.dp else 9.dp) else 0.dp)),
                 )
+              }
             }
             if (series != null) {
                 SeriesEpisodeBrowser(
@@ -7272,9 +7333,10 @@ private fun VideoDetailCopy(
                 fontWeight = FontWeight(820),
                 letterSpacing = 0.983.sp,
                 lineHeight = 18.432.sp,
+                maxLines = 1,
                 modifier = if (episodeNumber != null) Modifier else Modifier,
             )
-            WebHeroTitle(work.title, Modifier.padding(top = 25.9.dp + (if (LocalStageScale.current != 1f) 3.7.dp else 0.dp)))
+            WebHeroTitle(work.title, Modifier.padding(top = if (LocalStageScale.current != 1f) 29.6.dp else webVu(18f, 2.4f, 34f)))
             episode?.episode?.title?.let { title ->
                 Text(
                     title,
@@ -7282,11 +7344,12 @@ private fun VideoDetailCopy(
                     fontSize = 21.sp,
                     fontWeight = FontWeight(570),
                     letterSpacing = (-0.739).sp,
-                    modifier = Modifier.padding(top = 17.dp + (if (LocalStageScale.current != 1f) 2.3.dp else 0.dp)).semantics { heading() },
+                    maxLines = 1,
+                    modifier = Modifier.padding(top = if (LocalStageScale.current != 1f) 19.3.dp else webVu(14f, 1.8f, 24f)).semantics { heading() }, // web: h2 margin-top clamp(14px, 1.8vu, 24px)
                 )
             }
             androidx.compose.foundation.layout.FlowRow(
-                modifier = Modifier.padding(top = 26.dp),
+                modifier = Modifier.padding(top = if (LocalStageScale.current != 1f) 26.dp else webVu(18f, 2.5f, 34f)),
                 // 13.6 css px between chips; each chip's width is rounded up to a pixel, so the drift is cancelled by a gap 0.5 px shorter.
                 horizontalArrangement = io.playarr.shared.designsystem.page.FractionalSpacedArrangement(13.1.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -7299,6 +7362,7 @@ private fun VideoDetailCopy(
                         // Web `.tv-detail-meta`: clamp(7.68, 0.55 vw, 10.88) css px (10.56 at 1920).
                         fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp,
                         lineHeight = (webVw(7.68f, 0.55f, 10.88f).value * 1.5f).sp,
+                        maxLines = 1,
                         fontWeight = if (index == 0) FontWeight(680) else FontWeight.Normal,
                     )
                 }
@@ -7317,7 +7381,7 @@ private fun VideoDetailCopy(
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
                 // Tablet web measured at 1280 x 800 for series episodes: the synopsis is 3 dp lower and 347 dp wide (the actions row below keeps its place).
-                modifier = Modifier.padding(top = (if (episode != null) 21.7.dp else 22.7.dp) + (if (LocalStageScale.current != 1f && episode != null) 3.dp else 0.dp)).widthIn(max = if (LocalStageScale.current != 1f && episode != null) 347.dp else 324.dp),
+                modifier = Modifier.padding(top = (if (LocalStageScale.current != 1f) (if (episode != null) 21.7.dp else 22.7.dp) + (if (episode != null) 3.dp else 0.dp) else webVu(16f, 2f, 28f))).widthIn(max = if (LocalStageScale.current != 1f && episode != null) 347.dp else 324.dp),
             )
         }
         return
@@ -7930,8 +7994,8 @@ private fun WebSeasonHeading(
 ) {
     Row(Modifier.fillMaxWidth().height(46.dp)) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = WebInk, fontSize = 17.664.sp, fontWeight = FontWeight(610), letterSpacing = (-0.53).sp, lineHeight = 26.5.sp, modifier = Modifier.semantics { heading() })
-            Text(count, color = WebInkMuted, fontSize = 9.984.sp, lineHeight = 15.sp, modifier = Modifier.padding(top = 4.dp))
+            Text(title, color = WebInk, fontSize = 17.664.sp, fontWeight = FontWeight(610), letterSpacing = (-0.53).sp, lineHeight = 26.5.sp, maxLines = 1, modifier = Modifier.semantics { heading() })
+            Text(count, color = WebInkMuted, fontSize = 9.984.sp, lineHeight = 15.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }
@@ -8267,10 +8331,12 @@ private fun WebMediaTrack(
     cards: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
 ) {
     val tabletTrack = if (LocalStageScale.current != 1f) 1f else 0f
+    // The css line box for every text in the track (the detail page is not inside the page scaffold that provides it).
+    androidx.compose.material3.ProvideTextStyle(androidx.compose.material3.LocalTextStyle.current.copy(lineHeightStyle = io.playarr.shared.designsystem.page.WebLineBox)) {
     Column {
         Column(Modifier.padding(start = 0.dp).height(45.5.dp)) {
-            Text(title, color = WebInk, fontSize = 17.664.sp, fontWeight = FontWeight(610), letterSpacing = (-0.53).sp, lineHeight = 26.5.sp, modifier = Modifier.semantics { heading() })
-            Text(count, color = WebInkMuted, fontSize = 9.984.sp, lineHeight = 15.sp, modifier = Modifier.padding(top = 4.dp))
+            Text(title, color = WebInk, fontSize = 17.664.sp, fontWeight = FontWeight(610), letterSpacing = (-0.53).sp, lineHeight = 26.5.sp, maxLines = 1, modifier = Modifier.semantics { heading() })
+            Text(count, color = WebInkMuted, fontSize = 9.984.sp, lineHeight = 15.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
         }
         run {
         LazyRow(
@@ -8283,6 +8349,7 @@ private fun WebMediaTrack(
             content = cards,
         )
         }
+    }
     }
 }
 
@@ -8322,6 +8389,7 @@ private fun WebSimilarTrack(
                         onClick = { onOpenWork(work.id) },
                         webTvStyle = true,
                         webTvLibrary = true,
+                        contentLabel = playarrString(PlayarrString.LibraryOpenWork, "title" to work.title), // web: aria-label "Open <title>"
                     )
                     Text(work.kind.playarrSingularLabel(), color = WebInkMuted, fontSize = 8.64.sp, lineHeight = 13.sp, maxLines = 1, modifier = Modifier.padding(top = 2.6.dp))
                 }
@@ -8371,7 +8439,8 @@ private fun WebEpisodeCard(
             .onFocusChanged { focused = it.isFocused }
             .clickable(onClick = onClick)
             // The card reads as its visible copy: number, lead and title.
-            .semantics { contentDescription = listOfNotNull(badge, lead, title).joinToString(" ") },
+            .playarrLink()
+            .semantics { contentDescription = exportLabel ?: listOfNotNull(badge, lead, title).joinToString(" ") },
     ) {
     Column(Modifier.fillMaxWidth().mediaCardLift(focused)) {
         WebShadowedBox(
@@ -8389,6 +8458,7 @@ private fun WebEpisodeCard(
                     fontSize = 19.2.sp,
                     fontWeight = FontWeight(560),
                     lineHeight = 28.8.sp,
+                    maxLines = 1,
                     modifier = Modifier.align(Alignment.BottomEnd).padding(end = 11.5.dp, bottom = 8.8.dp),
                 )
             }
@@ -10788,7 +10858,7 @@ internal fun AuthenticatedArtwork(
     }
     AsyncImage(
         model = request,
-        contentDescription = work.title,
+        contentDescription = null, // web: <img alt=""> (the surrounding link carries the name)
         contentScale = contentScale,
         filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
         onError = {

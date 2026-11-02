@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.playarrLink
 import io.playarr.shared.designsystem.page.parityShape
 import io.playarr.shared.designsystem.page.parityBox
 import io.playarr.shared.designsystem.page.parityBackground
@@ -1928,27 +1929,36 @@ private fun TelevisionProfilesStage(
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = if (LocalStageScale.current != 1f) 179.25.dp else 162.dp)
+                .padding(top = if (LocalStageScale.current != 1f) 179.25.dp else webVu(104f, 15f, 164f))
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Web `.profiles-heading`: 10.368 px kicker at y 162, 80.64 px h1 at y 184.8.
+            // Web `.profiles-heading` (top clamp(104px, 15vu, 164px)): the eyebrow is clamp(0.46rem, 0.54vw, 0.68rem) with the inherited
+            // 1.5 line height; the h1 (clamp(2.3rem, 4.2vw, 5.5rem), line-height .95) follows after a 0.45rem margin. Both sit in
+            // their css line boxes (the text frame places the glyphs); the stage-scaled tablet keeps its measured offsets.
+            val tablet = LocalStageScale.current != 1f
+            val eyebrowFont = if (tablet) 10.368f else webVw(7.36f, 0.54f, 10.88f).value
+            val headingFont = if (tablet) 80.64f else webVw(36.8f, 4.2f, 88f).value
             Text(
                 playarrString(PlayarrString.ProfilesTitle).uppercase(language.locale),
                 color = PlayarrWebTheme.palette.brandInk,
-                fontSize = 10.368.sp,
+                fontSize = eyebrowFont.sp,
                 fontWeight = FontWeight(820),
-                letterSpacing = 1.348.sp,
-                lineHeight = 15.6.sp,
+                letterSpacing = (0.13f * eyebrowFont).sp,
+                lineHeight = (1.5f * eyebrowFont).sp,
+                maxLines = 1,
+                style = cssLine(),
             )
             Text(
                 playarrString(PlayarrString.ProfilesHeading),
                 color = WebInk,
-                fontSize = 80.64.sp,
+                fontSize = headingFont.sp,
                 fontWeight = FontWeight.Medium,
-                letterSpacing = (-5.806).sp,
-                lineHeight = 76.6.sp,
-                modifier = Modifier.padding(top = 7.2.dp).offset(x = 3.5.dp, y = if (LocalStageScale.current != 1f) (-11.75).dp else (-17.25).dp).semantics { heading() },
+                letterSpacing = (-0.072f * headingFont).sp,
+                lineHeight = (0.95f * headingFont).sp,
+                maxLines = 1,
+                style = cssLine(),
+                modifier = Modifier.padding(top = 7.2.dp).offset(x = 3.5.dp, y = if (tablet) (-11.75).dp else 0.dp).semantics { heading() },
             )
         }
 
@@ -2698,6 +2708,9 @@ private fun AddProfileChoice(
                 color = WebInkSoft,
                 fontSize = if (isTelevision) 76.8.sp else 52.sp,
                 fontWeight = FontWeight.Light,
+                lineHeight = if (isTelevision) (76.8f * 1.364f).sp else androidx.compose.ui.unit.TextUnit.Unspecified, // web: normal line height = the font's ascent + descent
+                maxLines = if (isTelevision) 1 else Int.MAX_VALUE,
+                style = if (isTelevision) WebTextStyle else androidx.compose.material3.LocalTextStyle.current,
             )
         }
     }
@@ -3309,7 +3322,7 @@ internal fun ExperienceParitySettingsScreen(
                             "${settingsSectionNumber(index)}  ${playarrString(candidate.label)}",
                             color = if (candidate == section) WebInk else WebInkMuted,
                             fontWeight = if (candidate == section) FontWeight.Bold else FontWeight.Normal,
-                            modifier = Modifier.fillMaxWidth().clickable { picked = candidate }.padding(vertical = 12.dp),
+                            modifier = Modifier.fillMaxWidth().clickable { picked = candidate }.playarrLink().padding(vertical = 12.dp),
                         )
                     }
                 }
@@ -4171,8 +4184,8 @@ private fun PlayerDefaultHeading(title: String, description: String, divider: Bo
                 Box(Modifier.fillMaxWidth().height(1.dp).background(TvSettingsPalette.divider))
                 Spacer(Modifier.height(30.24.dp))
             }
-            Text(title, color = WebInk, fontSize = 26.4.sp, lineHeight = 39.2.sp, fontWeight = FontWeight(560), letterSpacing = (-0.924).sp, style = cssLine())
-            Text(description, color = WebInkMuted, fontSize = 13.12.sp, lineHeight = 20.34.sp, style = cssLine(), modifier = Modifier.padding(top = 5.6.dp))
+            Text(title, color = WebInk, fontSize = 26.4.sp, lineHeight = 39.6.sp, fontWeight = FontWeight(560), letterSpacing = (-0.924).sp, maxLines = 1, style = cssLine())
+            Text(description, color = WebInkMuted, fontSize = 13.12.sp, lineHeight = 20.34.sp, maxLines = 1, style = cssLine(), modifier = Modifier.padding(top = 5.6.dp))
         }
         return
     }
@@ -4301,7 +4314,7 @@ private fun TvSettingsBody(
         Text(
             playarrString(section.label).uppercase(locale),
             color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.ink,
-            fontSize = if (tablet) (9.92f * ku).sp else 11.136.sp, fontWeight = FontWeight(680), letterSpacing = if (tablet) (0.045f * 9.92f * ku).sp else 0.501.sp, lineHeight = if (tablet) (14f * ku).sp else 16.704.sp, style = cssLine(),
+            fontSize = if (tablet) (9.92f * ku).sp else 11.136.sp, fontWeight = FontWeight(680), letterSpacing = if (tablet) (0.045f * 9.92f * ku).sp else 0.501.sp, lineHeight = if (tablet) (14f * ku).sp else 16.704.sp, maxLines = 1, style = cssLine(),
             modifier = Modifier.offset(x = if (tablet) (178.31f * ku).dp else 226.6.dp, y = if (tablet) (98.58f * ku).dp else 117.7.dp),
         )
         val isAdmin by viewModel.isAdmin.collectAsState()
@@ -4317,33 +4330,42 @@ private fun TvSettingsBody(
                 var focused by remember { mutableStateOf(false) }
                 val selected = candidate == section
                 val rowName = settingsSectionNumber(number) + " " + playarrString(candidate.label)
+                // Web row = 2 * clamp(18, 2.2vu, 28) padding + the 1.5 line of the 29.6 px title, summed as LayoutUnits (91.890625); every edge snaps once from its summed css top.
+                val density = androidx.compose.ui.platform.LocalDensity.current
+                val rowCss = 91.890625f
+                val topCss = 162f + index * rowCss
+                val rowPx = Math.round(topCss * density.density)
+                val rowDp = with(density) { (Math.round((topCss + rowCss) * density.density) - rowPx).toDp() }
+                fun dy(css: Float) = with(density) { (Math.round((topCss + css) * density.density) - rowPx).toDp() }
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .height(rowHeight)
+                        .height(if (tablet) rowHeight else rowDp)
                         .then(if (index == 0) Modifier.focusRequester(firstRow) else Modifier)
                         // Web: the focused or selected section row takes the grey fill; the focus indicator is the fill, no outline.
                         .parityBackground("container", if (selected || focused) TvSettingsPalette.selectedRow else TvSettingsPalette.listBackground)
                         
                         .onFocusChanged { focused = it.isFocused; if (it.isFocused) onPick(candidate) }
                         .semantics { contentDescription = rowName }
-                        .clickable { onPick(candidate) },
+                        .clickable { onPick(candidate) }
+                        .playarrLink(),
                 ) {
                     val u = if (tablet) 1f / stage else 1f
                     Text(
                         settingsSectionNumber(number),
-                        color = if (tablet) WebInk else WebInk, fontSize = if (tablet) (9.92f * u).sp else 9.92.sp, fontWeight = FontWeight(760), lineHeight = if (tablet) (14f * u).sp else 11.sp, style = cssLine(),
-                        modifier = Modifier.offset(x = if (tablet) (25.6f * u).dp else 32.dp, y = if (tablet) (21.52f * u).dp else 27.dp),
+                        color = if (tablet) WebInk else WebInk, fontSize = if (tablet) (9.92f * u).sp else 9.92.sp, fontWeight = FontWeight(760), lineHeight = if (tablet) (14f * u).sp else 14.88.sp, maxLines = 1, style = cssLine(),
+                        // Web: row padding clamp(18, 2.2vu, 28) + number padding-top 0.22rem, in a 1.5 line.
+                        modifier = Modifier.offset(x = if (tablet) (25.6f * u).dp else 32.dp, y = if (tablet) (21.52f * u).dp else dy(23.75f + 3.515625f)),
                     )
                     Text(
                         playarrString(candidate.label),
-                        color = WebInk, fontSize = if (tablet) (20.48f * u).sp else 29.6.sp, fontWeight = FontWeight(480), lineHeight = if (tablet) (28f * u).sp else 33.sp, letterSpacing = if (tablet) (-0.0355f * 20.48f * u).sp else (-1.05f).sp, style = cssLine(),
-                        modifier = Modifier.align(Alignment.CenterStart).padding(start = if (tablet) (78.07f * u).dp else 92.dp).offset(y = if (tablet) (-0.36f * u).dp else (-1).dp),
+                        color = WebInk, fontSize = if (tablet) (20.48f * u).sp else 29.6.sp, fontWeight = FontWeight(480), lineHeight = if (tablet) (28f * u).sp else 44.4.sp, maxLines = 1, letterSpacing = if (tablet) (-0.0355f * 20.48f * u).sp else (-1.05f).sp, style = cssLine(),
+                        modifier = Modifier.align(if (tablet) Alignment.CenterStart else Alignment.TopStart).padding(start = if (tablet) (78.07f * u).dp else 92.dp).offset(y = if (tablet) (-0.36f * u).dp else dy(23.75f)),
                     )
                     Text(
                         "\u2192",
-                        color = if (selected) WebInk else WebInkMuted, fontSize = if (tablet) (20.8f * u).sp else 20.8.sp, lineHeight = if (tablet) (28f * u).sp else 23.sp, style = cssLine(),
-                        modifier = Modifier.align(Alignment.CenterEnd).padding(end = if (tablet) ((if (selected) 20.6f else 25.6f) * u).dp else (if (selected) 27.dp else 32.dp)).offset(y = if (tablet) (-0.6f * u).dp else (-2).dp),
+                        color = if (selected) WebInk else WebInkMuted, fontSize = if (tablet) (20.8f * u).sp else 20.8.sp, lineHeight = if (tablet) (28f * u).sp else 31.2.sp, maxLines = 1, style = cssLine(),
+                        modifier = Modifier.align(if (tablet) Alignment.CenterEnd else Alignment.TopEnd).padding(end = if (tablet) ((if (selected) 20.6f else 25.6f) * u).dp else (if (selected) 27.dp else 32.dp)).offset(y = if (tablet) (-0.6f * u).dp else dy(23.75f + (44.390625f - 31.2f) / 2f)),
                     )
                 }
             }
