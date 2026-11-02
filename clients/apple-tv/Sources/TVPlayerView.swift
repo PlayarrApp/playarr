@@ -384,7 +384,9 @@ private struct TVPlayerSurfaceFocus: ViewModifier {
         #if os(macOS)
         content.macPlayerSurfaceTarget(activate: activate)
         #else
-        content.focusable().focused(focus, equals: .surface)
+        // Only a target while it or nothing holds the focus: otherwise a native Right/Down from a control lands on this
+        // full-screen view (web: the video is only reached by Back), undoing the explicit move.
+        content.focusable(focus.wrappedValue == nil || focus.wrappedValue == .surface).focused(focus, equals: .surface)
         #endif
     }
 }
