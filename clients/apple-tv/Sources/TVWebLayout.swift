@@ -433,15 +433,15 @@ struct TVKeyArt: View {
     }
 }
 
-/// Web `.tv-stage-wash`: the surface colour washing in from the left and, lighter, from the right.
+/// Web `.tv-stage-wash`: opaque surface stops fading to transparent (90deg: surface 0 to 36 %, clear at 52 %; 270deg: surface at
+/// the right edge, clear at 17 %). Opaque stops rasterise the same in every engine, so the native wash follows them exactly.
 struct TVStageWash: View {
     var body: some View {
         ZStack {
             LinearGradient(
                 stops: [
-                    // Web `.tv-stage-wash`: surface 94% at 0, 90% at 36%, clear at 52%.
-                    .init(color: DesignTokens.Color.backgroundElevated.opacity(0.94), location: 0),
-                    .init(color: DesignTokens.Color.backgroundElevated.opacity(0.90), location: 0.36),
+                    .init(color: DesignTokens.Color.backgroundElevated, location: 0),
+                    .init(color: DesignTokens.Color.backgroundElevated, location: 0.36),
                     .init(color: DesignTokens.Color.backgroundElevated.opacity(0), location: 0.52),
                 ],
                 startPoint: .leading,
@@ -449,8 +449,8 @@ struct TVStageWash: View {
             )
             LinearGradient(
                 stops: [
-                    .init(color: DesignTokens.Color.backgroundElevated.opacity(0.50), location: 0),
-                    .init(color: DesignTokens.Color.backgroundElevated.opacity(0), location: 0.34),
+                    .init(color: DesignTokens.Color.backgroundElevated, location: 0),
+                    .init(color: DesignTokens.Color.backgroundElevated.opacity(0), location: 0.17),
                 ],
                 startPoint: .trailing,
                 endPoint: .leading
