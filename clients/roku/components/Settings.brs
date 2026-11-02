@@ -48,7 +48,7 @@ sub renderSettings()
     ' Web: a hairline as wide as the title, then the section name; no description line.
     titleW = pgButtonWidth(m.pageHead, "Preferences", 0, 50, 33.6, 580) - 16.6
     pgRect(m.pageHead, 226.6, 112, titleW, 1, "line")
-    pgLabel(m.pageHead, 226.6, 119.1, 420, 15, UCase(sections[activeIdx].title), 11.14, 680, "ink", { tracking: 0.49 })
+    pgLabel(m.pageHead, 226.6, 119.1, 420, 15, UCase(sections[activeIdx].title), 11.14, 680, "ink", { tracking: 0.045 * 11.14 })
     ' The web numbers sections by their place in the full list, so a hidden admin-only section leaves a gap (08).
     full = ["appearance", "avatar", "language", "player", "server", "lock", "invite", "latency", "remote", "data", "home"]
     for i = 0 to sections.Count() - 1
@@ -65,7 +65,7 @@ sub renderSettings()
         numText = num.ToStr()
         if num < 10 then numText = "0" + numText
         pgLabel(m.pageBody, 185.6, y + 27.3, 40, 14, numText, 9.92, 760, "ink")
-        pgLabel(m.pageBody, 245.6, y + 25.8, 330, 40, sections[i].title, 29.6, 480, "ink", { tracking: -1.038 })
+        pgLabel(m.pageBody, 245.6, y + 25.8, 330, 40, sections[i].title, 29.6, 480, "ink", { tracking: -0.035 * 29.6 })
         arrowRole = "inkMuted"
         arrowX = 571.2
         if i = activeIdx
@@ -129,7 +129,7 @@ function pgSegmented(x as Float, y as Float, h as Float, labels as Object, activ
 end function
 
 sub pgHeading(y as Float, text as String)
-    pgLabel(m.pageBody, 773.8, y, 995, 40, text, 26.4, 560, "ink", { tracking: -0.929, aria: "heading" })
+    pgLabel(m.pageBody, 773.8, y, 995, 40, text, 26.4, 560, "ink", { tracking: -0.035 * 26.4, aria: "heading" })
 end sub
 
 sub pgHint(y as Float, text as String, size = 13.12 as Float)

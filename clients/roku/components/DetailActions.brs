@@ -60,18 +60,21 @@ sub buildTiles()
         ' Web (global.css .tv-detail-play / .tv-detail-playback-settings): a glyph, the CSS gap, then the label, centred as a group in the
         ' pill. The glyph advance is the symbol font's own (hmtx units over unitsPerEm 2048: play 1575, sliders mark 1836) or Nunito Sans's
         ' plus; the gap is 0.65rem on the play pill and 0.55rem on the others.
-        glyphSize = 12.81
+        ' Font sizes are the CSS values: the pill's clamp(0.54rem, 0.62 * --vw, 0.78rem) and clamp(0.5rem, 0.58 * --vw, 0.72rem), the glyph span 0.85em (play) or 1.15em.
+        playFont = WebClamp(8.64, 0.62 * WebVw(), 12.48)
+        settingsFont = WebClamp(8.0, 0.58 * WebVw(), 11.52)
+        glyphSize = 1.15 * settingsFont
         gw = PlayarrTextWidth("+", glyphSize, 400, 0)
         if t.icon = "nav-playlists.png" then gw = 1836 * glyphSize / 2048
         if t.icon = "player-play.png"
-            glyphSize = 10.12
+            glyphSize = 0.85 * playFont
             gw = 1575 * glyphSize / 2048
         end if
-        labelSize = 11.14
-        if t.primary or t.ink = true then labelSize = 11.9
+        labelSize = settingsFont
+        if t.primary or t.ink = true then labelSize = playFont
         lw = PlayarrTextWidth(t.text, labelSize, 700, 0)
-        gap = 8.8
-        if t.ink = true then gap = 10.4
+        gap = 0.55 * 16.0
+        if t.ink = true then gap = 0.65 * 16.0
         startX = t.x + (t.w - (gw + gap + lw)) / 2
         centreY = t.y + t.h / 2
         glyphRole = "brandInk"

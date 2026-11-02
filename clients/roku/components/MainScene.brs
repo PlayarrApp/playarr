@@ -58,7 +58,7 @@ sub init()
     m.profilesTitle = m.top.findNode("profilesTitle")
     if m.profilesKicker <> invalid
         m.profilesKicker.ObserveField("textWidth", "centerProfilesKicker")
-        m.profilesKicker.spec = { text: "PROFILES", size: 10.37, weight: 820, tracking: 1.342, role: "brandInk", upper: true }
+        m.profilesKicker.spec = { text: "PROFILES", size: 10.37, weight: 820, tracking: 0.13 * 10.37, role: "brandInk", upper: true }
     end if
     if m.profilesTitle <> invalid
         m.profilesTitle.ObserveField("textWidth", "centerProfilesTitle")
@@ -2977,7 +2977,7 @@ sub updateBrowsePreview(work as Object)
     end if
     m.browsePreviewKind.translation = [153.6, PlayarrTextTop(WebPanelTop(), WebPanelKickerSize(), WebPanelKickerLineHeight())]
     m.browsePreviewTitle.translation = [153.6, PlayarrTextTop(WebPanelTitleLineTop(), 69.12, WebPanelTitleLineHeight())]
-    m.browsePreviewKind.spec = { text: kicker, size: 12.29, weight: 860, tracking: 0.97, role: "brandInk", upper: true }
+    m.browsePreviewKind.spec = { text: kicker, size: 12.29, weight: 860, tracking: 0.08 * 12.29, role: "brandInk", upper: true }
     m.browsePreviewTitle.spec = { text: work.title, size: 69.12, weight: 560, tracking: -0.072 * 69.12, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true, aria: "heading" }
     year = ""
     ' Web LibraryPreview: release year only (never the added date).
@@ -4525,7 +4525,7 @@ sub finishHomeLoad()
         end if
         buildRailContent(rail.row, rail.works, isActiveRail, WebCardWidth() / 220.0, m.artActiveGeneration, "home", railIndex)
         m.visibleRails.Push({ row: rail.row, works: rail.works, first: 0, col: 0, last: 0, jumping: -1, rightAligned: false })
-        ' Rails sit 366 px apart (web .tv-home-rail rhythm with the 327 px cards); 470 px with covers.
+        ' Rails sit WebHomeRailPitch() apart (365.86, the .tv-home-rail rhythm from CSS); 470 px with covers.
         y += homeRailPitch()
         railIndex = railIndex + 1
     end for
@@ -4750,8 +4750,9 @@ end sub
 ' Home headings keep the same Web typography regardless of which rail owns card focus.
 sub setRailTitle(rail as Object)
     if rail.label = invalid then return
-    rail.title.spec = { text: rail.label, size: 17.66, weight: 610, tracking: -0.03 * 17.66, role: "ink", aria: "heading" }
-    rail.title.translation = [0, -19.9]
+    railHeadingSize = WebClamp(12.16, 0.92 * WebVw(), 18.88)
+    rail.title.spec = { text: rail.label, size: railHeadingSize, weight: 610, tracking: -0.03 * railHeadingSize, role: "ink", aria: "heading" }
+    rail.title.translation = [0, WebHomeRailHeadingTop(rail.row.translation[1] + 15)]
 end sub
 
 sub onHomeItemSelected(event as Object)
@@ -6134,7 +6135,7 @@ sub updateSeriesEpisodeHeader()
     if epTitle = "" then epTitle = "Episode " + ep.episode_number.ToStr()
     m.detailEpisodeTitle.visible = true
     m.detailEpisodeTitle.translation = [153.6, titleBottom + 17.5]
-    m.detailEpisodeTitle.spec = { text: epTitle, size: 21.12, weight: 570, tracking: -0.743, role: "inkSoft", aria: "heading", width: 312, lineHeight: 24.3, maxLines: 1 }
+    m.detailEpisodeTitle.spec = { text: epTitle, size: 21.12, weight: 570, tracking: -0.035 * 21.12, role: "inkSoft", aria: "heading", width: 312, lineHeight: 24.3, maxLines: 1 }
     metaY = titleBottom + 70.7
     parts = []
     parts.Push({ text: "Season " + season.season_number.ToStr(), role: "inkSoft", weight: 680 })
@@ -7888,9 +7889,9 @@ function WorkYearLabel(work as Object) as String
     return start
 end function
 
-function homeRailPitch() as Integer
-    if m.homeCover = true then return 470
-    return 366
+function homeRailPitch() as Float
+    if m.homeCover = true then return 470.0
+    return WebHomeRailPitch()
 end function
 
 ' Home opens aligned with the Library grid: the panel starts at web --card-pad-left (53.76) from the 62 vw rail and the first rail at

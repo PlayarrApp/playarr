@@ -287,8 +287,8 @@ end function
 
 function cardFocusScale() as Float
     if m.homeCardFocusStyle then return 0.025
-    ' Web grid card: the card scales 1.015 and its art a further 1.025 (1.015 x 1.025 = 1.0402); measured ring 344 px wide on the live Movies ref.
-    if m.cardScaleValue > 1 then return 0.0402
+    ' Web grid card: the card scales 1.015 and its art a further 1.025 (1.015 x 1.025 = 1.040375).
+    if m.cardScaleValue > 1 then return 0.015 + 0.025 + 0.015 * 0.025
     return 0.025
 end function
 
@@ -410,14 +410,20 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
         m.focusShadow.height = 304 * gy
     end if
     titleGap = 9.9
-    if cardScale > 1 then titleGap = 11.5
+    kindGap = 19.5
+    ' Web-sized cards (Home rails, library grids): the copy gap and the kind line follow the card CSS.
+    if cardScale > 1
+        titleGap = WebCardCopyGap()
+        kindGap = WebCardKindOffset()
+    end if
+    m.cardKindGap = kindGap
     m.titleY = artH + titleGap
     m.cardTitleY = m.titleY
     m.cardTitleX = 1.94
     m.cardArtW = artW
     m.title.translation = [1.94, m.titleY]
     m.title.width = artW - 3.9
-    m.kind.translation = [1.94, artH + titleGap + 19.5]
+    m.kind.translation = [1.94, artH + titleGap + kindGap]
     m.kind.width = artW
     if listMode
         ' Web list row: the art on the left, the title and the genre line centred beside it.
@@ -472,7 +478,7 @@ sub applyCaptionFocus()
     ' A caption that was lifted returns to its rest position when focus ends (the lifted translation must not outlive the focus).
     if m.captionLifted = true and effective = 0
         m.title.translation = [m.cardTitleX, m.titleY]
-        m.kind.translation = [m.cardTitleX, m.titleY + 19.5]
+        m.kind.translation = [m.cardTitleX, m.titleY + m.cardKindGap]
         m.captionLifted = false
     end if
     if m.cardScaleValue > 1 and m.homeCardFocusStyle <> true and m.cardListMode <> true and m.cardArtW <> invalid and m.cardArtW > 0 and effective > 0
@@ -484,7 +490,7 @@ sub applyCaptionFocus()
         m.title.scale = [k, k]
         m.title.translation = [cx + (m.cardTitleX - cx) * k, cy + (m.titleY - cy) * k + lift]
         m.kind.scale = [k, k]
-        m.kind.translation = [cx + (m.cardTitleX - cx) * k, cy + (m.titleY + 19.5 - cy) * k + lift]
+        m.kind.translation = [cx + (m.cardTitleX - cx) * k, cy + (m.titleY + m.cardKindGap - cy) * k + lift]
     end if
 end sub
 

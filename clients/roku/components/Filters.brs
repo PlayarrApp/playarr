@@ -115,7 +115,7 @@ end sub
 
 ' A drawer section heading (web h3): 9.6 px caps, 0.07 em.
 sub filtersHeading(g as Object, y as Float, text as String)
-    pgLabel(g, 1606, y, 190, 13, text, 9.6, 720, "inkMuted", { tracking: 0.669, aria: "heading" })
+    pgLabel(g, 1606, y, 190, 13, text, 9.6, 720, "inkMuted", { tracking: 0.07 * 9.6, aria: "heading" })
 end sub
 
 ' A tile chosen in a segmented control is drawn 1.0249 times larger about its centre (web transform).
