@@ -190,6 +190,10 @@ export async function createDriver({ request = call, delay = sleep, env = proces
             await toggle(all, false);
             // a container whose own fill is covered by what it holds (a poster over its card) is still visible through its content
             await toggle(all.filter((i) => !keep.has(i) && doc.cands[i][4] === 1), true);
+            // A box that crosses the screen edge cannot be settled by a pixel diff: the part that would show an occluder is outside the rendered
+            // screen, and a label whose first rows are blank (a line box taller than its ink) shows nothing in the strip that is on screen. The web
+            // dump lists it (it is in the DOM), so it stays unless the diff already proved it visible (nothing is learned by dropping it).
+            all.forEach((i) => { const [cx, cy, cw, ch] = doc.cands[i]; if (cx < 0 || cy < 0 || cx + cw > base.width || cy + ch > base.height) keep.add(i); });
           } finally { await request("POST", "/unhide"); rmSync(probe, { force: true }); }
           await delay(OCCLUSION_RENDER_MS);
           capture(probe);
