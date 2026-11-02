@@ -41,7 +41,8 @@ const STATES = {
   player: async (file) => {
     await driver.home();
     await press(["left", "down*12", "up*6", "select", "right", "select"]);
-    await driver.evaluate(`new Promise((resolve) => { const t0 = Date.now(); const tick = () => { const v = document.querySelector("video"); const a = window.webapis && window.webapis.avplay; let t = null; try { t = a && a.getState() === "PLAYING" ? a.getCurrentTime() / 1000 : null; } catch (e) {} if ((v && !v.paused && v.currentTime > 2.2) || (t !== null && t > 2.2) || Date.now() - t0 > 45000) resolve(true); else setTimeout(tick, 300); }; tick(); })`);
+    const probe = `(() => { const v = document.querySelector("video"); const a = window.webapis && window.webapis.avplay; let t = null; try { t = a && a.getState() === "PLAYING" ? a.getCurrentTime() / 1000 : null; } catch (e) {} return (v && !v.paused && v.currentTime > 2.2) || (t !== null && t > 2.2); })()`;
+    for (let i = 0; i < 100; i += 1) { if (await driver.evaluate(probe).catch(() => false)) break; await sleep(450); }
     await driver.evaluate(`(() => { const v = document.querySelector("video"); const a = window.webapis && window.webapis.avplay; try { if (a && a.getState() === "PLAYING") { a.pause(); a.seekTo(2000); } } catch (e) {} if (v) { v.pause(); v.currentTime = 2; } return true; })()`);
     await sleep(8000); // the controls hide after 5 s without input
     const hidden = await driver.evaluate(`(() => { const c = document.querySelector(".player-controls"); return !c || c.classList.contains("is-hidden") || getComputedStyle(c).opacity === "0" || getComputedStyle(c).visibility === "hidden"; })()`);

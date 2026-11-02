@@ -19,7 +19,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const page = (id) => `!!document.querySelector('[data-page-id="${id}"]')`;
 const text = (re) => `new RegExp(${JSON.stringify(re)}, "i").test(document.body.innerText)`;
 // First link under a section, read from its list page (the fixture ids are not fixed in this file).
-const firstHref = (prefix) => `(() => { const a = [...document.querySelectorAll("a[href]")].find((x) => new RegExp("#${prefix}/[^/?]+$").test(x.getAttribute("href") || "")); return a ? a.getAttribute("href").replace(/^#/, "") : null; })()`;
+const firstHref = (prefix) => `(() => { const p = ${JSON.stringify("#" + prefix)}; const q = p.endsWith("=") ? "" : "/"; const a = [...document.querySelectorAll("a[href]")].find((x) => { const h = x.getAttribute("href") || ""; return h.startsWith(p + q) && h.length > (p + q).length && !h.slice((p + q).length).includes("/"); }); return a ? a.getAttribute("href").replace(/^#/, "") : null; })()`;
 
 // id, route (or resolve: [list route, ready expression, href prefix]), ready expression
 const SCREENS = [
@@ -35,7 +35,7 @@ const SCREENS = [
   { id: "watchlist", route: "/watchlist", ready: page("watchlist") },
   { id: "requests", route: "/requests", ready: page("requests") },
   { id: "playlists", route: "/playlists", ready: page("playlists") },
-  { id: "playlist-detail", resolve: ["/playlists", page("playlists"), "/playlists"], ready: page("work-detail") },
+  { id: "playlist-detail", resolve: ["/playlists", page("playlists"), "/playlists?playlist="], ready: page("playlists") },
   { id: "folders", route: "/folders", ready: `!!document.querySelector("[data-page-id]")` },
   ...["appearance", "profile-avatar", "language", "player", "server", "profile-lock", "invite", "request-latency", "remote", "your-data", "home"].map((s) => ({
     id: `settings-${s}`, route: `/settings/${s}`, ready: `!!document.querySelector('[data-page-id="settings"] .settings-workspace')`,
@@ -63,7 +63,7 @@ for (const theme of themes) {
         const [list, ready, prefix] = s.resolve;
         await driver.open(list, ready);
         await sleep(1500);
-        route = await driver.evaluate(firstHref(prefix));
+        for (let i = 0; i < 30 && !route; i += 1) { route = await driver.evaluate(firstHref(prefix)); if (!route) await sleep(1000); }
         if (!route) throw new Error(`no ${prefix}/:id link on ${list}`);
       }
       await driver.open(route, s.ready);
