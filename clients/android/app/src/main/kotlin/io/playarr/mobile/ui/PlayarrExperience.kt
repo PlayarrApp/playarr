@@ -7315,7 +7315,7 @@ private fun VideoDetailCopy(
                     fontWeight = FontWeight(570),
                     letterSpacing = (-0.739).sp,
                     maxLines = 1,
-                    modifier = Modifier.padding(top = 17.dp + (if (LocalStageScale.current != 1f) 2.3.dp else 0.dp)).semantics { heading() },
+                    modifier = Modifier.padding(top = if (LocalStageScale.current != 1f) 19.3.dp else webVu(14f, 1.8f, 24f)).semantics { heading() }, // web: h2 margin-top clamp(14px, 1.8vu, 24px)
                 )
             }
             androidx.compose.foundation.layout.FlowRow(
@@ -7351,7 +7351,7 @@ private fun VideoDetailCopy(
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
                 // Tablet web measured at 1280 x 800 for series episodes: the synopsis is 3 dp lower and 347 dp wide (the actions row below keeps its place).
-                modifier = Modifier.padding(top = (if (episode != null) 21.7.dp else 22.7.dp) + (if (LocalStageScale.current != 1f && episode != null) 3.dp else 0.dp)).widthIn(max = if (LocalStageScale.current != 1f && episode != null) 347.dp else 324.dp),
+                modifier = Modifier.padding(top = (if (LocalStageScale.current != 1f) (if (episode != null) 21.7.dp else 22.7.dp) + (if (episode != null) 3.dp else 0.dp) else webVu(16f, 2f, 28f))).widthIn(max = if (LocalStageScale.current != 1f && episode != null) 347.dp else 324.dp),
             )
         }
         return
@@ -10828,7 +10828,7 @@ internal fun AuthenticatedArtwork(
     }
     AsyncImage(
         model = request,
-        contentDescription = work.title,
+        contentDescription = null, // web: <img alt=""> (the surrounding link carries the name)
         contentScale = contentScale,
         filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
         onError = {

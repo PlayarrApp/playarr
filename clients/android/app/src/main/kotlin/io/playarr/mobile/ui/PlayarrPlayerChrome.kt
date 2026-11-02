@@ -772,7 +772,7 @@ private fun PlayarrPlayerTopButton(
         ) {
             Icon(icon, contentDescription = accessibilityLabel, modifier = Modifier.size(if (isTelevision && iconOnly) 13.dp else if (isTelevision) 20.dp else 22.dp).parityBox("image"))
             if (isTelevision && !iconOnly) {
-                Text(label, fontSize = 11.2.sp, fontWeight = FontWeight.Bold, fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif)
+                Text(label, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, maxLines = 1, style = WebTextStyle)
             }
         }
     }
@@ -1249,9 +1249,9 @@ internal fun PlayarrTelevisionControlBar(
             )
             // Web `.player-time`: three spans, 0.35rem apart, tabular digits, a fainter slash.
             Row(Modifier, horizontalArrangement = Arrangement.spacedBy(5.6.dp)) {
-                Text(formatPlayarrPlayerTime(displayedPositionMs), color = Color.White, fontSize = 10.88.sp, lineHeight = 16.32.sp, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
-                Text("/", color = Color(0xFFA5969E), fontSize = 10.88.sp, lineHeight = 16.32.sp)
-                Text(formatPlayarrPlayerTime(durationMs), color = Color.White, fontSize = 10.88.sp, lineHeight = 16.32.sp, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
+                Text(formatPlayarrPlayerTime(displayedPositionMs), color = Color.White, fontSize = 10.88.sp, lineHeight = 16.32.sp, maxLines = 1, style = WebTextStyle.copy(fontFeatureSettings = "tnum"))
+                Text("/", color = Color(0xFFA5969E), fontSize = 10.88.sp, lineHeight = 16.32.sp, maxLines = 1, style = WebTextStyle)
+                Text(formatPlayarrPlayerTime(durationMs), color = Color.White, fontSize = 10.88.sp, lineHeight = 16.32.sp, maxLines = 1, style = WebTextStyle.copy(fontFeatureSettings = "tnum"))
             }
             Spacer(Modifier.weight(1f))
             // Web always draws the audio control; with no tracks it is disabled (28%) and labelled "Audio: Unavailable".

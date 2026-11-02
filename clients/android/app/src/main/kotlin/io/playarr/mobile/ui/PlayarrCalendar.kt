@@ -1232,13 +1232,13 @@ private fun CalendarWeekBody(
                             .calendarEdgeFades(scroll.verticalEdges())
                             .verticalScroll(scroll)
                             
-                            .padding(top = topPad ?: if (isTelevision) 51.dp else PHONE_WEEK_TOP_PAD_DP.dp, bottom = 48.dp), // web: columns start at y 174, below the toolbar row
+                            .padding(top = topPad ?: if (isTelevision) 52.dp else PHONE_WEEK_TOP_PAD_DP.dp, bottom = 48.dp), // web: columns start at y 174, below the toolbar row
                         verticalArrangement = Arrangement.spacedBy(if (isTelevision) 6.dp else 0.dp),
                     ) {
                         if (true) {
-                            Row(Modifier.then(if (isTelevision) Modifier.offset(y = if (LocalStageScale.current == 1f) 2.dp else 3.dp) else Modifier).height(if (isTelevision) 28.dp else if (webColumn == null) (if (group.date == today) 22f else 21.6f).dp else 38.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(Modifier.then(if (isTelevision && LocalStageScale.current != 1f) Modifier.offset(y = 3.dp) else Modifier).height(if (isTelevision) 28.dp else if (webColumn == null) (if (group.date == today) 22f else 21.6f).dp else 38.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
-                                    phoneCalendarDayHeading(group.date, locale), color = if ((isTelevision && LocalStageScale.current == 1f) || (!isTelevision && group.date == today)) io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent else WebInk, fontSize = if (isTelevision) 18.4.sp else 14.4.sp, lineHeight = if (isTelevision) 28.sp else 21.6.sp, fontWeight = FontWeight(if (isTelevision && LocalStageScale.current != 1f) 560 else 640),
+                                    phoneCalendarDayHeading(group.date, locale), color = if (group.date == today && !(isTelevision && LocalStageScale.current != 1f)) io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent else WebInk, fontSize = if (isTelevision) 18.4.sp else 14.4.sp, lineHeight = if (isTelevision) (if (LocalStageScale.current == 1f) 27.6.sp else 28.sp) else 21.6.sp, maxLines = if (isTelevision) 1 else Int.MAX_VALUE, fontWeight = FontWeight(if (isTelevision && LocalStageScale.current != 1f) 560 else 640),
                                     style = WebTextStyle, modifier = if (isTelevision) (if (LocalStageScale.current == 1f) Modifier else Modifier.semantics { heading() }) else Modifier,
                                 )
                                 if (group.date == today) CalendarTodayBadge(tv = isTelevision && LocalStageScale.current == 1f)
@@ -1249,7 +1249,7 @@ private fun CalendarWeekBody(
                         if (!isTelevision && webColumn == null) Spacer(Modifier.height(PHONE_WEEK_HEADING_MARGIN_DP.dp))
                         if (group.entries.isEmpty()) {
                             if (isTelevision) {
-                                Text(playarrString(PlayarrString.CalendarEmptyDay), color = WebInkMuted, fontSize = if (LocalStageScale.current == 1f) 19.2.sp else 12.sp, lineHeight = if (LocalStageScale.current == 1f) 28.8.sp else androidx.compose.ui.unit.TextUnit.Unspecified, modifier = if (LocalStageScale.current == 1f) Modifier.offset(y = 1.dp) else Modifier)
+                                Text(playarrString(PlayarrString.CalendarEmptyDay), color = WebInkMuted, fontSize = if (LocalStageScale.current == 1f) 19.2.sp else 12.sp, lineHeight = if (LocalStageScale.current == 1f) 28.8.sp else androidx.compose.ui.unit.TextUnit.Unspecified, maxLines = if (LocalStageScale.current == 1f) 1 else Int.MAX_VALUE, style = WebTextStyle, modifier = if (LocalStageScale.current == 1f) Modifier else Modifier)
                             } else {
                                 // Web `.calendar-day-empty`: 16 px / 24 px muted.
                                 Text(playarrString(PlayarrString.CalendarEmptyDay), color = WebInkMuted, fontSize = 16.sp, lineHeight = 24.sp, style = WebTextStyle)
@@ -1720,7 +1720,9 @@ private fun CalendarMonthChips(
                                 }
                                 // Web `.calendar-month-foot`: a 44 px row, items centred, 3 px start padding, 0.35rem gap, at the cell's foot.
                                 Row(if (tvMonth) Modifier.height(44.dp).padding(start = 3.dp) else Modifier.height(30.dp).then(if (tabletCss) Modifier else Modifier.offset(y = (-9.3).dp)).padding(start = if (tabletCss) 2.5.dp else 2.6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (tvMonth) 5.6.dp else 16.dp)) {
-                                    Text(day.dayOfMonth.toString(), color = if (inMonth) WebInk else (if (tabletCss) WebInkSoft else WebInkMuted), fontSize = if (tabletCss) 13.44.sp else 12.8.sp, fontWeight = FontWeight(640))
+                                    Text(day.dayOfMonth.toString(), color = if (inMonth) WebInk else (if (tabletCss) WebInkSoft else WebInkMuted), fontSize = if (tabletCss) 13.44.sp else 12.8.sp, fontWeight = FontWeight(640),
+                                        maxLines = if (tvMonth) 1 else Int.MAX_VALUE, lineHeight = if (tvMonth) 19.2.sp else androidx.compose.ui.unit.TextUnit.Unspecified, // web: the flex item's 1.5 line box, centred in the 44 px foot
+                                        style = if (tvMonth) androidx.compose.material3.LocalTextStyle.current.copy(lineHeightStyle = io.playarr.shared.designsystem.page.WebLineBox) else androidx.compose.material3.LocalTextStyle.current)
                                     if (hidden > 0) {
                                         val source = remember { MutableInteractionSource() }
                                         Box(
