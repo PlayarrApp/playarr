@@ -414,6 +414,17 @@ export async function createDriver() {
       await routeReady(r);
       await guard();
     },
+    // Design-report capture (scripts/parity/tizen-webos/design-capture.mjs): run page code with the account guard around it, and open any hash route
+    // (signed-out pages, pages with no [data-page-id]) waiting for a caller-supplied ready expression instead of the per-route selectors.
+    async evaluate(expression) { await guard(); const value = await ev(expression); await guard(); return value; },
+    async open(route, readyExpression, { fresh = true } = {}) {
+      await guard();
+      if (fresh || (await ev('location.hash.replace(/^#/, "")')) !== route || loadedTheme !== theme) await load(route);
+      await guard();
+      if (readyExpression && !(await until(readyExpression, 60000))) throw new Error(`route did not become ready: ${route}`);
+      await settleVisibleImages();
+      await guard();
+    },
     async key(k, { long } = {}) {
       await guard();
       // The simulator opens the player slower than web: a key sent while the title is still loading toggles or opens the wrong thing.
