@@ -406,7 +406,13 @@ export async function createDriver({ out } = {}) {
     },
     // Whether the quality, audio or subtitles panel is open (the web's .player-quality-menu): the app reports it in the state answer.
     async panelOpen() {
-      return Boolean((await state()).panel);
+      // A loaded host draws the panel seconds after the key (the state answer then still says closed): look again for a few seconds
+      // before reporting it closed. A panel that is open is reported at once.
+      for (let i = 0; i < 4; i++) {
+        if ((await state().catch(() => ({}))).panel) return true;
+        await sleep(2000);
+      }
+      return false;
     },
     async focused() {
       // A state answer can arrive without the focus while the app is busy (a loaded host answers late): ask again before reporting none.
