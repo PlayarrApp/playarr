@@ -255,7 +255,7 @@ export async function createDriver({ out } = {}) {
       await sleep(900);
     },
     // player-controls: open the pinned film, press Play, pause the static clip at about 2 s (as the web ref) and raise the controls.
-    async playerControls() {
+    async playerControls({ raise = true } = {}) {
       const film = JSON.parse(readFileSync(new URL("../suite.json", import.meta.url), "utf8")).screens.find((x) => x.id === "film-detail")?.open;
       if (!film) throw new Error("suite has no pinned film for player-controls");
       await command({ cmd: "armPause", ms: "1900" }, 500);
@@ -274,6 +274,7 @@ export async function createDriver({ out } = {}) {
       }
       if (!paused) throw new Error("the Vega player did not pause at 2 s");
       await sleep(7000); // the controls hide after 5 s without input
+      if (!raise) return; // the player with its controls hidden (the design report's `player` screen)
       await press("Right"); // the first input with the controls hidden only raises them
       await sleep(2500);
     },
@@ -301,6 +302,14 @@ export async function createDriver({ out } = {}) {
         await sleep(2500);
         if ((await state()).route !== "/search") await command({ cmd: "route", path }, 4000);
       }
+    },
+    // A plain PNG of the screen for the design report (no layout document, no cover pass): the theme is checked first.
+    async grab(file) {
+      const s = await state();
+      if (!s.route) throw new Error("the app reported no route");
+      await checkTheme();
+      await sleep(1500);
+      await execFileP("import", ["-window", "root", "-crop", "1920x1080+0+0", "+repage", file], { env });
     },
     async location() {
       return (await state()).route;
