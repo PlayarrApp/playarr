@@ -1617,6 +1617,7 @@ internal fun PlayarrExperience(
     val playerDefaults = LocalPlayarrDisplayPreferences.current.playerDefaults
     val activePlaybackItem = playbackQueue.currentItem
     val isPlayer = currentRoute.startsWith("experience-player")
+    androidx.compose.runtime.SideEffect { io.playarr.shared.designsystem.page.parityPlayerRoute.value = isPlayer }
     val isProfiles = currentRoute == "profiles"
     val online by rememberPlayarrOnlineStatus()
     var profileReturnRoute by remember { mutableStateOf(initialRoute) }
@@ -1924,7 +1925,7 @@ internal fun PlayarrExperience(
         if (isTelevision) {
             // Keep the TV layout tree and its focus order unchanged.
             // The web player route paints one black stage and nothing under it: the page background is not a layer there.
-            Box(modifier = Modifier.fillMaxSize().then(if (isPlayer) Modifier.background(WebBackground) else Modifier.parityBackground("container", WebBackground)).onFocusChanged { appFocusState.value = it.hasFocus }) {
+            Box(modifier = Modifier.fillMaxSize().parityBackground("container", WebBackground, exported = !isPlayer).onFocusChanged { appFocusState.value = it.hasFocus }) {
                 backgroundContent()
                 if (shouldShowPlayarrMiniPlayer(isPlayer, activePlaybackItem != null, persistentPlayerState is ExperienceLoad.Ready && !playbackFailed)) {
                     PlayarrMiniPlayer(

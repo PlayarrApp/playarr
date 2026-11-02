@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.draw.clip
 import io.playarr.shared.designsystem.page.layerAlpha
 import io.playarr.shared.designsystem.page.parityBackground
@@ -310,6 +311,8 @@ internal fun PlayarrPlayerChrome(
         Box(
             Modifier
                 .fillMaxSize()
+                // The full-screen input stage is not a web element (the web player has only its container and video): keep it out of the exported tree.
+                .clearAndSetSemantics { }
                 .focusRequester(surfaceFocusRequester)
                 .focusable()
                 .onKeyEvent { event ->

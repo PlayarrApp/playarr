@@ -77,6 +77,9 @@ val parityHiddenBoxes = androidx.compose.runtime.mutableStateOf<Set<Int>>(emptyS
 
 private fun Modifier.hideWhenAsked(box: ParityBox): Modifier = drawWithContent { if (box.id !in parityHiddenBoxes.value) drawContent() }
 
+/** True while the player route is up: the web player is only a black container and the video, so the app root backdrop is not exported then. */
+val parityPlayerRoute = androidx.compose.runtime.mutableStateOf(false)
+
 val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<ParityBox>())
 
 /**
@@ -100,19 +103,19 @@ fun Modifier.parityBox(kind: String, radius: Float = 0f, opacity: Float = 1f, fi
  * [parityBox] plus the background itself: draws `color` in `shape` and records, in the draw call, the colour it painted (alpha included),
  * so the export reads the app's own paint and not a copy of it.
  */
-fun Modifier.parityBackground(kind: String, color: androidx.compose.ui.graphics.Color, shape: androidx.compose.ui.graphics.Shape = androidx.compose.ui.graphics.RectangleShape, radius: Float = 0f, opacity: Float = 1f, drawsBorder: Boolean = false): Modifier =
-    parityPaint(kind, color, shape, radius, opacity, drawsBorder).foundationBackground(color, shape)
+fun Modifier.parityBackground(kind: String, color: androidx.compose.ui.graphics.Color, shape: androidx.compose.ui.graphics.Shape = androidx.compose.ui.graphics.RectangleShape, radius: Float = 0f, opacity: Float = 1f, drawsBorder: Boolean = false, exported: Boolean = true): Modifier =
+    parityPaint(kind, color, shape, radius, opacity, drawsBorder, exported).foundationBackground(color, shape)
 
 /**
  * Records, without painting, the fill and the resolved outline a surface draws with (kind `fill` is a backdrop for its descendants and not an
  * element of its own). Placed on the same node as the paint, so the export follows the real tree and reads the shape the app really drew.
  */
-fun Modifier.parityPaint(kind: String, color: androidx.compose.ui.graphics.Color, shape: androidx.compose.ui.graphics.Shape, radius: Float = 0f, opacity: Float = 1f, drawsBorder: Boolean = false): Modifier =
+fun Modifier.parityPaint(kind: String, color: androidx.compose.ui.graphics.Color, shape: androidx.compose.ui.graphics.Shape, radius: Float = 0f, opacity: Float = 1f, drawsBorder: Boolean = false, exported: Boolean = true): Modifier =
     if (!parityLayoutEnabled) this else composed {
         val view = androidx.compose.ui.platform.LocalView.current
         val box = remember { ParityBox(view, kind, radius, opacity, color.alpha) }
         box.density = androidx.compose.ui.platform.LocalDensity.current.density; box.kind = kind; box.radius = radius; box.opacity = opacity; box.fillAlpha = color.alpha
-        DisposableEffect(box) { parityBoxes.add(box); onDispose { box.coordinates = null; parityBoxes.remove(box) } }
+        DisposableEffect(box, exported) { if (exported) parityBoxes.add(box); onDispose { box.coordinates = null; parityBoxes.remove(box) } }
         this.onGloballyPositioned { box.coordinates = it }.semantics { this[box.semanticsKey] = box.id }.drawBehind {
             box.fill = color
             // A box whose own modifiers also draw a border (set by the caller that draws it) is painted even with a transparent fill.

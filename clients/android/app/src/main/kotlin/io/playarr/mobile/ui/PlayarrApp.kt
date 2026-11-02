@@ -526,7 +526,7 @@ fun PlayarrApp(
         LocalPlayarrPhoneInsets provides phoneInsets,
         LocalPlayarrWebTextStyle provides WebTextStyle,
     ) {
-        Surface(modifier = Modifier.fillMaxSize(), color = PlayarrBackground, contentColor = Color.White) {
+        Surface(modifier = Modifier.fillMaxSize(), color = PlayarrBackground, contentColor = Color.White, exported = !io.playarr.shared.designsystem.page.parityPlayerRoute.value) {
             when (val current = state) {
                 RootState.Loading -> LoadingScreen()
                 is RootState.SignedOut -> if (current.showProfiles) {

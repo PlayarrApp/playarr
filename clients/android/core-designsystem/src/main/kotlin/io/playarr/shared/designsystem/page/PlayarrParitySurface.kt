@@ -26,8 +26,9 @@ fun Surface(
     tonalElevation: Dp = 0.dp,
     shadowElevation: Dp = 0.dp,
     border: BorderStroke? = null,
+    exported: Boolean = true,
     content: @Composable () -> Unit,
-) = androidx.compose.material3.Surface(modifier.parityPaint("fill", color, shape), shape, color, contentColor, tonalElevation, shadowElevation, border, content)
+) = androidx.compose.material3.Surface(modifier.parityPaint("fill", color, shape, exported = exported), shape, color, contentColor, tonalElevation, shadowElevation, border, content)
 
 @Composable
 fun Surface(
