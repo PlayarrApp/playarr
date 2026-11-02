@@ -89,6 +89,18 @@ namespace Playarr.Xbox.Views
             }
         }
 
+        /// <summary>Design-report capture: opens section N of the numbered list, as a click on its row would.</summary>
+        internal void ShowSectionForTest(int section)
+        {
+            if (section >= 0 && section < _sections.Count)
+            {
+                ShowSection(section);
+            }
+        }
+
+        /// <summary>Design-report capture: the Server section's Sign out button.</summary>
+        internal void SignOutForTest() => SignOutButton_Click(this, null!);
+
         private void ShowSection(int section)
         {
             StopSectionWork();

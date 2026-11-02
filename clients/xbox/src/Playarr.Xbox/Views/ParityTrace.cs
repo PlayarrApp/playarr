@@ -56,6 +56,7 @@ namespace Playarr.Xbox.Views
             _writing = true;
             try
             {
+                UiRequested(frame, folder);
                 var (accountProbe, accountMatchesTest) = await CheckTestAccountAsync(folder);
                 if (accountMatchesTest)
                 {
@@ -137,6 +138,50 @@ namespace Playarr.Xbox.Views
                         else if (library == "series") App.Navigation.Navigate(typeof(LibraryPage), WorkKind.Series);
                         App.Navigation.Navigate(typeof(WorkDetailPage), workId);
                     }
+                }
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        /// <summary>
+        /// A <c>parity.do</c> file holding <c>verb</c> or <c>verb:argument</c> reaches a screen the design-report capture cannot click to:
+        /// <c>section:N</c> opens Settings section N (0-based), <c>search:text</c> types the Search query, <c>signout</c> signs out from Settings,
+        /// <c>manual</c> toggles manual sign-in on the sign-in page, <c>addprofile</c> opens the Profiles add-profile confirmation.
+        /// </summary>
+        private static void UiRequested(Frame frame, string folder)
+        {
+            var file = System.IO.Path.Combine(folder, "parity.do");
+            try
+            {
+                if (!System.IO.File.Exists(file))
+                {
+                    return;
+                }
+
+                var text = System.IO.File.ReadAllText(file).Trim();
+                System.IO.File.Delete(file);
+                var colon = text.IndexOf(':');
+                var verb = colon < 0 ? text : text.Substring(0, colon);
+                var argument = colon < 0 ? string.Empty : text.Substring(colon + 1);
+                switch (verb)
+                {
+                    case "section" when frame.Content is SettingsPage settings && int.TryParse(argument, out var section):
+                        settings.ShowSectionForTest(section);
+                        break;
+                    case "search" when frame.Content is SearchPage search:
+                        search.SetQueryForTest(argument);
+                        break;
+                    case "signout" when frame.Content is SettingsPage leaving:
+                        leaving.SignOutForTest();
+                        break;
+                    case "manual" when frame.Content is LoginPage login:
+                        login.ToggleManualForTest();
+                        break;
+                    case "addprofile" when frame.Content is ProfilesPage profiles:
+                        profiles.AddProfileForTest();
+                        break;
                 }
             }
             catch (Exception)

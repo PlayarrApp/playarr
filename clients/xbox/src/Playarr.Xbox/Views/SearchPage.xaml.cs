@@ -117,6 +117,9 @@ namespace Playarr.Xbox.Views
 
 
         // Web searches as you type.
+        /// <summary>Design-report capture: types the query as the viewer would (the system keyboard is not on a hosted runner).</summary>
+        internal void SetQueryForTest(string query) => QueryBox.Text = query;
+
         private void QueryBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             QueryHint.Visibility = string.IsNullOrEmpty(QueryBox.Text) ? Visibility.Visible : Visibility.Collapsed;

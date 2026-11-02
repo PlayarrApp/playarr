@@ -202,6 +202,9 @@ namespace Playarr.Xbox.Views
             return row;
         }
 
+        /// <summary>Design-report capture: the add-profile tile's confirmation dialog.</summary>
+        internal void AddProfileForTest() => ConfirmAddProfile();
+
         /// <summary>
         /// This app holds one paired account, so adding a profile means signing out and pairing another; the viewer
         /// confirms first, and Cancel leaves the current session untouched.
