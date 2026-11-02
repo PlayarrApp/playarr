@@ -232,7 +232,7 @@ struct TVPlayerView: View {
         focusedControl = target
         interaction.focus = target
         // The focus engine applies its own geometric move for the same press a beat later: assert the web's target again after it.
-        for delay in [0.05, 0.2] {
+        for delay in [0.05, 0.2, 0.6] {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { focusedControl = target; interaction.focus = target }
         }
     }
@@ -253,14 +253,14 @@ struct TVPlayerView: View {
                 remoteUsed = true
                 interaction.reveal()
                 // Web: from the video, left reaches Play/Pause, right the first menu control, up the seek bar.
-                if focusedControl == .surface {
+                if focusedControl == .surface, !(direction == .down && interaction.focus == .scrubber) {
                     switch direction {
                     case .left: focusedControl = .play
                     case .right: focusedControl = .audio; menuCursor = .audio
                     case .up: focusedControl = .scrubber
                     default: break
                     }
-                    if let next = focusedControl { interaction.focus = next }
+                    if let next = focusedControl { settle(next) }
                     return
                 }
                 if let current = focusedControl, TVPlayerControl.menuRow.contains(current), direction == .left || direction == .right {
@@ -273,7 +273,9 @@ struct TVPlayerView: View {
                     settle(target)
                     return
                 }
-                switch (focusedControl, direction) {
+                // The press that left the surface may not have reached the binding yet: the last explicit target decides.
+                let here = focusedControl == .surface || focusedControl == nil ? interaction.focus : focusedControl
+                switch (here, direction) {
                 case (.scrubber, .left):
                     viewModel.seek(by: -10)
                     interaction.seeked()
