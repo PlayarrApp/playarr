@@ -1086,39 +1086,28 @@ struct TVCardFocusGlow: ViewModifier {
     let focused: Bool
     let cornerRadius: CGFloat
 
-    #if os(macOS)
-    // A 3 px stroke is centred on its path, so the path sits 1.5 px out for the ring to touch the art (the web's box-shadow
-    // ring); 3 left a 1.5 px gap that showed as a pale line between art and ring.
+    /// Web `--card-glow`: `0 0 0 3px glow, 0 0 20px 4px glow at 45 %`. A 3 px ring is a stroke centred 1.5 px outside the art so it
+    /// touches it; the glow is a 4 px spread of the card shape blurred by the 20 px (sigma 10), painted BEHIND the art because a
+    /// box-shadow never paints inside its own box.
     private let ringOffset: CGFloat = 1.5
-    #else
-    private let ringOffset: CGFloat = 3
-    #endif
 
     func body(content: Content) -> some View {
-        content.overlay {
-            if focused {
-                RoundedRectangle(cornerRadius: cornerRadius + ringOffset, style: .continuous)
-                    .stroke(DesignTokens.Stage.cardGlow, lineWidth: 3)
-                    .padding(-ringOffset)
-                    #if os(macOS)
-                    // Web `0 0 20px 4px` glow at 45%: the 4 px spread is a wider faint stroke under the blur.
-                    .background(
-                        RoundedRectangle(cornerRadius: cornerRadius + 7, style: .continuous)
-                            .stroke(DesignTokens.Stage.cardGlow.opacity(0.3), lineWidth: 6)
-                            .padding(-6)
-                            .blur(radius: 10)
-                    )
-                    #else
-                    // Web `0 0 20px 4px` at 45 %: a 4 px spread (the wider stroke) blurred by half the 20 px.
-                    .background(
-                        RoundedRectangle(cornerRadius: cornerRadius + 3, style: .continuous)
-                            .stroke(DesignTokens.Stage.cardGlow.opacity(0.45), lineWidth: 8)
-                            .padding(-3)
-                            .blur(radius: 10)
-                    )
-                    #endif
+        content
+            .background {
+                if focused {
+                    RoundedRectangle(cornerRadius: cornerRadius + 4, style: .continuous)
+                        .fill(DesignTokens.Stage.cardGlow.opacity(0.45))
+                        .padding(-4)
+                        .blur(radius: 10)
+                }
             }
-        }
+            .overlay {
+                if focused {
+                    RoundedRectangle(cornerRadius: cornerRadius + ringOffset, style: .continuous)
+                        .stroke(DesignTokens.Stage.cardGlow, lineWidth: 3)
+                        .padding(-ringOffset)
+                }
+            }
     }
 }
 
