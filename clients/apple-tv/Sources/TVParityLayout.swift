@@ -127,8 +127,7 @@ final class TVParityLayoutRegistry {
     private func measureVisibility() async -> Visibility {
         let hide = TVParityHide.shared
         let settle: UInt64 = 160_000_000
-        hide.hidden = []
-        try? await Task.sleep(nanoseconds: settle)
+        await hide.hide([], settle: settle)
         guard let base = TVParityStageRender.capture() else { return Visibility(rendered: false) }
         try? await Task.sleep(nanoseconds: settle)
         guard let again = TVParityStageRender.capture(), base.hasContent else { return Visibility(rendered: false) }
@@ -144,31 +143,47 @@ final class TVParityLayoutRegistry {
             units.append((id, rects, hull))
         }
         // views whose boxes are apart can be hidden together: one render for the whole batch
-        var batches: [[Int]] = []
-        for index in units.indices {
-            let box = units[index].hull.insetBy(dx: -3, dy: -3)
-            if let slot = batches.firstIndex(where: { batch in batch.allSatisfy { !units[$0].hull.insetBy(dx: -3, dy: -3).intersects(box) } }) {
-                batches[slot].append(index)
-            } else {
-                batches.append([index])
+        func batched(_ indices: [Int]) -> [[Int]] {
+            var batches: [[Int]] = []
+            for index in indices {
+                let box = units[index].hull.insetBy(dx: -3, dy: -3)
+                if let slot = batches.firstIndex(where: { batch in batch.allSatisfy { !units[$0].hull.insetBy(dx: -3, dy: -3).intersects(box) } }) {
+                    batches[slot].append(index)
+                } else {
+                    batches.append([index])
+                }
             }
+            return batches
         }
         var result = Visibility()
         let started = Date()
-        for (number, batch) in batches.enumerated() {
-            TVParityState.setNote("layout measure: batch \(number + 1) of \(batches.count), \(units.count) units, \(Int(Date().timeIntervalSince(started))) s")
-            hide.hidden = Set(batch.map { units[$0].id })
-            try? await Task.sleep(nanoseconds: settle)
-            guard let hidden = TVParityStageRender.capture() else { hide.hidden = []; return Visibility(rendered: false) }
-            for index in batch {
-                let unit = units[index]
-                let changes = unit.rects.map { hidden.changed(in: $0, from: base, stableWith: again) }
-                result.rects[unit.id] = changes.map { $0 != nil }
-                result.seen[unit.id] = changes.map { $0 ?? .zero }
+        func measure(_ batches: [[Int]], wait: UInt64, label: String) async -> Bool {
+            for (number, batch) in batches.enumerated() {
+                TVParityState.setNote("layout measure \(label): batch \(number + 1) of \(batches.count), \(units.count) units, \(Int(Date().timeIntervalSince(started))) s")
+                await hide.hide(Set(batch.map { units[$0].id }), settle: wait)
+                guard let hidden = TVParityStageRender.capture() else { await hide.hide([], settle: 0); return false }
+                for index in batch {
+                    let unit = units[index]
+                    let changes = unit.rects.map { hidden.changed(in: $0, from: base, stableWith: again) }
+                    // a second look can only add visibility that the first render was too early to show
+                    let flags = changes.map { $0 != nil }
+                    if let before = result.rects[unit.id] {
+                        result.rects[unit.id] = zip(before, flags).map { $0 || $1 }
+                        result.seen[unit.id] = zip(result.seen[unit.id] ?? [], changes).map { $1 ?? $0 }
+                    } else {
+                        result.rects[unit.id] = flags
+                        result.seen[unit.id] = changes.map { $0 ?? .zero }
+                    }
+                }
             }
+            return true
         }
-        hide.hidden = []
-        try? await Task.sleep(nanoseconds: settle)
+        guard await measure(batched(Array(units.indices)), wait: settle, label: "pass 1") else { return Visibility(rendered: false) }
+        // An item whose hiding changed nothing is looked at again with a longer wait before it is called not visible: a render that
+        // had not caught up reads the same as a really hidden item, and the layout must not depend on the machine's speed.
+        let unseen = units.indices.filter { !(result.rects[units[$0].id] ?? []).contains(true) }
+        if !unseen.isEmpty, !(await measure(batched(unseen), wait: settle * 4, label: "pass 2")) { return Visibility(rendered: false) }
+        await hide.hide([], settle: settle)
         return result
     }
 
@@ -473,6 +488,18 @@ private struct TVParityOpacityModifier: ViewModifier {
 final class TVParityHide {
     static let shared = TVParityHide()
     var hidden: Set<UUID> = []
+    /// The views that have re-evaluated since `hidden` last changed: the measurement waits for these before it reads the screen, so
+    /// a slow main thread cannot make a hidden item look like it changed nothing.
+    @ObservationIgnored var acknowledged: Set<UUID> = []
+
+    /// Hides `ids`, then waits (bounded) until every one of them has applied it and a render has had time to follow.
+    @MainActor func hide(_ ids: Set<UUID>, settle: UInt64) async {
+        acknowledged = []
+        let changing = ids.symmetricDifference(hidden)
+        hidden = ids
+        for _ in 0..<40 where !changing.isSubset(of: acknowledged) { try? await Task.sleep(nanoseconds: 50_000_000) }
+        try? await Task.sleep(nanoseconds: settle)
+    }
 }
 
 /// The rendered stage as RGBA pixels, 1920 x 1080 (the stage in points; the Mac scales its window to it).
@@ -715,6 +742,7 @@ private struct TVParityLayoutModifier: ViewModifier {
             .accessibilityAddTraits(role == "heading" ? .isHeader : []) // the role declared to the export is the one the app reports
             .opacity(hide.hidden.contains(id) ? 0 : 1)
             .animation(nil, value: hide.hidden.contains(id)) // the measurement hides without any ancestor animation
+            .onChange(of: hide.hidden.contains(id)) { _, _ in _ = hide.acknowledged.insert(id) } // the view has applied the hide
             .background(
                 GeometryReader { proxy in
                     let frame = proxy.frame(in: tvScreenSpace)
@@ -769,6 +797,7 @@ private struct TVParityBoxModifier: ViewModifier {
         content
             .opacity(hide.hidden.contains(id) ? 0 : 1)
             .animation(nil, value: hide.hidden.contains(id)) // the measurement hides without any ancestor animation
+            .onChange(of: hide.hidden.contains(id)) { _, _ in _ = hide.acknowledged.insert(id) } // the view has applied the hide
             .background(
                 GeometryReader { proxy in
                     let frame = proxy.frame(in: tvScreenSpace)

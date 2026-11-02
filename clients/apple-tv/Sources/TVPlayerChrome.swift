@@ -531,7 +531,22 @@ private struct TVOptionalFocusTag: ViewModifier {
     let control: TVPlayerControl?
 
     func body(content: Content) -> some View {
-        if let binding, let control { content.focused(binding, equals: control) } else { content }
+        if let binding, let control { content.focused(binding, equals: control).modifier(TVAppOwnedFocus(binding: binding, control: control)) } else { content }
+    }
+}
+
+/// While the suite drives the player the app owns the focus: only the control the app last chose can take focus, so the focus
+/// engine's own geometric move for the same press has no other candidate to land on and cannot race the app's explicit order.
+private struct TVAppOwnedFocus: ViewModifier {
+    let binding: FocusState<TVPlayerControl?>.Binding
+    let control: TVPlayerControl
+
+    func body(content: Content) -> some View {
+        #if os(tvOS)
+        if TVParityLaunch.drivesPlayer { content.focusable(binding.wrappedValue == control) } else { content }
+        #else
+        content
+        #endif
     }
 }
 
@@ -541,7 +556,7 @@ private struct TVFocusTag: ViewModifier {
 
     func body(content: Content) -> some View {
         if let binding {
-            content.focused(binding, equals: control)
+            content.focused(binding, equals: control).modifier(TVAppOwnedFocus(binding: binding, control: control))
         } else {
             content
         }
