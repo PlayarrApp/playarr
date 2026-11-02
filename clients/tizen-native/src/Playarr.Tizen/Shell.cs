@@ -204,12 +204,6 @@ internal sealed class Shell : View
         Add(page.Root);
         if (page is SearchScreen searchPage) searchPage.OnAdded();
         if (page is PlaylistsScreen playlistsPage) playlistsPage.OnAdded();
-        if (_theme.Name == "light" && !page.HideChrome && !page.Fullscreen)
-        {
-            // web light: the page colour fades from #fbfaf9 to #efeeef between x 640 and 1120 (measured); text and cards sit above it
-            var fade = Ui.Gradient(640, 0, 1280, 1080, true, (0, _theme.Surface), (0.375f, new Rgba(0.937f, 0.937f, 0.937f)), (1, new Rgba(0.937f, 0.937f, 0.937f)));
-            page.Root.Add(fade); fade.LowerToBottom();
-        }
         page.Root.LowerToBottom();
         // full-screen pages (the player) draw over a transparent window: no rail, no background
         BackgroundColor = page.Fullscreen ? new Color(0, 0, 0, 0) : Ui.C(_theme.Bg);

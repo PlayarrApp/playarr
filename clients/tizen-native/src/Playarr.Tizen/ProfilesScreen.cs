@@ -27,8 +27,8 @@ internal sealed class ProfilesScreen : IPage
         _env = env; _t = env.Theme;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.Add(new ImageView(Ui.ResPath("logo.png")) { PositionX = 60.6f, PositionY = 60.2f, Size = new Size(42, 42) });
-        _root.Add(Ui.Text("Profiles", 0, 162, 10.368f, 800, _t.BrandInk, 1920, 15.552f, HorizontalAlignment.Center, upper: true, spacing: 1.35f));
-        _root.Add(Sem.Tag(Ui.Text("Who’s watching?", 0, 184.8f, 80.64f, 500, _t.Ink, 1920, 76.6f, HorizontalAlignment.Center, spacing: -6.24f), "heading"));
+        _root.Add(Ui.Text("Profiles", 0, 162, 10.368f, 800, _t.BrandInk, 1920, 15.552f, HorizontalAlignment.Center, upper: true, spacing: 0.13f * 10.368f));
+        _root.Add(Sem.Tag(Ui.Text("Who’s watching?", 0, 184.8f, 80.64f, 500, _t.Ink, 1920, 76.6f, HorizontalAlignment.Center, spacing: -0.072f * 80.64f), "heading"));
         _root.Add(_body);
         AddDropdown(1551.8f, 144, _t.Name == "dark" ? "Dark" : "Light", "theme", () => _env.SetTheme(_t.Name == "dark" ? "light" : "dark"));
         AddDropdown(1709.8f, 168, "Auto", "language", () => { });
@@ -85,7 +85,7 @@ internal sealed class ProfilesScreen : IPage
     {
         var holder = new View { PositionX = x, PositionY = CircleY, Size = new Size(Circle, 301.63f) }; // web: the card is the circle and its two caption lines
         // web .profile-avatar: the circle carries the gradient plate and the border, the artwork sits inside it at 86 %
-        var artSize = Circle * 0.853f;
+        var artSize = (Circle - 2f) * 0.86f; // the artwork group is 86 % of the 100-unit plate (shared avatar SVG scale 0.86) inside the 1 px border
         var art = new ImageView(Ui.ResPath($"avatars/art-{preset}.png")) { PositionX = (Circle - artSize) / 2, PositionY = (Circle - artSize) / 2, Size = new Size(artSize, artSize) };
         var cardFocused = false;
         float nameBase = 0, subBase = 0;
@@ -115,10 +115,10 @@ internal sealed class ProfilesScreen : IPage
     private void AddAdd(float x)
     {
         var holder = new View { PositionX = x, PositionY = CircleY, Size = new Size(Circle, 301.63f) };
-        // web .profile-card-add: the brand wash, sampled from the web capture (top to bottom); the soft top-left highlight is not drawn
-        var wash = _t.Name == "dark"
-            ? Ui.Gradient(0, 0, Circle, Circle, false, (0f, Rgba.Of(84, 36, 52, 1f)), (1f, Rgba.Of(145, 40, 76, 1f)))
-            : Ui.Gradient(0, 0, Circle, Circle, false, (0f, Rgba.Of(234, 188, 198, 1f)), (1f, Rgba.Of(188, 82, 113, 1f)));
+        // web .profile-add: --profile-colour-start is color-mix(in srgb, var(--surface-strong) 84%, var(--brand)); the end is the .profile-avatar fallback #a82655;
+        // the plate is linear-gradient(145deg, start, end). The soft top-left radial highlight is not drawn.
+        Rgba Mix(Rgba a, Rgba b, float wa) => new(a.R * wa + b.R * (1 - wa), a.G * wa + b.G * (1 - wa), a.B * wa + b.B * (1 - wa), 1f);
+        var wash = Ui.DiagonalGradient(0, 0, Circle, Circle, 145f, (0f, Mix(_t.SurfaceStrong, _t.Brand, 0.84f)), (1f, Rgba.Hex(0xa82655)));
         var disc = new View { Size = new Size(Circle, Circle), CornerRadius = Circle / 2, BorderlineWidth = 1, BorderlineColor = Ui.LineA(_t, 0.15f), BackgroundImage = ((ImageView)wash).ResourceUrl }; // web: a painted circle, the wash is its background
         Sem.Tag(disc, "container");
         disc.Add(Ui.Text("+", 0, 64.4f, 76.8f, 300, _t.InkSoft, Circle, 115.2f, HorizontalAlignment.Center));

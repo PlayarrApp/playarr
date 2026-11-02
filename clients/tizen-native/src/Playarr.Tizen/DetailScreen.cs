@@ -106,8 +106,6 @@ internal sealed class DetailScreen : IPage
         AddButton("Add to Playlist", "+", 311.6f, y2, 142, primary: false, label: "add to playlist", select: () => Toast("Playlists are not available in this app yet."), name: "Add to Playlist", role: "button");
     }
 
-    private static float GlyphWidth(string g) => g switch { "⇩" => 10.7f, "☷" => 11.5f, "+" => 7.7f, _ => 8.2f }; // advances of the fallback-font glyphs as web lays them out
-
     private void AddButton(string text, string glyph, float x, float y, float w, bool primary, string label, Action select, string? name = null, string role = "button")
     {
         var bg = primary ? _t.Ink : _t.SurfaceStrong.Mixed(0.78f);
@@ -115,7 +113,7 @@ internal sealed class DetailScreen : IPage
         if (!primary) { box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.075f); }
         else box.BoxShadow = new Shadow(46, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.18f), new Vector2(0, 18), new Vector2(0, 0)); // web .tv-detail-play
         var fg = primary ? _t.OnAccent : _t.Ink;
-        var gw = GlyphWidth(glyph);
+        var gw = Ui.TextWidth(glyph, primary ? 10.12f : 12.8f, 400, 0); // advance of the glyph as the font draws it
         var tsize = primary ? 11.904f : 11.136f;
         var textW = Ui.TextWidth(text, tsize, 700, 0);
         var startX = (w - (gw + 8.8f + textW)) / 2;

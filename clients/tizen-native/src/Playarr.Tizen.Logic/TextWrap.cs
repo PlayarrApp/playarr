@@ -11,36 +11,21 @@ public static class TextWrap
     }
 
     /// <summary>
-    /// Chrome's text-wrap: balance as the Android TV worker fitted it (97 % of 400 titles): keep the greedy line count at the box width, then take the break set
-    /// with the smallest sum of squared line widths, plus 5000 px² when the last line is a single word. shortcut: breaks only after spaces, not hyphens.
+    /// CSS text-wrap: balance as Blink lays it out (ParagraphLineBreaker): find the narrowest available width, searched in 1/64 px LayoutUnits, at which the
+    /// ordinary greedy breaker still produces the same number of lines, then break greedily at that width. Breaks fall only after spaces here.
     /// </summary>
     private static List<string>? Balanced(string text, Func<string, float> measure, float width, int lineCount)
     {
-        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var memo = new Dictionary<(int, int), float>();
-        float W(int a, int b) { if (!memo.TryGetValue((a, b), out var w)) memo[(a, b)] = w = measure(string.Join(' ', words[a..b])); return w; }
-        var best = float.MaxValue; int[]? bestCuts = null; var cuts = new int[lineCount + 1];
-        void Go(int line, int start, float cost)
+        const float unit = 1f / 64f;
+        long lo = 0, hi = (long)MathF.Floor(width / unit);
+        List<string>? best = null;
+        while (lo <= hi)
         {
-            if (line == lineCount - 1)
-            {
-                if (start >= words.Length) return;
-                var w = W(start, words.Length); if (w > width) return;
-                var total = cost + w * w + (words.Length - start == 1 ? 5000 : 0);
-                if (total < best) { best = total; bestCuts = (int[])cuts.Clone(); bestCuts[lineCount] = words.Length; bestCuts[line] = start; }
-                return;
-            }
-            for (var end = start + 1; end < words.Length - (lineCount - 1 - line) + 1; end++)
-            {
-                var w = W(start, end); if (w > width) break;
-                cuts[line] = start; Go(line + 1, end, cost + w * w);
-            }
+            var mid = (lo + hi) / 2;
+            var lines = Wrap(text, measure, mid * unit, int.MaxValue);
+            if (lines.Count <= lineCount) { best = lines; hi = mid - 1; } else lo = mid + 1;
         }
-        Go(0, 0, 0);
-        if (bestCuts is null) return null;
-        var lines = new List<string>();
-        for (var i = 0; i < lineCount; i++) lines.Add(string.Join(' ', words[bestCuts[i]..bestCuts[i + 1]]));
-        return lines;
+        return best is { } b && b.Count == lineCount ? b : null;
     }
 
     private static List<string> Wrap(string text, Func<string, float> measure, float width, int maxLines)

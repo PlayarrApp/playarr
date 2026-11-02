@@ -11,14 +11,15 @@ test("candidates that touch never share a batch, the same view always may", () =
   assert.deepEqual(batches, [[0, 2, 3], [1]]);
 });
 
-test("a candidate is kept only when its own box changes by a visible amount", () => {
+test("a candidate is kept when any pixel of its own box changes by one level or more", () => {
   const base = image(40, 20); const hidden = image(40, 20);
   paint(hidden, 2, 2, 8, 8, 200);
   const noise = new Uint8Array(40 * 20);
   assert.equal(changedInside([0, 0, 10, 10], base, hidden, noise), true);
   assert.equal(changedInside([20, 0, 10, 10], base, hidden, noise), false);
-  paint(hidden, 20, 0, 30, 10, 14); // 4 levels: invisible
-  assert.equal(changedInside([20, 0, 10, 10], base, hidden, noise), false);
+  paint(hidden, 20, 0, 30, 10, 11); // one level: visible (exact toggle-and-diff, no tolerance)
+  assert.equal(changedInside([20, 0, 10, 10], base, hidden, noise), true);
+  assert.equal(changedInside([30, 10, 10, 10], base, hidden, noise), false);
 });
 
 test("pixels that differ between two unchanged grabs are ignored", () => {

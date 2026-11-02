@@ -162,7 +162,7 @@ internal sealed class SeriesDetailScreen : IPage
                 Rect = () => new Box(x - rail.Scroll, FocusedHeadingY - (_activeRail - railIdx) * RailPitch + 80.7f, 268, 150.8f),
                 Label = $"play {code}".ToLowerInvariant(),
                 Select = () => PlayEpisode(epc),
-                Style = f => { epFocused = f; box.PositionY = f ? -7 : 0; art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -0.04f : 0; numLabel.PositionY = numY + (f ? 1.01f : 0); ring.Scale = art.Scale; ring.PositionY = art.PositionY - 3; ring.Show(f); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = Ui.C(f ? maxInk : _t.Ink); codeLabel.PositionY = codeY + (f ? -0.5f : 0); tt.PositionY = titleY + (f ? -0.5f : 0); },
+                Style = f => { epFocused = f; box.PositionY = f ? -7 : 0; art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1);  ring.Scale = art.Scale; ring.PositionY = art.PositionY - 3; ring.Show(f); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = Ui.C(f ? maxInk : _t.Ink); codeLabel.PositionY = codeY + (f ? -0.5f : 0); tt.PositionY = titleY + (f ? -0.5f : 0); },
                 Focused = () => OnEpisodeFocused(railIdx, col, epc, seasonc),
             });
         }
@@ -278,14 +278,12 @@ internal sealed class SeriesDetailScreen : IPage
         }
     }
 
-    private static float GlyphWidth(string g) => g switch { "⇩" => 10.7f, "☷" => 11.5f, "+" => 7.7f, "↺" => 10f, _ => 7.8f };
-
     private void Pill(int slotIndex, View parent, string text, string glyph, float x, float y, float w, bool primary, string label, Action select, string name)
     {
         var bg = primary ? _t.Ink : _t.SurfaceStrong.Mixed(0.78f);
         var box = Ui.Box(x, y, w, 64, bg, 32);
         if (!primary) { box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.075f); }
-        var gw = GlyphWidth(glyph); var tsize = primary ? 11.904f : 11.136f; var textW = Ui.TextWidth(text, tsize, 700, 0); var startX = (w - (gw + 8.8f + textW)) / 2;
+        var gw = Ui.TextWidth(glyph, primary ? 10.12f : 12.8f, 400, 0); var tsize = primary ? 11.904f : 11.136f; var textW = Ui.TextWidth(text, tsize, 700, 0); var startX = (w - (gw + 8.8f + textW)) / 2;
         var g = Ui.Text(glyph, startX, glyph == "+" ? 23.5f : 22.4f, primary ? 10.12f : 12.8f, 400, primary ? _t.Bg : _t.BrandInk, gw + 4, 19.2f);
         var tl = Ui.Text(text, startX + gw + 8.8f, 23.7f, tsize, 700, primary ? _t.Bg : _t.Ink, textW + 20, 16.7f);
         box.Add(g); box.Add(tl);
