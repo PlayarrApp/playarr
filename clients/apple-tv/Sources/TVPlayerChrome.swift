@@ -185,9 +185,9 @@ struct TVPlayerChrome: View {
         let value = "\(Self.clock(state.position)) of \(Self.clock(state.duration))"
         let body = TVScrubberBody(progress: progress, showsFocus: !frozen)
             .contentShape(Rectangle())
+            .parityFocusTag("Seek") // inside the focusable: isFocused reaches only the descendants of the focus target
             .focusable(controlsVisible)
             .modifier(TVFocusTag(binding: focus, control: .scrubber))
-            .parityFocusTag("Seek")
             .parityBox("slider", text: "Seek")
         #if os(macOS)
         return body
@@ -671,9 +671,9 @@ extension View {
 extension View {
     /// The video itself as the player's opening focus (web: "video playback surface"): from it Left reaches Play, Right the first
     /// menu control (audio) and Up the seek bar. On tvOS the surface carries these moves in TVPlayerView.
-    @ViewBuilder func macPlayerSurfaceTarget() -> some View {
+    @ViewBuilder func macPlayerSurfaceTarget(activate: (() -> Void)? = nil) -> some View {
         #if os(macOS)
-        macFocusTarget()
+        macFocusTarget(activate: activate)
             .environment(\.macParityTag, MacParityTag(title: "video playback surface", id: "player-surface", rail: nil, index: nil, gridPosition: nil))
             .environment(\.macPreferredFocus, true)
             .environment(\.macFocusName, "surface")

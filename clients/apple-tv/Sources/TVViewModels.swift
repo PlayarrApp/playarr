@@ -703,6 +703,10 @@ final class TVPlayerViewModel {
             qualityLabel = option.label
         }
         duration = Double(info.durationMS) / 1000
+        if audioTracks.isEmpty { // no stream yet (parity): the server's own list stands in for the engine's
+            audioTracks = info.audioTracks.map { PlayerTrack(id: $0.id, languageCode: $0.language, displayName: $0.label, isDefault: $0.isDefault) }
+            selectedAudioID = info.selectedAudioTrackID ?? audioTracks.first(where: \.isDefault)?.id ?? audioTracks.first?.id
+        }
     }
 
     /// Reads playback info only (parity route): no stream is started.

@@ -197,17 +197,25 @@ struct TVPlayerView: View {
             .parityBox("image") // a still of the clip: this is an image, not a playing video
     }
 
+    /// Web: Select on the video toggles play and hands the focus to the Play button.
+    private func selectSurface() {
+        if interaction.controlsVisible { viewModel.togglePlay() }
+        interaction.reveal()
+        interaction.focus = .play
+        focusedControl = .play
+        #if os(macOS)
+        MacFocusEngine.shared.focusNamed("play")
+        #endif
+    }
+
     /// While the controls are hidden this catches SELECT and moves to reveal them again; it is the player's opening focus.
     private var playerSurface: some View {
         Color.clear
             .ignoresSafeArea()
-            .modifier(TVPlayerSurfaceFocus(focus: $focusedControl))
+            .parityFocusTag("video playback surface") // inside the focusable: isFocused reaches only the descendants of the focus target
+            .modifier(TVPlayerSurfaceFocus(focus: $focusedControl, activate: selectSurface))
             .accessibilityLabel("Video playback surface")
-            .parityFocusTag("video playback surface")
-            .onTapGesture {
-                interaction.reveal()
-                focusedControl = interaction.focus
-            }
+            .onTapGesture(perform: selectSurface)
     }
 
     /// The remote's behaviour shared by playback and the parity frame.
@@ -236,13 +244,17 @@ struct TVPlayerView: View {
                     if let next = focusedControl { interaction.focus = next }
                     return
                 }
-                switch direction {
-                case .left:
+                switch (focusedControl, direction) {
+                case (.scrubber, .left):
                     viewModel.seek(by: -10)
                     interaction.seeked()
-                case .right:
+                case (.scrubber, .right):
                     viewModel.seek(by: 10)
                     interaction.seeked()
+                case (.scrubber, .down):
+                    focusedControl = .play
+                case (_, .up) where focusedControl != .scrubber:
+                    focusedControl = .scrubber
                 default: break
                 }
                 // A seek never moves focus: keep it on the control the user left it on.
@@ -301,6 +313,10 @@ struct TVPlayerView: View {
         }
         .parityAnimation(.easeInOut(duration: 0.25), value: viewModel.endOfPlayback.phase)
         .task {
+            // A parity run plays no stream: the audio and subtitle choices come from the server's playback info.
+            if parity == nil, TVParityLaunch.isParityRun { await viewModel.loadInfo(mediaFileID: mediaFileID) }
+        }
+        .task {
             viewModel.onExit = { dismiss() }
             // Returning from a suggestion must not restart a finished item.
             if viewModel.state == .idle, viewModel.endOfPlayback.phase == .playing {
@@ -347,10 +363,11 @@ struct TVPlayerView: View {
 /// tvOS: a SwiftUI focus target bound to the surface. Mac: an engine target with the routes of the web's D-pad order.
 private struct TVPlayerSurfaceFocus: ViewModifier {
     let focus: FocusState<TVPlayerControl?>.Binding
+    let activate: () -> Void
 
     func body(content: Content) -> some View {
         #if os(macOS)
-        content.macPlayerSurfaceTarget()
+        content.macPlayerSurfaceTarget(activate: activate)
         #else
         content.focusable().focused(focus, equals: .surface)
         #endif
