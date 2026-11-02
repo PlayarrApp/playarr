@@ -34,6 +34,22 @@ const WEB_TO_ROUTE: Record<string, string> = {
   '/requests': ROUTES.requests,
   '/calendar': ROUTES.calendar,
   '/settings': ROUTES.settings,
+  '/sites': ROUTES.sites,
+};
+
+/** Routes outside the rail: the design-report capture reaches each of these screens by its web path. */
+const SETTINGS_ROUTES: Record<string, string> = {
+  '/settings/appearance': ROUTES.settingsAppearance,
+  '/settings/profile-avatar': ROUTES.settingsAvatar,
+  '/settings/language': ROUTES.settingsLanguage,
+  '/settings/player': ROUTES.settingsPlayer,
+  '/settings/server': ROUTES.settingsServer,
+  '/settings/profile-lock': ROUTES.settingsProfileLock,
+  '/settings/invite': ROUTES.settingsInvite,
+  '/settings/request-latency': ROUTES.settingsLatency,
+  '/settings/remote': ROUTES.settingsRemote,
+  '/settings/your-data': ROUTES.settingsYourData,
+  '/settings/home': ROUTES.settingsCustomiseHome,
 };
 
 const ROUTE_TO_WEB: Record<string, string> = Object.fromEntries(Object.entries(WEB_TO_ROUTE).filter(([path]) => path !== '/home').map(([path, name]) => [name, path]));
@@ -66,6 +82,10 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
       route: (path) => {
         const base = path.split('?')[0] ?? '/';
         if (base === '/profiles') navRef.navigate(ROUTES.profiles);
+        else if (base === '/link') navRef.navigate(ROUTES.link);
+        else if (SETTINGS_ROUTES[base]) navRef.navigate(APP_SHELL_ROUTE, {screen: SETTINGS_ROUTES[base]});
+        else if (base.startsWith('/music/')) navRef.navigate(APP_SHELL_ROUTE, {screen: ROUTES.musicDetail, params: {workId: base.slice('/music/'.length), backTo: ROUTES.music}});
+        else if (base === '/does-not-exist') navRef.navigate(APP_SHELL_ROUTE, {screen: ROUTES.notFound});
         else if (WEB_TO_ROUTE[base]) {
           // A screen that is already up keeps its state, so leave through Home first and let the target mount with the query.
           navRef.navigate(APP_SHELL_ROUTE, {screen: ROUTES.home});
