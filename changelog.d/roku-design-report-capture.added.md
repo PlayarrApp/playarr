@@ -1,0 +1,1 @@
+- Roku design-report capture tooling: parity-mode launch routes open any screen of the channel by its web path, a lane-local design-capture script walks them in both themes, and a playlist seeding script gives the static server one playlist.

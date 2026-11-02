@@ -2679,6 +2679,7 @@ sub householdPoll()
 end sub
 
 sub acceptHouseholdStatus(data as Dynamic)
+    if m.designPinned = true and m.householdBlock <> invalid then return ' design route /household: keep the staged gate screen
     m.householdBlock = invalid
     if data <> invalid
         if data.state = "outside_schedule"

@@ -540,17 +540,24 @@ end sub
 ' acceptHostedLinkClaim for how the resulting claim hands off into the
 ' existing on-device RFC 8628 token exchange.
 sub beginHostedLink()
-    if m.requestBusy then return
+    designQueued = m.requestBusy and m.designPinned = true ' design route: the Home chain still has a request in flight, so queue behind it
+    if m.requestBusy and not designQueued then return
     strings = PairingUiStrings(ResolvePairingLanguage(m.languagePreference))
     showPairingBusy(strings.title, strings.creating)
-    startApiRequest({
+    request = {
         action: "hostedLinkCode"
         method: "POST"
         path: ""
         url: AppConfig().hostedLinkOrigin + "/api/link/code"
         body: { client_platform: AppConfig().clientPlatform }
         accessToken: ""
-    })
+    }
+    if designQueued
+        if m.pendingApiQueue = invalid then m.pendingApiQueue = []
+        m.pendingApiQueue.Push(request)
+    else
+        startApiRequest(request)
+    end if
 end sub
 
 sub acceptHostedLinkCode(data as Object)
@@ -1627,19 +1634,81 @@ end sub
 sub openDeepRoute()
     route = m.pendingRoute
     m.pendingRoute = ""
-    parts = route.Split("/")
-    if parts.Count() <> 3 or parts[0] <> "" or parts[2] = "" then return
-    kind = ""
-    if parts[1] = "movies" then kind = "movie"
-    if parts[1] = "series" then kind = "series"
-    if kind = "" then return
     name = "Viewer"
     for each profile in m.profiles
         if profile.is_current and profile.display_name <> invalid then name = profile.display_name
     end for
-    enterHome(name)
-    openWorkDetail({ id: parts[2], title: "", kind: kind }, "route")
+    parts = route.Split("/")
+    if parts.Count() = 3 and parts[0] = "" and parts[2] <> "" and (parts[1] = "movies" or parts[1] = "series")
+        kind = "movie"
+        if parts[1] = "series" then kind = "series"
+        enterHome(name)
+        openWorkDetail({ id: parts[2], title: "", kind: kind }, "route")
+        return
+    end if
+    openDesignRoute(route, name)
 end sub
+
+' Design-report routes (parity mode only, same launch argument as the title routes): the web path of a screen that no key walk in the
+' suite reaches. Each opens the screen the way its nav item or button would; none plays anything or changes a stored preference.
+sub openDesignRoute(route as String, profileName as String)
+    query = ""
+    path = route
+    qAt = Instr(1, route, "?")
+    if qAt > 0
+        path = Left(route, qAt - 1)
+        query = Mid(route, qAt + 1)
+    end if
+    parts = path.Split("/")
+    if parts.Count() < 2 or parts[0] <> "" then return
+    head = parts[1]
+    if m.designReplay <> true then m.designPinned = false
+    ' Pages, settings and the pairing screen open once the Home rails have rendered: the rails response would otherwise return to Home.
+    if m.designReplay <> true and (head = "login" or head = "link" or head = "watchlist" or head = "requests" or head = "calendar" or head = "household" or head = "clients" or head = "settings" or head = "search" or head = "playlists" or head = "sites" or head = "music")
+        enterHome(profileName)
+        m.designDeferred = { route: route, name: profileName }
+        return
+    end if
+    if m.designReplay = true
+        m.designReplay = false
+        m.designPinned = true
+    else
+        enterHome(profileName)
+    end if
+    if head = "login" or head = "link"
+        ' The hosted code and QR screen (/login/qr, /link): requested like a signed-out start, the stored session is left alone.
+        beginHostedLink()
+        return
+    end if
+    if head = "household"
+        ' The fixture profile is never blocked, so stage the gate screen itself with a schedule block (design capture only, parity mode).
+        m.householdBlock = { kind: "schedule", until: "2026-10-08T09:00:00Z" }
+    end if
+    if head = "watchlist" or head = "requests" or head = "calendar" or head = "household" or head = "clients"
+        openPage(head)
+    else if head = "settings"
+        openPage("settings")
+        panel = "appearance"
+        if parts.Count() > 2 then panel = designSettingsPanel(parts[2])
+        settingsAction({ action: "section", data: panel })
+    else if head = "playlists"
+        openPlaylists()
+    else if head = "sites"
+        openBrowse("site", "Sites")
+    else if head = "music" and parts.Count() > 2 and parts[2] <> ""
+        openWorkDetail({ id: parts[2], title: "", kind: "artist" }, "route")
+    else if head = "search"
+        openSearch()
+        if Left(query, 2) = "q=" then performSearch(Mid(query, 3))
+    end if
+end sub
+
+' The web settings path segment to this app's panel id.
+function designSettingsPanel(segment as String) as String
+    map = { "appearance": "appearance", "profile-avatar": "avatar", "language": "language", "player": "player", "server": "server", "profile-lock": "lock", "invite": "invite", "request-latency": "latency", "remote": "remote", "your-data": "data", "home": "home" }
+    if map[segment] <> invalid then return map[segment]
+    return "appearance"
+end function
 
 sub playDeepLink()
     id = m.pendingDeepLink
@@ -4448,6 +4517,7 @@ end function
 ' Rail membership matches tv-web Home.tsx takeUnused (on-deck/start first,
 ' then new/more movies and series without repeating ids).
 sub finishHomeLoad()
+    if m.designPinned = true then return ' design route open: later rail loads must not return to Home
     ' Re-check the household state once Home has painted, so a blocked profile lands on the blocked screen.
     householdPoll()
     primaryWorks = []
@@ -4566,6 +4636,12 @@ sub finishHomeLoad()
     if m.artActiveGeneration > 0
         announceArtGeneration(m.artActiveGeneration, "home", homeHasArt)
         finishArtGeneration(m.artActiveGeneration, "home")
+    end if
+    if m.designDeferred <> invalid
+        deferred = m.designDeferred
+        m.designDeferred = invalid
+        m.designReplay = true
+        openDesignRoute(deferred.route, deferred.name)
     end if
 end sub
 
@@ -7930,6 +8006,21 @@ sub onParitySeek()
     if m.video.hasField("autoplayAfterSeek") then m.video.autoplayAfterSeek = false
     m.video.control = "pause"
     m.video.seek = m.paritySeekTarget
+end sub
+
+' Design-report capture only: "hide" takes the controls down on a paused player (the web hides them with the idle pointer; a key would raise
+' them again), so the bare frame can be captured.
+sub onParityControls()
+    if m.global.parityArtEnabled <> true then return
+    if m.top.parityControls = "hide"
+        m.playerAutoHideTimer.control = "stop"
+        ' Hide every control but keep the clip frame (child 0 in parity mode, see PlayerChrome.brs) that stands in for the video plane.
+        count = m.playerControls.getChildCount()
+        for i = 1 to count - 1
+            m.playerControls.getChild(i).visible = false
+        end for
+        m.pcKeyed = false
+    end if
 end sub
 
 ' Re-pause whenever the seek resumes playback. Once the video sits paused on the target the seek is done (position is no longer watched), but
