@@ -4151,7 +4151,23 @@ internal fun LibraryResults(
     val tvRowPitchCss = phoneLibraryCardCss(tvCardCss, tvViewportCss) + tvRowGap.value
     val tvGridTopCss = webVu(128f, 15f, 174f).value
     val tvRail = if (LocalStageScale.current != 1f || tvRows) tvRailCss else null
-    val screenPadding = if (isTelevision) PaddingValues(start = tvRail?.start ?: 52.7.dp, end = tvRail?.end ?: 103.3.dp, top = tvGridTop, bottom = 104.dp) else padding
+    // Web `.tv-title-grid`: the pane is the right 1190.4 css px (left edge 729.6), its grid starts `start` in, and every column edge is snapped once to a device pixel from
+    // that fractional sum (the art paints 327 or 328 px wide). The pane box itself is an integer px, so the column cells carry the exact snapped edges.
+    val tvCols = fixedColumns ?: 3
+    val tvPaneCss = 1190.4f
+    val tvPaneLeftCss = tvViewportCss - tvPaneCss
+    val tvColLeftCss = List(tvCols) { webLayoutUnit(tvPaneLeftCss + tvRailCss.start.value + it * (tvCardCss + tvRailCss.gap.value)) }
+    val tvDensity = androidx.compose.ui.platform.LocalDensity.current.density
+    val tvPaneLeftPx = Math.round(tvViewportCss * tvDensity) - Math.round(tvPaneCss * tvDensity)
+    val tvColLeftPx = tvColLeftCss.map { Math.round(it * tvDensity) }
+    // The art paints at the snapped left edge and the snapped width (327 px at every column; the right edge is not snapped from the fractional sum).
+    val tvColRightPx = tvColLeftPx.map { it + Math.round(tvCardCss * tvDensity) }
+    val tvPadStart = if (tvRows) ((tvColLeftPx[0] - tvPaneLeftPx) / tvDensity).dp else tvRail?.start ?: 52.7.dp
+    val tvCells = object : GridCells {
+        override fun androidx.compose.ui.unit.Density.calculateCrossAxisCellSizes(availableSize: Int, spacing: Int): List<Int> =
+            List(tvCols) { c -> (if (c + 1 < tvCols) tvColLeftPx[c + 1] else tvColRightPx[c]) - tvColLeftPx[c] }
+    }
+    val screenPadding = if (isTelevision) PaddingValues(start = tvPadStart, end = tvRail?.end ?: 103.3.dp, top = tvGridTop, bottom = 104.dp) else padding
     when (viewMode) {
         LibraryViewMode.Screen -> {
         val phoneViewportDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
@@ -4160,12 +4176,12 @@ internal fun LibraryResults(
         val phoneCardCss = phoneLibraryCardCss(phonePosterCardWidth().value, phoneViewportDp.toFloat())
         val phoneRowPitchCss = phoneCardCss + PHONE_LIBRARY_ROW_GAP_CSS
         LazyVerticalGrid(
-            columns = fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth) else GridCells.Fixed(phonePosterColumns(artworkSize, androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp)),
+            columns = if (tvRows) tvCells else fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth) else GridCells.Fixed(phonePosterColumns(artworkSize, androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp)),
             state = gridState,
             // Phone too: web's scroll-edge mask (floor 0.3) dims the grid at both edges over the page background.
             modifier = Modifier.fillMaxSize().playarrEdgeFades(gridState.canScrollBackward, gridState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical, panel = if (isTelevision) null else WebBackground),
             contentPadding = screenPadding,
-            horizontalArrangement = Arrangement.spacedBy(if (isTelevision) tvRail?.gap ?: 25.92.dp else 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (tvRows) 0.dp else if (isTelevision) tvRail?.gap ?: 25.92.dp else 12.dp),
             verticalArrangement = Arrangement.spacedBy(if (isTelevision && !tvRows) tvRowGap else 0.dp),
         ) {
             itemsIndexed(works, key = { _, work -> work.id }) { index, work ->
@@ -4179,15 +4195,18 @@ internal fun LibraryResults(
                     onSelected = { onSelected(work) },
                     onClick = { onOpen(work) },
                     modifier = (if (grid != null) Modifier.tvGridItem(grid, index) else Modifier)
-                        .then(if (tvRows) Modifier.requiredWidth(tvCardCss.dp) else Modifier.fillMaxWidth())
+                        .then(if (tvRows) Modifier else Modifier.fillMaxWidth())
                         .then(if (tvRows) Modifier.layout { measurable, constraints ->
                             val d = density
                             val rowTop = tvGridTopCss + (index / phoneColumns) * tvRowPitchCss
                             val top = Math.round(rowTop * d)
                             val cardPx = Math.round((rowTop + tvRowPitchCss - tvRowGap.value) * d) - top
                             val cellPx = Math.round((rowTop + tvRowPitchCss) * d) - top
-                            val placeable = measurable.measure(constraints.copy(minHeight = cardPx, maxHeight = cardPx))
-                            layout(placeable.width, cellPx) { placeable.place(0, 0) }
+                            val col = index % tvCols
+                            val cardWidthPx = tvColRightPx[col] - tvColLeftPx[col]
+                            val placeable = measurable.measure(constraints.copy(minWidth = cardWidthPx, maxWidth = cardWidthPx, minHeight = cardPx, maxHeight = cardPx))
+                            val cellWidthPx = (if (col + 1 < tvCols) tvColLeftPx[col + 1] else tvColRightPx[col]) - tvColLeftPx[col]
+                            layout(cellWidthPx, cellPx) { placeable.place(0, 0) }
                         } else Modifier)
                         .then(if (!isTelevision && phoneViewportDp < 540) Modifier.layout { measurable, constraints ->
                             // Web phone `.tv-title-card`: the browser snaps each box edge once, from its summed css position. Row r starts at
