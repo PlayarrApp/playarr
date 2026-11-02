@@ -7,8 +7,8 @@ using Windows.UI.Xaml.Media;
 namespace Playarr.Xbox.Views
 {
     /// <summary>
-    /// The web keeps layout in fractional 1/64 px units but paints a card's art on whole device pixels: the left and top edges
-    /// are rounded and the size is rounded on its own (a 327.17 px wide box at x 783.36 paints as 327 px from x 783). A WinUI
+    /// The web keeps layout in fractional 1/64 px units but paints a card's art on whole device pixels: the left, top, right and bottom
+    /// edges are each rounded (a 327.17 px wide box at x 783.36 paints from x 783 to 1111). A WinUI
     /// element at a fractional offset instead blends its edge pixels with the page. The snap is a render transform on the
     /// art, so the layout box stays what the CSS gives; the layout export reads it with the snap lifted (<see cref="Suspend"/>).
     /// A card that carries a focus scale or lift is drawn transformed in the web too, and is left as it is.
@@ -70,8 +70,8 @@ namespace Playarr.Xbox.Views
 
                 var left = Math.Round(origin.X * k, MidpointRounding.AwayFromZero);
                 var top = Math.Round(origin.Y * k, MidpointRounding.AwayFromZero);
-                var width = Math.Max(1, Math.Round(art.ActualWidth * k, MidpointRounding.AwayFromZero));
-                var height = Math.Max(1, Math.Round(art.ActualHeight * k, MidpointRounding.AwayFromZero));
+                var width = Math.Max(1, Math.Round((origin.X + art.ActualWidth) * k, MidpointRounding.AwayFromZero) - left);
+                var height = Math.Max(1, Math.Round((origin.Y + art.ActualHeight) * k, MidpointRounding.AwayFromZero) - top);
                 var sx = width / (art.ActualWidth * k);
                 var sy = height / (art.ActualHeight * k);
                 var dx = left / k - origin.X;
