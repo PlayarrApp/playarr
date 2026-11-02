@@ -750,12 +750,12 @@ private fun PlayarrPlayerTopButton(
     modifier: Modifier = Modifier,
     iconOnly: Boolean = false,
 ) {
-    // Web `.player-minimise` / `.player-close`: 48 high, rgba(12,10,11,.58) fill, 1px rgba(255,255,255,.28) ring.
+    // Web `.player-close` and `.player-minimise`: 48 high, 1px rgba(255,255,255,.28) ring; the close fill is rgba(12,10,11,.58) and the minimise fill rgba(12,10,11,.82) (global.css .player-minimise).
     val source = remember { MutableInteractionSource() }
     Surface(
         onClick = onClick,
         interactionSource = source,
-        // The Minimise pill is darker than the round close button on the static web ref (about .82 against .58).
+        // Fill alpha per global.css: .player-minimise .82 (0xD1), .player-close .58 (0x94).
         color = if (isTelevision) (if (iconOnly) Color(0x940C0A0B) else Color(0xD10C0A0B)) else Color.Black.copy(alpha = 0.62f),
         contentColor = Color.White,
         shape = CircleShape,
