@@ -110,7 +110,7 @@ extension TVParityLaunch {
         case "movies": return .movies
         case "series": return .series
         case "music": return .music
-        case "playlists": return .playlists
+        case "playlists", "playlist-detail": return .playlists
         case "settings": return .settings
         case "search": return .search
         case "calendar": return .calendar
@@ -182,6 +182,25 @@ struct TVParityLiveDetailView: View {
             ) {
                 work = page.items.first { $0.title == want.title }
             }
+        }
+    }
+}
+
+/// `playlist-detail`: the first playlist's titles, through the production playlist page.
+struct TVParityLivePlaylistView: View {
+    @Environment(TVAppEnvironment.self) private var environment
+    @State private var playlist: Playlist?
+
+    var body: some View {
+        Group {
+            if let playlist {
+                TVLibraryKindView(kindLabel: playlist.name, emptyMessage: "This playlist is empty.", playlistID: playlist.id)
+            } else {
+                TVStageBackground()
+            }
+        }
+        .task {
+            playlist = try? await environment.apiClient.listPlaylists().first
         }
     }
 }

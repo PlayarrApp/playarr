@@ -207,6 +207,8 @@ capture)
       "settings-player|settings:player" "settings-server|settings:server" "settings-profile-lock|settings:lock"
       "settings-invite|settings:invite" "settings-remote|settings:remote" "settings-your-data|settings:your-data"
       "login-qr|fixture:device-code-pairing")
+    token && ACCESS_TOKEN=$ACCESS_TOKEN python3 "$TRUSTED/scripts/apple-wall/seed-playlist.py" >&2 || log "playlist seed failed"
+    designs+=("playlist-detail|playlist-detail")
     [[ -z $artist ]] || designs+=("music-detail|detail:artist:$artist")
     [[ $DEVICE == tvos ]] || designs+=("settings-home|settings:home") # tvOS hides Customise Home (TVSettingsView.visibleSections)
     [[ $DEVICE == macos ]] || designs+=("settings-request-latency|settings:latency") # macOS hides Request latency

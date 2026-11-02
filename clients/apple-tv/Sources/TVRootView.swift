@@ -240,6 +240,8 @@ struct TVRootView: View {
     private func stageContent(tab: TVNavTab, detailWork: Work?) -> some View {
         if environment.householdBlocked {
             TVHouseholdBlockedView()
+        } else if TVParityLaunch.route == "playlist-detail" {
+            TVParityLivePlaylistView()
         } else if TVParityLaunch.liveDetail != nil {
             TVParityLiveDetailView()
         } else if let detailWork {
