@@ -213,7 +213,7 @@ namespace Playarr.Xbox.Views
 
         private UIElement BuildRail(HomeRail rail)
         {
-            var list = new ListView
+            var list = new LinkListView
             {
                 SelectionMode = ListViewSelectionMode.None,
                 IsItemClickEnabled = true,

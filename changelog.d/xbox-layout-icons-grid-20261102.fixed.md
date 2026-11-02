@@ -1,0 +1,1 @@
+- Xbox: drawn icons, the video surface and the card unwatched dot report the web's image, video and img roles, the library grid and card copy sit at the web CSS offsets, and the layout export keeps two decimals.

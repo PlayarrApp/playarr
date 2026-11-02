@@ -97,7 +97,7 @@ jobs:
     name: ${{ matrix.part }}
     needs: build
     runs-on: windows-latest
-    timeout-minutes: 90
+    timeout-minutes: 210
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -186,7 +186,13 @@ jobs:
             dpad)
               # --player runs the player checks on the paused direct-play fixture, on web and on the app alike.
               CHECKS=(); [ -n "$CHECKS_INPUT" ] && CHECKS=(--checks "$CHECKS_INPUT")
-              node suite-run.mjs --driver ./drivers/web.mjs --reference --only dpad --player "${CHECKS[@]}" --out "$OUT/web"
+              # The web reference races the player's control auto-hide: regenerate it (as suite-run asks) until player-ok-toggle holds an exact Play/Pause state.
+              for ATTEMPT in 1 2 3; do
+                node suite-run.mjs --driver ./drivers/web.mjs --reference --only dpad --player "${CHECKS[@]}" --out "$OUT/web"
+                if [ -n "$CHECKS_INPUT" ] && [[ ",$CHECKS_INPUT," != *",player-ok-toggle,"* ]]; then break; fi
+                if node -e 'const e = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); const v = e.dpad?.["player-ok-toggle"]; const l = String(v && typeof v === "object" ? v.label : v ?? "").trim().toLowerCase(); process.exit(l === "play" || l === "pause" ? 0 : 1)' "$OUT/web/expected.json"; then break; fi
+                echo "web reference attempt $ATTEMPT has no exact Play/Pause state for player-ok-toggle; regenerating"
+              done
               node suite-run.mjs --driver ./xbox/driver.mjs --only dpad --player --via keys "${CHECKS[@]}" --out "$OUT/run" --expected "$OUT/web/expected.json" || DPAD_FAILED=1
               mkdir -p "$OUT/dev"; cp "$OUT/run/dpad.json" "$OUT/dev/" ;;
             playback)

@@ -594,6 +594,9 @@ namespace Playarr.Xbox.Views
             UpdateChrome();
         }
 
+        // The parity checks start on play/pause with the controls pinned, which is where the web reference rests (expected.web.json,
+        // player-initial-focus: play-pause); the app never hands that focus to the video surface on its own.
+
         private DateTime _lastBack = DateTime.MinValue;
 
         /// <summary>Playback state and position for the parity trace: "error", "playing", "paused" or "loading".</summary>

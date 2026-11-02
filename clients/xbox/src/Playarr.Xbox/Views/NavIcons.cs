@@ -50,7 +50,9 @@ namespace Playarr.Xbox.Views
                 canvas.Children.Add(fill);
             }
 
-            return new Viewbox { Width = 20, Height = 20, Child = canvas };
+            var icon = new Viewbox { Width = 20, Height = 20, Child = canvas };
+            Windows.UI.Xaml.Automation.AutomationProperties.SetLocalizedControlType(icon, "image"); // a drawn icon: the export reports one image, as the web's svg
+            return icon;
         }
 
         /// <summary>A path shape from SVG-style path data; a geometry cannot be moved between shapes, so each shape parses its own.</summary>

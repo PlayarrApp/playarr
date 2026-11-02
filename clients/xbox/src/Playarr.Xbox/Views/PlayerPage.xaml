@@ -40,6 +40,7 @@
             FocusVisualSecondaryThickness="0"
            
             AutomationProperties.Name="Video playback surface"
+            AutomationProperties.LocalizedControlType="video"
             Click="VideoSurface_Click" />
 
 
@@ -112,7 +113,7 @@
                 FocusVisualSecondaryThickness="0"
                 AutomationProperties.Name="Close player"
                 Click="BackButton_Click">
-                <Grid Width="14" Height="22"><FontIcon Glyph="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
+                <Grid Width="14" Height="22" AutomationProperties.LocalizedControlType="image"><FontIcon Glyph="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
             </Button>
             <Slider
                 x:Name="Scrubber"
@@ -153,23 +154,23 @@
             <Button x:Name="PrevButton" Width="64" Height="64" Margin="70,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"
                 Background="Transparent" BorderThickness="0" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                 AutomationProperties.Name="Previous episode" Click="PrevButton_Click" IsEnabled="False" Opacity="0.28">
-                <Grid Width="20" Height="20"><FontIcon Glyph="&#xE892;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
+                <Grid Width="20" Height="20" AutomationProperties.LocalizedControlType="image"><FontIcon Glyph="&#xE892;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
             </Button>
             <Button x:Name="PlayPauseButton" Width="64" Height="64" Margin="147.59,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"
                 Background="#24FFFFFF" BorderThickness="0" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                 AutomationProperties.Name="Play" Click="PlayPauseButton_Click">
-                <Grid Width="20" Height="20"><FontIcon x:Name="PlayPauseIcon" Glyph="&#xE769;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
+                <Grid Width="20" Height="20" AutomationProperties.LocalizedControlType="image"><FontIcon x:Name="PlayPauseIcon" Glyph="&#xE769;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
             </Button>
             <Button x:Name="NextButton" Width="64" Height="64" Margin="225.19,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"
                 Background="Transparent" BorderThickness="0" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                 AutomationProperties.Name="Next episode" Click="NextButton_Click" IsEnabled="False" Opacity="0.28">
-                <Grid Width="20" Height="20"><FontIcon Glyph="&#xE893;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
+                <Grid Width="20" Height="20" AutomationProperties.LocalizedControlType="image"><FontIcon Glyph="&#xE893;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
             </Button>
             <TextBlock x:Name="TimeText" Margin="302.78,981.24,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="10.88" Foreground="White" />
             <Button x:Name="MuteButton" IsTabStop="False" Width="64" Height="64" Margin="374.77,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"
                 Background="Transparent" BorderThickness="0" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                 AutomationProperties.Name="Mute" Click="MuteButton_Click">
-                <Grid Width="20" Height="20"><FontIcon x:Name="MuteIcon" Glyph="&#xE767;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
+                <Grid Width="20" Height="20" AutomationProperties.LocalizedControlType="image"><FontIcon x:Name="MuteIcon" Glyph="&#xE767;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
             </Button>
             <Slider x:Name="VolumeSlider" IsTabStop="False" Width="130" Height="44" Margin="448.77,968,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Minimum="0" Maximum="100" Value="100"
                 Foreground="White" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="2" FocusVisualSecondaryThickness="0"
@@ -177,17 +178,17 @@
             <Button x:Name="AudioButton" Width="64" Height="64" Margin="1223.98,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"
                 Background="Transparent" BorderThickness="0" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                 AutomationProperties.Name="Audio: Unavailable" Click="TracksButton_Click" IsEnabled="False" Opacity="0.28">
-                <Grid Width="20" Height="20"><FontIcon Glyph="&#xE767;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
+                <Grid Width="20" Height="20" AutomationProperties.LocalizedControlType="image"><FontIcon Glyph="&#xE767;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
             </Button>
             <Button x:Name="SubtitlesButton" Width="64" Height="64" Margin="1301.58,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"
                 Background="Transparent" BorderThickness="0" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                 AutomationProperties.Name="Subtitles: Off" Click="TracksButton_Click">
-                <Grid Width="20" Height="20"><FontIcon Glyph="&#xE7F0;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
+                <Grid Width="20" Height="20" AutomationProperties.LocalizedControlType="image"><FontIcon Glyph="&#xE7F0;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
             </Button>
             <Button x:Name="QueueButton" Width="64" Height="64" Margin="1379.17,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"
                 Background="Transparent" BorderThickness="0" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                 AutomationProperties.Name="Playlist" Click="QueueButton_Click">
-                <Grid Width="20" Height="20"><FontIcon Glyph="&#xE8FD;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
+                <Grid Width="20" Height="20" AutomationProperties.LocalizedControlType="image"><FontIcon Glyph="&#xE8FD;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
             </Button>
             <Button x:Name="QualityButton" Height="56" Margin="1456.77,962,0,0" Padding="22.19,0,14.38,0" CornerRadius="28" HorizontalAlignment="Left" VerticalAlignment="Top"
                 Background="Transparent" BorderThickness="0" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
@@ -200,13 +201,13 @@
             <Button x:Name="InfoButton" Width="64" Height="64" Margin="1630.81,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"
                 Background="Transparent" BorderThickness="0" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                 AutomationProperties.Name="Info and playback health" Click="InfoButton_Click">
-                <Grid Width="20" Height="20"><FontIcon Glyph="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
+                <Grid Width="20" Height="20" AutomationProperties.LocalizedControlType="image"><FontIcon Glyph="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
             </Button>
             <!-- Web "Play on another device": the console is not a handoff target, so the control says so. -->
             <Button x:Name="DeviceButton" Width="64" Height="64" Margin="1708.41,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"
                 Background="Transparent" BorderThickness="0" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                 AutomationProperties.Name="Play on another device">
-                <Grid Width="20" Height="20"><FontIcon Glyph="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
+                <Grid Width="20" Height="20" AutomationProperties.LocalizedControlType="image"><FontIcon Glyph="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
                 <Button.Flyout>
                     <Flyout>
                         <TextBlock Text="No other devices available" FontSize="14" />
@@ -216,7 +217,7 @@
             <Button x:Name="FullscreenButton" IsTabStop="False" Width="64" Height="64" Margin="1786,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"
                 Background="Transparent" BorderThickness="0" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                 AutomationProperties.Name="Enter fullscreen" Click="FullscreenButton_Click">
-                <Grid Width="20" Height="20"><FontIcon Glyph="&#xE740;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
+                <Grid Width="20" Height="20" AutomationProperties.LocalizedControlType="image"><FontIcon Glyph="&#xE740;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
             </Button>
         </Grid>
 
