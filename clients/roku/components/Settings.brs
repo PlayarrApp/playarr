@@ -174,10 +174,10 @@ sub pgSegmentedWide(x as Float, y as Float, h as Float, labels as Object, active
         bh = h
         if i = activeIdx
             ' The chosen cell is drawn 1.025 times larger (web transform).
-            bx = cx - w * 0.01245
-            by = y - h * 0.01245
-            bw = w * 1.0249
-            bh = h * 1.0249
+            bx = cx - w * 0.0125
+            by = y - h * 0.0125
+            bw = w * 1.025
+            bh = h * 1.025
             pgRound(m.pageBody, bx, by, bw, bh, 12, "ink")
         else
             pgRound(m.pageBody, cx, y, w, h, 12, "surfaceSoft", 163)
