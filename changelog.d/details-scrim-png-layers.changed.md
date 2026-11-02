@@ -1,0 +1,1 @@
+- Tizen 6.5: the details panel scrim and the calendar agenda fade are drawn from pre-rendered PNG layers (the same bytes on every Chromium), like the rail frost.

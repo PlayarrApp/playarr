@@ -84,9 +84,55 @@ export function railFrostRow(theme, w) {
   return row;
 }
 
+// .details-panel::before: `linear-gradient(90deg, transparent 0%, var(--dp-scrim) 22%, var(--dp-scrim) 80%, transparent 100%)` where
+// --dp-scrim is --surface at 94%, under `mask-image: linear-gradient(180deg, transparent 0%, #000 10%, #000 90%, transparent 100%)`.
+// The box is inset -14% -22% -14% -40% of the 455px panel and its 280.6px preview: 737 x 359 px on the 1920 stage. A CSS mask is
+// composited through a premultiplied 8 bit surface that differs per engine (Chromium 85 vs 151 differ by one level), so both
+// ramps are baked into one RGBA image (alpha = horizontal ramp * vertical ramp). Other box heights stretch the image.
+export const scrimWidth = 737;
+export const scrimHeight = 359;
+const scrimStops = [[0, 0], [0.22, 0.94], [0.8, 0.94], [1, 0]];
+const scrimMask = [[0, 0], [0.1, 1], [0.9, 1], [1, 0]];
+function ramp(stops, t) {
+  let k = 1;
+  while (k < stops.length - 1 && t > stops[k][0]) k++;
+  const [t0, a0] = stops[k - 1], [t1, a1] = stops[k];
+  return a0 + ((a1 - a0) * (t - t0)) / (t1 - t0);
+}
+export function scrimImage(theme, w, h) {
+  const c = themes[theme].tok.surface;
+  const img = Buffer.alloc(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    const v = ramp(scrimMask, (y + 0.5) / h);
+    for (let x = 0; x < w; x++) img.set([c[0], c[1], c[2], Math.round(ramp(scrimStops, (x + 0.5) / w) * v * 255)], (y * w + x) * 4);
+  }
+  return img;
+}
+
+// .calendar-agenda-fade::after (TV layout): `linear-gradient(to bottom, frost 58%, frost 22% at 45%, transparent)` over
+// --page-edge-fade-size (clamp(38px, 5.5vh, 64px) = 59.4px on 1080 rows, painted as 59). One column, stretched across the width.
+export const agendaFadeHeight = 59;
+const fadeStops = [[0, 0.58], [0.45, 0.22], [1, 0]];
+export function agendaFadeColumn(theme, h) {
+  const c = frost(theme).map((v) => Math.round(v));
+  const col = Buffer.alloc(h * 4);
+  for (let y = 0; y < h; y++) {
+    const t = (y + 0.5) / h;
+    let k = 1;
+    while (k < fadeStops.length - 1 && t > fadeStops[k][0]) k++;
+    const [t0, a0] = fadeStops[k - 1], [t1, a1] = fadeStops[k];
+    col.set([c[0], c[1], c[2], Math.round((a0 + ((a1 - a0) * (t - t0)) / (t1 - t0)) * 255)], y * 4);
+  }
+  return col;
+}
+
 export function buildAssets() {
   const out = new Map();
-  for (const theme of Object.keys(themes)) for (const w of widths) out.set(`rail-frost-${theme}-${w}.png`, encodePng(w, 1, railFrostRow(theme, w)));
+  for (const theme of Object.keys(themes)) {
+    for (const w of widths) out.set(`rail-frost-${theme}-${w}.png`, encodePng(w, 1, railFrostRow(theme, w)));
+    out.set(`details-scrim-${theme}-${scrimWidth}x${scrimHeight}.png`, encodePng(scrimWidth, scrimHeight, scrimImage(theme, scrimWidth, scrimHeight)));
+    out.set(`agenda-fade-${theme}-${agendaFadeHeight}.png`, encodePng(1, agendaFadeHeight, agendaFadeColumn(theme, agendaFadeHeight)));
+  }
   return out;
 }
 
