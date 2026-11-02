@@ -4966,6 +4966,8 @@ sub layoutNavDock()
     if m.navIcons = invalid or m.navIcons.Count() = 0 then return
     ' Web .app-nav at 1920x1080: groups at x 42.2 (77.5 wide), items 67.2 square on a 73.6 pitch, 5.8 group padding,
     ' 13.7 between groups, the whole dock centred vertically. Icons are 20 px, labels sit 41.6 px below the item top.
+    ' Icon top: the 64 px link (1.62 below this 67 px chip box) centres icon 20 + gap 0.44vh (4.752) + label line 8.83 =
+    ' 33.582 px, so the icon sits (64 - 33.582) / 2 = 15.209 below the link top; the 1.05 scale about the link centre lifts it 0.84.
     itemSize = 67
     itemStep = 73.6
     groupPad = 5.8
@@ -5002,7 +5004,7 @@ sub layoutNavDock()
                 m.navHighlights[i].translation = [dockLeft + 5.2, itemY]
                 m.navHighlights[i].width = itemSize
                 m.navHighlights[i].height = itemSize
-                m.navIcons[i].translation = [dockLeft + 5.2 + 23.6, itemY + 16]
+                m.navIcons[i].translation = [dockLeft + 5.2 + 23.78, itemY + 16.83]
                 m.navIcons[i].width = 20
                 m.navIcons[i].height = 20
                 m.navLabels[i].translation = [dockLeft + 5.2 + 33.6 - 50, itemY + 39.6]
@@ -5203,7 +5205,7 @@ sub renderNavDockFocus()
                 ThemeSetRole(m.navIcons[i], "ink")
                 m.navLabels[i].color = ThemeColor("ink")
                 if m.navIcons[i].width <> 21
-                    m.navIcons[i].translation = [base[0] - 0.5, base[1] - 0.8]
+                    m.navIcons[i].translation = [base[0] - 0.5, base[1] - 0.84]
                     m.navIcons[i].width = 21
                     m.navIcons[i].height = 21
                     m.navLabels[i].setFields({ size: 9.27, tracking: 0.325 })
@@ -5216,7 +5218,7 @@ sub renderNavDockFocus()
                 ThemeSetRole(m.navIcons[i], "inkMuted")
                 m.navLabels[i].color = ThemeColor("inkMuted")
                 if m.navIcons[i].width <> 20
-                    m.navIcons[i].translation = [base[0] + 0.5, base[1] + 0.8]
+                    m.navIcons[i].translation = [base[0] + 0.5, base[1] + 0.84]
                     m.navIcons[i].width = 20
                     m.navIcons[i].height = 20
                     m.navLabels[i].setFields({ size: 8.83, tracking: 0.31 })
