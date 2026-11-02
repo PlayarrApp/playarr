@@ -456,6 +456,12 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
   // cmd=blur (parity builds): the refs are captured with focus dropped, so the drawn ring goes; native focus stays on its control.
   useEffect(() => onParityBlur(() => setFocusedControl(null)), []);
 
+  // The parity driver reads whether the controls are up (a hidden control row takes the first key only to raise it).
+  useEffect(() => {
+    reportQuery('playerControls', visible && controlsVisible ? '1' : null);
+    return () => reportQuery('playerControls', null);
+  }, [visible, controlsVisible]);
+
   // The parity driver reads whether the quality, audio or subtitles panel (the web's .player-quality-menu) is open.
   useEffect(() => {
     reportQuery('playerMenu', menu === 'quality' || menu === 'subtitles' || menu === 'audio' ? menu : null);
