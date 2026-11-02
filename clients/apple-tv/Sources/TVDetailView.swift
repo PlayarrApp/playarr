@@ -703,7 +703,7 @@ struct TVWorkDetailView: View {
                 similarRail(y: base + CGFloat(ordered.count - 1) * 314.3 + 349.5)
             }
             .offset(y: -shift)
-            .animation(.easeOut(duration: 0.25), value: shift)
+            .parityAnimation(.easeOut(duration: 0.25), value: shift)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .task(id: nextUp) {
@@ -741,7 +741,7 @@ struct TVWorkDetailView: View {
             }
             // The art grows to 1.025 over 240 ms (ease) when focused.
             .scaleEffect(selected ? 1.025 : 1)
-            .animation(.easeInOut(duration: 0.24), value: selected)
+            .parityAnimation(.easeInOut(duration: 0.24), value: selected)
             #if os(tvOS)
             // Static web ref: the next-up episode (focused on load) wears the pink ring.
             .overlay {
@@ -784,7 +784,7 @@ struct TVWorkDetailView: View {
         .frame(width: 268, height: 190, alignment: .topLeading)
         // Media cards show focus as a soft shadow plus a lift, never a ring or fill (owner ruling). Pinned web values
         // (page-layout spec, section 5 item 1a): the card rises 7 px over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1).
-        .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: selected)
+        .parityAnimation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: selected)
         let episodeName = "\(String(format: "%02d", ep.episodeNumber)) \(code.replacingOccurrences(of: "S ", with: "S").replacingOccurrences(of: "E ", with: "E")) \(title)"
         if let mediaFileID = episode.mediaFileID, !frozen {
             NavigationLink {

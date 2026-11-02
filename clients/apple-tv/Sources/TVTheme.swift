@@ -121,7 +121,7 @@ private struct TVButtonFocusBody<Content: View>: View {
 
     var body: some View {
         content(isFocused, isPressed)
-            .animation(
+            .parityAnimation(
                 .easeOut(duration: DesignTokens.FocusMotion.transitionSeconds),
                 value: isFocused
             )
@@ -242,7 +242,7 @@ struct TVProfileCardButtonStyle: ButtonStyle {
                 .scaleEffect(active ? DesignTokens.FocusMotion.profileFocusScale : 1)
                 .offset(y: active ? -DesignTokens.FocusMotion.profileFocusLift : 0)
                 .brightness(pressed ? -0.02 : 0)
-                .animation(
+                .parityAnimation(
                     .easeOut(duration: DesignTokens.FocusMotion.transitionSeconds),
                     value: active
                 )
@@ -336,7 +336,7 @@ struct TVProfileAddLabel: View {
                 radius: active ? 26 * scale : 0,
                 y: active ? 14 * scale : 0
             )
-            .animation(
+            .parityAnimation(
                 .easeOut(duration: DesignTokens.FocusMotion.transitionSeconds),
                 value: active
             )

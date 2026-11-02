@@ -1074,7 +1074,7 @@ struct TVWebHomeCard: View {
                 .padding(.top, 3.6)
         }
         .offset(y: focused ? -6 : 0)
-        .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22), value: focused)
+        .parityAnimation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22), value: focused)
     }
 
     private static let shadow = Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255)
@@ -1518,7 +1518,7 @@ struct TVSearchView: View {
                             // Pinned web search focus: translateY(-6px) scale(1.015) over 230 ms, cubic-bezier(0.16, 1, 0.3, 1).
                             .scaleEffect(selected ? 1.015 : 1)
                             .offset(y: selected ? -6 : 0)
-                            .animation(.timingCurve(0.16, 1, 0.3, 1, duration: 0.23), value: selected)
+                            .parityAnimation(.timingCurve(0.16, 1, 0.3, 1, duration: 0.23), value: selected)
                     }
                     .buttonStyle(TVFocusableCardButtonStyle())
                     #if os(macOS)
@@ -2220,7 +2220,7 @@ struct TVLibraryKindView: View {
             // Pinned web library focus: translateY(-7px) scale(1.025) over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1); no ring.
             .scaleEffect(isSelected ? 1.015 : 1)
             .offset(y: isSelected ? -5 : 0)
-            .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: isSelected)
+            .parityAnimation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: isSelected)
         }
         .buttonStyle(TVFocusableCardButtonStyle(ignoresPress: actionsWorkID != nil))
         #if os(macOS)
@@ -2268,7 +2268,7 @@ struct TVLibraryKindView: View {
             }
             .frame(width: TVWeb.cardContentWidth, height: 97.2 + 24.7 - 27, alignment: .leading)
             .scaleEffect(isSelected ? 1.015 : 1, anchor: .leading)
-            .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: isSelected)
+            .parityAnimation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: isSelected)
         }
         .buttonStyle(TVFocusableCardButtonStyle())
         #if os(macOS)

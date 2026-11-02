@@ -299,7 +299,7 @@ struct TVPlayerView: View {
                 .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: viewModel.endOfPlayback.phase)
+        .parityAnimation(.easeInOut(duration: 0.25), value: viewModel.endOfPlayback.phase)
         .task {
             viewModel.onExit = { dismiss() }
             // Returning from a suggestion must not restart a finished item.

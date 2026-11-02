@@ -908,3 +908,11 @@ extension View {
         #endif
     }
 }
+
+extension View {
+    /// `.animation(_:value:)` that stays still in a parity run: a capture shows the settled screen, and the root transaction alone
+    /// does not stop an animation a descendant attaches itself (one level of glyph or art edge differed between identical runs).
+    func parityAnimation<V: Equatable>(_ animation: Animation?, value: V) -> some View {
+        self.animation(TVParityLaunch.isParityRun ? nil : animation, value: value)
+    }
+}

@@ -119,7 +119,7 @@ struct TVPlayerChrome: View {
             .parityScrim(Color.black, frame: CGRect(x: 0, y: 561.6, width: 1920, height: 518.4), stops: [(0, 0), (1, 0.82)]) // the scrim drawn above
             .allowsHitTesting(controlsVisible)
         }
-        .animation(.timingCurve(0.25, 0.1, 0.25, 1, duration: 0.24), value: controlsVisible)
+        .parityAnimation(.timingCurve(0.25, 0.1, 0.25, 1, duration: 0.24), value: controlsVisible)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
@@ -541,7 +541,7 @@ private struct TVScrubberBody: View {
             }
         }
         .frame(width: 1780, height: 44, alignment: .topLeading)
-        .animation(.easeOut(duration: DesignTokens.FocusMotion.transitionSeconds), value: isFocused)
+        .parityAnimation(.easeOut(duration: DesignTokens.FocusMotion.transitionSeconds), value: isFocused)
         #if DEBUG && (os(tvOS) || os(macOS))
         .onChange(of: focusedByRemote) { _, now in TVParityState.setFocus("Seek", now) }
         #endif
