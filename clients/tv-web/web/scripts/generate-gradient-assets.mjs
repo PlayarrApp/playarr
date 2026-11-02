@@ -158,12 +158,57 @@ export function profilesImage(theme, w, h) {
   return img;
 }
 
+// .tv-stage-wash: `linear-gradient(90deg, surface 0%, surface 36%, transparent 52%)` over `linear-gradient(270deg, surface 0%,
+// transparent 17%)`. Both layers keep one colour (--surface), only alpha ramps, so the pair is one alpha row (the two ramps do not
+// overlap, but the union is still computed as 1 - (1 - a1)(1 - a2)). One row, stretched down the 1920 stage.
+export const washWidth = 1920;
+const washLeft = [[0, 1], [0.36, 1], [0.52, 0]];
+const washRight = [[0, 1], [0.17, 0]];
+export function stageWashRow(theme, w) {
+  const c = themes[theme].tok.surface;
+  const row = Buffer.alloc(w * 4);
+  for (let x = 0; x < w; x++) {
+    const t = (x + 0.5) / w;
+    const a1 = Math.min(Math.max(ramp(washLeft, t), 0), 1), a2 = Math.min(Math.max(ramp(washRight, 1 - t), 0), 1);
+    row.set([c[0], c[1], c[2], Math.round((1 - (1 - a1) * (1 - a2)) * 255)], x * 4);
+  }
+  return row;
+}
+
+// .profile-add .profile-avatar: the "Sign in" circle. `radial-gradient(circle at 34% 26%, rgba(255 255 255 / 0.28), transparent 27%)`
+// over `linear-gradient(145deg, start, #a82655)` with start = `color-mix(in srgb, var(--surface-strong) 84%, var(--brand))`. The
+// padding box is 242px (the 244px circle less its 1px border, 13vw clamped to 244px on the 1920 stage); the circle clip stays CSS.
+// The radial is a circle with the default farthest-corner size, and `transparent` keeps white under premultiplied interpolation.
+export const profileAddSize = 242;
+export function profileAddImage(theme, n) {
+  const { tok } = themes[theme];
+  const start = [0, 1, 2].map((i) => 0.84 * tok["surface-strong"][i] + 0.16 * themes.light.tok.brand[i]);
+  const end = [0xa8, 0x26, 0x55];
+  const ang = (145 * Math.PI) / 180, dx = Math.sin(ang), dy = -Math.cos(ang);
+  const len = Math.abs(n * dx) + Math.abs(n * dy);
+  const cx = 0.34 * n, cy = 0.26 * n;
+  const rad = Math.hypot(Math.max(cx, n - cx), Math.max(cy, n - cy));
+  const img = Buffer.alloc(n * n * 4);
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const px = x + 0.5, py = y + 0.5;
+      const lt = Math.min(Math.max(0.5 + ((px - n / 2) * dx + (py - n / 2) * dy) / len, 0), 1);
+      const a = 0.28 * (1 - Math.min(Math.hypot(px - cx, py - cy) / rad / 0.27, 1));
+      const c = [0, 1, 2].map((i) => (start[i] + (end[i] - start[i]) * lt) * (1 - a) + 255 * a);
+      img.set([Math.round(c[0]), Math.round(c[1]), Math.round(c[2]), 255], (y * n + x) * 4);
+    }
+  }
+  return img;
+}
+
 export function buildAssets() {
   const out = new Map();
   for (const theme of Object.keys(themes)) {
     for (const w of widths) out.set(`rail-frost-${theme}-${w}.png`, encodePng(w, 1, railFrostRow(theme, w)));
     out.set(`details-scrim-${theme}-${scrimWidth}x${scrimHeight}.png`, encodePng(scrimWidth, scrimHeight, scrimImage(theme, scrimWidth, scrimHeight)));
     out.set(`profiles-bg-${theme}-${profilesWidth}x${profilesHeight}.png`, encodePng(profilesWidth, profilesHeight, profilesImage(theme, profilesWidth, profilesHeight)));
+    out.set(`stage-wash-${theme}-${washWidth}.png`, encodePng(washWidth, 1, stageWashRow(theme, washWidth)));
+    out.set(`profile-add-${theme}-${profileAddSize}.png`, encodePng(profileAddSize, profileAddSize, profileAddImage(theme, profileAddSize)));
     out.set(`agenda-fade-${theme}-${agendaFadeHeight}.png`, encodePng(1, agendaFadeHeight, agendaFadeColumn(theme, agendaFadeHeight)));
   }
   return out;

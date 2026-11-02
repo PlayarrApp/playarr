@@ -1,0 +1,1 @@
+- Tizen 6.5 and other pre-Chromium-88 TVs: the aspect-ratio fallback sizes a box from its fractional layout width instead of the rounded offsetWidth, so 16:9 cards are 184.03px tall like the web (was 183.94px).

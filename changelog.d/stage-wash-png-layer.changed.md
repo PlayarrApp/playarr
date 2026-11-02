@@ -1,0 +1,1 @@
+- TV stage wash (1920x1080 stage) and the profiles Sign in circle are drawn from pre-rendered PNG layers (the same bytes on every Chromium); other viewport sizes keep the CSS gradients.
