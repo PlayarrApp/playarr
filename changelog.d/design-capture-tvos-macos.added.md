@@ -1,0 +1,1 @@
+- Apple TV and Mac parity wall: a design-report capture mode (workflow input design) that captures every route-reachable app screen in both themes, with artist detail and Customise Home routes.

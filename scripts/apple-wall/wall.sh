@@ -117,6 +117,17 @@ restart_sim() { # tvOS/iOS simulators only: shut down and boot again (state and 
 launch() { # <theme> [route]: (re)launch the app signed in, muted, on the route (default Home)
   local theme=$1 route=${2:-home}
   ensure_sim
+  if [[ $route == fixture:* ]]; then # a fixture screen of the app itself (-PlayarrParityScreen), signed out, no server
+    case $KIND in
+      tvos) xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true
+            xcrun simctl launch "$UDID" "$BUNDLE" -PlayarrParityScreen "${route#fixture:}" -PlayarrTheme "$theme" -PlayarrMuted >/dev/null ;;
+      macos) pkill -x PlayarrMac 2>/dev/null || true; sleep 1
+             mkdir -p "$WORK/machome/Documents"
+             open -n -g -j "$APP" --env CFFIXED_USER_HOME="$WORK/machome" --stdout "$WORK/app.log" --stderr "$WORK/app.log" \
+               --args -PlayarrInvisible -PlayarrMuted -PlayarrTheme "$theme" -ApplePersistenceIgnoreState YES -PlayarrParityScreen "${route#fixture:}" ;;
+    esac
+    return 0
+  fi
   case $KIND in
     tvos)
       xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true
@@ -189,6 +200,33 @@ up)
 capture)
   : "${OUT:?}" "${REF:?}"
   rm -rf "$OUT" "$WORK/sampled"; mkdir -p "$OUT"
+  if [[ ${DESIGN_CAPTURE:-} == 1 ]]; then # design report: every route-reachable screen the app has, both themes (the key-driven 15 come from the suite step)
+    artist=$(node --input-type=module -e 'import(process.argv[1]).then((m) => console.log(m.ARTISTS[0].title))' "$SRC/scripts/parity/static/catalogue.mjs" 2>/dev/null || true)
+    designs=("downloads|downloads" "watchlist|watchlist" "requests|requests" "playlists|playlists" "search-results|search:the"
+      "settings-appearance|settings:appearance" "settings-profile-avatar|settings:avatar" "settings-language|settings:language"
+      "settings-player|settings:player" "settings-server|settings:server" "settings-profile-lock|settings:lock"
+      "settings-invite|settings:invite" "settings-remote|settings:remote" "settings-your-data|settings:your-data"
+      "login-qr|fixture:device-code-pairing")
+    [[ -z $artist ]] || designs+=("music-detail|detail:artist:$artist")
+    [[ $DEVICE == tvos ]] || designs+=("settings-home|settings:home") # tvOS hides Customise Home (TVSettingsView.visibleSections)
+    [[ $DEVICE == macos ]] || designs+=("settings-request-latency|settings:latency") # macOS hides Request latency
+    for theme in ${THEMES:-dark light}; do
+      mkdir -p "$OUT/$theme"; restart_sim
+      for pair in "${designs[@]}"; do
+        id=${pair%%|*}; route=${pair#*|}; f="$OUT/$theme/$id.png"
+        for attempt in 1 2 3; do
+          if [[ $route == fixture:* ]]; then ACCESS_TOKEN= launch "$theme" "$route" || true; else ACCESS_TOKEN=1 launch "$theme" "$route" || true; fi
+          sleep 14
+          if shot "$f" && [[ $(stat -f %z "$f") -gt 20000 ]]; then log "captured $theme/$id"; break; fi
+          rm -f "$f"; log "no usable frame for $theme/$id (attempt $attempt)"; restart_sim
+        done
+      done
+    done
+    printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s","runner":"github-hosted","design":true}\n' \
+      "$REF" "$(git -C "$SRC" rev-parse HEAD)" "$(date -u +%FT%TZ)" > "$OUT/build.json"
+    ACCESS_TOKEN= launch dark || true
+    exit 0
+  fi
   for theme in ${THEMES:-dark light}; do
     mkdir -p "$OUT/$theme"; restart_sim # the runner swaps hard: a fresh simulator per theme keeps SimLaunchHost alive
     bad=

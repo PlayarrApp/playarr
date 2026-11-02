@@ -117,7 +117,12 @@ extension TVParityLaunch {
         case "downloads": return .downloads
         case "watchlist": return .watchlist
         case "requests": return .requests
-        case "detail": return liveDetail?.kind == .series ? .series : .movies
+        case "detail":
+            switch liveDetail?.kind {
+            case .series: return .series
+            case .artist: return .music
+            default: return .movies
+            }
         default: return nil
         }
     }
@@ -125,7 +130,7 @@ extension TVParityLaunch {
     /// Section index for `settings:<key>` (avatar, language, player, server, lock, invite, latency, remote, your-data).
     static var liveSettingsSection: Int? {
         guard let route, route.hasPrefix("settings:") else { return nil }
-        let keys = ["appearance", "avatar", "language", "player", "server", "lock", "invite", "latency", "remote", "your-data"]
+        let keys = ["appearance", "avatar", "language", "player", "server", "lock", "invite", "latency", "remote", "your-data", "home"]
         return keys.firstIndex(of: String(route.dropFirst("settings:".count)))
     }
 
@@ -134,7 +139,7 @@ extension TVParityLaunch {
         guard let route, route.hasPrefix("detail:") else { return nil }
         let parts = route.split(separator: ":", maxSplits: 2).map(String.init)
         guard parts.count == 3 else { return nil }
-        let kind: WorkKind = parts[1] == "series" ? .series : .movie
+        let kind: WorkKind = parts[1] == "series" ? .series : parts[1] == "artist" ? .artist : .movie
         return (kind, parts[2])
     }
 

@@ -48,6 +48,10 @@ on:
         description: Query for the isolated Search smoke; kept out of workflow logs
         type: string
         default: the
+      design:
+        description: Design report capture - also capture every route-reachable screen of the app (both themes)
+        type: boolean
+        default: false
       chain:
         description: While streaming, start the next run before this one ends
         type: boolean
@@ -401,8 +405,9 @@ jobs:
         id: capture
         if: github.event_name != 'workflow_dispatch' || inputs.capture
         continue-on-error: true # a rejected capture must not stop the stream
-        timeout-minutes: 30
+        timeout-minutes: 50
         env:
+          DESIGN_CAPTURE: ${{ inputs.design && '1' || '' }}
           SERVER_URL: ${{ env.PARITY_SERVER_URL }}
           TEST_USERNAME: ${{ env.PARITY_USERNAME }}
           DEVICE_TEST_USERNAME: ${{ env.PARITY_USERNAME }}
