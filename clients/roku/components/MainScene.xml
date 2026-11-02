@@ -688,7 +688,8 @@
           <Poster id="userAvatarCustom" translation="[0,0]" width="20" height="20" loadDisplayMode="scaleToZoom" />
         </MaskGroup>
         <Label id="profileLabel" translation="[-11,41.4]" width="100" height="12" horizAlign="center" numLines="1" scale="[0.28,0.28]" scaleRotateCenter="[50,6]" color="0xC5B8BDFF" />
-        <Label id="userVersion" translation="[-11,79.6]" width="100" height="12" horizAlign="center" numLines="1" scale="[0.25,0.25]" scaleRotateCenter="[50,6]" color="0xC5B8BDFF" />
+        <!-- .app-user-version: 700 clamp(0.38rem, 0.42 vw, 0.5rem) = 8 px JetBrains Mono, line-height 1, letter-spacing 0.04em, centred in the group (77.5 wide from 42.23). Its top comes from the group's 79.44 height plus margin-top 0.35rem (see layoutUserVersion). -->
+        <WebLabel id="userVersion" translation="[0.23,84.04]" width="77.5" height="8" horizAlign="center" mono="true" size="8" weight="700" tracking="0.32" />
       </Group>
     </Group>
 

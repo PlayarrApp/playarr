@@ -10,6 +10,7 @@
 
 import { PNG } from "pngjs";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 const unescapeXml = (s) => s.replace(/&(lt|gt|amp|quot|apos|#\d+);/g, (_, e) => ({ lt: "<", gt: ">", amp: "&", quot: '"', apos: "'" }[e] ?? String.fromCharCode(Number(e.slice(1)))));
@@ -76,7 +77,7 @@ export function measureTree(root) {
     const listed = sem && (sem[1] === "hit" ? transparent && CONTROL_ROLES.has(sem[2]) : !transparent);
     if (listed && rect) items.push({ ...base, kind: "a11y", node, rect, op, role: sem[2], radius: Number(sem[3]), declared: sem[4], baked: sem[5], text: sem[6] });
     else if (node.tag === "Label" && a.text && rect) items.push({ ...base, kind: "label", node, rect, op, parent });
-    else if (node.tag === "Poster" && a.uri && rect) items.push({ ...base, kind: "poster", node, rect, op });
+    else if (node.tag === "Poster" && a.uri && rect && !fullyTransparentPicture(a.uri)) items.push({ ...base, kind: "poster", node, rect, op });
     else if (node.tag === "VideoBackground" && rect) items.push({ ...base, kind: "rect", node, rect, op });
     else if (node.tag === "Video" && rect) items.push({ ...base, kind: "video", node, rect, op });
     else if (node.tag === "Rectangle" && rect && alphaOf(a.color) * op > 0.01) items.push({ ...base, kind: "rect", node, rect, op });
@@ -136,26 +137,62 @@ let assetOpacityOf = null;
 export function httpImageUris(appUiXml) {
   return [...new Set([...appUiXml.matchAll(/<Poster\b[^>]*?\buri="(https?:\/\/[^"]+)"/g)].map((m) => unescapeXml(m[1])))];
 }
-/** True when the image bytes carry no transparent pixel (a JPEG never does; a PNG is read pixel by pixel). Unknown formats are not opaque. */
-export function imageIsOpaque(bytes) {
+/** Opacity of image bytes: true (no transparent pixel; a JPEG never has one), false (at least one transparent pixel), null (unknown format: not measured). */
+export function imageOpacity(bytes) {
   if (bytes[0] === 0xff && bytes[1] === 0xd8) return true;
   if (bytes[0] === 0x89 && bytes[1] === 0x50) {
-    const png = PNG.sync.read(Buffer.from(bytes));
-    for (let i = 3; i < png.data.length; i += 4) if (png.data[i] !== 255) return false;
-    return true;
-  }
-  return false;
-}
-/** Fetch every loaded HTTP image of the dump and report whether the asset is fully opaque: Map(uri -> boolean). */
-export async function httpAssetOpacity(appUiXml, fetchImpl = fetch) {
-  const out = new Map();
-  for (const uri of httpImageUris(appUiXml)) {
     try {
-      const res = await fetchImpl(uri);
-      out.set(uri, res.ok && imageIsOpaque(new Uint8Array(await res.arrayBuffer())));
-    } catch { out.set(uri, false); }
+      const png = PNG.sync.read(Buffer.from(bytes));
+      for (let i = 3; i < png.data.length; i += 4) if (png.data[i] !== 255) return false;
+      return true;
+    } catch { return null; }
+  }
+  return null;
+}
+/** True only when the image bytes were measured and carry no transparent pixel. */
+export const imageIsOpaque = (bytes) => imageOpacity(bytes) === true;
+/**
+ * Fetch every loaded HTTP image of the dump (with the headers the app sends for its artwork) and record what was observed.
+ * One entry per URI: status, size, sha256 of the bytes and opaque = true | false | null. null means "unknown" (no response, an
+ * error status, or an unreadable format), which is not the same as false ("measured, has transparent pixels"). Nothing secret is kept.
+ */
+export async function httpAssetEvidence(appUiXml, fetchImpl = fetch, headers = {}) {
+  const out = [];
+  for (const uri of httpImageUris(appUiXml)) {
+    const entry = { uri, status: null, bytes: null, sha256: null, opaque: null };
+    try {
+      const res = await fetchImpl(uri, { headers });
+      entry.status = res.status ?? (res.ok ? 200 : null);
+      if (res.ok) {
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        entry.bytes = bytes.length;
+        entry.sha256 = createHash("sha256").update(bytes).digest("hex");
+        entry.opaque = imageOpacity(bytes);
+      }
+    } catch (e) { entry.error = String(e?.name ?? e); }
+    out.push(entry);
   }
   return out;
+}
+/** Map(uri -> boolean) of the measured images only; an unknown image is absent, so it never counts as opaque. */
+export const assetOpacityMap = (evidence) => new Map(evidence.filter((e) => e.opaque !== null).map((e) => [e.uri, e.opaque]));
+export async function httpAssetOpacity(appUiXml, fetchImpl = fetch, headers = {}) {
+  return assetOpacityMap(await httpAssetEvidence(appUiXml, fetchImpl, headers));
+}
+const alphaCache = new Map();
+/** True when a bundled PNG of the app has no visible pixel at all (read from its alpha channel): it paints nothing. */
+function fullyTransparentPicture(uri) {
+  const m = /^pkg:\/images\/([\w.-]+\.png)$/.exec(uri ?? "");
+  if (!m) return false;
+  if (!alphaCache.has(m[1])) {
+    try {
+      const png = PNG.sync.read(readFileSync(imageDir + m[1]));
+      let clear = true;
+      for (let i = 3; i < png.data.length; i += 4) if (png.data[i] !== 0) { clear = false; break; }
+      alphaCache.set(m[1], clear);
+    } catch { alphaCache.set(m[1], false); }
+  }
+  return alphaCache.get(m[1]);
 }
 /** A bundled picture that paints every pixel of its box: opaque PNG whose aspect matches the box (read from the app's own asset). */
 function opaquePicture(it) {

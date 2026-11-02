@@ -24,6 +24,8 @@
     <field id="tracking" type="float" value="0" onChange="refresh" />
     <!-- A glyph from the symbol fonts (arrows, play, check) rather than Nunito Sans text. -->
     <field id="symbol" type="boolean" value="false" />
+    <!-- JetBrains Mono (the build label) rather than Nunito Sans: advances are the font's constant 600/1000 em. -->
+    <field id="mono" type="boolean" value="false" onChange="refresh" />
     <field id="aria" type="string" value="" />
     <field id="textWidth" type="float" value="0" />
     <field id="lineCount" type="integer" value="0" />
