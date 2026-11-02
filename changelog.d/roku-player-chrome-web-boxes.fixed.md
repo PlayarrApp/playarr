@@ -1,0 +1,1 @@
+- Roku: player chrome draws the web Mute, Volume, Cast and Fullscreen boxes and a 44 px seek slider at the web positions, and the installed Profiles screen no longer shows a Clients link.
