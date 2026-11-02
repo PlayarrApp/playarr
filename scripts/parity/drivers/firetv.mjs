@@ -273,9 +273,10 @@ export async function createDriver({ out } = {}) {
         }
       }
       if (!paused) throw new Error("the Vega player did not pause at 2 s");
-      await sleep(7000); // the controls hide after 5 s without input
-      if (!raise) return; // the player with its controls hidden (the design report's `player` screen)
-      await press("Right"); // the first input with the controls hidden only raises them
+      await sleep(3000);
+      // Controls never auto-hide while paused (PlayerScreen): Back hides them, which is the design report's `player` screen.
+      if (!raise) { await press("Escape"); await sleep(2500); return; }
+      await press("Right");
       await sleep(2500);
     },
     async route(path, { screenId } = {}) {
