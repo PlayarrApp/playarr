@@ -37,112 +37,7 @@ namespace Playarr.Xbox.Views
 
         private static CompositeTransform? Snap(Grid art) => art.RenderTransform is TransformGroup { Children: { Count: 2 } children } ? children[1] as CompositeTransform : null;
 
-        private sealed class GlowInfo
-        {
-            public Canvas Canvas = null!;
-            public Windows.Foundation.Point Origin;
-            public double RingOutset;
-        }
-
-        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Grid, List<GlowInfo>> Glows = new System.Runtime.CompilerServices.ConditionalWeakTable<Grid, List<GlowInfo>>();
-
-        /// <summary>
-        /// Registers a glow or shadow canvas (zero size, its borders sized from the art) so its strokes sit on whole device pixels:
-        /// a stroke edge at a fractional position is anti-aliased, and that coverage rounds differently from run to run.
-        /// <paramref name="origin"/> is the art's top-left in the canvas's own space.
-        /// </summary>
-        internal static void AttachGlow(Grid art, Canvas canvas, Windows.Foundation.Point origin, double ringOutset)
-        {
-            var list = Glows.GetOrCreateValue(art);
-            list.Add(new GlowInfo { Canvas = canvas, Origin = origin, RingOutset = ringOutset });
-            canvas.RenderTransform = new TranslateTransform();
-        }
-
-        private static void UpdateGlows(Grid art, bool snapped)
-        {
-            if (!Glows.TryGetValue(art, out var list))
-            {
-                return;
-            }
-
-            foreach (var info in list)
-            {
-                try
-                {
-                    var canvas = info.Canvas;
-                    var move = (TranslateTransform)canvas.RenderTransform;
-                    move.X = move.Y = 0;
-                    var aw = art.ActualWidth;
-                    var ah = art.ActualHeight;
-                    if (aw <= 0 || ah <= 0)
-                    {
-                        continue;
-                    }
-
-                    var w = aw;
-                    var h = ah;
-                    var ringShift = new Windows.Foundation.Point(0, 0);
-                    Windows.Foundation.Point? origin = null;
-                    if (snapped && canvas.Visibility == Visibility.Visible && Window.Current?.Content is FrameworkElement root && root.ActualWidth > 0)
-                    {
-                        var k = 1920.0 / root.ActualWidth;
-                        var at = canvas.TransformToVisual(root).TransformPoint(info.Origin);
-                        move.X = Math.Round(at.X * k, MidpointRounding.AwayFromZero) / k - at.X;
-                        move.Y = Math.Round(at.Y * k, MidpointRounding.AwayFromZero) / k - at.Y;
-                        w = Math.Max(1, Math.Round(aw * k, MidpointRounding.AwayFromZero) / k);
-                        h = Math.Max(1, Math.Round(ah * k, MidpointRounding.AwayFromZero) / k);
-                        origin = at;
-                    }
-
-                    foreach (var child in canvas.Children)
-                    {
-                        if (child is not Border border)
-                        {
-                            continue;
-                        }
-
-                        if (border.Tag is int d)
-                        {
-                            border.Width = w + 2 * d;
-                            border.Height = h + 2 * d;
-                        }
-                        else if (border.Tag is "ring")
-                        {
-                            const double artScale = 1.025;
-                            var rw = aw * artScale + 2 * info.RingOutset;
-                            var rh = ah * artScale + 2 * info.RingOutset;
-                            var left = info.Origin.X + (aw - rw) / 2;
-                            var top = info.Origin.Y + (ah - rh) / 2;
-                            if (origin != null)
-                            {
-                                // The ring's edges land on whole pixels too: the size is rounded and the offset from the art rounded on its own.
-                                rw = Math.Round(rw, MidpointRounding.AwayFromZero);
-                                rh = Math.Round(rh, MidpointRounding.AwayFromZero);
-                                left = info.Origin.X + Math.Round((w - rw) / 2, MidpointRounding.AwayFromZero);
-                                top = info.Origin.Y + Math.Round((h - rh) / 2, MidpointRounding.AwayFromZero);
-                            }
-
-                            border.Width = rw;
-                            border.Height = rh;
-                            Canvas.SetLeft(border, left);
-                            Canvas.SetTop(border, top);
-                        }
-                    }
-                }
-                catch (Exception)
-                {
-                    // not in the visual tree yet
-                }
-            }
-        }
-
         internal static void Update(Grid art)
-        {
-            UpdateArt(art);
-            UpdateGlows(art, true);
-        }
-
-        private static void UpdateArt(Grid art)
         {
             if (Snap(art) is not { } snap || FocusScale(art) is not { } focus)
             {
@@ -204,8 +99,6 @@ namespace Playarr.Xbox.Views
                 snap.ScaleX = snap.ScaleY = 1;
                 snap.TranslateX = snap.TranslateY = 0;
             }
-
-            UpdateGlows(art, false);
         });
 
         private static void ForEach(Action<Grid> action)
