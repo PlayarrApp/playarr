@@ -86,7 +86,7 @@ internal sealed class SettingsScreen : IPage
         _root.BackgroundColor = Ui.C(_t.Surface);
         _root.Add(Ui.Box(0, 0, TizenClient.DesignWidth, TizenClient.DesignHeight, _t.Surface)); // web: the page section and its stage are two full-viewport layers
         
-        _root.Add(Sem.Tag(Ui.PanelWash(_t, 1248), "container")); // web .tv-directory: the right 65 % carries the library panel frost
+        _root.Add(Sem.Tag(Ui.PanelWash(_t, 1248, artBeneath: false), "container")); // web .tv-directory: the right 65 % carries the library panel frost
         var back = Ui.Box(153.6f, 56.2f, 50, 50, _t.SurfaceStrong.Mixed(0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 720, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));

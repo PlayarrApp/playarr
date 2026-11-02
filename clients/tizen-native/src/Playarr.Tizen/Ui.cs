@@ -285,7 +285,7 @@ internal static class Ui
     /// one pixel per CSS pixel from x = 730 (672), over whatever lies beneath. Where key art lies beneath (left of x = 1033) the strip is drawn translucent as it
     /// is; right of it only the page background lies beneath, so the premultiplied composite is drawn as one opaque image. No dither: the web draws none.
     /// </summary>
-    public static View PanelWash(PlayarrTheme t, float width = 1190.39f)
+    public static View PanelWash(PlayarrTheme t, float width = 1190.39f, bool artBeneath = true)
     {
         var stripWidth = width >= 1240f ? 1248 : 1190;
         var origin = RailFrost.Origin(stripWidth, TizenClient.DesignWidth);
@@ -293,6 +293,16 @@ internal static class Ui
         // a plain grouping view paints nothing itself: the export and the visibility check see only its two real paint children, each with its true bounds
         var root = new View { PositionX = origin, PositionY = 0, Size = new Size(stripWidth, TizenClient.DesignHeight) };
         const int artEnd = 1033; // key art (and its stage wash) ends at 133 + 900 px
+        if (!artBeneath)
+        {
+            // a page that never shows key art (Settings): only the page background lies beneath the whole panel, so the premultiplied composite is one opaque image
+            var flat = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";
+            Directory.CreateDirectory(flat);
+            var u = UnderPanel(t); var allPath = flat + $"frost-{t.Name}-{stripWidth}-all-{u.R}-{u.G}-{u.B}-v1.png";
+            if (!File.Exists(allPath)) File.WriteAllBytes(allPath, RailFrost.Opaque(strip.Rgba, 0, strip.Width, u));
+            root.Add(Sem.Tag(Sem.Overlay(new ImageView(allPath) { PositionX = 0, PositionY = 0, Size = new Size(strip.Width, TizenClient.DesignHeight), SynchronousLoading = true }), "container"));
+            return root;
+        }
         var cut = artEnd - origin;
         var dir = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";
         Directory.CreateDirectory(dir);
