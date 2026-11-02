@@ -8,7 +8,7 @@ import { readFileSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { installRegionPin, installVisualDate } from "./web.mjs";
+import { installRegionPin, installVisualDate, settleDecodedPaint } from "./web.mjs";
 import { layoutExpression } from "../layout-dump.mjs";
 import { assertDeviceTestIdentity, fetchCurrentIdentity, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl } from "../device-test-guard.mjs";
 
@@ -558,6 +558,9 @@ export async function createDriver() {
       if (phase === "focus" && (await ev(`/^#\\/player\\//.test(location.hash)`))) return;
       if (!(await until(`document.fonts.status === "loaded" && !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-spinner")`, 60000))) throw new Error("fonts or loading placeholders did not settle");
       await settleVisibleImages();
+      // A frame that depends on the page's layout history put nav rail icons and labels one device pixel apart between identical runs (dark film-detail,
+      // 164 px); one forced full style, layout and paint pass makes it a function of the DOM, as on the web refs (drivers/web.mjs settleDecodedPaint).
+      if (!REAL_TV && !(await ev(`/^#\\/player\\//.test(location.hash)`))) await ev(`(${settleDecodedPaint.toString()})()`);
       await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
       await guard();
     },
