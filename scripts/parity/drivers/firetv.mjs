@@ -295,6 +295,10 @@ export async function createDriver({ out } = {}) {
           if (after !== before && after !== "null") { dbg("key", name, before, "->", after); return; }
           await sleep(1200);
         }
+        // A loaded host can answer 10 s late: look once more after a longer pause, so a late move is not followed by a second key.
+        await sleep(6000);
+        const late = JSON.stringify((await state(15000).catch(() => ({}))).focus ?? null);
+        if (late !== before && late !== "null") { dbg("key", name, before, "->", late); return; }
         console.error(`firetv: key ${name} did not move the focus (${before}); pressing again`);
         await press(key);
         await sleep(900);
