@@ -337,7 +337,7 @@ class NavigationContractTests(unittest.TestCase):
 
         light = Image.open(ROOT / "images" / "avatar-add-light.png").convert("RGBA")
         dark = Image.open(ROOT / "images" / "avatar-add.png").convert("RGBA")
-        self.assertEqual((240, 240), light.size)
+        self.assertEqual((244, 244), light.size)
         self.assertEqual(light.size, dark.size)
         light_sample = light.getpixel((45, 45))
         dark_sample = dark.getpixel((45, 45))
