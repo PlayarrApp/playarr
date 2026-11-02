@@ -4159,6 +4159,18 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
     linear-gradient(270deg, var(--surface) 0%, transparent 17%);
 }
 
+/* The TV stage (exactly 1920x1080) draws the wash from one pre-rendered alpha row (scripts/generate-gradient-assets.mjs): the CSS
+   ramps are dithered per engine, a decoded PNG is the same bytes everywhere. Other viewports keep the CSS gradients. */
+@media (width: 1920px) and (height: 1080px) {
+  .tv-stage-wash {
+    background: url("../assets/gradients/stage-wash-light-1920.png") 0 0 / 100% 100% no-repeat;
+  }
+
+  :root[data-theme="dark"] .tv-stage-wash {
+    background: url("../assets/gradients/stage-wash-dark-1920.png") 0 0 / 100% 100% no-repeat;
+  }
+}
+
 /* The media-page kicker and the details-panel eyebrow. The page header subtitle is not part of this rule (it is the
    side-by-side header style in page-layout.css, never pink; owner rule 2026-10-14). */
 .tv-provider,
@@ -7524,6 +7536,15 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
 
   .profiles-page::before {
     content: none;
+  }
+
+  /* The Sign in circle: its 242px padding box (13vw clamped to 244px, less the border) is one pre-rendered image. */
+  .profile-add .profile-avatar {
+    background: url("../assets/gradients/profile-add-light-242.png") 0 0 / 100% 100%;
+  }
+
+  :root[data-theme="dark"] .profile-add .profile-avatar {
+    background: url("../assets/gradients/profile-add-dark-242.png") 0 0 / 100% 100%;
   }
 }
 
