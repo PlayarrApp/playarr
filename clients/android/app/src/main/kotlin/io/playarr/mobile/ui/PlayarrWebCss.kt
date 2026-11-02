@@ -55,9 +55,10 @@ internal fun WebCssLayout(
     }
 }
 
-/** The css viewport height in px: the system height in dp is the css height because the stage density is the css device pixel ratio. */
+/** The css viewport height in px: the window height over the density is the css height (screenHeightDp leaves out the system bars the web viewport spans) because the stage density is the css device pixel ratio. */
 @Composable
-internal fun webViewportHeightCss(): Float = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.toFloat()
+internal fun webViewportHeightCss(): Float =
+    androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.height / androidx.compose.ui.platform.LocalDensity.current.density
 
 /** A css `clamp(min, percent * viewport-unit, max)` where the unit is 1% of the css viewport height, as a LayoutUnit. */
 @Composable

@@ -2230,7 +2230,7 @@ private fun ExperienceNavigation(
                         WebAbsoluteLayout(left, linkTop, NAV_LINK_CSS, NAV_LINK_HEIGHT_CSS) {
                             PlayarrProfileAvatar(
                                 userId = tvProfile.userId, preference = tvProfile.avatar,
-                                modifier = Modifier.webAbs(left + (NAV_LINK_CSS - NAV_ICON_CSS) / 2f, linkTop + (NAV_LINK_HEIGHT_CSS - NAV_ICON_CSS - profileNameCss) / 2f, NAV_ICON_CSS, NAV_ICON_CSS).parityBox("container", radius = 999f, cssShortSide = NAV_ICON_CSS),
+                                modifier = Modifier.webAbs(left + (NAV_LINK_CSS - NAV_ICON_CSS) / 2f, linkTop + (NAV_LINK_HEIGHT_CSS - NAV_ICON_CSS - profileNameCss) / 2f, NAV_ICON_CSS, NAV_ICON_CSS).parityBox("container", radius = 999f),
                                 artworkModifier = Modifier.parityBox("image"), glyphSize = 13.sp,
                             )
                         }
@@ -2977,7 +2977,7 @@ private fun ExperienceOnlineGate(
 @Composable
 private fun ExperienceOfflineScreen(isTelevision: Boolean) {
     BoxWithConstraints(
-        modifier = Modifier.fillMaxSize().background(WebSurface),
+        modifier = Modifier.fillMaxSize().parityBackground("container", WebSurface),
         contentAlignment = Alignment.Center,
     ) {
         val wide = isTelevision || maxWidth >= 760.dp
@@ -3706,13 +3706,7 @@ internal fun ExperienceMediaRail(
                 val onDeck = rail.onDeckByWork[work.id]
                 val episode = onDeck?.episode
                 ExperienceLandscapeCard(
-                    modifier = (if (rails != null) Modifier.tvRailItem(rails, railIndex, itemIndex) else Modifier)
-                        // `.tv-home-card > small { height: 1.3em; margin: 0.16rem 0 calc(-1.3em - 0.16rem) }` hangs below the card box, but the flex row still
-                        // lays the card out with it: the rail is taller than the card rect by the small's margin-top plus its line (6.88 px * 1.3).
-                        .then(if (!isTelevision && homeView == PlayarrHomeViewPreference.Thumbnail) Modifier.layout { measurable, constraints ->
-                            val placeable = measurable.measure(constraints)
-                            layout(placeable.width, placeable.height + (webLayoutUnit(0.16f * 16f) + webLayoutUnit(1.3f * 6.88f)).dp.roundToPx()) { placeable.placeRelative(0, 0) }
-                        } else Modifier),
+                    modifier = if (rails != null) Modifier.tvRailItem(rails, railIndex, itemIndex) else Modifier,
                     work = work,
                     serverUrl = serverUrl,
                     accessToken = accessToken,
@@ -4851,7 +4845,7 @@ private fun ExperienceLibraryScreen(
                 )),
                 body = PlayarrPageBody.Bleed,
             ) {
-            Box(modifier = Modifier.fillMaxSize().background(WebSurface).parityCaptureLayout(captureToken, captureScreen)) {
+            Box(modifier = Modifier.fillMaxSize().parityBackground("container", WebSurface).parityCaptureLayout(captureToken, captureScreen)) {
         HeroBackdropStack {
                 if (!isTelevision) {
                     PhoneKeyArt(selected, serverUrl, accessToken, Modifier.fillMaxSize())
@@ -5269,7 +5263,7 @@ private fun PhoneSearchContent(
     navController: NavHostController,
     selectedWork: Work?,
 ) {
-    Box(Modifier.fillMaxSize().background(WebSurface)) {
+    Box(Modifier.fillMaxSize().parityBackground("container", WebSurface)) {
         HeroBackdropStack {
             PhoneKeyArt(selectedWork, serverUrl, accessToken, Modifier.fillMaxSize())
             PhoneStageWash(Modifier.fillMaxSize())
@@ -5463,7 +5457,7 @@ private fun TelevisionSearchBody(
 ) {
     val language = LocalPlayarrLanguage.current
     val showPreview = query.isNotBlank() && (selectedWork != null || selectedPlaylist != null)
-    Box(Modifier.fillMaxSize().background(WebSurface)) {
+    Box(Modifier.fillMaxSize().parityBackground("container", WebSurface)) {
         HeroBackdropStack {
             selectedWork?.takeIf { query.isNotBlank() }?.let { work ->
                 AuthenticatedArtwork(
@@ -5966,7 +5960,7 @@ private fun TvDrawerActionRow(glyph: String, label: String, onClick: () -> Unit,
         modifier = modifier.fillMaxWidth().height(68.dp).parityShape(14f).webFocusRing(focused, radius = 14.dp, offset = 0.dp).semantics { contentDescription = label }.onFocusChanged { focused = it.isFocused },
     ) {
         Row(Modifier.padding(start = 18.dp, end = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(webSymbol(glyph), color = WebKicker, fontSize = 19.52.sp, lineHeight = 29.28.sp, modifier = Modifier.width(42.dp).then(if (glyph == "\uFF0B") Modifier.offset(y = (-1.5).dp) else Modifier)) // web: 1.22 rem in a 42 px column
+            Text(webSymbol(glyph), color = WebKicker, fontSize = 19.52.sp, lineHeight = 29.28.sp, modifier = Modifier.width(42.dp)) // web: 1.22 rem in a 42 px column
             val cssTablet = LocalTabletDrawerCssPx.current
             Text(label, fontSize = if (cssTablet) 16.sp else if (tv) 19.2.sp else 16.sp, lineHeight = if (cssTablet) 24.sp else if (tv) 28.8.sp else 24.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier)
         }
@@ -6684,7 +6678,7 @@ private fun ExperienceVideoDetailContent(
         selectedEpisodeId = episode.episode.id
     }
 
-    Box(Modifier.fillMaxSize().background(WebSurface)) {
+    Box(Modifier.fillMaxSize().parityBackground("container", WebSurface)) {
         HeroBackdropStack {
         if (!isTelevision) {
             // Web phone `.tv-detail > .tv-key-art`: height min(58 vu, 520 px); `.tv-stage-wash`: min(72 vu, 640 px).
@@ -8573,7 +8567,7 @@ private fun ExperienceMusicDetailContent(
         detail.work.images.firstOrNull { it.kind == ImageKind.Poster }?.url
     }
 
-    Box(Modifier.fillMaxSize().background(WebSurface)) {
+    Box(Modifier.fillMaxSize().parityBackground("container", WebSurface)) {
         HeroBackdropStack {
         if (detail.work.images.any { it.kind == ImageKind.Backdrop }) {
             AuthenticatedArtwork(
@@ -10790,7 +10784,7 @@ internal fun AuthenticatedArtwork(
     }
     AsyncImage(
         model = request,
-        contentDescription = work.title,
+        contentDescription = null, // web artwork img alt is "": decorative, the title is the heading beside it
         contentScale = contentScale,
         filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
         onError = {

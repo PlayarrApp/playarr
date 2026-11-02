@@ -134,7 +134,7 @@ internal fun PlayarrPageHeaderRow(
                         detailPage = b.asButton,
                     ) {
                         // Web draws the arrow as the text glyph "←" at 12.8 px, weight 720.
-                        Text("←", color = if (spec.backActive) palette.background else palette.inkSoft, fontSize = 12.8.sp, fontWeight = FontWeight(720), modifier = Modifier.offset(y = (-0.8).dp))
+                        Text("←", color = if (spec.backActive) palette.background else palette.inkSoft, fontSize = 12.8.sp, fontWeight = FontWeight(720))
                     }
                 }
             }.first().measure(Constraints.fixed(backSize, backHeight))
