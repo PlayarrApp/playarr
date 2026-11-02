@@ -95,7 +95,7 @@ sub init()
     m.homeHeroPendingWorkId = ""
     m.pendingHomeHeroRequest = invalid
     m.homeHeroRuntimeById = {}
-    m.homeStage.contentBase = [783.36, 182.9]
+    m.homeStage.contentBase = [783.36, homeContentTop()]
     m.homeContent = m.homeStage.contentTarget
     m.artTelemetryEnabled = false
     if m.global.parityArtEnabled = true then m.artTelemetryEnabled = true
@@ -418,7 +418,11 @@ sub init()
     m.userLinkMark.id = "hit|link|16|Signed in as " + m.session.profileName + ". Open profiles."
     ' The build label under the tile reads like web's (major.minor.0).
     ai = CreateObject("roAppInfo")
-    m.top.findNode("userVersion").text = "v" + ai.GetValue("major_version") + "." + ai.GetValue("minor_version") + ".0"
+    userVersion = m.top.findNode("userVersion")
+    ' .app-user-version follows the 79.44 high profile group by margin-top 0.35rem; its line box is 8 px (line-height 1), the text box inside it
+    ' is JetBrains Mono's content height.
+    userVersion.translation = [0.23, PlayarrMonoTextTop(79.44 + 0.35 * 16.0, 8.0, 8.0)]
+    userVersion.text = "v" + ai.GetValue("major_version") + "." + ai.GetValue("minor_version") + ".0"
     m.profileId = m.session.profileId
     if m.profileId = invalid then m.profileId = ""
     m.avatarKind = ""
@@ -7897,14 +7901,16 @@ function homeRailPitch() as Float
 end function
 
 ' Home opens aligned with the Library grid: the panel starts at web --card-pad-left (53.76) from the 62 vw rail and the first rail at
-' --library-rail-top (162), i.e. 240 px above where it used to centre. Covers rails start 51 px higher inside it (see finishHomeLoad).
+' --library-rail-top (162). The content group sits where the first card's art lands on the CSS art top (WebHomeFirstArtTop), the RowList
+' placing the art 41.1 below the group (row translation 26.1 plus the 15 px the RowList reserves above its items).
+' Covers rails start 51 px higher inside it (see finishHomeLoad).
 function homeContentTop() as Float
-    return 182.9
+    return WebHomeFirstArtTop() - 41.1
 end function
 
 ' Where a focused later rail is held (web centres it): the panel's former top.
 function homeCentredTop() as Float
-    return 422.9
+    return homeContentTop() + 240.0
 end function
 
 ' Parity capture only: seek the video to an exact position (ms) and hold it paused there.

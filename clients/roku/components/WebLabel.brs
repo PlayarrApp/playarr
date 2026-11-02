@@ -16,7 +16,7 @@ sub refresh()
     if t.size <= 0 or t.text = invalid then return
     text = t.text
     tracking = t.tracking
-    spec = { text: text, size: t.size, weight: t.weight, tracking: tracking, role: "ink", maxLines: 1, aria: t.aria, symbol: t.symbol }
+    spec = { text: text, size: t.size, weight: t.weight, tracking: tracking, role: "ink", maxLines: 1, aria: t.aria, symbol: t.symbol, mono: t.mono }
     ' 0 (fully transparent black) means "not set": -1 is opaque white and must stay a colour the owner can choose.
     if t.color <> 0 then spec.color = t.color
     lineHeight = t.lineHeight
