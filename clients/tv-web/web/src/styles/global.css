@@ -7538,7 +7538,7 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
     content: none;
   }
 
-  /* The Sign in circle: its 242px padding box (13vw clamped to 244px, less the border) is one pre-rendered image. */
+  /* The Sign in circle: its 242px padding box (the avatar width clamped to 244px, less the border) is one pre-rendered image. */
   .profile-add .profile-avatar {
     background: url("../assets/gradients/profile-add-light-242.png") 0 0 / 100% 100%;
   }
