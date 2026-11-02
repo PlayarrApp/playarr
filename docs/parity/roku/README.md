@@ -64,7 +64,7 @@ titles cannot be reproduced). None of the screens is at or below 1% except where
 - **Light theme (done).** `source/Theme.brs` holds both web palettes; `ThemeApplyTree` maps each authored literal to its
   token, the preference (System, Light, Dark; System resolves to dark because Roku has no appearance API) is set from
   the sign-in/profile dropdown and Settings, and capture.mjs selects it through that dropdown.
-- **Player (chrome done).** `components/PlayerChrome.brs` draws the web scrim, seek bar and thumb, transport row, quality pill, close button and the quality menu (Up opens it; choosing a tier restarts playback at the same position with that bitrate). Roku has no Picture-in-Picture, cast or in-app volume, so Minimise, volume, cast and info are not drawn (justified). Back closes the menu, then the controls, then exits. The video plane is a hardware surface that the screenshot endpoint returns black, so the player screens
+- **Player (chrome done).** `components/PlayerChrome.brs` draws the web scrim, seek bar and thumb, transport row, quality pill, close button and the quality menu (Up opens it; choosing a tier restarts playback at the same position with that bitrate). The web's mute, volume, cast and fullscreen controls are drawn at their web boxes (CSS `.player-volume`, `.player-btn`, `.player-controls-row` gap 0.85rem) but are not focus stops: the Roku has no app volume, cast or fullscreen to drive. Back closes the menu, then the controls, then exits. The video plane is a hardware surface that the screenshot endpoint returns black, so the player screens
   can only be compared on their chrome, which is not captured yet.
 - **Calendar, settings, lists.** Not implemented on Roku.
 

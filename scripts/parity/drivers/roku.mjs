@@ -912,7 +912,7 @@ export function createDriver({ out, args = [] } = {}) {
     }
     // The controls may already be up after the seek; a key on up controls moves focus to Play and draws its ring (web's frame has none).
     // So Down is sent only when the seek slider is not in the tree (it then just raises the controls).
-    if (!/name="a11y\|slider\|0\|Seek"/.test(await fetchAppUi())) {
+    if (!/name="(?:a11y|hit)\|slider\|0\|Seek"/.test(await fetchAppUi())) {
       await sendEcp("keypress/Down");
       await sleep(1500);
     }
@@ -1202,10 +1202,10 @@ export function createDriver({ out, args = [] } = {}) {
       }
       // The player frame is taken only with the controls up and the progress fill at 2 s of 60 (59.33 px): the controls hide on their own
       // and a seek that did not land leaves another fill, so the measured tree is checked first and the state restored until it holds.
-      const playerHeld = (xml) => /name="a11y\|slider\|0\|Seek"/.test(xml) && /name="playerProgressFill"[^>]*bounds="\{70, 933, 59\.\d+, 6\}"|bounds="\{70, 933, 59\.\d+, 6\}"[^>]*name="playerProgressFill"/.test(xml);
+      const playerHeld = (xml) => /name="(?:a11y|hit)\|slider\|0\|Seek"/.test(xml) && /name="playerProgressFill"[^>]*bounds="\{70, 933, 59\.\d+, 6\}"|bounds="\{70, 933, 59\.\d+, 6\}"[^>]*name="playerProgressFill"/.test(xml);
       // A key press moves focus from the seek stop to Play and draws its ring (web's frame has no ring), so Down is sent only while the
       // controls are down (no seek slider in the tree); a wrong fill is fixed with the seek input alone.
-      const sliderUp = (xml) => /name="a11y\|slider\|0\|Seek"/.test(xml);
+      const sliderUp = (xml) => /name="(?:a11y|hit)\|slider\|0\|Seek"/.test(xml);
       const focusRingUp = (xml) => /<Poster\b(?![^>]*visible="false")[^>]*uri="pkg:\/images\/round-outline-r25\.9\.png"[^>]*bounds="\{[\d.]+, 9\d\d/.test(xml) || /<Poster\b(?![^>]*visible="false")[^>]*bounds="\{[\d.]+, 9\d\d[^>]*uri="pkg:\/images\/round-outline-r25\.9\.png"/.test(xml);
       if (playerShot) {
         let held = false;
