@@ -456,6 +456,32 @@ function WebHomeRailPitch() as Float
     return headingLine + headingGap + 18.0 + card + sectionGap
 end function
 
+' Card copy under the art (global.css .tv-title-card-copy): padding-top --card-copy-gap 0.72rem, then the title line at line-height 1.5 of
+' --card-title-size clamp(0.55rem, 0.62 * --vw, 0.78rem); in a rail the kind line follows with margin-top 0.16rem (.tv-media-track-scroll).
+function WebCardCopyGap() as Float
+    return WebLayoutUnit(0.72 * 16.0)
+end function
+
+function WebCardTitleLine() as Float
+    return WebLayoutUnit(1.5 * WebClamp(8.8, 0.62 * WebVw(), 12.48))
+end function
+
+' Top of the kind line below the card title's top: the title line plus the 0.16rem margin.
+function WebCardKindOffset() as Float
+    return WebCardTitleLine() + WebLayoutUnit(0.16 * 16.0)
+end function
+
+' Top of a Home rail heading's text box, `artTop` being the card art's top in the rail group. Going up from the art: .tv-home-rail
+' padding-top 18 px, the heading margin-bottom clamp(12px, 1.6 * --viewport-unit, 20px), the heading line box (h2 at line-height 1.5),
+' then the half-leading that places the text box inside its line (PlayarrTextTop).
+function WebHomeRailHeadingTop(artTop as Float) as Float
+    size = WebClamp(12.16, 0.92 * WebVw(), 18.88)
+    headingLine = WebLayoutUnit(1.5 * size)
+    headingGap = WebLayoutUnit(WebClamp(12.0, 1.6 * 10.8, 20.0))
+    lineTop = artTop - (18.0 + headingGap + headingLine)
+    return PlayarrTextTop(lineTop, size, headingLine)
+end function
+
 ' --card-radius: clamp(8px, calc(0.65 * var(--vw)), 13px) = 12.48.
 function WebCardRadius() as Float
     return WebClamp(8.0, 0.65 * WebVw(), 13.0)

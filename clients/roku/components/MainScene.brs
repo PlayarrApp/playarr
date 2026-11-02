@@ -4752,7 +4752,7 @@ sub setRailTitle(rail as Object)
     if rail.label = invalid then return
     railHeadingSize = WebClamp(12.16, 0.92 * WebVw(), 18.88)
     rail.title.spec = { text: rail.label, size: railHeadingSize, weight: 610, tracking: -0.03 * railHeadingSize, role: "ink", aria: "heading" }
-    rail.title.translation = [0, -19.9]
+    rail.title.translation = [0, WebHomeRailHeadingTop(rail.row.translation[1] + 15)]
 end sub
 
 sub onHomeItemSelected(event as Object)
