@@ -357,7 +357,15 @@ class ExoPlayerPlayarrPlayer private constructor(
                     DefaultMediaSourceFactory(appContext, extractorsFactory)
                 },
             )
-            return ExoPlayerPlayarrPlayer(builder.build(), parallelEnabled, decoderBlocklist)
+            val exo = builder.build()
+            // One marker per first rendered frame for the device performance A/B (scripts/parity/android-tv/perf-ab.sh).
+            exo.addListener(object : Player.Listener {
+                override fun onRenderedFirstFrame() {
+                    android.os.Trace.beginSection("pl:first_frame"); android.os.Trace.endSection()
+                    Log.i("PlayarrPerf", "first_frame")
+                }
+            })
+            return ExoPlayerPlayarrPlayer(exo, parallelEnabled, decoderBlocklist)
         }
 
         /**

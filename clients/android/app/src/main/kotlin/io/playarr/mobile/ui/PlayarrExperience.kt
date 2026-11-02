@@ -429,6 +429,14 @@ internal val WebAccent get() = PlayarrWebTheme.palette.accent
 internal val WebPink get() = WebAccent
 
 /** Clears the series' remembered resume answers (web "Ask again"); provided by the detail screen. */
+/** Network fetches and parsing leave Main on at most two shared workers: more threads only add per-thread allocator arenas (memory). */
+private val PlayarrFetchDispatcher = Dispatchers.Default.limitedParallelism(2)
+/** Detail page Play pill focus hooks: negotiate the playback info early (web's dwell prefetch) and release it when focus leaves. */
+internal class PlayarrPlayPrewarm(val prewarm: (String, PlayarrPlaybackLaunchSettings?) -> Unit, val release: (String) -> Unit)
+internal val LocalPlayPrewarm = androidx.compose.runtime.staticCompositionLocalOf<PlayarrPlayPrewarm?> { null }
+private const val PREWARM_RELEASE_GRACE_MS = 2_000L
+/** Focus dwell before the playback info is negotiated, so a D-pad pass over Play opens no session. */
+private const val PLAY_PREWARM_DWELL_MS = 250L
 internal val LocalResumeAskAgain = androidx.compose.runtime.staticCompositionLocalOf<((String) -> Unit)?> { null }
 
 /**
@@ -840,7 +848,7 @@ internal class PlayarrExperienceViewModel @Inject constructor(
     fun refreshProgress() {
         viewModelScope.launch {
             progressStamp.begin()
-            runCatching { api.listWatchProgress() }.getOrNull()?.let {
+            withContext(PlayarrFetchDispatcher) { runCatching { api.listWatchProgress() }.getOrNull() }?.let {
                 _progress.value = it
                 _progressLoaded.value = true
             }
@@ -857,6 +865,10 @@ internal class PlayarrExperienceViewModel @Inject constructor(
     val accessToken = tokenStore.accessToken.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val currentUserId = tokenStore.currentUserId.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val currentUserName = tokenStore.currentUserName.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** The user whose session the first loads below ran with (the saved one), read once the store answers. */
+    private val initialLoadUserId = viewModelScope.async { tokenStore.currentUserId.first() }
+    private var initialLoadPending = true
 
     init {
         loadAvailableKinds()
@@ -922,7 +934,9 @@ internal class PlayarrExperienceViewModel @Inject constructor(
     }
 
     private fun launchHome(silent: Boolean): Job {
+        // Fetch and parse on Default: Main is busy composing Home's first frame; only the state writes below go back to Main.
         return viewModelScope.launch {
+            android.os.Trace.beginSection("pl:launchHome_start"); android.os.Trace.endSection()
             homeStamp.begin()
             if (!silent) _home.value = ExperienceLoad.Loading
             val progressRequest = async { runCatching { api.listWatchProgress() }.getOrNull() }
@@ -980,16 +994,41 @@ internal class PlayarrExperienceViewModel @Inject constructor(
                     }
                 }
             val onDeck = (fromRows + fromPlans).awaitAll().filterNotNull()
-            _progress.value = progress
-            if (progressRows != null) _progressLoaded.value = true
-            homeByKind = byKind
-            homeOnDeck = onDeck
-            serverRails = railsRequest.await()
-            _home.value = ExperienceLoad.Ready(buildPlayarrHomeRails(byKind, onDeck, serverRails))
+            val rails = railsRequest.await()
+            android.os.Trace.beginSection("pl:launchHome_fetched"); android.os.Trace.endSection()
+            val ready = android.os.Trace.beginSection("pl:buildHomeRails").let {
+                try { ExperienceLoad.Ready(buildPlayarrHomeRails(byKind, onDeck, rails)) } finally { android.os.Trace.endSection() }
+            }
+            withContext(Dispatchers.Main.immediate) {
+                android.os.Trace.beginSection("pl:home_state_set"); android.os.Trace.endSection()
+                _progress.value = progress
+                if (progressRows != null) _progressLoaded.value = true
+                homeByKind = byKind
+                homeOnDeck = onDeck
+                serverRails = rails
+                _home.value = ready
+            }
         }
     }
 
-    fun reloadForProfile() {
+    /**
+     * The signed-in user changed (or appeared). The first user the screen sees is normally the saved session whose data the
+     * ViewModel's own initial loads already fetch: loading it all a second time only competes with Home's first paint.
+     */
+    fun reloadForProfile(userId: String) {
+        viewModelScope.launch {
+            if (initialLoadPending) {
+                initialLoadPending = false
+                if (initialLoadUserId.await() == userId) {
+                    refreshProfileAvatar()
+                    return@launch
+                }
+            }
+            reloadForProfileNow()
+        }
+    }
+
+    private fun reloadForProfileNow() {
         // Libraries a screen has already asked for are reloaded for the new profile; otherwise a library opened as the
         // first screen (a restored route) was left without data.
         val openLibraries = (libraryJobs.keys + _libraries.value.keys).toSet()
@@ -1601,7 +1640,7 @@ internal fun PlayarrExperience(
         }
     }
     LaunchedEffect(currentUserId) {
-        if (currentUserId != null) viewModel.reloadForProfile()
+        currentUserId?.let(viewModel::reloadForProfile)
     }
     val household by viewModel.household.collectAsState()
     val householdBlock = householdBlockState(household)
@@ -2612,6 +2651,14 @@ private fun ExperienceNavHost(
     // Debug parity launches on a detail route sit on top of Movies (on Home), as web's Back from a deep-linked film does.
     val detailOnHome = parityRoute != null && initialRoute.startsWith("experience-detail")
     if (detailOnHome) LaunchedEffect(Unit) { navController.navigate("movies"); navController.navigate(initialRoute) }
+    val playerDefaultsForPrewarm = LocalPlayarrDisplayPreferences.current.playerDefaults
+    val playPrewarm = remember(playerViewModel, playerDefaultsForPrewarm) {
+        PlayarrPlayPrewarm(
+            prewarm = { id, settings -> playerViewModel.prewarmNext(id, playerDefaultsForPrewarm, settings) },
+            release = playerViewModel::releasePrewarmLater,
+        )
+    }
+    CompositionLocalProvider(LocalPlayPrewarm provides playPrewarm) {
     NavHost(navController, startDestination = if (detailOnHome) "home" else initialRoute, modifier = Modifier.fillMaxSize()) {
         composable("home") {
             ExperienceOnlineGate(isOnline, isTelevision, "home") {
@@ -2874,6 +2921,7 @@ private fun ExperienceNavHost(
             }
         }
     }
+    }
 }
 
 internal fun restorableExperienceRoute(
@@ -3048,6 +3096,13 @@ private fun ExperienceHomeScreen(
                 return
             }
             val allWorks = current.value.flatMap(HomeRail::works)
+            // Marker for the device performance A/B (scripts/parity/android-tv/perf-ab.sh): Home content is on screen.
+            LaunchedEffect(Unit) {
+                withFrameNanos { }
+                withFrameNanos { }
+                android.os.Trace.beginSection("pl:home_ready"); android.os.Trace.endSection()
+                android.util.Log.i("PlayarrPerf", "home_ready")
+            }
             val selectedId = savedSelectedId?.takeIf { id -> allWorks.any { it.id == id } } ?: allWorks.first().id
             val activeRailKey = savedRailKey?.takeIf { key -> current.value.any { it.key == key } } ?: current.value.first().key
             var contextWork by remember { mutableStateOf<Work?>(null) }
@@ -7423,6 +7478,27 @@ private fun VideoDetailActions(
         } else {
             playarrString(PlayarrString.DetailPlay)
         }
+        // Web dwell prefetch: negotiate the playback info shortly after Play gains focus so Select only prepares the player.
+        // Only the plain Play of a film or episode (no custom launch settings, no stacked chooser) is the request play() makes.
+        val playPrewarm = LocalPlayPrewarm.current
+        // A film's launch settings arrive with its playback options (a separate request): negotiating before they are known
+        // would open a second session once they land (the two requests differ), so wait for them.
+        val settingsPending = work.kind == WorkKind.Movie && episode == null && onPlaybackSettings == null
+        val prewarmTarget = if (settingsPending || (smartPlan != null && smartPlan.isStacked)) null
+            else smartPlan?.target?.mediaFileId?.let { it to null } ?: (mediaFileId to launchSettings)
+        var playFocused by remember { mutableStateOf(false) }
+        if (playPrewarm != null && prewarmTarget != null) {
+            LaunchedEffect(playFocused, prewarmTarget) {
+                if (playFocused) {
+                    kotlinx.coroutines.delay(PLAY_PREWARM_DWELL_MS)
+                    playPrewarm.prewarm(prewarmTarget.first, prewarmTarget.second)
+                }
+            }
+            DisposableEffect(playFocused, prewarmTarget.first) {
+                onDispose { if (playFocused) playPrewarm.release(prewarmTarget.first) }
+            }
+        }
+        val prewarmFocus = Modifier.onFocusChanged { playFocused = it.hasFocus }
         val playPill: @Composable () -> Unit = {
             WebDetailPill(
                 label = playLabel,
@@ -7440,7 +7516,7 @@ private fun VideoDetailActions(
                 },
                 exportLabel = smartDescription ?: "Play $title",
                 exportRole = if (work.kind == WorkKind.Movie && episode == null) "link" else "button",
-                modifier = Modifier.focusRequester(playFocus).then(
+                modifier = Modifier.focusRequester(playFocus).then(prewarmFocus).then(
                     if (smartDescription != null) Modifier.semantics { contentDescription = smartDescription } else Modifier,
                 ),
             )
@@ -9314,12 +9390,13 @@ internal class ExperiencePlayerViewModel @Inject constructor(
             return
         }
         activeRequest = request
+        android.os.Trace.beginSection("pl:play_entered"); android.os.Trace.endSection()
         prepareJob?.cancel()
         switchJob?.cancel()
         prepareJob = viewModelScope.launch {
             // The saved position and the server lookup are independent network calls: start both now, not one after the other.
-            val progressCall = async { runCatching { api.getWatchProgress(mediaFileId) }.getOrNull() }
-            val serverCall = async { runCatching { serverAccessResolver.forMedia(mediaFileId).serverUrl }.getOrNull() }
+            val progressCall = async(PlayarrFetchDispatcher) { runCatching { api.getWatchProgress(mediaFileId) }.getOrNull() }
+            val serverCall = async(PlayarrFetchDispatcher) { runCatching { serverAccessResolver.forMedia(mediaFileId).serverUrl }.getOrNull() }
             if (activeMediaFileId != null) persistProgress(ensureCompletion = true)
             closeActiveSessionAndWait(PlaybackStopReason.UserStopped)
             activeMediaFileId = mediaFileId
@@ -9366,17 +9443,19 @@ internal class ExperiencePlayerViewModel @Inject constructor(
 
             val selectedQuality = launchSettings?.qualityId ?: parsePlayarrQualityDefault(defaults.qualityId)
             val prewarmed = takePrewarm(mediaFileId, resumePosition, launchSettings)
-            _state.value = when (val result = prewarmed ?: getPlaybackInfo(
-                mediaFileId = mediaFileId,
-                containers = playarrAndroidContainers,
-                videoCodecs = playarrAndroidVideoCodecs,
-                audioCodecs = playarrAndroidAudioCodecs,
-                profile = launchSettings?.profile ?: selectedQuality.takeUnless { it == "original" },
-                forceTranscode = launchSettings?.forceTranscode ?: (selectedQuality != "original"),
-                startPositionMs = resumePosition,
-                audioStreamIndex = launchSettings?.audioStreamIndex,
-                ignoreSavedPreferences = launchSettings == null && selectedQuality == "original",
-            )) {
+            _state.value = when (val result = prewarmed ?: withContext(PlayarrFetchDispatcher) {
+                getPlaybackInfo(
+                    mediaFileId = mediaFileId,
+                    containers = playarrAndroidContainers,
+                    videoCodecs = playarrAndroidVideoCodecs,
+                    audioCodecs = playarrAndroidAudioCodecs,
+                    profile = launchSettings?.profile ?: selectedQuality.takeUnless { it == "original" },
+                    forceTranscode = launchSettings?.forceTranscode ?: (selectedQuality != "original"),
+                    startPositionMs = resumePosition,
+                    audioStreamIndex = launchSettings?.audioStreamIndex,
+                    ignoreSavedPreferences = launchSettings == null && selectedQuality == "original",
+                )
+            }) {
                 is PlayarrResult.Success -> {
                     prepareNegotiatedPlayback(
                         result.value,
@@ -9420,9 +9499,10 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         val result: PlayarrResult<PlaybackInfoResponse>?,
     )
 
-    private class PlayarrPrewarm(val mediaFileId: String, val deferred: kotlinx.coroutines.Deferred<PlayarrPrewarmed>)
+    private class PlayarrPrewarm(val mediaFileId: String, val launchSettings: PlayarrPlaybackLaunchSettings?, val deferred: kotlinx.coroutines.Deferred<PlayarrPrewarmed>)
 
     private var prewarm: PlayarrPrewarm? = null
+    private var prewarmEpoch = 0
 
     /**
      * During the up-next countdown (never before STATE_ENDED, so it cannot
@@ -9431,17 +9511,19 @@ internal class ExperiencePlayerViewModel @Inject constructor(
      * opens the new item's own fresh session; [play] consumes it, anything
      * else closes it ([discardPrewarm]). Local downloads need no negotiation.
      */
-    fun prewarmNext(mediaFileId: String, defaults: PlayarrPlayerDefaults) {
-        if (prewarm?.mediaFileId == mediaFileId) return
+    fun prewarmNext(mediaFileId: String, defaults: PlayarrPlayerDefaults, launchSettings: PlayarrPlaybackLaunchSettings? = null) {
+        prewarmEpoch++
+        if (prewarm?.mediaFileId == mediaFileId && prewarm?.launchSettings == launchSettings) return
         if (castingMediaFileId.value != null) return
         discardPrewarm()
-        val deferred = viewModelScope.async {
+        val deferred = viewModelScope.async(PlayarrFetchDispatcher) {
             val resume = runCatching { api.getWatchProgress(mediaFileId) }.getOrNull()
                 ?.takeIf { it.state == WatchState.PartWatched }?.positionMs ?: 0L
             if (runCatching { downloadRepository.localFile(mediaFileId) }.getOrNull() != null) {
                 return@async PlayarrPrewarmed(resume, null)
             }
-            val quality = parsePlayarrQualityDefault(defaults.qualityId)
+            // The same request play() makes for these launch settings.
+            val quality = launchSettings?.qualityId ?: parsePlayarrQualityDefault(defaults.qualityId)
             PlayarrPrewarmed(
                 resume,
                 getPlaybackInfo(
@@ -9449,15 +9531,28 @@ internal class ExperiencePlayerViewModel @Inject constructor(
                     containers = playarrAndroidContainers,
                     videoCodecs = playarrAndroidVideoCodecs,
                     audioCodecs = playarrAndroidAudioCodecs,
-                    profile = quality.takeUnless { it == "original" },
-                    forceTranscode = quality != "original",
+                    profile = launchSettings?.profile ?: quality.takeUnless { it == "original" },
+                    forceTranscode = launchSettings?.forceTranscode ?: (quality != "original"),
                     startPositionMs = resume,
-                    audioStreamIndex = null,
-                    ignoreSavedPreferences = quality == "original",
+                    audioStreamIndex = launchSettings?.audioStreamIndex,
+                    ignoreSavedPreferences = launchSettings == null && quality == "original",
                 ),
             )
         }
-        prewarm = PlayarrPrewarm(mediaFileId, deferred)
+        prewarm = PlayarrPrewarm(mediaFileId, launchSettings, deferred)
+    }
+
+    /**
+     * The Play pill lost focus or left the screen: close its negotiation unless play() takes it. Select navigates away in the
+     * same frame, so the release waits for play() to claim it first.
+     */
+    fun releasePrewarmLater(mediaFileId: String) {
+        val epoch = prewarmEpoch
+        viewModelScope.launch {
+            delay(PREWARM_RELEASE_GRACE_MS)
+            // A re-focus (the pill briefly loses focus while the page lays out again) asks for it again and keeps it.
+            if (prewarm?.mediaFileId == mediaFileId && prewarmEpoch == epoch) discardPrewarm()
+        }
     }
 
     /** Drops an unused prewarmed negotiation and closes the session it opened. */
@@ -9482,7 +9577,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         val got = runCatching { pending.deferred.await() }.getOrNull()
         val result = got?.result
         if (got != null && result is PlayarrResult.Success &&
-            playarrPrewarmUsable(pending.mediaFileId, got.resumePositionMs, mediaFileId, resumePositionMs, launchSettings != null)
+            playarrPrewarmUsable(pending.mediaFileId, got.resumePositionMs, mediaFileId, resumePositionMs, pending.launchSettings != launchSettings)
         ) {
             Log.i(PLAYBACK_STATS_TAG, "event=prewarm_used media_file_id=$mediaFileId")
             return result
@@ -9654,6 +9749,7 @@ internal class ExperiencePlayerViewModel @Inject constructor(
         val selectedAudioLanguage = playback.audioTracks
             .firstOrNull { it.id == playback.selectedAudioTrackId }
             ?.language
+        android.os.Trace.beginSection("pl:player_prepare"); android.os.Trace.endSection()
         player.prepare(
             resolvePlayarrPlaybackUrl(activeServerUrl, playback.url),
             if (playback.mode == io.playarr.shared.data.model.PlaybackMode.Hls) StreamFormat.Hls else StreamFormat.Direct,
@@ -11061,9 +11157,12 @@ private fun rememberPlayarrNowPlayingArtwork(work: Work?, fallbackServerUrl: Str
             .apply { if (!token.isNullOrBlank()) httpHeaders(NetworkHeaders.Builder().set("Authorization", "Bearer $token").build()) }
             .build()
         val image = (coil3.SingletonImageLoader.get(context).execute(request) as? coil3.request.SuccessResult)?.image ?: return@LaunchedEffect
-        bytes = runCatching {
-            java.io.ByteArrayOutputStream().also { image.toBitmap().compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, it) }.toByteArray()
-        }.getOrNull()
+        // Reading a hardware bitmap back and encoding it took ~120 ms on Main right as playback starts: do it off the UI thread.
+        bytes = withContext(Dispatchers.Default) {
+            runCatching {
+                java.io.ByteArrayOutputStream().also { image.toBitmap().compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, it) }.toByteArray()
+            }.getOrNull()
+        }
     }
     return bytes
 }
