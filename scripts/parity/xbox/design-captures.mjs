@@ -4,7 +4,9 @@
 // Every screen is verified through the app's own parity trace (the page it reports) before the picture is taken; a screen that
 // does not reach its page is recorded as failed, never captured as something else. The signed-out pages come last (signing out ends the session).
 import { writeFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createDriver } from "./driver.mjs";
 
 const arg = (name) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined; };
@@ -15,6 +17,27 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const RAIL = { downloads: [81, 157], playlists: [81, 635], watchlist: [81, 709], requests: [81, 782] };
 const SECTION = { "settings-appearance": 0, "settings-profile-avatar": 1, "settings-language": 2, "settings-player": 3, "settings-server": 4, "settings-profile-lock": 5, "settings-invite": 6, "settings-remote": 7, "settings-your-data": 8, "settings-home": 9 };
 
+// Fixture the frozen seed lacks: one playlist of pinned titles, created through the API on the throw-away DB copy (skipped when one exists).
+async function seedPlaylist() {
+  const srv = process.env.PLAYARR_SERVER_URL.replace(/\/$/, "");
+  const suite = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "suite.json"), "utf8"));
+  const open = (id) => suite.screens.find((s) => s.id === id).open;
+  const lr = await fetch(`${srv}/api/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "parity-design", username: process.env.PLAYARR_USERNAME, password: process.env.PLAYARR_PASSWORD }) });
+  if (!lr.ok) throw new Error(`login ${lr.status}`);
+  const auth = { authorization: `Bearer ${(await lr.json()).access_token}` };
+  const existing = await (await fetch(`${srv}/api/v1/playlists`, { headers: auth })).json();
+  if ((Array.isArray(existing) ? existing : existing.items ?? existing.playlists ?? []).length) return;
+  const created = await fetch(`${srv}/api/v1/playlists`, { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify({ name: "Parity Watch Night", media_type: "video" }) });
+  if (!created.ok) throw new Error(`create playlist ${created.status}`);
+  const playlist = await created.json();
+  for (const workId of [open("film-detail"), open("series-detail")].map((r) => r.split("/").pop()).concat(["4ec39b80-28c3-4d83-9f83-f07872e5f4c0"])) {
+    const added = await fetch(`${srv}/api/v1/playlists/${playlist.id}/items`, { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify({ work_id: workId }) });
+    if (!added.ok) throw new Error(`add playlist item ${added.status}`);
+  }
+}
+
+await seedPlaylist();
 const d = await createDriver();
 const result = {};
 const file = (id) => join(out, theme, `${id}.png`);
