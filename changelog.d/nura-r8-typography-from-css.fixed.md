@@ -1,0 +1,1 @@
+- Nura (linux-mobile) sets the title, filter tiles and profile labels from the web CSS only: title letter spacing -0.072em, 12ch balanced wrap, line-height 0.94 and the episode heading line-height 1.15, and no content-keyed letter spacing (audit F2).

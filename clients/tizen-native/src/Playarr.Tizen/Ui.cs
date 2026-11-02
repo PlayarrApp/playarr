@@ -234,7 +234,8 @@ internal static class Ui
 
     /// <summary>
     /// The web scroll-edge fade (page-layout.css [data-fade-axis]): content is masked down to the 30 % floor at the edge, easing back to full over
-    /// 59.4 px with smoothstep stops at 25/50/75 % of the size. A mask cannot be cloned here, so this overlays the surface colour with the inverse alpha.
+    /// 59.4 px with smoothstep stops at 25/50/75 % of the size. A mask cannot be cloned here, so this overlays the backdrop colour (the rail panel at the edge, see <see cref="PanelEdgeColour"/>) with the inverse alpha:
+    /// content * mask + backdrop * (1 - mask), exactly the masked content over that flat backdrop.
     /// </summary>
     public static View EdgeFade(float x, float y, float w, Rgba surface, bool atTop)
     {
@@ -245,44 +246,63 @@ internal static class Ui
         return Gradient(x, atTop ? y : y - size, w, size, false, stops);
     }
 
-    public static View HorizontalEdgeFade(float x, float y, float h, Rgba surface, bool atLeft)
+    public static View HorizontalEdgeFade(float x, float y, float h, Rgba backdrop, bool atLeft)
     {
         const float size = 59.4f, floor = 0.3f;
         float A(float k) => 1 - (floor + (1 - floor) * k);
         var edge = new[] { (0f, A(0)), (0.25f, A(0.156f)), (0.5f, A(0.5f)), (0.75f, A(0.844f)), (1f, A(1)) };
-        var stops = (atLeft ? edge : edge.Reverse().Select(e => (1 - e.Item1, e.Item2))).Select(e => (e.Item1, new Rgba(surface.R, surface.G, surface.B, e.Item2))).ToArray();
+        var stops = (atLeft ? edge : edge.Reverse().Select(e => (1 - e.Item1, e.Item2))).Select(e => (e.Item1, new Rgba(backdrop.R, backdrop.G, backdrop.B, e.Item2))).ToArray();
         return Gradient(atLeft ? x : x - size, y, size, h, true, stops);
     }
 
+    private static readonly Dictionary<string, (int Width, byte[] Rgba)> FrostStrips = new();
+
+    /// <summary>The web's own rail-frost strip for the theme: 1190 px (.tv-rail-surface) or 1248 px (.tv-library-grid-panel), shipped in res/gradients.</summary>
+    private static (int Width, byte[] Rgba) FrostStrip(PlayarrTheme t, int stripWidth)
+    {
+        var key = $"{t.Name}-{stripWidth}";
+        if (!FrostStrips.TryGetValue(key, out var strip))
+            FrostStrips[key] = strip = RailFrost.Decode(File.ReadAllBytes(ResPath($"gradients/rail-frost-{key}.png")));
+        return strip;
+    }
+
     /// <summary>
-    /// Web .tv-library-grid-panel / .tv-rail-surface: the right 1190 px carry a frost (soft surface over the strong one, 48 % in light and 44 % in dark)
-    /// that fades in from nothing at the left edge to full at the right.
+    /// The colour under the panel where no key art lies (right of the art, x >= 1033): the TV page's own background, <c>.page-shell { background: var(--surface) }</c>
+    /// (global.css), which the stage wash (opaque --surface stops fading to transparent) does not change.
+    /// </summary>
+    private static (int R, int G, int B) UnderPanel(PlayarrTheme t) =>
+        ((int)Math.Round(t.Surface.R * 255), (int)Math.Round(t.Surface.G * 255), (int)Math.Round(t.Surface.B * 255));
+
+    /// <summary>The panel colour at the right edge of the screen, which the web's scroll-edge mask on the rail contents fades towards (see <see cref="HorizontalEdgeFade"/>).</summary>
+    public static Rgba PanelEdgeColour(PlayarrTheme t, float width = 1190.39f)
+    {
+        var strip = FrostStrip(t, width >= 1240f ? 1248 : 1190);
+        return RailFrost.ColourAt(strip.Rgba, strip.Width - 1, UnderPanel(t));
+    }
+
+    /// <summary>
+    /// Web .tv-library-grid-panel / .tv-rail-surface: the right 1190 px (1248 px on the directory pages) are painted from the pre-rendered rail-frost strip,
+    /// one pixel per CSS pixel from x = 730 (672), over whatever lies beneath. Where key art lies beneath (left of x = 1033) the strip is drawn translucent as it
+    /// is; right of it only the page background lies beneath, so the premultiplied composite is drawn as one opaque image. No dither: the web draws none.
     /// </summary>
     public static View PanelWash(PlayarrTheme t, float width = 1190.39f)
     {
-        var dark = t.Name == "dark"; var mix = dark ? 0.44f : 0.48f;
-        float Ch(float soft, float strong) => soft * mix + strong * (1 - mix);
-        var frost = (Ch(t.SurfaceSoft.R, t.SurfaceStrong.R), Ch(t.SurfaceSoft.G, t.SurfaceStrong.G), Ch(t.SurfaceSoft.B, t.SurfaceStrong.B));
-        var alphas = new[] { (0f, 0f), (0.12f, dark ? 0.72f : 0.68f), (0.34f, dark ? 0.9f : 0.88f), (0.62f, dark ? 0.97f : 0.96f), (1f, 1f) };
-        var origin = TizenClient.DesignWidth - width;
-        // the panel is one painted box in the web (.tv-library-grid-panel): an image-less ImageView carries its box for the export and the visibility check; the frost pieces are its children
-        var root = Sem.Overlay(new ImageView { PositionX = origin, PositionY = 0, Size = new Size(width, TizenClient.DesignHeight) });
-        // Key art (and its stage wash) ends at 133 + 900 px; right of that the panel lies over the flat page colour only, so it is drawn as the
-        // browser's dithered result (see GradientPng.MakeDitheredPanel). Left of it the art shows through, so the translucent gradient stays.
-        const int artEnd = 1033;
-        var cut = (artEnd - origin) / width;
-        var a0 = alphas.Last(s => s.Item1 <= cut); var a1 = alphas.First(s => s.Item1 > cut);
-        var aCut = a0.Item2 + (a1.Item2 - a0.Item2) * (cut - a0.Item1) / (a1.Item1 - a0.Item1);
-        Rgba Frost(float a) => new(frost.Item1, frost.Item2, frost.Item3, a);
-        var left = alphas.Where(s => s.Item1 < cut).Select(s => (s.Item1 / cut, Frost(s.Item2))).Append((1f, Frost(aCut))).ToArray();
-        var leftWidth = artEnd - origin;
-        var g = Gradient(0, 0, leftWidth, TizenClient.DesignHeight, true, left);
-        root.Add(g);
+        var stripWidth = width >= 1240f ? 1248 : 1190;
+        var origin = RailFrost.Origin(stripWidth, TizenClient.DesignWidth);
+        var strip = FrostStrip(t, stripWidth);
+        // a plain grouping view paints nothing itself: the export and the visibility check see only its two real paint children, each with its true bounds
+        var root = new View { PositionX = origin, PositionY = 0, Size = new Size(stripWidth, TizenClient.DesignHeight) };
+        const int artEnd = 1033; // key art (and its stage wash) ends at 133 + 900 px
+        var cut = artEnd - origin;
         var dir = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cache/";
         Directory.CreateDirectory(dir);
-        var path = dir + $"panel-{t.Name}-{origin:0.###}-{width:0.###}-v2.png";
-        if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.MakeDitheredPanel(alphas, frost, ((int)Math.Round(t.Surface.R * 255), (int)Math.Round(t.Surface.G * 255), (int)Math.Round(t.Surface.B * 255)), origin, width, artEnd, TizenClient.DesignHeight));
-        root.Add(Sem.Overlay(new ImageView(path) { PositionX = artEnd - origin, PositionY = 0, Size = new Size(TizenClient.DesignWidth - artEnd, TizenClient.DesignHeight), SynchronousLoading = true }));
+        var under = UnderPanel(t);
+        var leftPath = dir + $"frost-{t.Name}-{stripWidth}-left-v5.png";
+        var rightPath = dir + $"frost-{t.Name}-{stripWidth}-right-{under.R}-{under.G}-{under.B}-v5.png";
+        if (!File.Exists(leftPath)) File.WriteAllBytes(leftPath, RailFrost.Translucent(strip.Rgba, 0, cut));
+        if (!File.Exists(rightPath)) File.WriteAllBytes(rightPath, RailFrost.Opaque(strip.Rgba, cut, strip.Width, under));
+        root.Add(Sem.Tag(Sem.Overlay(new ImageView(leftPath) { PositionX = 0, PositionY = 0, Size = new Size(cut, TizenClient.DesignHeight), SynchronousLoading = true }), "container"));
+        root.Add(Sem.Tag(Sem.Overlay(new ImageView(rightPath) { PositionX = cut, PositionY = 0, Size = new Size(strip.Width - cut, TizenClient.DesignHeight), SynchronousLoading = true }), "container"));
         return root;
     }
 

@@ -563,7 +563,13 @@ internal sealed class KeyArt
                 foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
                 var dark = _t.Name == "dark";
                 // web .tv-key-art img: 900 px wide from the nav clearance, 106 % tall, grayscale + contrast + brightness, opacity .72 dark / .24 light
-                var img = Ui.FilteredImage(file, 133, -22.9f, 900, 1190.6f, dark ? 0.82f : 0.88f, dark ? 0.6f : 1.1f, fadeStartX: 0.72f);
+                // Element box from the CSS at 1920 x 1080 in Blink 1/64 px LayoutUnits: x = --tv-nav-clearance (nav edge clamp(18, 2.2vw, 44) + 64 + 2 x 0.4rem + 14),
+                // width = (52vw - clearance) and height = 106 % of the stage, both then scaled by transform: scale(1.04) about the left centre.
+                static float Lu(float v) => MathF.Floor(v * 64f) / 64f;
+                var vw = TizenClient.DesignWidth / 100f;
+                var clearance = Lu(Math.Clamp(2.2f * vw, 18f, 44f) + 64f + 2 * 0.4f * 16f + 14f);
+                var imgW = Lu(52f * vw - clearance); var imgH = Lu(TizenClient.DesignHeight * 1.06f);
+                var img = Ui.FilteredImage(file, clearance, imgH / 2f - imgH * 1.04f / 2f, imgW * 1.04f, imgH * 1.04f, dark ? 0.82f : 0.88f, dark ? 0.6f : 1.1f, fadeStartX: 0.72f);
                 img.Opacity = dark ? 0.72f : 0.24f;
                 Root.Add(img);
                 // Stage layers, resolved against the current CSS (global.css .tv-key-art::after, .tv-stage-wash: opaque --surface stops fading to
@@ -648,7 +654,7 @@ internal sealed class DetailsPanel
         var ky = _flow ? 286.6f : 259.2f; var tsize = _flow ? 49.92f : 69.12f; var tlh = _flow ? 47.424f : 62.208f; var tw = _flow ? 420f : 369f; var ty = _flow ? 330.9f : 303.5f;
         Root.Add(Ui.Text(kicker ?? card.Kicker, 153.6f, ky, 12.288f, 860, t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
         var lines = Ui.Paragraph(Root, card.Title, 153.6f, ty, tsize, 600, t.Ink, tw, tlh, _flow ? -3f : -4.98f, titleMaxLines, balance: true, role: "heading");
-        var metaY = ty + tlh * lines + (_flow ? 27f : 22.6f) + (_library ? 4f : 0); // library panels: measured 4 px lower on web
+        var metaY = ty + tlh * lines + (_flow ? 27f : 22.6f);
         var metaSize = _library ? 13.056f : 12.864f;
         var meta = string.Join("   ", new[] { lead, runtimeMs is > 0 ? Runtime(runtimeMs.Value) : null }.Where(s => !string.IsNullOrEmpty(s)));
         if (meta.Length > 0) Ui.MetaRow(Root, meta, 153.6f, metaY, metaSize, 600, Soft(t), _library ? 19.584f : 18);

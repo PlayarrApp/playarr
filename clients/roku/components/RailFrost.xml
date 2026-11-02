@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  RailFrost: the web .tv-rail-surface background (global.css; Library, Search and detail right-hand rail) drawn from the
+  same pre-rendered one-row PNG the web client uses (clients/tv-web/web/src/assets/gradients/rail-frost-*-1190.png: frost
+  colour at the CSS stop alphas 0 / 68-72 / 88-90 / 96-97 / 100 %). It replaces the opaque surface rectangle that used to
+  sit at the same box and hid the frost. Box = the rail surface: 38 % of the stage in from the left, full height.
+-->
+<component name="RailFrost" extends="Group">
+  <children>
+    <Poster id="frostLight" translation="[729.6,0]" width="1190.4" height="1080" uri="pkg:/images/home-rail-frost-light.png" loadDisplayMode="scaleToFill" visible="false" />
+    <Poster id="frostDark" translation="[729.6,0]" width="1190.4" height="1080" uri="pkg:/images/home-rail-frost-dark.png" loadDisplayMode="scaleToFill" visible="true" />
+  </children>
+  <script type="text/brightscript" uri="pkg:/source/Theme.brs" />
+  <script type="text/brightscript" uri="pkg:/components/RailFrost.brs" />
+</component>

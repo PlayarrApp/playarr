@@ -1,0 +1,1 @@
+- Samsung Tizen native client: the rail frost composites with the browser's rounding (backdrop share truncated away from the strip colour), and the Profiles page draws its background from the web CSS as one pre-rendered 1920 by 1080 image (the PNG is shared with the Tizen 6.5 parity branch) instead of a flat colour.

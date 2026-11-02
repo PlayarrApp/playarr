@@ -37,9 +37,8 @@ export function diffMask(a, b) {
   return mask;
 }
 
-// A candidate counts as visible when hiding it moves some pixel of its box by at least this much on a channel (6 % of the range): a layer drawn
-// under a 94 % opaque panel moves pixels by about 5 %, which nobody sees, so it is covered; real text, images and loud fills move them by far more.
-export const VISIBLE_DELTA = 16;
+// A candidate counts as visible when hiding it changes any byte of any channel inside its box (exact toggle-and-diff, no perceptual threshold).
+export const VISIBLE_DELTA = 1;
 
 /** True when the grab with the candidate hidden differs from the baseline inside its box, on pixels that are not unstable, by at least VISIBLE_DELTA. */
 export function changedInside(rect, base, hidden, noise) {

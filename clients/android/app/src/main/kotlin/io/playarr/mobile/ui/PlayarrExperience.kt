@@ -44,6 +44,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -2140,6 +2141,14 @@ internal fun NavHostController.openExperienceTopLevel(route: String) {
     }
 }
 
+/** Web phone `.app-nav` css: bar height, padding, link gap, link box and icon size. */
+private const val NAV_BAR_HEIGHT_CSS = 58f
+private const val NAV_PAD_CSS = 5f
+private const val NAV_GAP_CSS = 2f
+private const val NAV_LINK_CSS = 44f
+private const val NAV_LINK_HEIGHT_CSS = 46f
+private const val NAV_ICON_CSS = 21f
+
 @Composable
 private fun ExperienceNavigation(
     destinations: List<ExperienceDestination>,
@@ -2187,64 +2196,65 @@ private fun ExperienceNavigation(
         shape = phoneNavShape,
         tonalElevation = 0.dp,
     ) {
-        LazyRow(
-            // Phone (measured against the static ref, 719 px wide): content 2 device px higher and 1.5 px further left than before.
-            modifier = Modifier.padding(start = if (isTelevision) 5.dp else 4.2.dp, end = 5.dp, top = if (isTelevision) 5.dp else 5.9.dp, bottom = if (isTelevision) 5.dp else 6.1.dp).fillMaxWidth(),
-            // A short list (a household-limited profile) is centred in the bar; a long one scrolls from the start.
-            horizontalArrangement = Arrangement.spacedBy(0.dp, Alignment.CenterHorizontally),
-            contentPadding = PaddingValues(0.dp),
-        ) {
-            if (tvProfile != null) item(key = "profile") {
-                // The web link is 44 wide inside a 46 px slot.
-                Box(Modifier.width(46.dp), contentAlignment = Alignment.Center) {
-                Surface(
-                    onClick = tvProfile.onClick,
-                    color = Color.Transparent,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.height(46.dp).width(if (isTelevision) 46.dp else 44.dp).semantics { contentDescription = tvProfile.description }.parityShape(14f),
-                ) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        PlayarrProfileAvatar(userId = tvProfile.userId, preference = tvProfile.avatar, modifier = Modifier.size(21.2.dp).offset(y = if (isTelevision) 0.dp else (-3.2).dp).parityBox("container", radius = 999f), artworkModifier = Modifier.parityBox("image"), glyphSize = 13.sp) // web: 39 device px
-                    }
-                }
-                }
-            }
-            itemsIndexed(destinations, key = { _, d -> d.route }) { navIndex, destination ->
-                val selected = currentRoute == destination.route
-                val label = playarrString(destination.label)
-                // Web phone bar: the selected pill is 43.4 css px wide inside a 46 px slot, and idle icons are the muted ink.
-                // Web slots are 46 css px (84.8 device px): whole-pixel slots drift 0.2 px per item, so the width follows the cumulative rounding.
-                val slotDensity = LocalDensity.current
-                val slotWidth = if (isTelevision || !parityNoInsets) 46.dp else with(slotDensity) { // parity captures only (719 px wide = 390 css)
-                    val unit = 46f * 719f / 390f
-                    val px = Math.round((navIndex + 1 + (if (tvProfile != null) 1 else 0)) * unit) - Math.round((navIndex + (if (tvProfile != null) 1 else 0)) * unit)
-                    px.toDp()
-                }
-                Box(Modifier.width(slotWidth).height(46.dp), contentAlignment = Alignment.Center) {
-                Surface(
-                    onClick = { onNavigate(destination.route) },
-                    color = if (selected) WebInk else Color.Transparent,
-                    contentColor = if (selected) WebBackground else PlayarrWebTheme.palette.webInkMuted,
-                    shape = RoundedCornerShape(if (isTelevision) 16.dp else 14.dp),
-                    modifier = Modifier.width(43.4.dp).height(46.dp).parityShape(14f),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = if (selected && isTelevision) 16.dp else if (isTelevision) 12.dp else 11.2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
+        // Web `.app-nav` (max-width 760px): left/right `max(10px, safe inset)`, bottom `max(8px, safe inset)`, 58px high, padding 5px, 2px gap,
+        // links 44 x 46 (`flex: 0 0 44px`), centred in the 48px content height, icon 21px centred in the link. Every box is placed at its
+        // summed css position and snapped once (WebAbsoluteLayout); the row scrolls sideways when the links overflow, else it spreads (`space-around`).
+        val density = LocalDensity.current.density
+        val heightPx = androidx.compose.ui.platform.LocalContext.current.resources.displayMetrics.heightPixels
+        val barLeftCss = maxOf(10.dp, sideInsets.calculateLeftPadding(androidx.compose.ui.platform.LocalLayoutDirection.current)).value
+        val barWidthCss = Math.round(androidx.compose.ui.platform.LocalContext.current.resources.displayMetrics.widthPixels / density).toFloat() - barLeftCss - maxOf(10.dp, sideInsets.calculateRightPadding(androidx.compose.ui.platform.LocalLayoutDirection.current)).value
+        val barTopCss = Math.round(heightPx / density).toFloat() - maxOf(8.dp, systemBottom).value - NAV_BAR_HEIGHT_CSS
+        val vwCss = androidx.compose.ui.platform.LocalContext.current.resources.displayMetrics.widthPixels / density / 100f
+        val profileNameCss = (0.46f * vwCss).coerceIn(0.42f * 16f, 0.56f * 16f)
+        val slots = (if (tvProfile != null) 1 else 0) + destinations.size
+        val linksWidthCss = slots * NAV_LINK_CSS + (slots - 1) * NAV_GAP_CSS
+        val innerCss = barWidthCss - 2 * NAV_PAD_CSS
+        // `justify-content: space-around`: a negative free space falls back to the start edge.
+        val free = innerCss - linksWidthCss
+        val around = if (free > 0f) free / slots else 0f
+        fun linkLeft(slot: Int) = barLeftCss + NAV_PAD_CSS + around / 2f + slot * (NAV_LINK_CSS + NAV_GAP_CSS + around)
+        val linkTop = barTopCss + (NAV_BAR_HEIGHT_CSS - NAV_LINK_HEIGHT_CSS) / 2f
+        val contentWidthCss = maxOf(barWidthCss, linksWidthCss + 2 * NAV_PAD_CSS)
+        Box(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+            WebAbsoluteLayout(barLeftCss, barTopCss, contentWidthCss, NAV_BAR_HEIGHT_CSS) {
+                if (tvProfile != null) {
+                    val left = linkLeft(0)
+                    Surface(
+                        onClick = tvProfile.onClick,
+                        color = Color.Transparent,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.webAbs(left, linkTop, NAV_LINK_CSS, NAV_LINK_HEIGHT_CSS).semantics { contentDescription = tvProfile.description }.parityShape(14f),
                     ) {
-                        Icon(destination.icon, contentDescription = label, modifier = Modifier.size(21.dp).parityBox("image"))
-                        AnimatedVisibility(visible = selected && isTelevision) {
-                            Text(
-                                label.uppercase(LocalPlayarrLanguage.current.locale),
-                                modifier = Modifier.padding(start = 8.dp),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp,
+                        // Web's profile link is a flex column (justify-content: center, gap 0) holding the 21px avatar and the name label (font-size clamp(0.42rem, 0.46vw, 0.56rem), line-height 1, display block by the profile-link rule), so the
+                        // avatar sits (46 - 21 - NAV_PROFILE_NAME_CSS) / 2 under the link top; its box is snapped from css edges.
+                        WebAbsoluteLayout(left, linkTop, NAV_LINK_CSS, NAV_LINK_HEIGHT_CSS) {
+                            PlayarrProfileAvatar(
+                                userId = tvProfile.userId, preference = tvProfile.avatar,
+                                modifier = Modifier.webAbs(left + (NAV_LINK_CSS - NAV_ICON_CSS) / 2f, linkTop + (NAV_LINK_HEIGHT_CSS - NAV_ICON_CSS - profileNameCss) / 2f, NAV_ICON_CSS, NAV_ICON_CSS).parityBox("container", radius = 999f, cssShortSide = NAV_ICON_CSS),
+                                artworkModifier = Modifier.parityBox("image"), glyphSize = 13.sp,
                             )
                         }
                     }
                 }
+                destinations.forEachIndexed { navIndex, destination ->
+                    val selected = currentRoute == destination.route
+                    val label = playarrString(destination.label)
+                    val left = linkLeft(navIndex + (if (tvProfile != null) 1 else 0))
+                    Surface(
+                        onClick = { onNavigate(destination.route) },
+                        color = if (selected) WebInk else Color.Transparent,
+                        contentColor = if (selected) WebBackground else PlayarrWebTheme.palette.webInkMuted,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.webAbs(left, linkTop, NAV_LINK_CSS, NAV_LINK_HEIGHT_CSS).semantics { contentDescription = label }.parityShape(14f),
+                    ) {
+                        WebAbsoluteLayout(left, linkTop, NAV_LINK_CSS, NAV_LINK_HEIGHT_CSS) {
+                            // The icon is decoration (the link is named); web's svg has no name of its own.
+                            Icon(
+                                destination.icon, contentDescription = null,
+                                modifier = Modifier.webAbs(left + (NAV_LINK_CSS - NAV_ICON_CSS) / 2f, linkTop + (NAV_LINK_HEIGHT_CSS - NAV_ICON_CSS) / 2f, NAV_ICON_CSS, NAV_ICON_CSS).parityBox("image"),
+                            )
+                        }
+                    }
                 }
             }
         }

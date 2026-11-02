@@ -495,15 +495,17 @@
   position: absolute;
   inset: 0 0 auto;
   height: var(--page-edge-fade-size);
-  /* A plain colour ramp (the shared mask is the only mask in the app): the panel's frost over the page background. */
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--tv-rail-frost) 58%, transparent),
-    color-mix(in srgb, var(--tv-rail-frost) 22%, transparent) 45%,
-    transparent
-  );
+  /* A plain colour ramp (the shared mask is the only mask in the app): the panel's frost over the page background.
+     Pre-rendered (scripts/generate-gradient-assets.mjs): frost at 58%, 22% at 45%, then transparent. */
+  background: url("../assets/gradients/agenda-fade-light-59.png") 0 0 / 100% 100% no-repeat;
   opacity: 0;
   transition: opacity 160ms ease;
+}
+
+@media (min-width: 761px) {
+  :root[data-theme="dark"] .calendar-agenda-fade::after {
+    background: url("../assets/gradients/agenda-fade-dark-59.png") 0 0 / 100% 100% no-repeat;
+  }
 }
 
 .tv-title-grid[data-fade-start] .calendar-agenda-fade::after {

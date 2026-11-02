@@ -1,0 +1,1 @@
+- TV profiles page (1920x1080 stage): the background glow, wash and edge fades are drawn from one pre-rendered PNG layer per theme (the same bytes on every Chromium); other viewport sizes keep the CSS gradients.

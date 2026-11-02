@@ -40,6 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.playarr.shared.designsystem.theme.PlayarrWebTheme
 
+/** Web `--mobile-top-inset` floor in css px: `max(14px, env(safe-area-inset-top))`. */
+internal const val PHONE_TOP_INSET_CSS = 14f
+
 /**
  * Phone window insets for page chrome: web `--mobile-top-inset` is `max(14px, env(safe-area-inset-top))`. The app
  * overrides this once (parity captures lay out without system-bar insets).
@@ -110,7 +113,16 @@ fun PlayarrPageLayout(
                     .align(Alignment.TopStart)
                     .then(headerInsets)
                     // The row centres its items on the action tile: Back drops by half the difference.
-                    .padding(start = metrics.start, top = if (headerActions.isNotEmpty() && !tv) metrics.headerTop + (metrics.headerHeight - metrics.control) / 2 else metrics.headerTop),
+                    .padding(
+                        start = metrics.start,
+                        top = (if (headerActions.isNotEmpty() && !tv) metrics.headerTop + (metrics.headerHeight - metrics.control) / 2 else metrics.headerTop).let { top ->
+                            // A browser snaps the header's top edge once, from the summed css position (`--mobile-top-inset` 14 + the header offset);
+                            // padding the two parts on their own rounds each and lands the Back button a device pixel low.
+                            if (tv) top else with(androidx.compose.ui.platform.LocalDensity.current) {
+                                ((Math.round((PHONE_TOP_INSET_CSS + top.value) * density) - Math.round(PHONE_TOP_INSET_CSS * density)) / density).dp
+                            }
+                        },
+                    ),
             )
             if (headerActions.isNotEmpty()) {
                 PlayarrPageActions(

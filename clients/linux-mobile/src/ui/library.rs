@@ -436,10 +436,6 @@ impl Lib {
                     crate::layout::name(&t, &n.to_lowercase());
                 } else {
                     t.set_label(n);
-                    // The web sets capitalised tile text a touch wider than GTK; the lowercase quirk text matches already.
-                    if n.starts_with(char::is_uppercase) {
-                        t.add_css_class("wide");
-                    }
                 }
                 match &group {
                     Some(g) => t.set_group(Some(g)),

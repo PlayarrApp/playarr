@@ -84,9 +84,88 @@ export function railFrostRow(theme, w) {
   return row;
 }
 
+// .details-panel::before: `linear-gradient(90deg, transparent 0%, var(--dp-scrim) 22%, var(--dp-scrim) 80%, transparent 100%)` where
+// --dp-scrim is --surface at 94%, under `mask-image: linear-gradient(180deg, transparent 0%, #000 10%, #000 90%, transparent 100%)`.
+// The box is inset -14% -22% -14% -40% of the 455px panel and its 280.6px preview: 737 x 359 px on the 1920 stage. A CSS mask is
+// composited through a premultiplied 8 bit surface that differs per engine (Chromium 85 vs 151 differ by one level), so both
+// ramps are baked into one RGBA image (alpha = horizontal ramp * vertical ramp). Other box heights stretch the image.
+export const scrimWidth = 737;
+export const scrimHeight = 359;
+const scrimStops = [[0, 0], [0.22, 0.94], [0.8, 0.94], [1, 0]];
+const scrimMask = [[0, 0], [0.1, 1], [0.9, 1], [1, 0]];
+function ramp(stops, t) {
+  let k = 1;
+  while (k < stops.length - 1 && t > stops[k][0]) k++;
+  const [t0, a0] = stops[k - 1], [t1, a1] = stops[k];
+  return a0 + ((a1 - a0) * (t - t0)) / (t1 - t0);
+}
+export function scrimImage(theme, w, h) {
+  const c = themes[theme].tok.surface;
+  const img = Buffer.alloc(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    const v = ramp(scrimMask, (y + 0.5) / h);
+    for (let x = 0; x < w; x++) img.set([c[0], c[1], c[2], Math.round(ramp(scrimStops, (x + 0.5) / w) * v * 255)], (y * w + x) * 4);
+  }
+  return img;
+}
+
+// .calendar-agenda-fade::after (TV layout): `linear-gradient(to bottom, frost 58%, frost 22% at 45%, transparent)` over
+// --page-edge-fade-size (clamp(38px, 5.5vh, 64px) = 59.4px on 1080 rows, painted as 59). One column, stretched across the width.
+export const agendaFadeHeight = 59;
+const fadeStops = [[0, 0.58], [0.45, 0.22], [1, 0]];
+export function agendaFadeColumn(theme, h) {
+  const c = frost(theme).map((v) => Math.round(v));
+  const col = Buffer.alloc(h * 4);
+  for (let y = 0; y < h; y++) {
+    const t = (y + 0.5) / h;
+    let k = 1;
+    while (k < fadeStops.length - 1 && t > fadeStops[k][0]) k++;
+    const [t0, a0] = fadeStops[k - 1], [t1, a1] = fadeStops[k];
+    col.set([c[0], c[1], c[2], Math.round((a0 + ((a1 - a0) * (t - t0)) / (t1 - t0)) * 255)], y * 4);
+  }
+  return col;
+}
+
+
+// .profiles-page: the page background (a radial brand glow over a 145deg surface-to-bg wash) plus the ::before edge fades
+// (`linear-gradient(90deg, bg, transparent 25%)` over `linear-gradient(0deg, bg, transparent 26%)`) in one opaque image, the page
+// being the whole 1920x1080 stage. Every layer is evaluated at the pixel centre in straight float RGB with CSS's premultiplied
+// interpolation (the glow and fades keep one colour, only alpha ramps) and rounded once, so no engine dithers it.
+export const profilesWidth = 1920;
+export const profilesHeight = 1080;
+export function profilesImage(theme, w, h) {
+  const { tok } = themes[theme];
+  const brand = themes.light.tok.brand, bg = tok.bg, surface = tok.surface;
+  const img = Buffer.alloc(w * h * 4);
+  const ang = (145 * Math.PI) / 180, dx = Math.sin(ang), dy = -Math.cos(ang);
+  const len = Math.abs(w * dx) + Math.abs(h * dy);
+  const cx = w * 0.5, cy = h * 0.48;
+  const rad = Math.hypot(Math.max(cx, w - cx), Math.max(cy, h - cy)); // circle, farthest-corner
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const px = x + 0.5, py = y + 0.5;
+      const lt = Math.min(Math.max(0.5 + ((px - w / 2) * dx + (py - h / 2) * dy) / len, 0), 0.72) / 0.72;
+      let c = [0, 1, 2].map((i) => surface[i] + (bg[i] - surface[i]) * lt);
+      const ra = 0.13 * (1 - Math.min(Math.hypot(px - cx, py - cy) / rad / 0.34, 1));
+      c = c.map((v, i) => v * (1 - ra) + brand[i] * ra);
+      const ya = 1 - Math.min((h - py) / h / 0.26, 1); // 0deg runs bottom to top
+      c = c.map((v, i) => v * (1 - ya) + bg[i] * ya);
+      const xa = 1 - Math.min(px / w / 0.25, 1);
+      c = c.map((v, i) => v * (1 - xa) + bg[i] * xa);
+      img.set([Math.round(c[0]), Math.round(c[1]), Math.round(c[2]), 255], (y * w + x) * 4);
+    }
+  }
+  return img;
+}
+
 export function buildAssets() {
   const out = new Map();
-  for (const theme of Object.keys(themes)) for (const w of widths) out.set(`rail-frost-${theme}-${w}.png`, encodePng(w, 1, railFrostRow(theme, w)));
+  for (const theme of Object.keys(themes)) {
+    for (const w of widths) out.set(`rail-frost-${theme}-${w}.png`, encodePng(w, 1, railFrostRow(theme, w)));
+    out.set(`details-scrim-${theme}-${scrimWidth}x${scrimHeight}.png`, encodePng(scrimWidth, scrimHeight, scrimImage(theme, scrimWidth, scrimHeight)));
+    out.set(`profiles-bg-${theme}-${profilesWidth}x${profilesHeight}.png`, encodePng(profilesWidth, profilesHeight, profilesImage(theme, profilesWidth, profilesHeight)));
+    out.set(`agenda-fade-${theme}-${agendaFadeHeight}.png`, encodePng(1, agendaFadeHeight, agendaFadeColumn(theme, agendaFadeHeight)));
+  }
   return out;
 }
 

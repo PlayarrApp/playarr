@@ -1,0 +1,1 @@
+- Nura: the layout export reports the background colour the app actually draws for flat fills (read back from the rendered screen, with the computed composite as a fallback), replacing the fitted half-down rounding rule. Correction for the audit finding on screenshot-calibrated background bytes.

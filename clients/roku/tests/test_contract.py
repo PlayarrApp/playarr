@@ -299,7 +299,8 @@ class NavigationContractTests(unittest.TestCase):
                 assert native is not None
                 native_size = float(re.search(r"size: ([\d.]+)", native.group(1)).group(1))
                 native_weight = int(re.search(r"weight: (\d+)", native.group(1)).group(1))
-                native_tracking = float(re.search(r"tracking: (-?[\d.]+)", native.group(1)).group(1))
+                native_tracking_match = re.search(r"tracking: (-?[\d.]+)(?: \* ([\d.]+))?", native.group(1))
+                native_tracking = float(native_tracking_match.group(1)) * float(native_tracking_match.group(2) or 1)
                 # The channel sets text at the web size, weight and spacing itself (fractional size, bundled advances).
                 self.assertAlmostEqual(font_size, native_size, delta=0.1)
                 self.assertAlmostEqual(float(css_weight.group(1)), native_weight, delta=25)

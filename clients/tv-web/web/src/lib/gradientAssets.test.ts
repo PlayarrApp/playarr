@@ -21,6 +21,7 @@ describe("gradient assets", () => {
       const css = readFileSync(join(web, file), "utf8");
       for (const m of css.matchAll(/assets\/gradients\/([\w-]+\.png)/g)) expect(existsSync(join(web, "src/assets/gradients", m[1] ?? ""))).toBe(true);
       expect(css).not.toMatch(/color-mix\(in srgb, var\(--tv-rail-frost\) \d+%, transparent\)\s+(12|34|62)%,/);
+      expect(css).not.toMatch(/linear-gradient\(90deg, transparent 0%, var\(--dp-scrim\) 22%/);
     }
     expect(readdirSync(join(web, "src/assets/gradients")).every((n) => n.endsWith(".png"))).toBe(true);
   });

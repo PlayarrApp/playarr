@@ -269,8 +269,9 @@ fn over(top: [f32; 4], under: Bg) -> Bg {
     [mix(0), mix(1), mix(2)]
 }
 
-/// The `#rrggbb` of a background, rounded once to 8 bits. A channel exactly between two values reads as the lower one, which
-/// is what GTK's renderer draws for it (surface #211d21 at 70 % over #1b181b is drawn #1f1b1f, its green 27.5 drawing as 27).
+/// The `#rrggbb` of a background, rounded once to 8 bits. This is only the fallback for a fill whose drawn pixel cannot be
+/// read back (a gradient above it, or no clear point); a flat fill is reported as the renderer drew it (`Walk::drawn`), so
+/// no tie rule is assumed for the themes. An exact half rounds down here, as before.
 fn hex_bg(c: Bg) -> String {
     let b = |v: f64| (v - 0.5 - 1.0e-6).ceil().clamp(0.0, 255.0) as u8;
     format!("#{:02x}{:02x}{:02x}", b(c[0]), b(c[1]), b(c[2]))
@@ -363,6 +364,10 @@ struct Walk<'a> {
     root: &'a gtk4::Widget,
     viewport: Rect,
     items: Vec<Item>,
+    /// The screen as the renderer draws it, for reading the colour a flat fill really shows.
+    frame: Option<Frame>,
+    /// A gradient is in the ancestor chain of the widget being visited: its backdrop is not a flat colour.
+    under_gradient: bool,
 }
 
 /// The opacity GTK applies to the whole widget: opacity nodes on the path from the snapshot root down.
@@ -452,6 +457,14 @@ impl Walk<'_> {
         } else {
             (false, parent_bg)
         };
+        let outer_gradient = self.under_gradient;
+        if lp
+            .fills
+            .iter()
+            .any(|f| !f.border && f.gradient.is_some() && near(f.b, b, 0.55))
+        {
+            self.under_gradient = true;
+        }
         // A scale or progress bar paints its trough and fills itself; they are listed once, from the widget.
         let mut child = if w.is::<gtk4::Scale>() || w.is::<gtk4::ProgressBar>() {
             None
@@ -462,8 +475,82 @@ impl Walk<'_> {
             self.visit(&c, clip, inherited * factor, bg);
             child = c.next_sibling();
         }
+        self.under_gradient = outer_gradient;
         if emitted {
             self.items[start].end = self.items.len();
+        }
+    }
+
+    /// The colour the renderer drew inside a flat-fill widget: a pixel of the rendered screen away from its edges, its text and
+    /// its children. It is accepted only when it lies within one level of the composite of the declared fills (so an overlay,
+    /// an image or a shadow under the point is never read as the fill); otherwise the composite stands.
+    fn drawn(&self, w: &gtk4::Widget, b: Rect, radius: f32, composite: Bg) -> Option<Bg> {
+        let (tw, th, buf) = self.frame.as_ref()?;
+        let sx = *tw as f32 / self.viewport[2].max(1.0);
+        let sy = *th as f32 / self.viewport[3].max(1.0);
+        let mut busy: Vec<Rect> = Vec::new();
+        let mut stack: Vec<gtk4::Widget> = w.first_child().into_iter().collect();
+        while let Some(c) = stack.pop() {
+            if let Some(cb) = c.compute_bounds(self.root) {
+                let cb = rect_of(&cb);
+                // A label's box is mostly empty: only its glyphs (the ink of its layout) are kept clear.
+                if let Some(l) = c.downcast_ref::<gtk4::Label>() {
+                    let (ox, oy) = l.layout_offsets();
+                    let (ink, _) = l.layout().pixel_extents();
+                    busy.push([
+                        cb[0] + ox as f32 + ink.x() as f32,
+                        cb[1] + oy as f32 + ink.y() as f32,
+                        ink.width() as f32,
+                        ink.height() as f32,
+                    ]);
+                } else {
+                    busy.push(cb);
+                }
+            }
+            stack.extend(c.first_child());
+            stack.extend(c.next_sibling());
+        }
+        // A rounded corner is clear of the fill's edge by r * (1 - 1/sqrt 2) along the diagonal.
+        let inset = radius.max(0.0) * 0.3 + 3.0;
+        if b[2] <= 2.0 * inset || b[3] <= 2.0 * inset {
+            return None;
+        }
+        let inner = [b[0] + inset, b[1] + inset, b[2] - 2.0 * inset, b[3] - 2.0 * inset];
+        let vis = clip_rect(inner, self.viewport);
+        if vis[2] <= 0.0 || vis[3] <= 0.0 {
+            return None;
+        }
+        let mut seen: Vec<[u8; 3]> = Vec::new();
+        for fy in [0.5_f32, 0.25, 0.75, 0.1, 0.9] {
+            for fx in [0.5_f32, 0.25, 0.75, 0.1, 0.9] {
+                let (x, y) = (vis[0] + vis[2] * fx, vis[1] + vis[3] * fy);
+                if busy
+                    .iter()
+                    .any(|r| x >= r[0] - 2.0 && x <= r[0] + r[2] + 2.0 && y >= r[1] - 2.0 && y <= r[1] + r[3] + 2.0)
+                {
+                    continue;
+                }
+                let (ix, iy) = (((x * sx) as usize).min(tw - 1), ((y * sy) as usize).min(th - 1));
+                let o = (iy * tw + ix) * 4;
+                if buf[o + 3] != 255 {
+                    continue;
+                }
+                let px = [buf[o + 2], buf[o + 1], buf[o]];
+                if (0..3).all(|i| (f64::from(px[i]) - composite[i]).abs() <= 1.0) {
+                    seen.push(px);
+                    if seen.len() == 2 {
+                        break;
+                    }
+                }
+            }
+            if seen.len() == 2 {
+                break;
+            }
+        }
+        // Two points must agree: a lone pixel could be a stray mark.
+        match seen.as_slice() {
+            [a, b2] if a == b2 => Some([f64::from(a[0]), f64::from(a[1]), f64::from(a[2])]),
+            _ => None,
         }
     }
 
@@ -487,6 +574,12 @@ impl Walk<'_> {
         // `background` is the background colour: a gradient is an image on top of it and leaves it as it is.
         if let Some(f) = own.filter(|f| f.gradient.is_none()) {
             bg = over(f.at(b[0] + b[2] / 2.0, b[1] + b[3] / 2.0), parent_bg);
+            // Where nothing but this flat fill is drawn, the colour is what the renderer drew: read it back.
+            if !self.under_gradient {
+                if let Some(px) = self.drawn(w, b, f.radius, bg) {
+                    bg = px;
+                }
+            }
         }
         let mut radius = own.map(|f| f.radius).filter(|r| *r > 0.0);
         if radius.is_none() {
@@ -899,6 +992,8 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
         root,
         viewport,
         items: Vec::new(),
+        frame: render(root).ok(),
+        under_gradient: false,
     };
     walk.visit(root, [-1.0e6, -1.0e6, 2.0e6, 2.0e6], 1.0, [255.0, 255.0, 255.0]);
     // Occlusion as the web scorer samples it: nine points of the visible box; hidden when each lies under a later box

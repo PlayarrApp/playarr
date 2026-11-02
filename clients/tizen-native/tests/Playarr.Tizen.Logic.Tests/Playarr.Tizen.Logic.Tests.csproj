@@ -12,6 +12,9 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="../../src/Playarr.Tizen/res/gradients/*.png" Link="gradients/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../../src/Playarr.Tizen.Logic/Playarr.Tizen.Logic.csproj" />
   </ItemGroup>
 </Project>
