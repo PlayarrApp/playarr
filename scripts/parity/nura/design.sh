@@ -45,7 +45,8 @@ for t in $THEMES; do
     [ "${route//:/_}" = "$id" ] || mv -- "$O/$t/${route//:/_}.png" "$O/$t/$id.png"
   done
   # Player: its own start, paused at 2 s; once with the controls hidden (player), once with them pinned (player-controls).
-  for pair in player-controls:player player:player; do
+  # `player` (controls hidden) is absent natively: a paused player always shows its controls (player.rs, `!playing.get()`).
+  for pair in player-controls:player; do
     id=${pair%%:*}; keep=
     want "$id" || continue
     [ "$id" = player-controls ] && keep=1
