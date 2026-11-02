@@ -78,7 +78,7 @@ export function cumulativeTracks(count, width, gap) {
  */
 export function isEqualFillingGrid(tracks, width, gap) {
   if (tracks.length < 2) return false;
-  if (tracks.some((t) => !Number.isFinite(t) || Math.abs(t - tracks[0]) > 0.05)) return false;
+  if (tracks.some((t) => !Number.isFinite(t) || Math.abs(t - (tracks[0] ?? 0)) > 0.05)) return false;
   return Math.abs(tracks.reduce((a, b) => a + b, 0) + gap * (tracks.length - 1) - width) < 0.1;
 }
 
@@ -155,7 +155,7 @@ export function installLineBoxFix(win, options = {}) {
       const width = el.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth);
       if (!isEqualFillingGrid(tracks, width, gap)) continue;
       const wanted = cumulativeTracks(tracks.length, width, gap);
-      if (wanted.every((w, i) => Math.abs(w - tracks[i]) < 0.004)) continue;
+      if (wanted.every((w, i) => Math.abs(w - (tracks[i] ?? 0)) < 0.004)) continue;
       gridTouched.set(el, /** @type {HTMLElement} */ (el).style.gridTemplateColumns);
       /** @type {HTMLElement} */ (el).style.gridTemplateColumns = wanted.map((w) => `${w}px`).join(" ");
     }
