@@ -398,7 +398,7 @@ impl App {
 
     /// Opens a screen straight away (`name` or `name:argument`): `home`, `movies`, `series`, `music`,
     /// `search:<text>`, `calendar-agenda|week|month`, `film`, `series-detail`, `player`, `profiles`, `settings`,
-    /// `filters`, `actions`, `rail-end:<n>`, `play:<media file id>`, `theme:dark|light|system`. Used by the parity capture scripts through `PLAYARR_ROUTE` and `PLAYARR_CONTROL`.
+    /// `filters`, `actions`, `downloads`, `playlists`, `watchlist`, `requests`, `music-detail`, `settings-<section>`, `rail-end:<n>`, `play:<media file id>`, `theme:dark|light|system`. Used by the parity capture scripts through `PLAYARR_ROUTE` and `PLAYARR_CONTROL`.
     pub fn route(self: &Rc<Self>, route: &str) {
         let Some(client) = self.client.borrow().clone() else {
             return;
@@ -414,7 +414,9 @@ impl App {
             }
         };
         match name {
-            "home" | "movies" | "series" | "music" => select(name),
+            "home" | "movies" | "series" | "music" | "downloads" | "playlists" | "watchlist" | "requests" => {
+                select(name)
+            }
             "rail-end" => {
                 select("home");
                 self.hook("rail-end", arg);
@@ -464,12 +466,18 @@ impl App {
             }),
             "profiles" => self.push_profiles(client),
             "settings" => self.push_settings(client),
-            "settings-player" => {
+            // One Preferences section opened on its side panel (design report capture): `settings-appearance`,
+            // `settings-profile-avatar`, `settings-player`, `settings-server`, `settings-profile-lock`, `settings-invite`.
+            section if section.starts_with("settings-") => {
                 self.push_settings(client);
-                self.hook("settings-player", "");
+                self.hook(section, "");
             }
-            "film" | "series-detail" | "player" => {
-                let kind = if name == "series-detail" { "series" } else { "movie" };
+            "film" | "series-detail" | "player" | "music-detail" => {
+                let kind = match name {
+                    "series-detail" => "series",
+                    "music-detail" => "artist",
+                    _ => "movie",
+                };
                 let (me, c) = (self.clone(), client.clone());
                 let route = name.to_string();
                 let pinned = arg.to_string();
@@ -486,7 +494,11 @@ impl App {
                     move |w| {
                         let Some(w) = w else { return };
                         if let Some(f) = me.select_tab.borrow().clone() {
-                            f(if route == "series-detail" { "series" } else { "movies" })
+                            f(match route.as_str() {
+                                "series-detail" => "series",
+                                "music-detail" => "music",
+                                _ => "movies",
+                            })
                         }
                         if route == "player" {
                             let c = client.clone();

@@ -1,0 +1,1 @@
+- Nura: the capture control file opens Downloads, Playlists, Watchlist, Requests, a music title and each Preferences section panel, and `scripts/parity/nura/design.sh` captures every screen in both themes for the design report.

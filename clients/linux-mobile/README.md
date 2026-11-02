@@ -54,7 +54,7 @@ Environment variables for development and the parity capture scripts; none chang
 | `PLAYARR_BROKER` | Link broker origin (default the hosted broker). |
 | `PLAYARR_BROKER_PLATFORM` | Broker identity override while a broker does not know `linux-phone` yet. |
 | `PLAYARR_AUDIO_SINK` | GStreamer audio sink element, for example `fakesink` on a machine without sound. |
-| `PLAYARR_ROUTE` | Skip the picker and open `home`, `movies`, `series`, `music`, `search`, `calendar`, `film`, `series-detail`, `player`, `profiles`, `settings`, `filters` or `actions`. |
+| `PLAYARR_ROUTE` | Skip the picker and open `home`, `movies`, `series`, `music`, `search`, `calendar`, `film`, `series-detail`, `player`, `profiles`, `settings`, `filters` or `actions`; the control file also takes `downloads`, `playlists`, `watchlist`, `requests`, `music-detail` and `settings-<section>` (`appearance`, `profile-avatar`, `player`, `server`, `profile-lock`, `invite`). |
 | `PLAYARR_SEARCH`, `PLAYARR_CAL_VIEW`, `PLAYARR_AUTO_FILTERS`, `PLAYARR_KEEP_CONTROLS` | Pre-fill the search, pick the calendar view, open the filters sheet, pin the player controls. |
 
 ## Packaging
