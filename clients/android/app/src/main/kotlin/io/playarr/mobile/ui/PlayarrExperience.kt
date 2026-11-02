@@ -4068,8 +4068,7 @@ internal fun ExperienceLandscapeCard(
                         placed[1].place(0, Math.round(metaAt * density) - artBottomPx)
                     }
                 }
-            } else
-            Column(Modifier.height(if (tabletHome) ((11.52f + homeTitle * homeScale * 1.504f) / homeScale).dp else (11.52f + 17.856f).dp).wrapContentHeight(Alignment.Top, unbounded = true)) {
+            } else Column(Modifier.height(if (tabletHome) ((11.52f + homeTitle * homeScale * 1.504f) / homeScale).dp else (11.52f + 17.856f).dp).wrapContentHeight(Alignment.Top, unbounded = true)) {
             Text(displayTitle, color = if (focused) Color.White else WebInk, fontSize = homeTitle.sp, fontWeight = FontWeight(610), letterSpacing = (if (tabletHome) -0.015f * homeTitle else -0.17856f).sp, lineHeight = (if (tabletHome) homeTitle * 1.504f else 17.856f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (11.52f / homeScale).dp else 11.52.dp, start = 1.9.dp))
             Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = homeMeta.sp, lineHeight = (if (tabletHome) homeMeta * 1.3f else 13.248f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (2.56f / homeScale).dp else 2.56.dp, start = 1.9.dp))
             }
