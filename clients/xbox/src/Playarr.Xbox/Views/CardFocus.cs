@@ -145,6 +145,7 @@ namespace Playarr.Xbox.Views
                 {
                     var shadow = new Border
                     {
+                        Tag = grow,
                         Width = art.ActualWidth + 2 * grow,
                         Height = art.ActualHeight + 2 * grow,
                         CornerRadius = new CornerRadius(Math.Max(0, radius + grow)),
@@ -156,6 +157,7 @@ namespace Playarr.Xbox.Views
                 }
 
                 card.Children.Insert(0, shadowCanvas);
+                PaintSnap.AttachGlow(art, shadowCanvas, new Windows.Foundation.Point(0, 0), 0);
 
                 for (var k = 0; k < 11; k++)
                 {
@@ -186,6 +188,7 @@ namespace Playarr.Xbox.Views
                     {
                         Width = width,
                         Height = height,
+                        Tag = "ring",
                         CornerRadius = new CornerRadius(radius * artScale + ringOutset),
                         BorderThickness = new Thickness(3),
                         BorderBrush = new SolidColorBrush(Theme.CardGlow),
@@ -196,7 +199,7 @@ namespace Playarr.Xbox.Views
                 }
 
                 card.Children.Add(canvas);
-
+                PaintSnap.AttachGlow(art, canvas, origin, ringOutset);
             }
 
             canvas.Visibility = focused ? Visibility.Visible : Visibility.Collapsed;
