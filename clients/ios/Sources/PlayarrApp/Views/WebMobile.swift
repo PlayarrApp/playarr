@@ -530,7 +530,7 @@ struct WMKeyArt: View {
                     .frame(width: 406 * artScale, height: (contain ? 406 * 9 / 16 : imageHeight) * artScale)
                     .mask {
                         if webMask && scheme == .light {
-                            LinearGradient(
+                            WMGradient(
                                 stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.72), .init(color: .clear, location: 1)],
                                 startPoint: .leading, endPoint: .trailing
                             )
@@ -547,9 +547,9 @@ struct WMKeyArt: View {
                     .offset(x: -8, y: imageTop)
             }
             if webMask && scheme == .light {
-                LinearGradient(colors: [WM.page.opacity(0.54), WM.page.opacity(0)], startPoint: .leading, endPoint: .trailing)
+                WMGradient(colors: [WM.page.opacity(0.54), WM.page.opacity(0)], startPoint: .leading, endPoint: .trailing)
             }
-            LinearGradient(
+            WMGradient(
                 stops: fadeStops.map { stops in
                     stops.map { Gradient.Stop(color: WM.page.opacity($0.cover), location: $0.y / 844) }
                 } ?? [
@@ -609,7 +609,11 @@ struct WMUnseenDot: View {
         // shadow differs a little from one simulator to the next, a blitted bitmap does not.
         #if DEBUG
         if ParityLaunch.zeroInsets, let image = WMUnseenDotBitmap.image(scheme) {
-            Image(uiImage: image).resizable().frame(width: 33, height: 33).frame(width: 9, height: 9)
+            // The 33 pt bitmap carries the ring and shadow around the 9 pt dot; it is decoration, so it takes no part in the
+            // accessibility frame of the card that holds it (the link is the card's box, as in the web).
+            // The bitmap hangs off a 9 pt UIKit view as a sublayer, so no SwiftUI child frame (33 pt) reaches the card's
+            // accessibility frame: the link is the card's own box, as on the web.
+            WMDotLayerView(image: image).frame(width: 9, height: 9)
                 .parityBox("img", background: WM.pink, radius: 4.5)
         } else {
             WMUnseenDotVector()
@@ -620,6 +624,28 @@ struct WMUnseenDot: View {
             .parityBox("img", background: WM.pink, radius: 4.5)
         #endif
     }
+}
+
+/// A 9 x 9 pt view whose bitmap (33 x 33, centred) is a sublayer that overhangs the view; it is not an accessibility element.
+struct WMDotLayerView: UIViewRepresentable {
+    let image: UIImage
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: CGRect(x: 0, y: 0, width: 9, height: 9))
+        view.isUserInteractionEnabled = false
+        view.isAccessibilityElement = false
+        view.clipsToBounds = false
+        let layer = CALayer()
+        layer.contents = image.cgImage
+        layer.contentsScale = image.scale
+        layer.frame = CGRect(x: -12, y: -12, width: 33, height: 33)
+        view.layer.addSublayer(layer)
+        return view
+    }
+
+    func updateUIView(_ view: UIView, context: Context) {}
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIView, context: Context) -> CGSize? { CGSize(width: 9, height: 9) }
 }
 
 struct WMUnseenDotVector: View {
@@ -725,10 +751,10 @@ struct WMRailCard: View {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
                 }
                 .overlay { if focused { WMFocusRing(width: width, height: art) } }
-            WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 6.83).padding(.leading, 2)
-            WMText(work.singularKindYearLabel, 6.88, 400, color: WM.muted, lh: 12.3).padding(.leading, 2).offset(y: -1.3)
+            WMText(work.title, 8.8, 600, lh: 13.2, ls: -0.132).padding(.top, 11.52).padding(.leading, 1.92) // web: margin-top 0.72rem, padding-inline 0.12rem, line-height 1.5, letter-spacing -0.015em
+            WMText(work.singularKindYearLabel, 6.88, 400, color: WM.muted, lh: 10.32).padding(.top, 2.56).padding(.leading, 1.92) // web: margin-top 0.16rem, line-height 1.5, hangs below the card box
         }
-        .frame(height: art + 24.7, alignment: .top)
+        .frame(height: art + 24.72, alignment: .top)
         .frame(width: width, height: WMRailCard.height(cover: cover), alignment: .topLeading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(work.title) \(work.singularKindYearLabel)")
@@ -792,7 +818,8 @@ struct WMLibraryCard: View {
     var cover = false
     @AppStorage(WMArtwork.sizeKey) private var sizeSetting = "medium"
 
-    static func rowHeight(cover: Bool) -> CGFloat { WMArtwork.artHeight(cover: cover) + 27.7 }
+    /// The card: art, margin-top 0.72rem (11.52) and one 13.2 line (`--card-title-size` 0.55rem, line-height 1.5).
+    static func rowHeight(cover: Bool) -> CGFloat { WMArtwork.artHeight(cover: cover) + 24.72 }
 
     var body: some View {
         let width = WMArtwork.cardWidth, art = WMArtwork.artHeight(cover: cover)
@@ -807,9 +834,9 @@ struct WMLibraryCard: View {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
                 }
                 .overlay { if focused { WMFocusRing(width: width, height: art) } }
-            WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 6.83).padding(.leading, 2)
+            WMText(work.title, 8.8, 600, lh: 13.2, ls: -0.132).padding(.top, 11.52).padding(.leading, 1.92) // web: margin-top 0.72rem, padding-inline 0.12rem, line-height 1.5, letter-spacing -0.015em
         }
-        .frame(height: art + 24.7, alignment: .top)
+        .frame(height: art + 24.72, alignment: .top)
         .frame(width: width, height: WMLibraryCard.rowHeight(cover: cover), alignment: .topLeading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Open \(work.title)")
@@ -843,6 +870,50 @@ struct WMSearchCard: View {
 }
 
 /// `app-user-identity`-style round header button.
+/// The web Back glyph as drawn here: a 12.8 x 18 vector arrow, or in parity captures a bitmap of that vector.
+struct WMBackArrow: View {
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        #if DEBUG
+        if ParityLaunch.zeroInsets, let image = WMBackArrowBitmap.image(scheme) {
+            Image(uiImage: image).resizable().frame(width: 12.8, height: 18)
+        } else {
+            WMBackArrowVector()
+        }
+        #else
+        WMBackArrowVector()
+        #endif
+    }
+}
+
+struct WMBackArrowVector: View {
+    var body: some View {
+        Canvas { context, _ in
+            var arrow = Path()
+            arrow.move(to: CGPoint(x: 11.6, y: 9)); arrow.addLine(to: CGPoint(x: 1.4, y: 9))
+            arrow.move(to: CGPoint(x: 5.6, y: 4.8)); arrow.addLine(to: CGPoint(x: 1.4, y: 9)); arrow.addLine(to: CGPoint(x: 5.6, y: 13.2))
+            context.stroke(arrow, with: .color(WM.inkSoft), style: StrokeStyle(lineWidth: 1.3, lineCap: .round, lineJoin: .round))
+        }
+        .frame(width: 12.8, height: 18)
+    }
+}
+
+@MainActor
+enum WMBackArrowBitmap {
+    private static var cache: [Bool: UIImage] = [:]
+
+    static func image(_ scheme: ColorScheme) -> UIImage? {
+        let dark = scheme == .dark
+        if let cached = cache[dark] { return cached }
+        let renderer = ImageRenderer(content: WMBackArrowVector().environment(\.colorScheme, scheme))
+        renderer.scale = UIScreen.main.scale
+        guard let image = renderer.uiImage else { return nil }
+        cache[dark] = image
+        return image
+    }
+}
+
 struct WMHeaderCircleButton: View {
     let width: CGFloat
     let height: CGFloat
@@ -855,16 +926,11 @@ struct WMHeaderCircleButton: View {
     var body: some View {
         Button(action: action) {
             if glyph == "\u{2190}" {
-                // The design font has no arrow glyph, so it is drawn as a vector in the web glyph's 12.8 x 18 box.
-                Canvas { context, _ in
-                    var arrow = Path()
-                    arrow.move(to: CGPoint(x: 11.6, y: 9)); arrow.addLine(to: CGPoint(x: 1.4, y: 9))
-                    arrow.move(to: CGPoint(x: 5.6, y: 4.8)); arrow.addLine(to: CGPoint(x: 1.4, y: 9)); arrow.addLine(to: CGPoint(x: 5.6, y: 13.2))
-                    context.stroke(arrow, with: .color(WM.inkSoft), style: StrokeStyle(lineWidth: 1.3, lineCap: .round, lineJoin: .round))
-                }
-                .frame(width: 12.8, height: 18)
+                // The design font has no arrow glyph, so it is drawn as a vector in the web glyph's 12.8 x 18 box. Parity captures
+                // blit it from a bitmap rendered once per theme (the GPU antialiasing differs between simulator hosts).
+                WMBackArrow()
                 .offset(y: -0.6)
-                .parityBox("image")
+                .parityLayout(text: "\u{2190}", role: "text", size: 12.8, weight: 720, color: WM.inkSoft)
                 .accessibilityHidden(true)
                 .frame(width: width, height: height)
                 .parityShape(role, name: name, color: WM.chip.opacity(0.66), in: Ellipse(), radius: width == height ? width / 2 : 0)
@@ -894,8 +960,9 @@ struct WMLibraryHeader: View {
         ZStack(alignment: .topLeading) {
             PlayarrBackButton(action: onBack)
                 .offset(x: PlayarrPageTokens.gutter, y: top)
-            WMText(title, 21.6, 580, lh: 33, ls: -1, role: "heading")
-                .offset(x: 70, y: top + 5.5)
+            // h1: font 1.35rem, letter-spacing -0.045em, line-height --page-control-height (44), left = gutter + back 44 + gap 10.
+            WMText(title, 21.6, 580, lh: 44, ls: -0.972, role: "heading")
+                .offset(x: 70, y: top)
             // The web hides the header subtitle on phones (#1299), so `detail` is not drawn here.
             HStack {
                 Spacer()
@@ -979,6 +1046,8 @@ struct WMTitleWithDetail<Title: View>: View {
     let maxWidth: CGFloat
     var size: CGFloat = 9.92
     var gap: CGFloat = 16
+    /// Web `.page-header-detail` padding-top when wrapped (0.4rem on the library header, 6 elsewhere so far).
+    var wrappedPadTop: CGFloat = 6
     @ViewBuilder let title: () -> Title
 
     var body: some View {
@@ -999,7 +1068,7 @@ struct WMTitleWithDetail<Title: View>: View {
                         .parityRenderedText(detail.uppercased(), role: "text", size: size, weight: 680, color: WM.ink)
                         .lineLimit(1)
                         .truncationMode(.tail)
-                        .padding(.top, 6)
+                        .padding(.top, wrappedPadTop)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .overlay(alignment: .top) { Rectangle().fill(PlayarrStyle.lineStrong).frame(height: 1) }
                 }
@@ -1031,7 +1100,7 @@ extension View {
         return mask {
             GeometryReader { proxy in
                 if enabled {
-                    LinearGradient(
+                    WMGradient(
                         stops: stops(proxy.size),
                         startPoint: axis == .horizontal ? .leading : .top,
                         endPoint: axis == .horizontal ? .trailing : .bottom

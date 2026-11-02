@@ -366,7 +366,7 @@ struct LibraryView: View {
                         .parityClipped() // scaledToFill art overflowed the frame and drew a grey band over the grid
                         .parityOpacity(scheme == .dark ? 0.1 : 0.04) // web light: the preview art is nearly invisible on the white page
                         .overlay {
-                            LinearGradient(
+                            WMGradient(
                                 colors: [PlayarrStyle.surface.opacity(0.2), PlayarrStyle.surface],
                                 startPoint: .leading,
                                 endPoint: .trailing
@@ -427,7 +427,9 @@ struct LibraryView: View {
     }
 
     /// Web tablet letter rail: 44 pt targets that scroll when the 27 letters do not fit (the first 16 show).
-    private func tabletAlphabetRail(_ proxy: ScrollViewProxy, height: CGFloat) -> some View {
+    private func tabletAlphabetRail(_ proxy: ScrollViewProxy, height: CGFloat, viewportWidth: CGFloat) -> some View {
+        let letterSize = min(max(6.88, viewportWidth * 0.0048), 9.28)
+        let disc = min(max(18, viewportWidth * 0.0135), 24)
         let displayedLetters = LibraryViewModel.alphabetLetters(order: viewModel.order)
         let activeWork = visibleWorkID.flatMap { id in viewModel.works.first { $0.id == id } }
             ?? focusedWork.flatMap { id in viewModel.works.first { $0.id == id } }
@@ -437,12 +439,21 @@ struct LibraryView: View {
             VStack(spacing: 0) {
                 ForEach(displayedLetters, id: \.self) { letter in
                     ZStack {
-                        if letter == activeLetter { Circle().fill(WM.ink.opacity(0.78)).frame(width: 20, height: 20) }
-                        Text(letter).wm(8.8, 700, color: letter == activeLetter ? PlayarrStyle.background : WM.muted, text: letter).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
-                            .parityFill(WM.ink.opacity(0.78), when: letter == activeLetter) // the circle behind the active letter
+                        if letter == activeLetter {
+                            // `.is-active::before`: 1.35vw (18.44 pt at 1366) ink disc, a 2 pt page-colour ring and a 2 pt brand ring (box-shadow).
+                            Circle().stroke(WM.pink, lineWidth: 2).frame(width: disc + 6, height: disc + 6)
+                            Circle().stroke(PlayarrStyle.background, lineWidth: 2).frame(width: disc + 2, height: disc + 2)
+                            Circle().fill(WM.ink).frame(width: disc, height: disc)
+                        }
+                        // font clamp(0.43rem, 0.48vw, 0.58rem), line-height 1, the span lifted by 0.02em, centred in the 44 pt button.
+                        WMText(letter, letterSize, 400, color: letter == activeLetter ? PlayarrStyle.background : WM.muted, lh: letterSize)
+                            .offset(y: -0.02 * letterSize)
                     }
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(letter == "#" ? "Numbers and symbols" : letter)
+                    .accessibilityAddTraits(.isButton)
                     .onTapGesture {
                         alphabetJumpTask?.cancel()
                         alphabetJumpTask = Task {
@@ -464,6 +475,11 @@ struct LibraryView: View {
         let letters = ["#"] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map(String.init)
         let activeLetter: String? = nil // touch refs show no focused letter
         return GeometryReader { geo in
+            // `.tv-directory .tv-alphabet`: fixed, top = mobile-top-inset + 74, bottom = mobile-nav-height (58 + max(8, safe bottom)) + 16;
+            // its 27 letters (flex 1 1 0) share that height.
+            let railTop = WM.topInset + 74
+            let railHeight = max(0, geo.size.height - railTop - (58 + WM.bottomInset + 16))
+            let cell = railHeight / CGFloat(letters.count)
             ScrollView(.vertical) { VStack(spacing: 0) {
                 ForEach(letters, id: \.self) { letter in
                     ZStack {
@@ -473,10 +489,11 @@ struct LibraryView: View {
                             Circle().stroke(PlayarrStyle.background, lineWidth: 2).frame(width: 24, height: 24).offset(y: 1)
                             Circle().stroke(WM.pink, lineWidth: 2.2).frame(width: 28, height: 28).offset(y: 1)
                         }
-                        Text(letter).wm(8.96, 700, color: letter == activeLetter ? PlayarrStyle.background : WM.muted, text: letter)
-                            .foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
+                        // 0.56rem, line-height 1, the span lifted by 0.02em, centred in the cell.
+                        WMText(letter, 8.96, 700, color: letter == activeLetter ? PlayarrStyle.background : WM.muted, lh: 8.96)
+                            .offset(y: -0.02 * 8.96)
                     }
-                    .frame(width: 44).frame(height: 25.27)
+                    .frame(width: 44).frame(height: cell)
                     .contentShape(Rectangle())
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel(letter == "#" ? "Numbers and symbols" : letter)
@@ -491,8 +508,8 @@ struct LibraryView: View {
                 }
             } }
             .scrollIndicators(.hidden)
-            .frame(width: 44, height: max(0, geo.size.height - 90 - 84), alignment: .top)
-            .offset(x: geo.size.width - 48, y: 86.9)
+            .frame(width: 44, height: railHeight, alignment: .top)
+            .offset(x: geo.size.width - 48, y: railTop)
         }
     }
 
@@ -514,7 +531,7 @@ struct LibraryView: View {
             LazyVGrid(
                 columns: Array(repeating: GridItem(.fixed(WMLibraryCard.width), spacing: 12, alignment: .top), count: WMArtwork.columns),
                 alignment: .leading,
-                spacing: 21
+                spacing: 24 // `.tv-title-grid-content` row gap on phones
             ) {
                 ForEach(Array(viewModel.works.enumerated()), id: \.element.id) { index, work in
                     NavigationLink {
@@ -723,8 +740,11 @@ struct LibraryView: View {
                     }
                     .overlay(alignment: .topTrailing) {
                         if !phone && !viewModel.isSearchMode && viewModel.sort == "title" && viewModel.viewMode != .list {
-                            tabletAlphabetRail(scrollProxy, height: proxy.size.height - 263 - 24)
-                                .padding(.trailing, 16).padding(.top, 263)
+                            // `.tv-directory .tv-alphabet`: right = directory-controls-edge, top = clamp(214px, 25vh-unit, 286px) with 8 pt
+                            // padding, buttons 44 pt wide inside 6 pt side padding, running to the screen bottom.
+                            let railTop = min(max(214, viewportHeight * 0.25), 286) + 8
+                            tabletAlphabetRail(scrollProxy, height: viewportHeight - railTop, viewportWidth: viewportWidth)
+                                .padding(.trailing, controlEdge + 6).padding(.top, railTop)
                         }
                     }
                     }
@@ -830,16 +850,18 @@ struct LibraryView: View {
             PlayarrBackButton(action: goHome).offset(x: 120.84 * scale, y: 53.23 * scale)
             WMTitleWithDetail(
                 detail: viewModel.total.map { "\($0.formatted(.number.grouping(.automatic))) \(viewModel.selectedKind == .artist ? "artists" : "titles")" },
-                maxWidth: max(0, (proxy.size.width > 1100 ? proxy.size.width * 0.24 : proxy.size.width * 0.6) - 181.23 * scale - 4), size: 9.92, gap: 15
+                maxWidth: max(0, (proxy.size.width > 1100 ? proxy.size.width * 0.24 : proxy.size.width * 0.6) - 181.23 * scale - 4), size: 9.92, gap: 15, wrappedPadTop: 6.4
             ) {
-                WMText(title, 23.91 * scale, 580, lh: 32, ls: -1, role: "heading")
+                // h1: clamp(1.2rem, 1.75vw, 2.35rem), letter-spacing -0.045em, line-height --page-control-height (44), at the header top.
+                WMText(title, 23.91 * scale, 580, lh: 44, ls: -0.045 * 23.91 * scale, role: "heading")
             }
-            .offset(x: 181.23 * scale, y: 59.23 * scale)
+            .offset(x: 181.23 * scale, y: 53.23 * scale)
             HStack {
                 Spacer()
-                PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3") { showingFilters = true }
+                PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3", viewportWidth: proxy.size.width) { showingFilters = true }
             }
-            .padding(.trailing, 16 * scale).offset(y: min(max(116, proxy.size.height * 0.14), 164))
+            // `--directory-controls-edge`: clamp(5px, 0.65vw, 14px) from the right edge.
+            .padding(.trailing, min(max(5, proxy.size.width * 0.0065), 14)).offset(y: min(max(116, proxy.size.height * 0.14), 164))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -1047,7 +1069,7 @@ private struct RailPaint: ViewModifier {
             content.background(PlayarrStyle.surface.opacity(0.96))
         } else {
             content
-                .background(LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing))
+                .background(WMGradient(stops: stops, startPoint: .leading, endPoint: .trailing))
                 .parityGradient(stops, from: .leading, to: .trailing)
         }
     }
