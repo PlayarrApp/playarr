@@ -1,0 +1,1 @@
+- Tizen native: design report capture script for every reachable screen in both themes, with an evidence table for screens the app does not have.
