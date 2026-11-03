@@ -1,0 +1,1 @@
+- VIDAA: `scripts/parity/vidaa/design-capture.mjs` captures every design-report screen on the real TV through the keepalive broker, in batches that stay inside the debug mirror's render budget.

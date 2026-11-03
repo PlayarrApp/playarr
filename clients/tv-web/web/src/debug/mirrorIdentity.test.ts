@@ -3,6 +3,7 @@ import {
   LIVE_SESSION_KEY,
   MIRROR_ACTIVE_PROFILE_KEY,
   MIRROR_PROFILE_SESSIONS_KEY,
+  isSignedOutStorage,
   mirrorFramePayload,
   readMirrorIdentity,
   readSelectedSession,
@@ -238,5 +239,25 @@ describe("expired access token on an idle app", () => {
     const refused = await readMirrorIdentity("receiver-token", { ...other.dependencies, fetch: rejecting });
     expect(refused.status).toBe("trusted_server_unavailable");
     expect(refused.profileHttpStatus).toBe(401);
+  });
+});
+
+describe("signed-out storage", () => {
+  const storage = (values: Record<string, string>) => ({ getItem: (key: string) => values[key] ?? null });
+
+  it("reports signed_out only for the exact empty shape", async () => {
+    for (const values of [{} as Record<string, string>, { [MIRROR_PROFILE_SESSIONS_KEY]: "[]" }]) {
+      expect(isSignedOutStorage(storage(values))).toBe(true);
+      const result = await readMirrorIdentity("token", { ...fixture().dependencies, storage: storage(values) });
+      expect(result).toMatchObject({ status: "signed_out", username: null, serverUrl: null, isCurrentCount: 0, sessionChanged: false });
+    }
+  });
+
+  it("never treats a marker, a saved profile, a live session or malformed storage as signed out", () => {
+    expect(isSignedOutStorage(storage({ [MIRROR_ACTIVE_PROFILE_KEY]: marker }))).toBe(false);
+    expect(isSignedOutStorage(storage({ [MIRROR_PROFILE_SESSIONS_KEY]: session() }))).toBe(false);
+    expect(isSignedOutStorage(storage({ [LIVE_SESSION_KEY]: "{}" }))).toBe(false);
+    expect(isSignedOutStorage(storage({ [MIRROR_PROFILE_SESSIONS_KEY]: "not json" }))).toBe(false);
+    expect(isSignedOutStorage(storage({ [MIRROR_PROFILE_SESSIONS_KEY]: "{}" }))).toBe(false);
   });
 });
