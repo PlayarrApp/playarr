@@ -307,10 +307,10 @@ export async function createDriver() {
     async start() {
       // Design report search-keyboard: no hardware keyboard attached, so the software keyboard is drawn (a host setting of the Simulator app; harmless when it is not running).
       try { run("defaults", ["write", "com.apple.iphonesimulator", "ConnectHardwareKeyboard", "-bool", "false"]); } catch { /* optional */ }
-      // The first-use "slide to type" intro would cover the keyboard; mark it seen and turn off prediction and autocorrection.
-      for (const [domain, key] of [["com.apple.Preferences", "DidShowContinuousPathIntroduction"]]) { try { run("xcrun", ["simctl", "spawn", udid, "defaults", "write", domain, key, "-bool", "true"]); } catch { /* optional */ } }
-      for (const key of ["KeyboardPrediction", "KeyboardAutocorrection", "KeyboardShowPredictionBar"]) { try { run("xcrun", ["simctl", "spawn", udid, "defaults", "write", "com.apple.Preferences", key, "-bool", "false"]); } catch { /* optional */ } }
-      run("xcrun", ["simctl", "status_bar", udid, "override", "--time", "9:41", "--batteryState", "charged", "--batteryLevel", "100", "--cellularMode", "active", "--cellularBars", "4", "--wifiBars", "3"]);
+      // The first-use "slide to type" intro would cover the keyboard: mark it seen, and turn off slide-to-type, prediction and autocorrection (keyboard preferences, global domain).
+      for (const [domain, key, value] of [["com.apple.keyboard.preferences", "DidShowContinuousPathIntroduction", true], ["com.apple.keyboard.preferences", "KeyboardContinuousPathEnabled", false], ["com.apple.keyboard.preferences", "KeyboardPrediction", false], ["com.apple.keyboard.preferences", "KeyboardAutocorrection", false], ["Apple Global Domain", "DidShowContinuousPathIntroduction", true], ["Apple Global Domain", "KeyboardContinuousPathEnabled", false]]) {
+        try { run("xcrun", ["simctl", "spawn", udid, "defaults", "write", domain, key, "-bool", String(value)]); } catch { /* optional */ }
+      }
       if (device !== "ipad") await resetProgressOnce([...new Set([...(suite.performance ?? []).map((p) => p.file), ...Object.values(suite.downloadMedia ?? {}).map((m) => m.file)])]);
       await launch("home");
     },
