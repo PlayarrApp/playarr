@@ -155,9 +155,11 @@ struct TVHomeView: View {
     /// Geometry is the web's at 1920x1080 in screen points; the stage starts after the nav column, hence `- nav`.
     private func productionHomeLoaded(_ viewModel: TVHomeViewModel) -> some View {
         let rails = Self.productionRails(viewModel)
-        let firstFocus = rails.first?.works.first.map { HomeRailCardFocus(rail: "r0", workID: $0.id) }
+        // Design report: `-PlayarrParityRoute home-rail2` starts on the second rail's first card.
+        let startRail = rails.indices.contains(TVParityLaunch.focusedRail) ? TVParityLaunch.focusedRail : 0
+        let firstFocus = rails[safe: startRail]?.works.first.map { HomeRailCardFocus(rail: "r\(startRail)", workID: $0.id) }
         let hero = focusedCard.flatMap { focus in rails.lazy.flatMap(\.works).first { $0.id == focus.workID } }
-            ?? rails.first?.works.first
+            ?? rails[safe: startRail]?.works.first
         return GeometryReader { geo in
         // Screen coordinates: the stage's own origin (after the nav column) is subtracted once here.
         let origin = geo.frame(in: tvScreenSpace).origin
@@ -1267,6 +1269,11 @@ struct TVSearchView: View {
             if TVParityLaunch.searchKeyboard {
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
                 searchFieldFocused = true
+                #if os(tvOS)
+                // tvOS shows its keyboard once the field is activated, not merely focused: make the UIKit field first responder.
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                TVParityKeyboard.activateTextField()
+                #endif
             }
             if let query = TVParityLaunch.liveQuery {
                 model.query = query
@@ -2505,3 +2512,23 @@ struct TVActionsDrawer: View {
         } catch { message = "\(work.title) could not be added to \(list.name)." }
     }
 }
+
+private extension Array {
+    subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
+}
+
+#if os(tvOS)
+import UIKit
+/// Design report only (`-PlayarrParityRoute search-keyboard`): activates the Search text field so the system keyboard draws.
+enum TVParityKeyboard {
+    @MainActor static func activateTextField() {
+        let windows = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.windows }.flatMap { $0 }
+        func find(_ view: UIView) -> UITextField? {
+            if let field = view as? UITextField { return field }
+            for sub in view.subviews { if let hit = find(sub) { return hit } }
+            return nil
+        }
+        for window in windows { if let field = find(window) { field.becomeFirstResponder(); return } }
+    }
+}
+#endif
