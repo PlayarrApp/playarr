@@ -353,6 +353,26 @@ def design_routes(folder, floor):
     for name, r in (("watchlist", "watchlist"), ("requests", "requests"), ("playlists", "playlists"),
                     ("downloads", "downloads"), ("sites", "library:site")):
         guarded(name, lambda name=name, r=r: (route(r, 15), design_snap(name, folder)))
+    first_artist = (946, 254) if device == "tv" else (258, 366)  # the first card of the Music grid (the walk's focus coordinates; the phone's first column)
+
+    def music_detail():
+        route("library:artist", 15); settle()
+        click(*first_artist); time.sleep(12)
+        state = json.loads(get("/state"))
+        if state.get("route") != "Detail":
+            debug("music-detail-route-timeout")
+            raise SystemExit("the first Music card did not open a Detail page: " + str(state.get("route")))
+        design_snap("music-detail", folder)
+
+    guarded("music-detail", music_detail)
+    if not SKIP_PLAYER:  # the Previewer mocks AVPlayer: whatever the video area shows is what the app draws; the chrome has auto-hidden after 3.5 s
+        guarded("player", lambda: (route(configured_player_route(), 25), design_snap("player", folder)))
+
+    # The Pairing page is opened directly (the session is signed in, which only hides it from the normal flow). It holds the QR and the
+    # device code, so link and login-qr are two frames of the one page. It runs last; leaving the page cancels its poll.
+    def pairing():
+        route("pairing", 15); settle(); design_snap("link", folder); design_snap("login-qr", folder)
+    guarded("link", pairing)
 
 
 def design_settings(folder, first_x, first_y, pitch, floor, done=()):
