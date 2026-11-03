@@ -1,0 +1,1 @@
+- Design report capture for the LG webOS simulator and Samsung Tizen emulator: lane scripts for every screen and state beyond the parity suite, and driver helpers to open any route.

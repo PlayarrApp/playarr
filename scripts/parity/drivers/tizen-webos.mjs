@@ -546,6 +546,15 @@ export async function createDriver() {
       await routeReady("/");
       await guard();
     },
+    async evaluate(expression) { await guard(); const value = await ev(expression); await guard(); return value; },
+    async open(route, readyExpression, { fresh = true } = {}) {
+      await guard();
+      if (fresh || (await ev('location.hash.replace(/^#/, "")')) !== route || loadedTheme !== theme) await load(route);
+      await guard();
+      if (readyExpression && !(await until(readyExpression, 60000))) throw new Error(`route did not become ready: ${route}`);
+      await settleVisibleImages();
+      await guard();
+    },
     async route(r) {
       await guard();
       if ((await ev('location.hash.replace(/^#/, "")')) !== r || loadedTheme !== theme) await load(r);
