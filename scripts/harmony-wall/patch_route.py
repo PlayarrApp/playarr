@@ -71,6 +71,10 @@ methods = """
       previewReport('dbg=' + encodeURIComponent(name.substring(6) + ':' + result));
       return;
     }
+    if (name === 'autohide:on') {
+      AppStorage.setOrCreate<boolean>('previewAutoHide', true);
+      return;
+    }
     if (name.indexOf('player:') === 0) {
       this.navPathStack.replacePathByName('Player', new PreviewPlayerParams(name.substring(7)));
       return;

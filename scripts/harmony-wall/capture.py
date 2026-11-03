@@ -369,8 +369,9 @@ def design_routes(folder, floor):
         def player_hidden():
             route(configured_player_route(), 20); settle()
             before = png().tobytes()
-            key("back"); time.sleep(4)  # BACK hides the visible controls (the paused mock player never starts the 3.5 s auto-hide)
-            print("player controls hidden by BACK:", png().tobytes() != before, flush=True)
+            route("autohide:on", 1)  # preview-only: the mock player never plays, so let the chrome run its own 3.5 s countdown
+            click(*((960, 540) if device == "tv" else (540, 1000))); time.sleep(8)
+            print("player controls hidden:", png().tobytes() != before, flush=True)
             design_snap("player", folder)
         guarded("player", player_hidden)
 

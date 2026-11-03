@@ -33,6 +33,7 @@ build() {
   python3 "$HERE/patch_pairing.py" entry/src/main/ets/pages/Pairing.ets
   python3 "$HERE/patch_route.py" entry/src/main/ets/pages/Index.ets "$CTL"
   python3 "$HERE/patch_state.py" entry/src/main/ets
+  python3 "$HERE/patch_player_autohide.py" entry/src/main/ets/player/PlayerChrome.ets
   if [ "$DEVICE" = tv ]; then # web's ref shows the paused static clip frame behind the controls; the Previewer's video is a black mock
     cp "$HERE/../parity/fixtures/static-clip-2s.png" entry/src/main/resources/rawfile/parity-player-still.png
     python3 "$HERE/patch_player_still.py" entry/src/main/ets/pages/Player.ets
