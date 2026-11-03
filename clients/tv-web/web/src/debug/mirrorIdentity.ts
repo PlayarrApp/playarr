@@ -17,6 +17,7 @@ export type MirrorIdentityStatus =
   | "untrusted_server"
   | "trusted_server_unavailable"
   | "not_allowlisted"
+  | "signed_out"
   | "session_changed"
   | "identity_unavailable";
 
@@ -226,6 +227,24 @@ export function readSelectedSession(storage: Pick<Storage, "getItem">): { userId
   }
 }
 
+/**
+ * The exact empty sign-in shape: no active-profile marker, no saved profiles (absent or an empty array) and no live session.
+ * Anything else (a malformed marker, a foreign profile, a half-written session) is not "signed out" and fails closed elsewhere.
+ */
+export function isSignedOutStorage(storage: Pick<Storage, "getItem">): boolean {
+  try {
+    const marker = storage.getItem(MIRROR_ACTIVE_PROFILE_KEY);
+    const sessions = storage.getItem(MIRROR_PROFILE_SESSIONS_KEY);
+    const live = storage.getItem(LIVE_SESSION_KEY);
+    if (marker !== null || live !== null) return false;
+    if (sessions === null) return true;
+    const parsed = JSON.parse(sessions) as unknown;
+    return Array.isArray(parsed) && parsed.length === 0;
+  } catch {
+    return false;
+  }
+}
+
 export function sameMirrorIdentity(left: MirrorIdentity, right: MirrorIdentity): boolean {
   return Boolean(
     left.status === "ok" && right.status === "ok" &&
@@ -281,6 +300,7 @@ export async function readMirrorIdentity(
     // Report malformed storage without including its contents.
   }
   const selected = withLiveCredentials(selectProfile(markerRaw, sessionsRaw), storage);
+  if (!selected && isSignedOutStorage(storage)) return failed("signed_out", now, { sessionsArray: sessionsRaw !== null });
   if (!selected) return failed("identity_unavailable", now, { markerPresent, sessionsArray });
 
   let trusted: TrustedConfig;

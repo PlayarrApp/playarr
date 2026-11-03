@@ -236,6 +236,26 @@ function probeFontSizes(): unknown[] {
   });
 }
 
+// A parity driver queues one page job at the receiver ({ id, expr }). The page runs the expression right before it renders a frame and posts the
+// result under the job id in that same frame, so the result is always paired with the picture it produced. Debug build only (token-gated).
+interface PageJob { id: string; expr: string }
+async function fetchPageJob(token: string): Promise<PageJob | null> {
+  try {
+    const res = await fetchWithTimeout(`${window.location.origin}/__mirror/job?t=${encodeURIComponent(token)}`, {}, 3000);
+    const job = (await res.json()) as Partial<PageJob>;
+    return typeof job.id === "string" && typeof job.expr === "string" ? { id: job.id, expr: job.expr } : null;
+  } catch {
+    return null;
+  }
+}
+async function runPageJob(job: PageJob): Promise<unknown> {
+  try {
+    return await (0, eval)(job.expr);
+  } catch (err) {
+    return { error: String((err && (err as Error).message) || err).slice(0, 300) };
+  }
+}
+
 export function startDebugMirror(): void {
   const maybeToken = readToken();
   if (!maybeToken) return;
@@ -268,6 +288,7 @@ export function startDebugMirror(): void {
   let stopped = false; // set by the memory guard: no further captures from this page
   const maxFrames = Number(new URLSearchParams(window.location.search).get("mirrorMaxFrames")) || DEFAULT_MAX_FRAMES;
   let captured = 0;
+  let lastJobId = "";
   const reuse = newReuseState();
   let receiverNeedsImage = false; // the receiver had no picture to reuse (it restarted): render and upload the next one
   (window as unknown as { __mirrorRendered?: number }).__mirrorRendered = 0; // renders, as against frames that reused a picture
@@ -360,6 +381,10 @@ export function startDebugMirror(): void {
     busy = true;
     try {
       const started = realNow();
+      const job = await fetchPageJob(token);
+      const newJob = job !== null && job.id !== lastJobId ? job : null;
+      if (newJob) lastJobId = newJob.id;
+      const jobResult = newJob ? await runPageJob(newJob) : null;
       let image: string | null = null;
       let imageUnchanged = false; // the receiver keeps the last picture: an unchanged page posts the state without uploading it again
       let captureError: string | null = null;
@@ -367,7 +392,7 @@ export function startDebugMirror(): void {
       let restoreArtwork: () => void = () => undefined;
       try {
         initialIdentity = await readMirrorIdentity(token);
-        if (initialIdentity.status !== "ok") throw new Error("mirror identity verification failed");
+        if (initialIdentity.status !== "ok" && initialIdentity.status !== "signed_out") throw new Error("mirror identity verification failed");
         // Checked after the identity read so the stop notice is posted as a frame the driver can see.
         const heap = readHeap();
         if (heapGuardTripped(heap, maxHeapMb)) {
@@ -499,8 +524,13 @@ export function startDebugMirror(): void {
         probe: probeFontSizes(),
         image,
         imageUnchanged,
+        ...(newJob ? { requestId: newJob.id, layout: jobResult } : {}),
       };
       let currentIdentity = initialIdentity;
+      if (initialIdentity?.status === "signed_out") {
+        // Re-read after the render: the page must still be signed out (a sign-in during the frame is a changed session, so the frame is dropped).
+        try { currentIdentity = await readMirrorIdentity(token); } catch { currentIdentity = null; }
+      }
       if (initialIdentity?.status === "ok") {
         try {
           const fresh = await readMirrorIdentity(token);
@@ -511,7 +541,7 @@ export function startDebugMirror(): void {
           currentIdentity = null;
         }
       }
-      if (!currentIdentity || currentIdentity.status !== "ok") {
+      if (!currentIdentity || (currentIdentity.status !== "ok" && currentIdentity.status !== "signed_out")) {
         if (currentIdentity) {
           await reportMirrorIdentityStatus(currentIdentity, token).catch(() => undefined);
         }

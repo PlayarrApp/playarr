@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cliFailure, createDriver, launchPath, sameState, suiteRoute, tvHealthProblem, usableFrame } from "./vidaa.mjs";
+import { cliFailure, createDriver, isSignedOutIdentity, launchPath, sameState, suiteRoute, tvHealthProblem, usableFrame } from "./vidaa.mjs";
 
 const trusted = "https://test.example";
 const secrets = { token: "tok", device: { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_SERVER_URL: trusted } };
@@ -96,4 +96,25 @@ test("an unhealthy TV page halts the run: later calls send the TV nothing", asyn
   await assert.rejects(d.key("down"), /unhealthy/);
   await assert.rejects(d.home(), /unhealthy/);
   assert.equal(cli.length, before);
+});
+
+const signedOut = { status: "signed_out", username: null, serverUrl: null, isCurrentCount: 0, sessionChanged: false };
+
+test("a signed-out frame passes the guard only after the driver opted in, and only in the exact empty shape", async () => {
+  assert.equal(isSignedOutIdentity(signedOut), true);
+  assert.equal(isSignedOutIdentity({ ...signedOut, username: "device-test" }), false);
+  assert.equal(isSignedOutIdentity({ ...signedOut, isCurrentCount: 1 }), false);
+  assert.equal(isSignedOutIdentity({ ...signedOut, sessionChanged: true }), false);
+  assert.equal(isSignedOutIdentity({ ...signedOut, serverUrl: trusted }), false);
+  const closed = await harness([frame({ identity: signedOut })]).driver;
+  await assert.rejects(closed.location(), /account guard/);
+  const open = await harness([frame({ identity: signedOut })]).driver;
+  open.setSignedOutAllowed(true);
+  assert.equal(await open.location(), "/");
+  const foreign = await harness([frame({ identity: { ...identity, username: "someone-else" } })]).driver;
+  foreign.setSignedOutAllowed(true);
+  await assert.rejects(foreign.location(), /account guard/);
+  const odd = await harness([frame({ identity: { ...signedOut, username: "x" } })]).driver;
+  odd.setSignedOutAllowed(true);
+  await assert.rejects(odd.location(), /account guard/);
 });

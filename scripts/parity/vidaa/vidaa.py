@@ -494,6 +494,12 @@ def _latest(suffix):
         return r.read()
 
 
+def signed_out_shape(identity):
+    """True only for the exact signed-out projection (no username, no server, no current profile, no session change)."""
+    return (isinstance(identity, dict) and identity.get("status") == "signed_out" and identity.get("username") is None
+            and identity.get("serverUrl") is None and identity.get("isCurrentCount") == 0 and identity.get("sessionChanged") is False)
+
+
 def heartbeat_problem(meta, heartbeat, now_ms):
     """Pure check: why a frame may not be used, or None. Identity freshness comes from the newest heartbeat (at most 5 s old);
     slow frames are fine as long as they were produced by the very account the heartbeat still confirms."""
@@ -502,6 +508,8 @@ def heartbeat_problem(meta, heartbeat, now_ms):
     if heartbeat["receivedAt"] > now_ms / 1000 or now_ms / 1000 - heartbeat["receivedAt"] > 5:
         return "abort: identity heartbeat is stale"
     hb = heartbeat.get("identity")
+    if signed_out_shape(hb) and signed_out_shape(meta.get("identity") if isinstance(meta, dict) else None):
+        return None  # signed-out pages (login, signup) carry no account; the caller refuses them unless it asked for one
     if not isinstance(hb, dict) or hb.get("status") != "ok" or hb.get("sessionChanged") is not False:
         return "abort: authenticated device-test account identity unavailable"
     identity = meta.get("identity") if isinstance(meta, dict) else None
@@ -532,6 +540,8 @@ def require_device_test_account(meta=None, expected_seq=None, require_image=Fals
     problem = heartbeat_problem(meta, heartbeat, now_ms)
     if problem:
         sys.exit(problem)
+    if signed_out_shape(heartbeat["identity"]):
+        return True
     identity = heartbeat["identity"]  # the newest verification; the frame's own identity matched it above
     try:
         from urllib.parse import urlparse

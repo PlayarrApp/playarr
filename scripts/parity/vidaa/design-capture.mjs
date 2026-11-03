@@ -57,18 +57,53 @@ async function fixtures() {
   return { playlistId: list[0].id, artistId: artist?.id, mediaFileId: film.media_file_id };
 }
 
+/** Page expression for the player: hold the clip paused on its 2.000 s frame (seek while paused, never play-then-pause), wait until the seek bar shows it,
+ * then either keep the controls (player-controls) or close them the way the app does for Back (Backspace, keyCode 8: player hides the overlay first). Ported from PR 661. */
+const pinPlayer = (hideControls) => `(async function () {
+  var wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+  var v = document.querySelector("video");
+  if (!v) return { held: false, why: "no video" };
+  for (var i = 0; i < 80 && v.readyState < 2; i++) await wait(500);
+  var ctl = function () { var c = document.querySelector(".player-controls"); return !!c && !c.classList.contains("is-hidden"); };
+  var held = 0, state = null;
+  for (var round = 0; round < 12 && held < 2; round++) {
+    v.pause();
+    if (Math.abs(v.currentTime - 2) > 0.0005) await new Promise(function (res) { v.addEventListener("seeked", res, { once: true }); v.currentTime = 2; setTimeout(res, 8000); });
+    v.pause();
+    if (v.requestVideoFrameCallback) await new Promise(function (res) { v.requestVideoFrameCallback(function () { res(); }); setTimeout(res, 3000); });
+    var fill = document.querySelector(".player-seek-progress");
+    var synced = function () { return !!fill && Math.abs(parseFloat(fill.style.width) - 100 * v.currentTime / v.duration) < 0.15; };
+    for (var k = 0; k < 10 && !synced(); k++) { v.dispatchEvent(new Event("timeupdate")); await wait(400); }
+    state = { paused: v.paused, t: Math.round(v.currentTime * 1000) / 1000, synced: synced(), controls: ctl() };
+    held = state.paused && Math.abs(v.currentTime - 2) < 0.001 && state.synced && state.controls ? held + 1 : 0;
+    await wait(700);
+  }
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  if (held >= 2 && ${hideControls ? "true" : "false"}) {
+    var init = { key: "Backspace", code: "Backspace", keyCode: 8, which: 8, bubbles: true, cancelable: true };
+    var target = document.activeElement || document.body;
+    target.dispatchEvent(new KeyboardEvent("keydown", init)); target.dispatchEvent(new KeyboardEvent("keyup", init));
+    for (var h = 0; h < 10 && ctl(); h++) await wait(300);
+    await wait(600);
+    state = { paused: v.paused, t: Math.round(v.currentTime * 1000) / 1000, synced: synced(), controls: ctl(), route: location.pathname };
+  }
+  return { held: held >= 2, hideControls: ${hideControls ? "true" : "false"}, state: state };
+})()`;
+
 const KEYS = (id) => suite.screens.find((s) => s.id === id)?.keys ?? [];
 /** Per-id route and key steps. Throws {absent} for screens the mirror cannot show. */
 function plan(s, fx) {
   if (s.absent) return { absent: s.absent };
-  if (s.kind === "signedOut") return { absent: `signed-out page: the debug-mirror receiver (scripts/vidaa/receiver.py identity_rejection) answers 403 device_test_account_guard to every frame whose page has no allowlisted parity identity, and the saved sign-in cannot be cleared through the CLI, so the TV mirror never produces a frame of ${s.route}` };
+  // Signed-out pages: the receiver's /__mirror/signedout page empties the TV page's saved sign-in (storage only; the account itself is untouched) and opens the route.
+  // The driver accepts only the exact signed-out frame while this screen is captured; the run signs the parity account back in afterwards (resignIn).
+  if (s.kind === "signedOut") return { route: `/__mirror/signedout?next=${encodeURIComponent(s.route)}`, signedOut: true };
   if (s.id === "search--keyboard") return { absent: "the TV search field opens the operating system's on-screen keyboard; it is not part of the page, so the debug mirror (which renders the page DOM) cannot show it" };
   let route = s.open === "suite" ? suite.screens.find((x) => x.id === s.id).open : s.route;
   if (s.id === "music-detail") route = `/music/${fx.artistId}`;
   if (s.id === "playlist-detail") route = `/playlists?playlist=${fx.playlistId}`;
   if (s.id === "search-results") route = "/search?q=the";
   if (s.id === "actions") return { route: suite.screens.find((x) => x.id === "film-detail").open, long: true, heroAction: true };
-  if (s.id === "player" || s.id === "player-controls") return { route: `/player/${fx.mediaFileId}`, player: true, controls: s.controls };
+  if (s.id === "player" || s.id === "player-controls") return { route: `/player/${fx.mediaFileId}?mirrorAlwaysRender=1`, player: true, controls: s.controls };
   if (s.id === "home--focus-second-rail") return { route: "/", keys: ["down"] };
   if (s.id === "profiles--add") return { route: "/profiles", findAdd: true };
   return { route, heroAction: /^\/(?:movies|series)\/[^/]+\/?$/.test(route) };
@@ -88,7 +123,20 @@ mkdirSync(out, { recursive: true });
 async function one(s, theme, file) {
   const p = plan(s, fx);
   if (p.absent) { manifest.screens[s.id] = { dark: null, light: null, absent: p.absent }; return "absent"; }
+  driver.setSignedOutAllowed(!!p.signedOut);
   await driver.route(p.route);
+  if (p.player) {
+    // The route carries mirrorAlwaysRender so the frame that follows the pin is rendered afresh, never the picture of the ended clip.
+    const { result, png } = await driver.pageJob(pinPlayer(!p.controls), { png: true });
+    const st = result?.state;
+    const ok = result?.held === true && st?.paused === true && Math.abs(st.t - 2) < 0.001 && st.controls === !!p.controls && (p.controls || /^\/player\//.test(st.route ?? ""));
+    if (!ok) throw new Error(`player pin failed: ${JSON.stringify(result).slice(0, 200)}`);
+    writeFileSync(file, png);
+    if (png.readUInt32BE(16) !== 1920 || png.readUInt32BE(20) !== 1080) throw new Error("player frame is not 1920x1080");
+    manifest.screens[s.id] = { ...(manifest.screens[s.id] ?? {}), [theme]: `${theme}/${s.id}.png` };
+    delete manifest.screens[s.id].absent;
+    return "ok";
+  }
   if (p.findAdd) {
     for (let i = 0; i < 10; i++) { const f = await driver.focused(); if (/add/i.test(f?.label ?? "")) break; await driver.key("right"); }
     const f = await driver.focused();
@@ -115,6 +163,14 @@ async function one(s, theme, file) {
   return "ok";
 }
 
+/** Sign the parity account back in (receiver seed page through the broker CLI), then prove a normal frame passes the full account guard. */
+async function resignIn() {
+  driver.setSignedOutAllowed(false);
+  execFileSync(cli, ["open-debug", "--seed", "--path", "/", "--wait", "8"], { encoding: "utf8", timeout: 120000, stdio: ["ignore", "pipe", "pipe"] });
+  await driver.home(); // settled() runs the normal guard: throws unless the frame carries the allowlisted parity identity
+  await driver.location();
+  console.log("parity account signed back in; normal frame passed the guard");
+}
 let done = 0;
 await driver.start({ theme: themes[0] });
 for (const theme of themes) {
@@ -138,6 +194,14 @@ for (const theme of themes) {
     done++;
     console.log(`${result} ${theme} ${s.id}`);
     save();
+    if (plan(s, fx).signedOut) {
+      const next = screens[screens.indexOf(s) + 1];
+      if (!next || !plan(next, fx).signedOut) {
+        if (result !== "ok" && result !== "absent") console.log("signed-out capture failed; signing the parity account back in before anything else");
+        await resignIn();
+        await sleep(30000); tvState();
+      }
+    }
   }
 }
 console.log("captured");

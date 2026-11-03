@@ -32,6 +32,12 @@ export function launchPath(route, { theme, fixedNow }) {
   return `${route}${route.includes("?") ? "&" : "?"}${flags.join("&")}`;
 }
 
+/** The exact signed-out projection the debug page reports when its storage holds no profile marker, no saved profile and no session. */
+export function isSignedOutIdentity(identity) {
+  return !!identity && identity.status === "signed_out" && identity.username === null && identity.serverUrl === null &&
+    identity.isCurrentCount === 0 && identity.sessionChanged === false;
+}
+
 /** A frame is usable when it is newer than `since` (epoch seconds), has an image and no capture error. */
 export function usableFrame(frame, since) {
   return !!frame && frame.hasImage === true && !frame.captureError && Number(frame.receivedAt) > since;
@@ -90,9 +96,11 @@ export async function createDriver({
   let fixedNow = env.PLAYARR_VIDAA_FIXED_NOW ?? null; // set when the suite runs unpinned (PARITY_STABLE=0) so calendar screens still use the reference clock
   let route = "/";
   let halted = null;
+  let jobSeq = 0;
   const assertNotHalted = () => { if (halted) throw new Error(halted); };
 
-  const guardFrame = (frame) => assertDeviceTestIdentity({ identity: frame.identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
+  let signedOutAllowed = false; // opt-in (setSignedOutAllowed): only the exact signed-out shape passes, any other account is still refused
+  const guardFrame = (frame) => signedOutAllowed && isSignedOutIdentity(frame.identity) || assertDeviceTestIdentity({ identity: frame.identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
   const latest = async () => json(url("latest.json"));
 
   // Waits for a frame produced after `since` whose state is unchanged across two distinct frames, so a key's effect has landed. A frame's
@@ -142,6 +150,7 @@ export async function createDriver({
       runCli(["state"]); // fails when the TV or the remote service is unreachable
     },
     async stop() {},
+    setSignedOutAllowed(on) { signedOutAllowed = !!on; },
     async setTheme(t) {
       if (t !== "dark" && t !== "light") throw new Error(`unknown theme ${t}`);
       theme = t;
@@ -163,6 +172,25 @@ export async function createDriver({
       const f = (await settled(now() - 30)).focus;
       if (!f) return null;
       return { label: (f.label || f.text || f.selector || "").slice(0, 80), position: f.position ?? null };
+    },
+    /** Runs a page expression through the receiver's job channel and returns the frame that carries its result (`layout`) and, when asked, that frame's PNG.
+     * The page runs the expression right before it renders the frame, so the picture shows the page after the expression (design-capture player pin). */
+    async pageJob(expr, { png = false } = {}) {
+      assertNotHalted();
+      const id = `d${Date.now().toString(36)}-${++jobSeq}`;
+      const res = await fetch(url("job"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, expr }), signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`receiver refused the job (${res.status})`);
+      const end = now() + settleTimeoutMs / 1000 + 60;
+      while (now() < end) {
+        const frame = await json(`${url("frame.json")}&id=${id}`);
+        if (frame?.requestId === id) {
+          guardFrame(frame);
+          if (frame.captureError || (png && frame.hasImage !== true)) throw new Error(`job frame unusable: ${String(frame.captureError ?? "no image").slice(0, 80)}`);
+          return { frame, result: frame.layout, png: png ? await buffer(`${url("frame.png")}&id=${id}`) : null };
+        }
+        await delay(1200);
+      }
+      throw new Error("VIDAA page did not answer the page job in time");
     },
     async screenshot(file) {
       const first = await settled(now() - 30);

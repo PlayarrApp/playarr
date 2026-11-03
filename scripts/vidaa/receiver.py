@@ -6,7 +6,7 @@ Serves the debug build (static, SPA fallback) and accepts frames. Frame endpoint
 anything older than MAX_AGE_S. Never prints the token.
 Run: MIRROR_DIST=<dist-debug-mirror> MIRROR_RECOVERY_DATA=<scratch dir> [MIRROR_PORT=18742] python3 -I receiver.py
 """
-import base64, json, mimetypes, os, re, sys, threading, time
+import base64, json, urllib.parse, mimetypes, os, re, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
@@ -70,6 +70,20 @@ def seed_page(secrets):
             "const n=new URLSearchParams(location.search).get('next')||'/';location.replace(/^\\/(?!\\/)/.test(n)?n:'/');</script>" % json.dumps(data)).encode()
 
 
+JOB = {}  # the page job a driver queued: {"id", "expr"}; the page runs it before its next frame and posts the result under the same id
+def signed_out_page(secrets, query):
+    """HTML that empties the TV page's saved sign-in (storage only, nothing on the server is touched: the account stays valid and a normal
+    `open-debug --seed` signs it back in), keeps the static parity server as the API base, then opens `next` with the remaining launch flags."""
+    nxt = query.get("next", ["/login"])[0]
+    if not re.fullmatch(r"/[A-Za-z0-9_./?=&%-]*", nxt) or nxt.startswith("//"):
+        return None
+    rest = "&".join("%s=%s" % (k, urllib.parse.quote(v, safe="")) for k, vs in query.items() if k not in ("t", "next") for v in vs)
+    dest = nxt + (("&" if "?" in nxt else "?") + rest if rest else "")
+    base = secrets["PLAYARR_DEVICE_TEST_SERVER_URL"].rstrip("/")
+    return ("<!doctype html><meta charset=utf-8><script>localStorage.clear();sessionStorage.clear();"
+            "localStorage.setItem('playarr:apiBaseUrl',%s);location.replace(%s);</script>" % (json.dumps(base), json.dumps(dest))).encode()
+
+
 lock = threading.Lock()
 STATS_LOCK = threading.Lock()
 STATS = {}
@@ -96,11 +110,29 @@ def stats_snapshot():
         return dict(STATS)
 
 
+def signed_out_identity(identity, now_ms):
+    """True only for the exact signed-out projection the debug page reports when its storage holds no profile marker, no saved profile and no
+    session: no username, no server, no current profile, no session change, and a fresh timestamp. Any other shape is not signed out."""
+    if not isinstance(identity, dict) or identity.get("status") != "signed_out":
+        return False
+    checked = identity.get("checkedAt")
+    return (
+        identity.get("username") is None
+        and identity.get("serverUrl") is None
+        and identity.get("isCurrentCount") == 0
+        and identity.get("sessionChanged") is False
+        and isinstance(checked, (int, float)) and not isinstance(checked, bool)
+        and checked <= now_ms and now_ms - checked <= 5000
+    )
+
+
 def identity_rejection(identity, secrets, now_ms=None):
     """Return a fixed diagnostic category using the same fail-closed identity policy."""
     now_ms = int(time.time() * 1000) if now_ms is None else now_ms
     if not isinstance(identity, dict):
         return "identity_missing"
+    if identity.get("status") == "signed_out":
+        return "accepted" if signed_out_identity(identity, now_ms) else "signed_out_shape_invalid"
     if identity.get("status") != "ok":
         status = identity.get("status")
         return status if status in {
@@ -136,6 +168,8 @@ def identity_rejection(identity, secrets, now_ms=None):
 def identity_allowed(identity, secrets, now_ms=None):
     """Pure fail-closed validator for the authenticated profile projection."""
     now_ms = int(time.time() * 1000) if now_ms is None else now_ms
+    if isinstance(identity, dict) and identity.get("status") == "signed_out":
+        return signed_out_identity(identity, now_ms)
     allow = {secrets.get(k, "").strip() for k in (
         "PLAYARR_DEVICE_TEST_USERNAME", "PLAYARR_DEVICE_TEST_DPAD_USERNAME")}
     allow.discard("")
@@ -228,6 +262,22 @@ class H(BaseHTTPRequestHandler):
             with STATS_LOCK:
                 HEARTBEAT = {"identity": keep, "receivedAt": time.time()}
             count_stat("heartbeat_accepted")
+            return self._ok(204)
+        if path == "/__mirror/job":
+            if not self._authed():
+                return self._ok(403, b'{"error":"token"}')
+            n = int(self.headers.get("Content-Length", "0"))
+            if n <= 0 or n > 262_144:
+                return self._ok(413, b"{}")
+            try:
+                data = json.loads(self.rfile.read(n))
+            except ValueError:
+                return self._ok(400, b"{}")
+            if not isinstance(data, dict) or not isinstance(data.get("id"), str) or not isinstance(data.get("expr"), str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", data["id"]):
+                return self._ok(400, b'{"error":"invalid_job"}')
+            global JOB
+            with STATS_LOCK:
+                JOB = {"id": data["id"], "expr": data["expr"]}
             return self._ok(204)
         if path == "/__mirror/identity-status":
             if not self._authed():
@@ -377,9 +427,23 @@ class H(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         if u.path == "/__mirror/recovery.js":
             return self._ok(200, RECOVERY_JS.encode(), "application/javascript")
+        if u.path == "/__mirror/signedout":
+            # Test tooling for the static parity server only (same gate as /__mirror/seed). The launch URL carries the token as mirrorToken.
+            q = parse_qs(u.query)
+            if q.get("mirrorToken", [""])[0] != TOKEN:
+                return self._ok(403, b'{"error":"token"}')
+            sec = load_secrets()
+            if sec.get("PLAYARR_DEVICE_TEST_SERVER_URL") != os.environ.get("PARITY_SERVER_URL", "").rstrip("/") or not os.environ.get("PARITY_SERVER_URL"):
+                return self._ok(503, b'{"error":"static_server_not_configured"}')
+            page = signed_out_page(sec, q)
+            return self._ok(200, page, "text/html") if page else self._ok(400, b'{"error":"invalid_next"}')
         if u.path.startswith("/__mirror/"):
             if not self._authed():
                 return self._ok(403, b'{"error":"token"}')
+            if u.path == "/__mirror/job":
+                with STATS_LOCK:
+                    job = dict(JOB)
+                return self._ok(200, json.dumps(job).encode())
             if u.path == "/__mirror/heartbeat.json":
                 with STATS_LOCK:
                     hb = dict(HEARTBEAT)
@@ -423,6 +487,23 @@ class H(BaseHTTPRequestHandler):
                     RECOVERY_CODE_AT = 0
                 return self._ok(200, json.dumps({"code": code}).encode())
             metas = sorted(FRAMES.glob("frame-*.json"))
+            if u.path in ("/__mirror/frame.json", "/__mirror/frame.png"):
+                # The frame a page job produced, found by its request id (newest first), so a result is never paired with another frame's picture.
+                want = parse_qs(u.query).get("id", [""])[0]
+                for m in reversed(metas):
+                    try:
+                        meta = json.loads(m.read_bytes())
+                    except ValueError:
+                        continue
+                    if want and meta.get("requestId") == want:
+                        if u.path.endswith(".json"):
+                            return self._ok(200, json.dumps(meta).encode())
+                        j = m.with_suffix(".jpg")
+                        if not j.exists():
+                            break
+                        b = j.read_bytes()
+                        return self._ok(200, b, "image/png" if b[:4] == b"\x89PNG" else "image/jpeg")
+                return self._ok(404, b"{}")
             if u.path == "/__mirror/latest.json":
                 return self._ok(200, metas[-1].read_bytes() if metas else b"{}")
             if u.path == "/__mirror/latest.jpg":
