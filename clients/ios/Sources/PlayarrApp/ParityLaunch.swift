@@ -47,7 +47,11 @@ enum ParityLaunch {
         }
     }
     /// Design report routes `login` and `signup` show the signed-out sign-in screen (and its account sheet) without signing in.
-    static var signedOutScreen: Bool { screen == "login" || screen == "signup" }
+    static var signedOutScreen: Bool { screen == "login" || screen == "signup" || screen == "profiles-add" }
+    /// `profiles-add`: the profile picker's "Add another profile" tile signs out into the sign-in form (server URL, username, password), so the
+    /// design report shows that form (the web `profiles--add` is the same form with the server field ringed).
+    /// `search-keyboard`: Search with its field focused, so the software keyboard shows.
+    static var focusesSearchField: Bool { screen == "search-keyboard" }
     /// `--playarr-parity-route playlist-detail` opens the first playlist from the Playlists screen.
     static var opensFirstPlaylist: Bool { screen == "playlist-detail" }
     /// `home-scrolled:<card>`: Home with the first rail scrolled so that card is at the leading edge.

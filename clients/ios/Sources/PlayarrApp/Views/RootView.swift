@@ -408,7 +408,7 @@ private struct AuthenticatedPlayarrShell: View {
             case "sites": _selected = State(initialValue: .library(.site))
             case "playlists", "playlist-detail": _selected = State(initialValue: .playlists)
             case "series": _selected = State(initialValue: .library(.series))
-            case "search": _selected = State(initialValue: .search)
+            case "search", "search-keyboard": _selected = State(initialValue: .search)
             case "calendar": _selected = State(initialValue: .calendar)
             case "settings": _selected = State(initialValue: .settings)
             case "downloads": _selected = State(initialValue: .downloads)

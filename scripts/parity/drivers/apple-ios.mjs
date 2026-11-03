@@ -305,6 +305,8 @@ export async function createDriver() {
       }
     },
     async start() {
+      // Design report search-keyboard: no hardware keyboard attached, so the software keyboard is drawn (a host setting of the Simulator app; harmless when it is not running).
+      try { run("defaults", ["write", "com.apple.iphonesimulator", "ConnectHardwareKeyboard", "-bool", "false"]); } catch { /* optional */ }
       run("xcrun", ["simctl", "status_bar", udid, "override", "--time", "9:41", "--batteryState", "charged", "--batteryLevel", "100", "--cellularMode", "active", "--cellularBars", "4", "--wifiBars", "3"]);
       if (device !== "ipad") await resetProgressOnce([...new Set([...(suite.performance ?? []).map((p) => p.file), ...Object.values(suite.downloadMedia ?? {}).map((m) => m.file)])]);
       await launch("home");

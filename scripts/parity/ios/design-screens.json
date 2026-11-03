@@ -11,6 +11,8 @@
     "requests": { "native": "requests" },
     "playlists": { "native": "playlists" },
     "playlist-detail": { "native": "playlist-detail" },
+    "search--keyboard": { "native": "search-keyboard" },
+    "profiles--add": { "native": "profiles-add", "signedOut": true },
     "player": { "native": "player-hidden:movie:{fixture}", "play": true },
     "settings-appearance": { "native": "settings:appearance" },
     "settings-profile-avatar": { "native": "settings:avatar" },
