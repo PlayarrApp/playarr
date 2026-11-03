@@ -225,6 +225,17 @@ struct TVHomeView: View {
                 requestStageFocus(request)
             }
         }
+        // Design report (`home-rail2`): once the rails have settled, move focus to the second rail's first card.
+        .task {
+            guard startRail > 0, let target = firstFocus else { return }
+            try? await Task.sleep(for: .milliseconds(3500))
+            guard !Task.isCancelled else { return }
+            #if os(macOS)
+            MacFocusEngine.shared.focusTarget(parityID: target.workID.uuidString, rail: startRail, index: 0, inActiveLayer: 0) { true }
+            #else
+            focusedCard = target
+            #endif
+        }
         #if DEBUG && os(macOS)
         .onChange(of: focusedCard) { previous, current in
             reportMacHomeFocusChange(from: previous, to: current, rails: rails)
