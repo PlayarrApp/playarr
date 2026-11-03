@@ -209,6 +209,9 @@ capture)
       "login-qr|fixture:device-code-pairing")
     token && ACCESS_TOKEN=$ACCESS_TOKEN python3 "$TRUSTED/scripts/apple-wall/seed-playlist.py" >&2 || log "playlist seed failed"
     designs+=("playlist-detail|playlist-detail")
+    film=$(node --input-type=module -e 'import(process.argv[1]).then((m) => console.log(m.MOVIES[0].title))' "$SRC/scripts/parity/static/catalogue.mjs" 2>/dev/null || true)
+    [[ -z $film ]] || designs+=("player-controls|player:$film" "player|player:$film:hidden")
+    [[ $DEVICE == macos ]] && designs+=("settings|settings") # the suite's key path ends on Home on macOS
     [[ -z $artist ]] || designs+=("music-detail|detail:artist:$artist")
     [[ $DEVICE == tvos ]] || designs+=("settings-home|settings:home") # tvOS hides Customise Home (TVSettingsView.visibleSections)
     [[ $DEVICE == macos ]] || designs+=("settings-request-latency|settings:latency") # macOS hides Request latency

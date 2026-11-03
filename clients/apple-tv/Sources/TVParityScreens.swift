@@ -147,6 +147,7 @@ extension TVParityLaunch {
     static var livePlayer: (title: String, menuOpen: Bool)? {
         guard let route, route.hasPrefix("player:") else { return nil }
         var rest = String(route.dropFirst("player:".count))
+        if rest.hasSuffix(":hidden") { rest = String(rest.dropLast(":hidden".count)) }
         var menu = false
         if rest.hasSuffix(":quality") {
             menu = true
@@ -154,6 +155,9 @@ extension TVParityLaunch {
         }
         return (rest, menu)
     }
+
+    /// `player:<title>:hidden`: the paused player with its controls hidden (design report).
+    static var playerChromeHidden: Bool { route?.hasSuffix(":hidden") == true && route?.hasPrefix("player:") == true }
 
     static var liveQuery: String? {
         guard let route, route.hasPrefix("search:") else { return nil }

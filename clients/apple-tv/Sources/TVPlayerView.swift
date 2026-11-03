@@ -64,6 +64,7 @@ struct TVPlayerView: View {
             ZStack(alignment: .topLeading) {
                 Color.black
                 parityFrame
+                if !TVParityLaunch.playerChromeHidden {
                 TVPlayerChrome(
                     state: TVPlayerChromeState(
                         position: parity.position,
@@ -76,6 +77,7 @@ struct TVPlayerView: View {
                     frozen: true,
                     menuBackdrop: AnyView(parityFrame)
                 )
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .ignoresSafeArea()
