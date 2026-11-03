@@ -368,10 +368,18 @@ def design_routes(folder, floor):
     if not SKIP_PLAYER:  # the Previewer mocks AVPlayer: whatever the video area shows is what the app draws; the chrome has auto-hidden after 3.5 s
         def player_hidden():
             route(configured_player_route(), 20); settle()
-            before = png().tobytes()
+            def strip(im):  # the bottom quarter holds the transport controls; the centre spinner is excluded on purpose
+                return im.crop((0, im.height * 3 // 4, im.width, im.height)).tobytes()
+            before = strip(png())
             route("autohide:on", 1)  # preview-only: the mock player never plays, so let the chrome run its own 3.5 s countdown
-            click(*((960, 540) if device == "tv" else (540, 1000))); time.sleep(8)
-            print("player controls hidden:", png().tobytes() != before, flush=True)
+            click(*((960, 540) if device == "tv" else (540, 1000)))
+            hidden = False
+            for _ in range(5):  # re-check the controls strip every 6 s; a late countdown restart is waited out, never faked
+                time.sleep(6)
+                if strip(png()) != before:
+                    hidden = True
+                    break
+            print("player controls hidden:", hidden, flush=True)
             design_snap("player", folder)
         guarded("player", player_hidden)
 
