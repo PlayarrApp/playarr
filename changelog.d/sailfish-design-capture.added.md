@@ -1,0 +1,1 @@
+- Sailfish design report capture: driver navigation for every screen the app has, playlist fixture seeding and a manifest writer (parity scripts only, no app change).
