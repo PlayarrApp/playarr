@@ -106,13 +106,13 @@ extension TVParityLaunch {
     static var liveTab: TVNavTab? {
         guard let route else { return nil }
         switch route.split(separator: ":", maxSplits: 1).first.map(String.init) ?? route {
-        case "home", "home-scrolled": return .home
+        case "home", "home-scrolled", "home-rail2": return .home
         case "movies": return .movies
         case "series": return .series
         case "music": return .music
         case "playlists", "playlist-detail": return .playlists
         case "settings": return .settings
-        case "search": return .search
+        case "search", "search-keyboard": return .search
         case "calendar": return .calendar
         case "downloads": return .downloads
         case "watchlist": return .watchlist
@@ -158,6 +158,15 @@ extension TVParityLaunch {
 
     /// `player:<title>:hidden`: the paused player with its controls hidden (design report).
     static var playerChromeHidden: Bool { route?.hasSuffix(":hidden") == true && route?.hasPrefix("player:") == true }
+
+    /// `home-rail2` (design report): Home with the second rail focused instead of the first.
+    static var focusedRail: Int { route == "home-rail2" ? 1 : 0 }
+
+    /// `search-keyboard` (design report): Search with the real text field focused, so the system keyboard can show.
+    static var searchKeyboard: Bool { route == "search-keyboard" }
+
+    /// `profiles-add` (design report): Who's watching with the Add tile focused.
+    static var profilesAdd: Bool { route == "profiles-add" }
 
     static var liveQuery: String? {
         guard let route, route.hasPrefix("search:") else { return nil }

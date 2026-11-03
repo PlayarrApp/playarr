@@ -84,7 +84,7 @@ struct TVRootView: View {
                 TVPlayerView(mediaFileID: file, title: "Parity playback", apiClient: environment.apiClient)
             } else if TVParityLaunch.livePlayer != nil {
                 TVParityLivePlayerView()
-            } else if TVParityLaunch.route == "profiles" {
+            } else if TVParityLaunch.route == "profiles" || TVParityLaunch.profilesAdd {
                 TVProfilesView(onLinkTV: {}, onManual: {})
             } else if TVParityLaunch.isLive {
                 signedInShell
@@ -1275,6 +1275,7 @@ struct TVProfilesView: View {
         let list = await environment.loadProfiles()
         profiles = list
         isLoading = false
+        if TVParityLaunch.profilesAdd { selectedID = "add"; focusedTarget = .add; return }
         if list.isEmpty {
             selectedID = "add"
             focusedTarget = .add

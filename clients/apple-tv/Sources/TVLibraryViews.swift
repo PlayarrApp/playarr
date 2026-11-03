@@ -675,7 +675,7 @@ struct TVHomeView: View {
     private func railCards(_ works: [Work], railIndex: Int, top: CGFloat, x0: CGFloat, cardPitch: CGFloat) -> some View {
         let scroll = railIndex == 0 ? TVParityLaunch.homeScroll : nil
         let shift = scroll?.offset ?? 0
-        let focusIndex = railIndex == 0 ? (scroll?.cards ?? 0) : -1
+        let focusIndex = railIndex == TVParityLaunch.focusedRail ? (scroll?.cards ?? 0) : -1
         let cards = ZStack(alignment: .topLeading) {
             ForEach(Array(works.enumerated()), id: \.element.id) { index, work in
                 let selected = index == focusIndex
@@ -709,7 +709,8 @@ struct TVHomeView: View {
 
     /// The hero follows focus: the first card of the first rail, or the focused one in the scrolled capture.
     private static func liveHero(_ viewModel: TVHomeViewModel) -> Work? {
-        guard let first = liveRailDefinitions(viewModel).first?.works else { return nil }
+        let rails = liveRailDefinitions(viewModel)
+        guard let first = (rails.indices.contains(TVParityLaunch.focusedRail) ? rails[TVParityLaunch.focusedRail] : rails.first)?.works else { return nil }
         let index = TVParityLaunch.homeScroll?.cards ?? 0
         return first.indices.contains(index) ? first[index] : first.first
     }
@@ -1242,7 +1243,7 @@ struct TVSearchView: View {
     #else
     @FocusState private var focusedWorkID: UUID?
     #endif
-    private var frozen: Bool { TVParityLaunch.frozen }
+    private var frozen: Bool { TVParityLaunch.frozen && !TVParityLaunch.searchKeyboard }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -1263,6 +1264,10 @@ struct TVSearchView: View {
         .task(id: environment.serverURL) {
             let model = TVSearchViewModel(apiClient: environment.apiClient)
             viewModel = model
+            if TVParityLaunch.searchKeyboard {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                searchFieldFocused = true
+            }
             if let query = TVParityLaunch.liveQuery {
                 model.query = query
                 await model.search()
