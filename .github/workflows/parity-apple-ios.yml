@@ -49,6 +49,10 @@ on:
         description: Also capture the design report screens the suite does not list (scripts/parity/ios/design-screens.json) into the artifact
         type: boolean
         default: false
+      design_screens:
+        description: With design, comma-separated design screen ids to capture (default all of scripts/parity/ios/design-screens.json)
+        required: false
+        default: ""
       design_only:
         description: With design, skip the suite screens and capture only the design report screens
         type: boolean
@@ -410,6 +414,7 @@ jobs:
           PLAYARR_USERNAME: ${{ env.PARITY_USERNAME }}
           PLAYARR_PASSWORD: ${{ env.PARITY_PASSWORD }}
           REF: ${{ inputs.ref }}
+          DESIGN_SCREENS: ${{ inputs.design_screens }}
         run: |
           set -euo pipefail
           out="$RUNNER_TEMP/capture"; mkdir -p "$out"
@@ -418,7 +423,7 @@ jobs:
               "$REF" "$(git -C "$SRC" rev-parse HEAD)" "$(date -u +%FT%TZ)" > "$out/build.json"
           fi
           cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
-          node ios/design-capture.mjs --out "$out" --theme "$PART"
+          node ios/design-capture.mjs --out "$out" --theme "$PART" ${DESIGN_SCREENS:+--screens "$DESIGN_SCREENS"}
 
       - name: Upload the results
         if: always()
