@@ -39,7 +39,7 @@ run() { case $1 in
   music) open music 16; expect 'Music' || { echo "wrong screen music"; return 1; }; shot $1 ;;
   search) open search 14; expect 'Search your libraries' || { echo "wrong screen search"; return 1; }; shot $1 ;;
   settings) open settings 14; expect 'Appearance' || { echo "wrong screen settings"; return 1; }; shot $1 ;;
-  profiles) open home 14; tapd 'Open profiles' tap 3; expect 'Who.s watching' || { echo "wrong screen profiles"; return 1; }; shot $1 ;;
+  profiles) open home 14; tapd 'Signed in as.*Open profiles\.' tap 3; expect 'Who.s watching' || { echo "wrong screen profiles"; return 1; }; shot $1 ;;
   calendar-month) open "calendar?query=view%3Dmonth" 18; expect 'Calendar' || return 1; shot $1 ;;
   calendar-week) open "calendar?query=view%3Dweek" 18; expect 'Calendar' || return 1; shot $1 ;;
   calendar-agenda) open "calendar?query=view%3Dagenda" 18; expect 'Calendar' || return 1; shot $1 ;;
@@ -63,8 +63,9 @@ run() { case $1 in
   watchlist) open watchlist 14; expect 'Watchlist|Remove from watchlist' || { echo "wrong screen watchlist"; return 1; }; shot $1 ;;
   requests) open requests 14; expect 'Requests' || { echo "wrong screen requests"; return 1; }; shot $1 ;;
   playlists) open playlists 14; expect 'Playlists' || { echo "wrong screen playlists"; return 1; }; shot $1 ;;
+  playlist-detail) open playlists 14; expect 'Parity Watch Night' || { echo "no playlist"; return 1; }; tapd 'Parity Watch Night' tap 6; expect 'Crimson Tide|Amber|Items|Play' || { echo "wrong screen playlist-detail"; return 1; }; shot $1 ;;
   folders) open folders 14; expect 'Folders' || { echo "wrong screen folders"; return 1; }; shot $1 ;;
-  profiles--add) open home 14; tapd 'Open profiles' tap 3; expect 'Who.s watching' || return 1; tapd 'Sign in Add another profile' tap 4; expect 'Sign in' || { echo "add profile not open"; return 1; }; shot $1 ;;
+  profiles--add) open home 14; tapd 'Signed in as.*Open profiles\.' tap 3; expect 'Who.s watching' || return 1; tapd 'Sign in Add another profile' tap 4; expect 'Sign in' || { echo "add profile not open"; return 1; }; shot $1 ;;
   settings-appearance) settingsPage 'Appearance' 'Choose|Theme|Light|Dark' '' $1 ;;
   settings-profile-avatar) settingsPage 'Profile avatar' 'Avatar|avatar' '' $1 ;;
   settings-language) settingsPage 'Language' 'Language|English' '' $1 ;;
@@ -73,7 +74,7 @@ run() { case $1 in
   settings-profile-lock) settingsPage 'Profile lock' 'PIN|lock' '' $1 ;;
   settings-invite) settingsPage 'Invite a friend' 'Invite|invite' '' $1 ;;
   settings-remote) settingsPage 'Phone remote' 'remote|Remote' '' $1 ;;
-  settings-your-data) settingsPage 'Your data' 'Export|data' '' $1 ;;
+  settings-your-data) settingsPage 'Your data' 'Export|data' 1 $1 ;;
   settings-home) settingsPage 'Customise Home' 'rail|Rail|Home' 1 $1 ;;
   login) adb shell pm clear $pkg >/dev/null; setTheme; adb shell am start -n $pkg/.MainActivity >/dev/null; sleep 12; expect 'Sign in to Playarr|Sign in' || { echo "wrong screen login"; return 1; }; shot $1 ;;
   *) echo "unknown $1" ;;
