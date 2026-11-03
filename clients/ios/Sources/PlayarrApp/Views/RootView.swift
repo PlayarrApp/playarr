@@ -381,6 +381,7 @@ private struct AuthenticatedPlayarrShell: View {
     private let castCoordinator = CastSessionCoordinator.shared
     #if DEBUG
     @State private var demoDetailViewModel: WorkDetailViewModel
+    private static let parityPlaceholderWorkID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
     @State private var parityScreen: ParityScreenLoad?
     private let parityIdentityVerified: Bool
     private var parityReadiness: ParityReadiness { ParityReadiness(identityVerified: parityIdentityVerified, screen: parityScreen) }
@@ -396,7 +397,7 @@ private struct AuthenticatedPlayarrShell: View {
         #if DEBUG
         _demoDetailViewModel = State(initialValue: WorkDetailViewModel(
             apiClient: environment.apiClient,
-            workID: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+            workID: Self.parityPlaceholderWorkID
         ))
         if let screen = ParityLaunch.screen {
             switch screen {
@@ -508,7 +509,9 @@ private struct AuthenticatedPlayarrShell: View {
         .onChange(of: parityReadiness, initial: true) { _, readiness in
             guard ParityLaunch.isActive, readiness.identityVerified else { return }
             ParityLaunch.record("screenContentReady", readiness.contentReady)
-            if readiness.failed { ParityLaunch.record("failure", "requested-screen-load-failed") }
+            // A title route (`detail:artist:@first`) shows the placeholder title, which cannot load, until the catalogue lookup swaps in the real one.
+            let placeholderPending = ParityLaunch.title.map { !$0.hasPrefix("id=") && demoDetailViewModel.workID == Self.parityPlaceholderWorkID } ?? false
+            if readiness.failed, !placeholderPending { ParityLaunch.record("failure", "requested-screen-load-failed") }
         }
         #endif
         .onPreferenceChange(PlayarrChromeHiddenKey.self) { chromeHidden = $0 }
