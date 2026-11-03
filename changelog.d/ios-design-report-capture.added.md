@@ -1,0 +1,1 @@
+- iOS design report capture: the hosted iOS parity workflow can capture every iPhone and iPad screen in both themes (login, sign-up, downloads, sites, artist detail, search results, watchlist, requests, playlists, playlist detail, hidden-controls player and the settings panels), with the screens the app does not have recorded as absent.

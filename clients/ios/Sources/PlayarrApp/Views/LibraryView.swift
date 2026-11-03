@@ -23,6 +23,8 @@ struct LibraryView: View {
     @Environment(\.playarrGoHome) private var goHome
     @AppStorage(PlayarrArtworkPrefs.sizeKey) private var artworkSize = "medium"
     @State private var showingFilters = false
+    /// Focus for the search field; the design report route `search-keyboard` sets it so the software keyboard shows.
+    @FocusState private var searchFocused: Bool
     /// Works this profile has watched or part-watched (an explicit unseen row does not count, as on web); a grid card for any other work shows the web's unseen dot.
     @State private var progressedWorkIDs: Set<UUID>?
     @State private var filtersOpen = false
@@ -85,6 +87,11 @@ struct LibraryView: View {
             #if DEBUG
             // Parity "actions": the first card's actions sheet, which a long press opens.
             if ParityLaunch.screen == "actions", actionsWork == nil { actionsWork = viewModel.works.first }
+            // Design report "search-keyboard": focus the field once the screen has laid out, so the software keyboard shows.
+            if ParityLaunch.focusesSearchField {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                searchFocused = true
+            }
             #endif
         }
         // The drawer is modal: the page behind it is not reachable (VoiceOver included) while it is open.
@@ -169,6 +176,7 @@ struct LibraryView: View {
                             .autocorrectionDisabled()
                             .submitLabel(.search)
                             .accessibilityIdentifier("search-field")
+                            .focused($searchFocused)
                             .onSubmit { Task { await viewModel.load() } }
                             .onChange(of: viewModel.searchText) { _, value in
                                 if value.isEmpty { Task { await viewModel.load() } }
@@ -271,6 +279,7 @@ struct LibraryView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .ignoresSafeArea(edges: .vertical)
+        .ignoresSafeArea(.keyboard) // the keyboard never shifts or scrolls this fixed layout
         .parityFill(WM.page) // the page fill this screen draws first (`WM.page` at the bottom of the stack)
         .webGutter()
     }
@@ -311,6 +320,7 @@ struct LibraryView: View {
                         .autocorrectionDisabled()
                         .submitLabel(.search)
                         .accessibilityIdentifier("search-field")
+                        .focused($searchFocused)
                         .onSubmit { Task { await viewModel.load() } }
                         .onChange(of: viewModel.searchText) { _, value in
                             if value.isEmpty { Task { await viewModel.load() } }
@@ -861,6 +871,7 @@ struct LibraryView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
                     TextField("Search your library", text: $viewModel.searchText)
+                        .focused($searchFocused)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .submitLabel(.search)

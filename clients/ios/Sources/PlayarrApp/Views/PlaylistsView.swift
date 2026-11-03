@@ -95,6 +95,9 @@ struct PlaylistsView: View {
     @State private var deletingPlaylist: Playlist?
     @State private var mutationError: String?
     @State private var submitting = false
+    #if DEBUG
+    @State private var parityOpenedPlaylist: Playlist?
+    #endif
 
     init(apiClient: PlayarrAPIClient, downloadRepository: DownloadRepository) {
         _viewModel = State(initialValue: PlaylistsViewModel(apiClient: apiClient))
@@ -116,9 +119,17 @@ struct PlaylistsView: View {
         }
         .task {
             if case .idle = viewModel.state { await viewModel.load() }
+            #if DEBUG
+            if ParityLaunch.opensFirstPlaylist, parityOpenedPlaylist == nil, let first = viewModel.playlists.first {
+                parityOpenedPlaylist = first
+            }
+            #endif
         }
         #if DEBUG
         .parityScreenLoad(parityLoadState)
+        .navigationDestination(item: $parityOpenedPlaylist) { playlist in
+            PlaylistDetailView(playlist: playlist, apiClient: viewModel.apiClient, downloadRepository: downloadRepository)
+        }
         #endif
         .navigationBarHidden(true)
         .sheet(isPresented: $showingCreate) { playlistEditor }
@@ -153,7 +164,7 @@ struct PlaylistsView: View {
     private var parityLoadState: ParityScreenLoad {
         switch viewModel.state {
         case .idle, .loading: .loading
-        case .loaded: .ready
+        case .loaded: ParityLaunch.opensFirstPlaylist && parityOpenedPlaylist == nil && !viewModel.playlists.isEmpty ? .loading : .ready
         case .failed: .failed
         }
     }

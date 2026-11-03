@@ -45,6 +45,18 @@ on:
         description: Comma-separated parts (dark, light, downloads; playback is out of parity)
         type: string
         default: dark,light
+      design:
+        description: Also capture the design report screens the suite does not list (scripts/parity/ios/design-screens.json) into the artifact
+        type: boolean
+        default: false
+      design_screens:
+        description: With design, comma-separated design screen ids to capture (default all of scripts/parity/ios/design-screens.json)
+        required: false
+        default: ""
+      design_only:
+        description: With design, skip the suite screens and capture only the design report screens
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -357,12 +369,14 @@ jobs:
           FOCUS: ${{ inputs.focus }}
           POSTER: ${{ inputs.poster }}
           MOTION: ${{ inputs.motion }}
+          DESIGN_ONLY: ${{ inputs.design_only }}
         run: |
           set -euo pipefail
           out="$RUNNER_TEMP/capture"; mkdir -p "$out"
           printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s","runner":"github-hosted"}\n' \
             "$REF" "$(git -C "$SRC" rev-parse HEAD)" "$(date -u +%FT%TZ)" > "$out/build.json"
           cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
+          if [[ "$DESIGN_ONLY" == true ]]; then exit 0; fi
           case $PART in
             downloads) only=downloads; themes=dark ;;
             *) only=screens; themes=$PART ;;
@@ -383,6 +397,33 @@ jobs:
               PARITY_FOCUS=$mode node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/focus-$mode" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home,movies,series,music,film-detail,series-detail
             done
           fi
+
+      - name: Design report screens (iOS driver)
+        id: design
+        if: always() && inputs.design && matrix.part != 'downloads'
+        timeout-minutes: 60
+        env:
+          SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          TEST_PASSWORD: ${{ env.PARITY_PASSWORD }}
+          DEVICE_TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          PLAYARR_DEVICE_TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          PARITY_CAPTURE_DETERMINISTIC: "1"
+          PARITY_FIXED_NOW: ${{ inputs.fixed_now }}
+          PLAYARR_SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          PLAYARR_USERNAME: ${{ env.PARITY_USERNAME }}
+          PLAYARR_PASSWORD: ${{ env.PARITY_PASSWORD }}
+          REF: ${{ inputs.ref }}
+          DESIGN_SCREENS: ${{ inputs.design_screens }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/capture"; mkdir -p "$out"
+          if [[ ! -f "$out/build.json" ]]; then
+            printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s","runner":"github-hosted"}\n' \
+              "$REF" "$(git -C "$SRC" rev-parse HEAD)" "$(date -u +%FT%TZ)" > "$out/build.json"
+          fi
+          cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
+          node ios/design-capture.mjs --out "$out" --theme "$PART" ${DESIGN_SCREENS:+--screens "$DESIGN_SCREENS"}
 
       - name: Upload the results
         if: always()

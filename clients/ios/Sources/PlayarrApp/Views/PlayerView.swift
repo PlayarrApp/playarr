@@ -173,7 +173,7 @@ struct PlayerView: View {
             parityPlayerReady = false
             guard ParityLaunch.isPlayerCapture, let viewModel, case .playing = viewModel.loadState,
                   let player = viewModel.avPlayer else { return }
-            controlsVisible = true
+            controlsVisible = ParityLaunch.screen != "player-hidden"
             activeMenu = ParityLaunch.screen == "player-quality" ? .quality : nil
             // Read AVPlayer itself: the view model's cached time may still contain
             // the requested seek target even when AVFoundation has not reached it.

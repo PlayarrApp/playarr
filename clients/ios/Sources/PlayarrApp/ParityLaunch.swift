@@ -39,10 +39,21 @@ enum ParityLaunch {
         switch head {
         case "home-scrolled": return "home"
         case "calendar-month", "calendar-week", "calendar-agenda": return "calendar"
-        case "detail": return parts.count > 1 && parts[1] == "series" ? "detail-series" : "detail-film"
+        case "detail":
+            if parts.count > 1, parts[1] == "series" { return "detail-series" }
+            if parts.count > 1, parts[1] == "artist" { return "detail-artist" }
+            return "detail-film"
         default: return head
         }
     }
+    /// Design report routes `login` and `signup` show the signed-out sign-in screen (and its account sheet) without signing in.
+    static var signedOutScreen: Bool { screen == "login" || screen == "signup" || screen == "profiles-add" }
+    /// `profiles-add`: the profile picker's "Add another profile" tile signs out into the sign-in form (server URL, username, password), so the
+    /// design report shows that form (the web `profiles--add` is the same form with the server field ringed).
+    /// `search-keyboard`: Search with its field focused, so the software keyboard shows.
+    static var focusesSearchField: Bool { screen == "search-keyboard" }
+    /// `--playarr-parity-route playlist-detail` opens the first playlist from the Playlists screen.
+    static var opensFirstPlaylist: Bool { screen == "playlist-detail" }
     /// `home-scrolled:<card>`: Home with the first rail scrolled so that card is at the leading edge.
     static var homeScrollCard: Int? {
         guard parts.first == "home-scrolled" else { return nil }
@@ -98,10 +109,11 @@ enum ParityLaunch {
         didResetAcceptanceState = true
         try? FileManager.default.removeItem(at: acceptanceStateURL)
     }
-    static var isPlayerRoute: Bool { parts.first == "player" || parts.first == "player-quality" || parts.first == "play" }
-    static var isPlayerCapture: Bool { parts.first == "player" || parts.first == "player-quality" }
+    static var isPlayerRoute: Bool { parts.first == "player" || parts.first == "player-quality" || parts.first == "player-hidden" || parts.first == "play" }
+    /// `player-hidden:movie:<title>` is the same capture with the controls faded out (the design report `player` screen).
+    static var isPlayerCapture: Bool { parts.first == "player" || parts.first == "player-quality" || parts.first == "player-hidden" }
     static var title: String? {
-        ["detail", "player", "player-quality"].contains(parts.first ?? "") && parts.count > 2 ? parts[2] : nil
+        ["detail", "player", "player-quality", "player-hidden"].contains(parts.first ?? "") && parts.count > 2 ? parts[2] : nil
     }
     /// `settings:<panel>` opens one settings panel (avatar, language, player, server, lock, invite, remote,
     /// latency or your-data).
