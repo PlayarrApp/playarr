@@ -114,8 +114,38 @@ export async function createDriver() {
   const firstSeries = "pageStack.currentPage.openFirst('series')";
   const section = (n) => [`js:pageStack.currentPage.section='${n}'`];
   const calendar = (m) => [`js:Api.setSetting('cal.mode','${m}')`, ...section("calendar")];
+  // Design-report screens (docs: design-report/SCREENS-ALL.md): [steps, seconds to settle, layout dump]. No layout dump.
+  const push = (page, props = "{}") => `js:pageStack.push('${PAGES}/${page}',${props})`;
+  const settingsSub = (id) => [["wait", ...section("settings"), "wait", push("SettingsSubPage.qml", `{section:'${id}'}`)], 14, false];
+  const findInput = (action) => `js:(function f(i){var c=i.children;for(var k=0;k<c.length;k++){if(c[k].editing!==undefined){${action};return true}if(f(c[k]))return true}return false})(pageStack.currentPage.loaderItem())`;
+  const hidePlayerControls = "js:pageStack.currentPage.parityPositionAcknowledged&&(pageStack.currentPage.controls=false)";
+  const lateHides = [...Array(12).fill("wait"), ...[0, 1, 2, 3].flatMap(() => [hidePlayerControls, "wait"])];
+  const DESIGN = {
+    "login-qr": [["wait", push("LinkPage.qml")], 16, false],
+    "profiles--add": [["wait", push("LinkPage.qml", "{adding:true}")], 16, false],
+    downloads: [["wait", ...section("downloads")], 14, false],
+    watchlist: [["wait", ...section("watchlist")], 14, false],
+    playlists: [["wait", ...section("playlists")], 14, false],
+    requests: [["wait", ...section("settings"), "wait", push("RequestsPage.qml")], 14, false],
+    "playlist-detail": [["wait", ...section("playlists"), "wait", `js:Api.request('GET','/api/v1/playlists',null,function(st,d){if(st===200&&d&&d.length)pageStack.push('${PAGES}/PlaylistPage.qml',{playlist:d[0]})})`], 18, false],
+    "music-detail": [["wait", "js:pageStack.currentPage.openFirst('artist')"], 18, false],
+    "search-results": [["wait", ...section("search"), "wait", findInput("c[k].text='the'")], 16, false],
+    "search--keyboard": [["wait", ...section("search"), "wait", findInput("c[k].editing=true;c[k].forceActiveFocus();Qt.inputMethod.show()")], 16, false],
+    "settings-appearance": settingsSub("appearance"),
+    "settings-profile-avatar": settingsSub("avatar"),
+    "settings-language": settingsSub("language"),
+    "settings-player": settingsSub("player"),
+    "settings-server": settingsSub("server"),
+    "settings-profile-lock": settingsSub("lock"),
+    // Playing source held paused at 2 s (the player-controls hold), then the controls hidden once the layout export of the hold has ended.
+    player: [["wait", `js:pageStack.push('${PAGES}/PlayerPage.qml',{mediaFileId:'${env.PLAYARR_SF_PLAYER_FILE}',title:'Sample media',startMs:0,parityCaptureHold:true})`, ...lateHides], 40, false],
+  };
   // [steps, seconds to settle] for a web route as the suite names it.
   function plan(route, screenId, marker = "ROUTE") {
+    if (DESIGN[screenId]) {
+      if (screenId === "player" && !/^[A-Za-z0-9_-]+$/.test(playerTarget || "")) throw new Error("PLAYARR_SF_PLAYER_FILE must be set to the verified direct-play fixture file ID");
+      return DESIGN[screenId];
+    }
     const [path, q] = route.split("?");
     const view = new URLSearchParams(q ?? "").get("view");
     // The suite's keys long-press the first card in the Movies library, not Home's first card, which follows On deck.
@@ -154,7 +184,7 @@ export async function createDriver() {
       const planned = plan(route, screenId, marker);
       settle = planned[1];
       pendingSettle = settle;
-      pendingLayoutDump = planned[2] !== false;
+      pendingLayoutDump = planned[2] !== false && !env.PLAYARR_SF_NO_LAYOUT;
       return planned[0];
     }, detail);
     // The scroll-to-top step is the last of 12 steps 1.5 s apart (about 21 s after launch).
@@ -162,6 +192,7 @@ export async function createDriver() {
       await waitForPlayerCapture();
       await waitForPlayerLayoutAfterAck();
     }
+    else if (screenId === "player") await waitForPlayerHidden();
     else await sleep((detail ? Math.max(settle, 24) : settle) * 1000);
     // The export hides covered-looking elements one by one on the live screen: no capture until it has ended and shown them again.
     if (pendingLayoutDump && screenId !== "player-controls") await waitForLayoutEnd();
@@ -247,6 +278,19 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
       await sleep(250);
     }
     throw new Error("Sailfish player capture did not emit a fresh layout export after its exact-position acknowledgement");
+  }
+
+  // Design-report player: the hold's acknowledgement, then the controls hidden (player state line with controls 0, paused at 2 s).
+  async function waitForPlayerHidden() {
+    const deadline = Date.now() + 120000;
+    while (Date.now() < deadline) {
+      const lines = readParityLog(ssh, ownedProcess).split(/\r?\n/);
+      const ack = lines.findIndex((l) => l.includes("PARITY|player-capture-ack|2000|2000"));
+      const hidden = ack >= 0 && lines.some((l, i) => i > ack && /PARITY\|player\|2\|2\|[01]\|0\|2000\|2000/.test(l));
+      if (hidden) { await sleep(3000); return; }
+      await sleep(500);
+    }
+    throw new Error("Sailfish design player did not reach paused at 2 s with the controls hidden");
   }
 
   function writeLayout(file) {
@@ -350,7 +394,7 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
       }
       vbox("screenshotpng", file);
       if (!existsSync(file)) throw new Error("capture failed");
-      writeLayout(file);
+      if (!env.PLAYARR_SF_NO_LAYOUT) writeLayout(file);
     },
     // Plays case.file straight in the player and reads the engine position from the app's own log.
     supports: { nowPlaying: true },
