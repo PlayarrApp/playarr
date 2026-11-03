@@ -366,7 +366,13 @@ def design_routes(folder, floor):
 
     guarded("music-detail", music_detail)
     if not SKIP_PLAYER:  # the Previewer mocks AVPlayer: whatever the video area shows is what the app draws; the chrome has auto-hidden after 3.5 s
-        guarded("player", lambda: (route(configured_player_route(), 25), design_snap("player", folder)))
+        def player_hidden():
+            route(configured_player_route(), 20); settle()
+            before = png().tobytes()
+            key("back"); time.sleep(4)  # BACK hides the visible controls (the paused mock player never starts the 3.5 s auto-hide)
+            print("player controls hidden by BACK:", png().tobytes() != before, flush=True)
+            design_snap("player", folder)
+        guarded("player", player_hidden)
 
     # The Pairing page is opened directly (the session is signed in, which only hides it from the normal flow). It holds the QR and the
     # device code, so link and login-qr are two frames of the one page. It runs last; leaving the page cancels its poll.
