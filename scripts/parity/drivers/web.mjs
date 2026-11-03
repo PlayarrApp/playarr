@@ -303,6 +303,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   let avatarSynced = false; // the profile-avatar sync answered for the current document
   let networkFlaps = 0; // requests Chrome aborted because the host's network interfaces changed
   const apiErrors = []; // failing /api/ responses of the current page, named in the error-page failure
+  let allowedApiErrors = []; // design report: API failures a screen legitimately shows (a 403 on an admin-only panel), as regexes on "<status> <path>"
+  const dropAllowedApiErrors = () => { for (let i = apiErrors.length - 1; i >= 0; i -= 1) if (allowedApiErrors.some((re) => re.test(apiErrors[i].message ?? ""))) apiErrors.splice(i, 1); };
   let drainApiErrors = async () => {};
   const ownedDownloads = new Map(); // media files started by this run, keyed to their media metadata
   const detailReadyTimeoutMs = 30000;
@@ -398,6 +400,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       if (capsCanDownload === true) await page.waitForSelector('.app-nav-link[href*="downloads"]', { timeout: 10000 }).catch((e) => { if (e?.name !== "TimeoutError") throw e; }); // never appears when the browser has no download storage: the same in every run
     }
     await drainApiErrors();
+    dropAllowedApiErrors();
     assertNoApiErrors(apiErrors);
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   };
@@ -562,6 +565,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   const waitReady = async ({ screen, phase }) => {
     await guard();
     await drainApiErrors();
+    dropAllowedApiErrors();
     assertWebReady(page.url(), apiErrors);
     const path = appPath(page.url());
     // /profiles sits outside the nav shell, so it has no nav links to wait for.
@@ -909,6 +913,20 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     },
     // The video picture is a codec and scaler difference, not UI (capture-web.mjs hideVideo): hide it so the chrome shows on black.
     async hideVideo() { await guard(); await page.addStyleTag({ content: "video{visibility:hidden!important}" }); await guard(); },
+    // ---- Design-report additions (scripts/parity/capture-design.mjs). Additive: nothing above changes.
+    // Runs fn(page) between two account guards, for steps the contract has no verb for (typing a query, opening a form, reading a link).
+    async withPage(fn) { await guard(); const value = await fn(page); await guard(); return value; },
+    allowApiErrors(patterns = []) { allowedApiErrors = patterns.map((p) => new RegExp(p)); },
+    // Screenshot of whatever is on screen now: no nav-link wait (login, household and 404 sit outside or beside the shell) and no poster wait.
+    async plainShot(file) {
+      await guard();
+      await page.mouse.move(-1, -1);
+      await settle();
+      await guard();
+      writeFileSync(file, await page.screenshot({ animations: "disabled" }));
+    },
+    // Context options a signed-out capture needs so it matches the signed-in ones: viewport, UA, theme, locale, zone, clock, motion off.
+    signedOutOptions() { return { web, viewport, deviceScaleFactor, userAgent: env.PLAYARR_WEB_USER_AGENT ?? (mobile ? MOBILE_UA : UA), colorScheme: theme, locale: pinnedLocale ?? "en-GB", timezoneId: pinnedZone ?? "Asia/Bangkok", mobile, fixedNow, trustedServerUrl, browser }; },
     async route(r, { requireHeroAction = false } = {}) {
       await guard();
       await page.goto(appUrl(r), { waitUntil: "load" });
