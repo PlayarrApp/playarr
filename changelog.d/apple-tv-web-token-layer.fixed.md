@@ -1,0 +1,1 @@
+- Apple TV and macOS: one token layer (`TVWeb`) evaluates the web stylesheet at 1920 x 1080 (clamp, vw, rem, calc, 1/64 px layout units and `color-mix`) and replaces the hand-fitted card geometry, grid pitch, radius, font sizes, weights and details-panel ink; every screen now stacks on the web page's three full-stage containers and the rail panel reports its surface colour.

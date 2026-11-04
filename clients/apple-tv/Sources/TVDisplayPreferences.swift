@@ -59,12 +59,8 @@ final class TVDisplayPreferences {
         didSet { defaults.set(artworkSize.rawValue, forKey: Self.artworkSizeKey) }
     }
 
-    /// Web `--card-w` at 1920x1080: the 1190.4-wide rail minus 156.96 of padding, split into 3 + step columns with
-    /// 25.92 gaps (medium 327.2, small 238.9, large 503.8).
-    var cardWidth: CGFloat {
-        let columns = CGFloat(3 + artworkSize.columnStep)
-        return (1033.44 - (columns - 1) * 25.92) / columns
-    }
+    /// Web `--card-w` at 1920x1080 (`TVWeb.cardWidth`): the rail minus its padding, split into 3 + step columns.
+    var cardWidth: CGFloat { TVWeb.cardWidth(columns: 3 + artworkSize.columnStep) }
 
     var cardColumns: Int { 3 + artworkSize.columnStep }
 
@@ -77,10 +73,7 @@ final class TVDisplayPreferences {
     }
 
     /// Web `--card-w-cover` at 1920x1080: 5 + step columns with 19.2 gaps (2:3 art).
-    var coverCardWidth: CGFloat {
-        let columns = CGFloat(5 + artworkSize.columnStep)
-        return (1033.44 - (columns - 1) * 19.2) / columns
-    }
+    var coverCardWidth: CGFloat { TVWeb.cardWidthCover(columns: 5 + artworkSize.columnStep) }
 
     private static let themeKey = "com.playarr.playarr.tvos.theme"
     private static let languageKey = "com.playarr.playarr.tvos.language"

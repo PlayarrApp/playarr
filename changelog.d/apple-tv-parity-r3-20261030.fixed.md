@@ -1,0 +1,1 @@
+- Apple TV and Mac: the parity capture waits for a settled frame (two identical screenshots) before reading the layout, the tvOS player opens with Play focused, and the Mac player controls are named focus targets.

@@ -529,6 +529,14 @@ jobs:
           grep -Eq 'frames=[1-9]|device ' "$RUNNER_TEMP/vnc-health.txt"
           wait $pid
 
+      # The captures and the suite are allowed to fail so their evidence uploads; the job must still end red, so no run that
+      # failed either is read as a result.
+      - name: Fail the job when the captures or the suite failed
+        if: always() && (steps.capture.outcome == 'failure' || steps.suite.outcome == 'failure')
+        run: |
+          echo "::error::capture=${{ steps.capture.outcome }} suite=${{ steps.suite.outcome }}"
+          exit 1
+
       - name: Join the tailnet (ephemeral, tagged node)
         id: ts
         if: github.event_name == 'workflow_dispatch' && inputs.stream && env.HAVE_TS == 'true'

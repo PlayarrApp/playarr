@@ -24,6 +24,8 @@ struct TVPlayerChromeState {
     var upcoming: [PlaybackQueueEntry] = []
     var currentTitle = ""
     var healthLines: [String] = []
+    /// The icon menu whose panel is open on a parity run (its title), nil when none: the system Menu popup cannot be observed.
+    var panel: String?
 
     var audioLabel: String {
         guard !audioTracks.isEmpty else { return "Audio: Unavailable" }
@@ -72,6 +74,8 @@ struct TVPlayerChrome: View {
     var onClose: () -> Void = {}
     var onTogglePlay: () -> Void = {}
     var onToggleQualityMenu: () -> Void = {}
+    /// Opens an icon menu's panel on a parity run (title, control).
+    var onOpenPanel: (String, TVPlayerControl?) -> Void = { _, _ in }
     var onMinimise: () -> Void = {}
     var onPrevious: () -> Void = {}
     var onNext: () -> Void = {}
@@ -114,11 +118,13 @@ struct TVPlayerChrome: View {
                 transport
                 rightGroup
                 if state.menuOpen { qualityMenu }
+                if let panel = state.panel { iconPanel(panel) }
             }
-            .opacity(controlsVisible ? 1 : 0)
+            .parityOpacity(controlsVisible ? 1 : 0)
+            .parityScrim(Color.black, frame: CGRect(x: 0, y: 561.6, width: 1920, height: 518.4), stops: [(0, 0), (1, 0.82)]) // the scrim drawn above
             .allowsHitTesting(controlsVisible)
         }
-        .animation(.timingCurve(0.25, 0.1, 0.25, 1, duration: 0.24), value: controlsVisible)
+        .parityAnimation(.timingCurve(0.25, 0.1, 0.25, 1, duration: 0.24), value: controlsVisible)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
@@ -148,6 +154,7 @@ struct TVPlayerChrome: View {
             .buttonStyle(TVFocusableCardButtonStyle())
             .focusEffectDisabled()
             .accessibilityLabel("Minimise player")
+            .macPlayerTag("Minimise player")
             .placed(x: 1678, y: 37.8, w: 124, h: 48)
 
             Button(action: onClose) {
@@ -168,6 +175,7 @@ struct TVPlayerChrome: View {
             .focusEffectDisabled()
             .disabled(!controlsVisible) // not .focusable: on a Button it adds a second, inert focus target
             .modifier(TVFocusTag(binding: focus, control: .close))
+            .macPlayerTag("Close player")
             .placed(x: 1814, y: 37.8, w: 48, h: 48)
         }
     }
@@ -182,6 +190,7 @@ struct TVPlayerChrome: View {
         let value = "\(Self.clock(state.position)) of \(Self.clock(state.duration))"
         let body = TVScrubberBody(progress: progress, showsFocus: !frozen)
             .contentShape(Rectangle())
+            .parityFocusTag("Seek") // inside the focusable: isFocused reaches only the descendants of the focus target
             .focusable(controlsVisible)
             .modifier(TVFocusTag(binding: focus, control: .scrubber))
             .parityBox("slider", text: "Seek")
@@ -196,6 +205,9 @@ struct TVPlayerChrome: View {
                     .accessibilityLabel("Seek")
                     .accessibilityValue(value)
             }
+            .disabled(!controlsVisible)
+            .macFocusTarget()
+            .macPlayerTag("Seek", name: "seek")
             .placed(x: 70, y: 914, w: 1780, h: 44)
         #else
         return body
@@ -230,7 +242,7 @@ struct TVPlayerChrome: View {
             .parityFocusTag(name)
     }
 
-    private func icon(_ symbol: String, x: CGFloat, opacity: Double = 0.92, name: String, enabled: Bool = true, action: @escaping () -> Void) -> some View {
+    private func icon(_ symbol: String, x: CGFloat, opacity: Double = 0.92, name: String, enabled: Bool = true, control: TVPlayerControl? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             iconLabel(symbol, opacity: opacity, enabled: enabled, name: name)
         }
@@ -238,20 +250,53 @@ struct TVPlayerChrome: View {
         .focusEffectDisabled()
         .disabled(!enabled)
         .accessibilityLabel(name)
+        .modifier(TVOptionalFocusTag(binding: focus, control: control))
+        .macPlayerTag(name)
         .placed(x: x - 22, y: 958, w: 64, h: 64, alignment: .center)
     }
 
     /// An icon that opens a menu of choices (audio, subtitles, playlist, info).
-    private func iconMenu<Items: View>(_ symbol: String, x: CGFloat, name: String, @ViewBuilder items: () -> Items) -> some View {
-        Menu {
-            items()
-        } label: {
-            iconLabel(symbol, opacity: 0.92, enabled: true, name: name)
+    private func iconMenu<Items: View>(_ symbol: String, x: CGFloat, name: String, control: TVPlayerControl? = nil, @ViewBuilder items: () -> Items) -> some View {
+        iconMenuBody(symbol, name: name, control: control, items: items)
+            .buttonStyle(TVFocusableCardButtonStyle())
+            .focusEffectDisabled()
+            .accessibilityLabel(name)
+            .modifier(TVOptionalFocusTag(binding: focus, control: control))
+            .macPlayerMenuTarget(name, name: control == .audio ? "audio" : nil)
+            .placed(x: x - 22, y: 958, w: 64, h: 64, alignment: .center)
+    }
+
+    /// A parity run opens an app-owned panel (its open state is what the driver reads); playback uses the system Menu.
+    @ViewBuilder
+    private func iconMenuBody<Items: View>(_ symbol: String, name: String, control: TVPlayerControl?, @ViewBuilder items: () -> Items) -> some View {
+        if TVParityLaunch.drivesPlayer {
+            Button { onOpenPanel(name, control) } label: { iconLabel(symbol, opacity: 0.92, enabled: true, name: name) }
+        } else {
+            Menu { items() } label: { iconLabel(symbol, opacity: 0.92, enabled: true, name: name) }
         }
-        .buttonStyle(TVFocusableCardButtonStyle())
-        .focusEffectDisabled()
-        .accessibilityLabel(name)
-        .placed(x: x - 22, y: 958, w: 64, h: 64, alignment: .center)
+    }
+
+    /// The rows an icon menu offers, for the app-owned panel.
+    private func panelRows(_ title: String) -> [String] {
+        if title == state.audioLabel { return state.audioTracks.isEmpty ? ["No audio tracks to choose from"] : state.audioTracks.map(\.displayName) }
+        if title == state.subtitleLabel { return ["Off"] + state.subtitleTracks.map(\.displayName) }
+        if title == state.playlistLabel { return ["Now playing: \(state.currentTitle)"] + state.upcoming.map(\.title) }
+        return state.healthLines
+    }
+
+    private func iconPanel(_ title: String) -> some View {
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color(red: 18 / 255, green: 14 / 255, blue: 17 / 255).opacity(0.9))
+                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.white.opacity(0.08), lineWidth: 1))
+                .placed(x: 1074.8, y: 540, w: 620, h: 408)
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(panelRows(title).enumerated()), id: \.offset) { _, row in
+                    Text(row).font(TVTheme.font(size: 12.48, weight: .bold)).foregroundStyle(Color.white).lineLimit(1)
+                }
+            }
+            .placed(x: 1095.5, y: 560, w: 580, h: 368, alignment: .topLeading)
+        }
     }
 
     private static func clock(_ seconds: Double) -> String {
@@ -279,6 +324,7 @@ struct TVPlayerChrome: View {
             .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
             .disabled(!controlsVisible) // not .focusable: on a Button it adds a second, inert focus target
             .modifier(TVFocusTag(binding: focus, control: .play))
+            .macPlayerTag(state.isPlaying ? "Pause" : "Play", name: "play")
             .placed(x: 147.6, y: 958, w: 64, h: 64)
             icon("forward.end", x: 247.2, name: "Next episode", enabled: state.hasNext, action: onNext)
             HStack(spacing: 0) {
@@ -303,8 +349,11 @@ struct TVPlayerChrome: View {
     }
 
     private var rightGroup: some View {
-        ZStack(alignment: .topLeading) {
-            iconMenu("speaker.wave.2.fill", x: 1245.9, name: state.audioLabel) {
+        // The web TV player has no fullscreen button, so its group ends one 77.6 pt slot (64 + 13.6 gap) further right.
+        let showsFullscreen = onFullscreen != nil && !frozen
+        let shift: CGFloat = showsFullscreen ? 0 : 77.6
+        return ZStack(alignment: .topLeading) {
+            iconMenu("speaker.wave.2.fill", x: 1245.9 + shift, name: state.audioLabel, control: .audio) {
                 if state.audioTracks.isEmpty {
                     Text("No audio tracks to choose from")
                 }
@@ -312,13 +361,13 @@ struct TVPlayerChrome: View {
                     Button((track.id == state.selectedAudioID ? "\u{2713} " : "") + track.displayName) { onSelectAudio(track.id) }
                 }
             }
-            iconMenu("text.rectangle", x: 1323.5, name: state.subtitleLabel) {
+            iconMenu("text.rectangle", x: 1323.5 + shift, name: state.subtitleLabel, control: .subtitles) {
                 Button((state.selectedSubtitleID == nil ? "\u{2713} " : "") + "Off") { onSelectSubtitle(nil) }
                 ForEach(state.subtitleTracks) { track in
                     Button((track.id == state.selectedSubtitleID ? "\u{2713} " : "") + track.displayName) { onSelectSubtitle(track.id) }
                 }
             }
-            iconMenu("text.line.last.and.arrowtriangle.forward", x: 1401.1, name: state.playlistLabel) {
+            iconMenu("text.line.last.and.arrowtriangle.forward", x: 1401.1 + shift, name: state.playlistLabel, control: .playlist) {
                 Text("Now playing: \(state.currentTitle)")
                 ForEach(state.upcoming) { entry in
                     Button(entry.title) { onPlayEntry(entry) }
@@ -350,13 +399,16 @@ struct TVPlayerChrome: View {
             .focusEffectDisabled()
             .disabled(!controlsVisible) // not .focusable: on a Button it adds a second, inert focus target
             .modifier(TVFocusTag(binding: focus, control: .quality))
+            .macPlayerTag("Quality: \(state.qualityLabel)")
             .accessibilityLabel("Quality: \(state.qualityLabel)")
-            .placed(x: 1456.6, y: 959.8, w: 173.4, h: 60.5)
-            iconMenu("info.circle", x: 1652.8, name: "Info and playback health") {
+            .placed(x: 1456.6 + shift, y: 959.8, w: 173.4, h: 60.5)
+            iconMenu("info.circle", x: 1652.8 + shift, name: "Info and playback health", control: .info) {
                 ForEach(state.healthLines, id: \.self) { Text($0) }
             }
-            icon("macbook.and.iphone", x: 1730.4, name: "Play on another device", enabled: onCast != nil, action: onCast ?? {})
-            icon("arrow.up.left.and.arrow.down.right", x: 1808, name: "Enter fullscreen", enabled: onFullscreen != nil, action: onFullscreen ?? {})
+            icon("macbook.and.iphone", x: 1730.4 + shift, name: "Play on another device", control: .cast, action: onCast ?? {})
+            if showsFullscreen {
+                icon("arrow.up.left.and.arrow.down.right", x: 1808, name: "Enter fullscreen", action: onFullscreen ?? {})
+            }
         }
     }
 
@@ -474,13 +526,37 @@ struct TVPlayerChrome: View {
 }
 
 /// Applies the shared focus binding when the chrome has one (the parity route draws without).
+private struct TVOptionalFocusTag: ViewModifier {
+    let binding: FocusState<TVPlayerControl?>.Binding?
+    let control: TVPlayerControl?
+
+    func body(content: Content) -> some View {
+        if let binding, let control { content.focused(binding, equals: control).modifier(TVAppOwnedFocus(binding: binding, control: control)) } else { content }
+    }
+}
+
+/// While the suite drives the player the app owns the focus: only the control the app last chose can take focus, so the focus
+/// engine's own geometric move for the same press has no other candidate to land on and cannot race the app's explicit order.
+private struct TVAppOwnedFocus: ViewModifier {
+    let binding: FocusState<TVPlayerControl?>.Binding
+    let control: TVPlayerControl
+
+    func body(content: Content) -> some View {
+        #if os(tvOS)
+        if TVParityLaunch.drivesPlayer { content.focusable(binding.wrappedValue == control) } else { content }
+        #else
+        content
+        #endif
+    }
+}
+
 private struct TVFocusTag: ViewModifier {
     let binding: FocusState<TVPlayerControl?>.Binding?
     let control: TVPlayerControl
 
     func body(content: Content) -> some View {
         if let binding {
-            content.focused(binding, equals: control)
+            content.focused(binding, equals: control).modifier(TVAppOwnedFocus(binding: binding, control: control))
         } else {
             content
         }
@@ -515,7 +591,7 @@ private struct TVScrubberBody: View {
             }
         }
         .frame(width: 1780, height: 44, alignment: .topLeading)
-        .animation(.easeOut(duration: DesignTokens.FocusMotion.transitionSeconds), value: isFocused)
+        .parityAnimation(.easeOut(duration: DesignTokens.FocusMotion.transitionSeconds), value: isFocused)
         #if DEBUG && (os(tvOS) || os(macOS))
         .onChange(of: focusedByRemote) { _, now in TVParityState.setFocus("Seek", now) }
         #endif
@@ -526,10 +602,20 @@ private struct TVScrubberBody: View {
 
 /// The focusable controls of the tvOS player chrome.
 enum TVPlayerControl: Hashable {
+    /// The video itself (web: the player's opening focus, named "video playback surface").
+    case surface
+    case audio
+    case subtitles
+    case playlist
+    case info
     case scrubber
     case play
     case quality
+    case cast
     case close
+
+    /// The menu row in the web's tab order (Left and Right walk it).
+    static let menuRow: [TVPlayerControl] = [.audio, .subtitles, .playlist, .quality, .info, .cast]
 }
 
 enum TVPlayerSelectAction: Equatable {
@@ -550,11 +636,17 @@ struct TVPlayerInteraction: Equatable {
         case exit
     }
 
-    var focus: TVPlayerControl? = .play
+    var focus: TVPlayerControl? = .surface
     var controlsVisible = true
     var menuOpen = false
+    /// The open icon menu panel (parity runs): Back closes it first and leaves focus on the control that opened it.
+    var panel: String?
 
     mutating func back() -> BackResult {
+        if panel != nil {
+            panel = nil
+            return .closedMenu
+        }
         if menuOpen {
             menuOpen = false
             focus = .quality
@@ -585,7 +677,8 @@ struct TVPlayerInteraction: Equatable {
             return nil
         }
         switch focus {
-        case .scrubber, .play: return .togglePlayPause
+        case .audio, .subtitles, .playlist, .info, .cast: return nil
+        case .surface, .scrubber, .play: return .togglePlayPause
         case .quality:
             openQualityMenu()
             return .openQualityMenu
@@ -612,5 +705,44 @@ enum TVPlayerStage: Equatable {
         case .ready: return .chrome(videoAttached: true, spinner: false)
         case .failed(let message): return .failed(message)
         }
+    }
+}
+
+extension View {
+    /// The Mac's focus is its own engine, not a SwiftUI focus the labels can read: name the control in parity-state.json
+    /// (applied outside the Button, where the focus target reads it). tvOS reads `parityFocusTag` inside the label.
+    @ViewBuilder fileprivate func macPlayerTag(_ title: String, preferred: Bool = false, name: String? = nil) -> some View {
+        #if os(macOS)
+        environment(\.macParityTag, MacParityTag(title: title, id: "player-" + title, rail: nil, index: nil, gridPosition: nil))
+            .environment(\.macPreferredFocus, preferred)
+            .environment(\.macFocusName, name)
+        #else
+        self
+        #endif
+    }
+
+    /// A menu button is not one of the module's shadowed Buttons: on the Mac it needs to be made a focus target as well.
+    @ViewBuilder fileprivate func macPlayerMenuTarget(_ title: String, name: String? = nil) -> some View {
+        #if os(macOS)
+        macFocusTarget().macPlayerTag(title, name: name)
+        #else
+        self
+        #endif
+    }
+}
+
+extension View {
+    /// The video itself as the player's opening focus (web: "video playback surface"): from it Left reaches Play, Right the first
+    /// menu control (audio) and Up the seek bar. On tvOS the surface carries these moves in TVPlayerView.
+    @ViewBuilder func macPlayerSurfaceTarget(activate: (() -> Void)? = nil) -> some View {
+        #if os(macOS)
+        macFocusTarget(activate: activate)
+            .environment(\.macParityTag, MacParityTag(title: "video playback surface", id: "player-surface", rail: nil, index: nil, gridPosition: nil))
+            .environment(\.macPreferredFocus, true)
+            .environment(\.macFocusName, "surface")
+            .environment(\.macRoutes, [.left: "play", .right: "audio", .up: "seek"])
+        #else
+        self
+        #endif
     }
 }

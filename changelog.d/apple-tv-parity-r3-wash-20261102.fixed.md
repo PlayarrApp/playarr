@@ -1,0 +1,1 @@
+- Apple TV and Mac: the stage wash uses the web's opaque stops, library captions are centred in their CSS line, the player surface no longer steals native remote moves, and macOS parity runs export layout JSON.

@@ -27,13 +27,13 @@ struct TVEmptyStateBlock: View {
                 .frame(width: 70, height: 46.7)
                 .placed(x: left + 47, y: top + 58.7, w: 70, h: 46.7)
             Text(title)
-                .font(TVTheme.font(size: 22.08, weight: .semibold))
+                .font(TVTheme.font(size: 22.08, css: TVWeb.emptyStateWeight))
                 .tracking(-0.44)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .lineLimit(1)
-                .parityLayout(text: title, size: 22.08, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.44)
+                .parityLayout(text: title, size: 22.08, weight: Int(TVWeb.emptyStateWeight), color: DesignTokens.Color.textPrimary, tracking: -0.44)
                 .placed(x: left + 206, y: top + 45.7, w: textWidth, h: 33.1)
-            Text(detail)
+            Text.parityWrapped(detail)
                 .font(TVTheme.font(size: 10.75, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
                 .lineLimit(3)
@@ -52,10 +52,9 @@ private struct TVTabPage<Content: View>: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            DesignTokens.Color.backgroundElevated.ignoresSafeArea()
-                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
+            TVWebPageBase()
             TVStageWash()
-            TVRailPanelGradient(width: 1190.4)
+            TVRailPanelGradient(width: TVWeb.railWidth)
             TVPageHeader(title: title)
             if let detail {
                 Rectangle()

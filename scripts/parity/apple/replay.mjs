@@ -3,6 +3,7 @@
 // Reads <dev>/layout-raw/<theme>/<screen>.json, writes <dev>/layout/<theme>/<screen>.json, scores against <ref>/web/layout.
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { mapRaw } from "./layout-map.mjs";
@@ -12,7 +13,10 @@ const [device, ...only] = process.argv.slice(2);
 const dev = { tvos: ["apple", "apple/tvos"], macos: ["macos", "macos/dev"] }[device];
 if (!root || !dev) { console.error("usage: LEGEND_ROOT=... replay.mjs <tvos|macos> [screen ...]"); process.exit(2); }
 const score = join(dirname(fileURLToPath(import.meta.url)), "..", "layout-score.mjs");
+const sha = (v) => createHash("sha256").update(v).digest("hex");
+const mapperRevision = sha(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "layout-map.mjs")));
 let total = 0, n = 0;
+const receipts = [];
 for (const theme of ["dark", "light"]) {
   const rawDir = join(root, dev[1], "layout-raw", theme);
   if (!existsSync(rawDir)) continue;
@@ -22,7 +26,9 @@ for (const theme of ["dark", "light"]) {
     if (only.length && !only.includes(id)) continue;
     const out = join(root, dev[1], "layout", theme, file);
     const mapped = mapRaw(JSON.parse(readFileSync(join(rawDir, file), "utf8")), id, theme);
+    const rawBytes = readFileSync(join(rawDir, file));
     writeFileSync(out, JSON.stringify(mapped));
+    receipts.push({ theme, screen: id, mapperRevision, rawSha256: sha(rawBytes), mappedSha256: sha(readFileSync(out)) });
     const ref = join(root, dev[0], "web", "layout", theme, file);
     const line = execFileSync("node", [score, "--ref", ref, "--device", out], { encoding: "utf8" }).split("\n")[0];
     const pct = Number(/layout ([\d.]+)%/.exec(line)?.[1] ?? 0);
@@ -30,4 +36,6 @@ for (const theme of ["dark", "light"]) {
     console.log(line.slice(0, 90));
   }
 }
+// A replay rewrites published mapped files, so it leaves a receipt: which mapper revision turned which raw tree into which file.
+if (receipts.length) writeFileSync(join(root, dev[1], "layout-replay.json"), JSON.stringify({ replayedAt: new Date().toISOString(), receipts }, null, 1));
 if (n) console.log(`mean layout ${(total / n).toFixed(2)}% over ${n} screen captures`);

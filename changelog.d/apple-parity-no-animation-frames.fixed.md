@@ -1,0 +1,1 @@
+- Apple TV and Mac parity runs disable SwiftUI animations so a capture never catches a fade or slide part-way (glyph edges differed by one level between two identical runs).

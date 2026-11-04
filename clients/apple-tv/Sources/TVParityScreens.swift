@@ -52,6 +52,14 @@ extension TVParityLaunch {
 
     static var isLive: Bool { route != nil }
 
+    /// A capture or D-pad run drives the app (a parity screen or route); a normal launch has neither.
+    static var isParityRun: Bool { requestedScreen != nil || route != nil }
+
+    /// The suite drives the player (a parity route, screen, direct play or pinned title): its icon menus open the app-owned panel.
+    static var drivesPlayer: Bool {
+        isParityRun || pinnedClock || playFile != nil || ProcessInfo.processInfo.arguments.contains("-PlayarrOpenWork")
+    }
+
     /// `-PlayarrPlayFile <media file id>`: plays that file at once (suite playback cases a and b); the player reports to parity-state.json.
     static var playFile: UUID? {
         let args = ProcessInfo.processInfo.arguments
@@ -187,29 +195,60 @@ struct TVParityLiveDetailView: View {
 struct TVParityLivePlayerView: View {
     @Environment(TVAppEnvironment.self) private var environment
     @State private var mediaFileID: UUID?
+    @State private var work: Work?
+    /// Back from the player (web: history back from `/player/<id>` lands on the title page).
+    @State private var exited = false
 
     var body: some View {
         Group {
-            if let mediaFileID, let target = TVParityLaunch.livePlayer {
+            if exited, let work {
+                TVWorkDetailView(work: work, apiClient: environment.apiClient)
+                    .task {
+                        try? await Task.sleep(for: .milliseconds(400))
+                        TVParityState.setRoute(tab: .movies, path: [.work(work)])
+                    }
+            } else if let mediaFileID, let target = TVParityLaunch.livePlayer {
                 TVPlayerView(
                     mediaFileID: mediaFileID,
                     title: target.title,
                     apiClient: environment.apiClient,
                     parity: (position: 2, duration: 60, menuOpen: target.menuOpen)
                 )
+                #if os(macOS)
+                .environment(\.macCoverDismiss, MacDismissAction { exited = true })
+                #endif
             } else {
                 Color.black.ignoresSafeArea()
             }
         }
         .task {
             guard let target = TVParityLaunch.livePlayer else { return }
-            if let page = try? await environment.apiClient.browseCatalog(
-                kind: .movie, genre: nil, tag: nil, sort: "title", limit: 100, offset: 0
-            ), let work = page.items.first(where: { $0.title == target.title }),
-               let detail = try? await environment.apiClient.fetchWork(id: work.id) {
+            #if DEBUG && (os(tvOS) || os(macOS))
+            TVParityState.setNote("live player: route entered for \(target.title)")
+            #endif
+            do {
+                let page = try await environment.apiClient.browseCatalog(
+                    kind: .movie, genre: nil, tag: nil, sort: "title", limit: 100, offset: 0
+                )
+                #if DEBUG && (os(tvOS) || os(macOS))
+                TVParityState.setNote("live player: catalogue \(page.items.count) items, titles \(page.items.prefix(3).map(\.title))")
+                #endif
+                guard let work = page.items.first(where: { $0.title == target.title }) else {
+                    #if DEBUG && (os(tvOS) || os(macOS))
+                    TVParityState.setNote("live player: no catalogue title equals \(target.title)")
+                    #endif
+                    return
+                }
+                let detail = try await environment.apiClient.fetchWork(id: work.id)
+                self.work = work
                 mediaFileID = detail.mediaFileID
                 #if DEBUG && (os(tvOS) || os(macOS))
+                TVParityState.setNote("live player: media file \(detail.mediaFileID?.uuidString ?? "none")")
                 if let id = mediaFileID { TVParityState.setPlayerRoute(id) }
+                #endif
+            } catch {
+                #if DEBUG && (os(tvOS) || os(macOS))
+                TVParityState.setNote("live player: lookup failed \(error)")
                 #endif
             }
         }
@@ -480,6 +519,14 @@ enum TVParityState {
     private static var position: [String: Any]?
     private static var playback: [String: Any]?
     private static var items: Int?
+    private static var note: String?
+    private static var panel = false
+
+    /// A short diagnostic the driver prints when a route is not reached (the Mac log only passes whitelisted markers).
+    /// Whether a player panel (audio, subtitles, playlist, info) is open: the driver's panelOpen.
+    static func setPanel(_ open: Bool) { panel = open; write() }
+
+    static func setNote(_ text: String?) { note = text; write() }
 
     /// How many titles the open library page holds (nil off a library page): the driver waits for a loaded library before a capture.
     static func setItems(_ count: Int?) { items = count; write() }
@@ -637,7 +684,7 @@ enum TVParityState {
         let found = focusState()
         let state: [String: Any] = ["route": route, "userID": currentUserID, "focused": (tag ?? found.label) as Any, "item": found.item as Any,
                                     "at": Date().timeIntervalSince1970, "playback": playback as Any, "position": position as Any,
-                                    "items": items as Any]
+                                    "items": items as Any, "note": note as Any, "panel": panel]
         // `-PlayarrParityState <path>`: an explicit file (the Mac driver); otherwise the app's Documents folder.
         guard let data = try? JSONSerialization.data(withJSONObject: state), let target = stateURL else { return }
         do { try data.write(to: target, options: .atomic) } catch { NSLog("PlayarrParity: cannot write %@: %@", target.path, String(describing: error)) }

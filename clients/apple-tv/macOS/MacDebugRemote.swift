@@ -57,7 +57,7 @@ enum MacDebugRemote {
             }
         case "targets":
             for t in MacFocusEngine.shared.targets.values.sorted(by: { ($0.frame.minY, $0.frame.minX) < ($1.frame.minY, $1.frame.minX) }) {
-                NSLog("PlayarrMac targets: %@ layer=%d", NSStringFromRect(t.frame), t.layer)
+                NSLog("PlayarrMacTrace targets: %@ layer=%d", NSStringFromRect(t.frame), t.layer)
             }
         case "focus":
             let engine = MacFocusEngine.shared
@@ -65,7 +65,7 @@ enum MacDebugRemote {
             let bindings = engine.targets.filter { $0.value.isFocused() }
                 .map { "\($0.key.uuidString) \(NSStringFromRect($0.value.frame))" }
                 .joined(separator: ";")
-            NSLog("PlayarrMac focus: engine=%@ live=[%@] key=%d top=%d targets=%d responder=%@",
+            NSLog("PlayarrMacTrace focus dump: engine=%@ live=[%@] key=%d top=%d targets=%d responder=%@",
                   focused.map { "\($0.0.uuidString) \(NSStringFromRect($0.1.frame))" } ?? "none",
                   bindings, window.isKeyWindow ? 1 : 0, engine.topLayer, engine.targets.count,
                   String(describing: window.firstResponder.map { type(of: $0) }))
