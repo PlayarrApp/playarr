@@ -9,8 +9,8 @@
  */
 import type {TextStyle} from 'react-native';
 
-/** The static Nunito Sans weights in `assets/fonts` (the weights the web uses, snapped to a shared set). */
-export const SANS_WEIGHTS = [300, 400, 480, 560, 610, 640, 680, 720, 760, 820, 900] as const;
+/** The static Nunito Sans weights in `assets/fonts` (every weight the web draws on the parity screens, so a web weight is drawn at exactly that weight). */
+export const SANS_WEIGHTS = [300, 400, 480, 500, 560, 570, 580, 590, 600, 610, 640, 650, 680, 690, 700, 720, 750, 760, 820, 860, 900] as const;
 export const MONO_WEIGHTS = [400, 700] as const;
 
 function nearest<T extends readonly number[]>(weights: T, weight: number): T[number] {

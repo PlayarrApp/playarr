@@ -332,7 +332,7 @@ if (only.includes("dpad")) {
         await reach(from);
         // The player needs a known state before the first key: playing, controls up, focus on play/pause (driver.playerReady), else a fixed wait.
         if (d.wait) {
-          if (driver.playerReady) await driver.playerReady(); else if (strict) throw new Error("stable capture unsupported: driver lacks playerReady"); else await sleep(d.wait);
+          if (driver.playerReady) await driver.playerReady(d.id); else if (strict) throw new Error("stable capture unsupported: driver lacks playerReady"); else await sleep(d.wait);
           assertNotInterrupted();
           // Every driver: the playhead must be past 1 s before the first key (a slow player eats keys and shows the wrong state).
           if (driver.playhead) { const t0 = Date.now(); while (Date.now() - t0 < 45000) { assertNotInterrupted(); const head = await driver.playhead(); assertNotInterrupted(); if (head > 1) break; await sleep(500); } if (!((await driver.playhead()) > 1)) throw new Error("player did not start playing within 45 s"); assertNotInterrupted(); }

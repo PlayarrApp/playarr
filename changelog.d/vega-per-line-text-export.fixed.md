@@ -1,0 +1,1 @@
+- Fire TV (Vega) parity builds draw each wrapped line as its own Text and the layout export reads each line's measured bounds; the search caret is hidden, captures wait for two identical frames, and published build.json names the SHA the app was built from.

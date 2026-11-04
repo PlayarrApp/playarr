@@ -21,10 +21,10 @@ describe('homeLayout', () => {
   it('matches the web columns for every view and size', () => {
     expect(homeLayout('thumbnail', 'medium').cardW).toBeCloseTo(327.2, 1);
     expect(homeLayout('thumbnail', 'small').cardW).toBeCloseTo(238.9, 1);
-    expect(homeLayout('thumbnail', 'large').cardW).toBeCloseTo(503.8, 1);
+    expect(homeLayout('thumbnail', 'large').cardW).toBeCloseTo(503.7, 1);
     expect(homeLayout('cover', 'medium').cardW).toBeCloseTo(191.3, 1);
     expect(homeLayout('cover', 'small').cardW).toBeCloseTo(156.2, 1);
-    expect(homeLayout('cover', 'large').cardW).toBeCloseTo(244, 1);
+    expect(homeLayout('cover', 'large').cardW).toBeCloseTo(243.9, 1);
     expect(homeLayout('thumbnail', 'medium').railPitch).toBeCloseTo(365.9, 1);
     expect(homeLayout('cover', 'medium').railPitch).toBeCloseTo(468.8, 0);
   });

@@ -35,6 +35,8 @@ reference is web mobile at the device's own size. The legend dir is the client's
 - Screens are reached with `--via route`: the suite's key paths depend on every key arriving, and the virtual device drops one now and
   then. The driver replays only the keys that matter after the route (the Filters tile, the title actions drawer). The D-pad checks reach their start screen by route too and then press the real keys under test.
 - `player-controls`: the driver arms a pause at 2 s (`cmd=armPause`), plays the pinned film and raises the controls; the app needs the Shaka build (`clients/fire-tv/scripts/setup-shaka.sh`).
+- Caret suppression (parity builds only): the web refs hide the caret (`caret-color: transparent`), but the Vega text input ignores `caretHidden` and `cursorColor` and draws a blinking caret in the text colour. As a stand-in, a parity build gives an empty Search input a transparent text colour. The placeholder is separate `Text`, and typed text keeps the ink colour. Normal builds are unchanged.
+- Cast and the player queue: the Cast sheet says there are no paired devices; the app has no working cast handoff and does not claim one. Previous and Next play a real queue when the launcher passes one (`PlayerLaunchOptions.queue`) and are dimmed otherwise.
 - Platform limits (not chased): the host's font rasteriser anti-aliases text differently from Chromium, which leaves roughly 0.5 to 1% of
   every text-heavy screen differing; the Download pill and the Download action are not in the Vega app (no download storage, owner ruling 2026-10-08).
 

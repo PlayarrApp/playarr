@@ -3,14 +3,23 @@ export function mix(color: string, fraction: number): string {
   const hex = /^#([0-9a-f]{6})$/i.exec(color);
   if (hex) {
     const n = parseInt(hex[1], 16);
-    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${round(fraction)})`;
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha8(fraction)})`;
   }
   const rgba = /^rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\s*\)$/i.exec(color);
   if (rgba) {
     const alpha = rgba[4] === undefined ? 1 : Number(rgba[4]);
-    return `rgba(${rgba[1]}, ${rgba[2]}, ${rgba[3]}, ${round(alpha * fraction)})`;
+    return `rgba(${rgba[1]}, ${rgba[2]}, ${rgba[3]}, ${alpha8(alpha * fraction)})`;
   }
   throw new Error(`mix(): unsupported colour ${color}`);
+}
+
+/**
+ * Blink stores a colour's alpha as one byte, truncated: `color-mix(in srgb, X 14%, transparent)` is painted with alpha
+ * floor(0.14 * 255) = 35, not 35.7. The same byte alpha is declared here, so the surface it composites over resolves to the
+ * channel values the web paints (0.7 over the surface is 178/255, which composites 27.49 to 27, not 27.51 to 28).
+ */
+function alpha8(value: number): number {
+  return Math.round((Math.floor(value * 255 + 1e-6) / 255) * 100000) / 100000;
 }
 
 function round(value: number): number {
@@ -41,5 +50,5 @@ export function blend(a: string, b: string, fraction: number): string {
 /** The same colour with another alpha, for gradient stops that fade to "transparent" without greying. */
 export function withAlpha(color: string, alpha: number): string {
   const [r, g, b] = channels(color);
-  return `rgba(${r}, ${g}, ${b}, ${round(alpha)})`;
+  return `rgba(${r}, ${g}, ${b}, ${alpha8(alpha)})`;
 }

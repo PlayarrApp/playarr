@@ -13,6 +13,7 @@ import {lx} from '../../debug/layoutMarks';
 import {mix} from '../../theme/color';
 import {useTheme} from '../../theme/ThemeProvider';
 import {EdgeFade} from '../../tv/EdgeFade';
+import {contentHeight} from '../../theme/fonts';
 import {Box, T, u} from '../../tv/kit';
 import {useScrollReveal} from '../../tv/useScrollReveal';
 import {AgendaDetails, EntryCard, itemEntry, itemTitle} from './CalendarParts';
@@ -59,11 +60,17 @@ function DayHeading({day, today, locale, height = HEADING_H, background}: {day: 
         {dayHeading(day, locale)}
       </T>
       {day === today ? (
-        <View style={{marginLeft: u(9.6), height: u(22), paddingHorizontal: u(8), borderRadius: u(11), borderWidth: 1, borderColor: colour.accent, justifyContent: 'center'}}>
-          <T size={11.2} weight={640} ls={0.896} lh={14} color={colour.accent} upper>
-            {t('pages.calendar.today')}
-          </T>
-        </View>
+        <T
+          size={11.2}
+          weight={640}
+          ls={0.896}
+          lh={14}
+          color={colour.accent}
+          upper
+          style={{marginLeft: u(9.6), marginTop: 0, marginBottom: 0, paddingHorizontal: u(8), paddingVertical: u((22 - 2 - contentHeight(11.2)) / 2), borderRadius: u(11), borderWidth: 1, borderColor: colour.accent}}
+        >
+          {t('pages.calendar.today')}
+        </T>
       ) : null}
     </View>
   );

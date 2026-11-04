@@ -2,11 +2,11 @@ import {blend, mix, withAlpha} from './color';
 
 describe('theme/color mix', () => {
   it('scales the alpha of a hex colour', () => {
-    expect(mix('#211d21', 0.56)).toBe('rgba(33, 29, 33, 0.56)');
+    expect(mix('#211d21', 0.56)).toBe('rgba(33, 29, 33, 0.55686)');
   });
 
   it('multiplies the alpha of an rgba colour', () => {
-    expect(mix('rgba(223, 220, 221, 0.11)', 0.48)).toBe('rgba(223, 220, 221, 0.053)');
+    expect(mix('rgba(223, 220, 221, 0.11)', 0.48)).toBe('rgba(223, 220, 221, 0.05098)');
   });
 
   it('rejects colours it cannot parse', () => {

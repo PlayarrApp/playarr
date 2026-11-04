@@ -3,7 +3,7 @@ import React from 'react';
 import {act, create, type ReactTestRenderer} from 'react-test-renderer';
 import {Dimensions, Text} from 'react-native';
 import {ThemeProvider} from '../theme/ThemeProvider';
-import {BalancedT, balanceLines, titleTokens} from './kit';
+import {BalancedT, balanceLines, cssClamp, cssVh, layoutUnit, titleTokens} from './kit';
 
 (globalThis as unknown as {React: typeof React}).React = React;
 
@@ -53,4 +53,12 @@ test('BalancedT measures each word, then draws the balanced lines', () => {
   act(() => probes.forEach((node) => node.props.onTextLayout({nativeEvent: {lines: [{text: '', width: (widths[node.props.children as string] ?? 0) * unit}]}})));
   const drawn = renderer.root.findAllByType(Text).map((node) => node.props.children);
   expect(drawn).toEqual(['2 Fast', '2 Furious']);
+});
+
+describe('shared CSS length rule', () => {
+  it('truncates computed lengths to 1/64 px like Blink', () => {
+    expect(layoutUnit(0.36 * 16)).toBe(5.75);
+    expect(layoutUnit(0.42 * 16)).toBe(6.71875);
+    expect(cssClamp(16 * 0.25, cssVh(1.26), 16 * 0.85)).toBe(13.59375);
+  });
 });

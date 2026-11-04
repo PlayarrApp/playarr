@@ -20,7 +20,7 @@ import type {RouteName} from '../navigation/routes';
 import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {EdgeFade} from '../tv/EdgeFade';
-import {BalancedT, Box, T, u} from '../tv/kit';
+import {BalancedT, Box, HERO_COPY_GAP, HERO_PROVIDER_GAP, HERO_TOP, PAGE_START, T, u} from '../tv/kit';
 import {PageHeader} from '../tv/PageHeader';
 import {RailFrost, Stage} from '../tv/Stage';
 import {stageArtUrl} from '../tv/ArtOfWork';
@@ -138,11 +138,11 @@ export function MusicDetailScreen({route, navigation, onPlay}: MusicDetailScreen
       <PageHeader title={t('pages.musicDetail.music')} detail={artist.title} onBack={() => navigation.navigate(route.params.backTo ?? ('music' as RouteName), route.params.backParams)} />
       <RailFrost dark={dark} soft={colour.surfaceSoft} strong={colour.surfaceStrong} x={776} />
       {selectedAlbum ? (
-        <Box x={153.6} y={259.2} w={540}>
+        <Box x={PAGE_START} y={HERO_TOP} w={540}>
           <T size={12.288} weight={820} ls={0.983} lh={18.4} color="#cf3157" upper>
             {selectedAlbum.album.album_type.replace(/_/g, ' ')}
           </T>
-          <View style={{marginTop: u(25.9)}}>
+          <View style={{marginTop: u(HERO_PROVIDER_GAP)}}>
             <BalancedT key={selectedAlbum.album.id} width={373.2} size={69.12} weight={560} ls={-4.9766} lh={62.2} color={colour.ink}>
               {selectedAlbum.album.title}
             </BalancedT>
@@ -157,20 +157,20 @@ export function MusicDetailScreen({route, navigation, onPlay}: MusicDetailScreen
             ))}
           </View>
           {selectedTrack ? (
-            <View style={{marginTop: u(21.6), width: u(304)}}>
+            <View style={{marginTop: u(HERO_COPY_GAP), width: u(304)}}>
               <T size={21.12} weight={570} ls={-0.7392} lh={24.3} color={colour.inkSoft} lines={2}>
                 {`${selectedTrack.track.title}${formatDuration(selectedTrack.track.duration_seconds) ? ` · ${formatDuration(selectedTrack.track.duration_seconds)}` : ''}`}
               </T>
             </View>
           ) : null}
-          <View style={{marginTop: u(21.6), width: u(324)}}>
+          <View style={{marginTop: u(HERO_COPY_GAP), width: u(324)}}>
             <T size={12.864} weight={400} lh={20.3} color={colour.inkMuted}>
               {artist.overview ?? t('pages.musicDetail.overviewFallback')}
             </T>
           </View>
         </Box>
       ) : (
-        <Box x={153.6} y={259.2} w={540}>
+        <Box x={PAGE_START} y={HERO_TOP} w={540}>
           <T size={12.864} weight={400} lh={20.3} color={colour.inkMuted}>
             {t('pages.musicDetail.noAlbumsTitle')}
           </T>

@@ -16,7 +16,7 @@ import {ROUTES} from '../navigation/routes';
 import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {EmptyState} from '../tv/EmptyState';
-import {Box, T, u} from '../tv/kit';
+import {Box, PAGE_CONTROL, PAGE_HEADER_GAP, PAGE_START, T, u} from '../tv/kit';
 import {PageHeader} from '../tv/PageHeader';
 import {RailFrost, Stage} from '../tv/Stage';
 
@@ -230,8 +230,8 @@ export function DownloadsScreen(): React.ReactElement {
   const usage = t('pages.downloads.storageUsed', {used: '0 B', quota: '10.0 GB'});
   return (
     <Page title={t('pages.downloads.title')}>
-      <Box x={226.6} y={111} w={247.3} h={1} bg={colour.lineStrong} />
-      <Box x={226.6} y={112.1} w={400}>
+      <Box x={PAGE_START + PAGE_CONTROL + PAGE_HEADER_GAP} y={111} w={247.3} h={1} bg={colour.lineStrong} />
+      <Box x={PAGE_START + PAGE_CONTROL + PAGE_HEADER_GAP} y={112.1} w={400}>
         <T size={11.136} weight={680} ls={0.501} lh={24.1} color={colour.inkMuted} upper>
           {usage}
         </T>

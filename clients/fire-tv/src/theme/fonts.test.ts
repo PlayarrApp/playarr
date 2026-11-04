@@ -13,11 +13,12 @@ describe('theme/fonts', () => {
     expect(existsSync(path.join(FONT_DIR, `JetBrainsMono-w${weight}.ttf`))).toBe(true);
   });
 
-  it('snaps a CSS weight to the nearest shipped instance', () => {
+  it('draws a web weight at exactly that weight and snaps only a weight the web never uses', () => {
+    expect(sansWeight(570)).toBe(570);
+    expect(sansWeight(650)).toBe(650);
+    expect(sansWeight(690)).toBe(690);
+    expect(sansWeight(860)).toBe(860);
     expect(sansWeight(100)).toBe(300);
-    expect(sansWeight(570)).toBe(560);
-    expect(sansWeight(650)).toBe(640);
-    expect(sansWeight(690)).toBe(680);
     expect(sansWeight(1000)).toBe(900);
   });
 
