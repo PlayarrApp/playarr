@@ -751,6 +751,7 @@ export function createDriver({ out, args = [] } = {}) {
   };
 
   let playerShot = false;
+  let playerBare = false; // design report: the paused frame with the controls taken down
   const toHome = async () => {
     await launchProfiles();
     const beforeHomeScreenSeq = screenSeq;
@@ -873,6 +874,39 @@ export function createDriver({ out, args = [] } = {}) {
     await waitFor(() => focus !== null && focusScreenSeq === screenSeq, "detail focus", 40000);
     await sleep(20000); // hero art, chapter stills and cast photos arrive after the page reports focus
     lastRoute = routeForState(screen, page, browse, drawerSource, parityState.calendarView, parityState.detailKind);
+  };
+
+  // Design-report routes (docs: design-report/SCREENS-ALL.md): the channel opens the screen itself from the web path (launch argument route=,
+  // parity mode only; MainScene.brs openDesignRoute), so no key walk depends on the fixture. Never plays or changes a preference.
+  const DESIGN_SCREEN = (path) => {
+    const head = path.split("?")[0].split("/")[1] ?? "";
+    if (["watchlist", "requests", "calendar", "household", "clients", "settings"].includes(head)) return "page";
+    if (head === "playlists") return "playlists";
+    if (head === "sites") return "browse";
+    if (head === "music") return "detail";
+    if (head === "search") return "search";
+    if (head === "login" || head === "link") return "pairing";
+    return "";
+  };
+  let allowPairingShot = false;
+  const openDesignRoute = async (path) => {
+    const wanted = DESIGN_SCREEN(path);
+    if (!wanted) throw new Error(`Roku has no design route for ${path}`);
+    if (!artEnabled) throw new Error("Roku design routes need ROKU_ART_READINESS=1");
+    await closeDebug();
+    resetObservedState();
+    await sendEcp("keypress/Home").catch(() => {});
+    await sleep(4000);
+    resetArtReadinessState(parityState.artState);
+    resetObservedState();
+    allowPairingShot = wanted === "pairing";
+    await sendEcp(`launch/dev?parityArtReady=1${pinArg}&route=${encodeURIComponent(path)}`);
+    await connectDebug();
+    await waitFor(() => screen === wanted, `${wanted} screen for ${path}`, 60000);
+    if (wanted === "detail") await waitFor(() => focus !== null && focusScreenSeq === screenSeq, "detail focus", 40000);
+    await sleep(wanted === "detail" ? 20000 : 14000); // lists, artwork and the settings panels arrive after the screen event
+    if (screen !== wanted) throw new Error(`Roku left ${wanted} for ${screen} while loading ${path}`);
+    lastRoute = path;
   };
 
   // player-controls (opt-in, ROKU_PARITY_PLAYER_FRAME=1, parity channel only): open the pinned film by route, press Play, pause at about 2 s
@@ -1175,6 +1209,22 @@ export function createDriver({ out, args = [] } = {}) {
     async key(name, { long = false } = {}) { await press(name, { long }); },
     async setCaptureTarget(id) { captureTarget = id; },
     async route(path) { await safeRoute(path); },
+    async designRoute(path) { await openDesignRoute(path); },
+    /** Raw ECP key, literal text (Lit_x) or an ordered key list for design states; returns after the key delay. */
+    async designKeys(keys) { for (const k of keys) { await sendEcp(`keypress/${k}`); await sleep(keyDelay); } await sleep(1500); },
+    /** The profile picker (cold launch, Device Test focused), for the design states of that screen. */
+    async designProfiles() { await launchProfiles(); },
+    async designHome() { await toHome(); },
+    async designPlayer({ bare = false } = {}) {
+      playerBare = false;
+      await openPlayerControls();
+      if (bare) {
+        await sendEcp("input?parityControls=hide");
+        await sleep(2500);
+        playerBare = true;
+      }
+    },
+    designScreenState() { return { screen, page, browse }; },
     async location() {
       assertDebug();
       if (screen === "playback") return "/player/unsupported";
@@ -1186,7 +1236,7 @@ export function createDriver({ out, args = [] } = {}) {
     async screenshot(file) {
       assertDebug();
       if (!out) throw new Error("suite runner output path is required");
-      if (!screen || ["pairing", "status"].includes(screen)) throw new Error(`Roku screenshot refused on ${screen || "unknown"} screen`);
+      if (!screen || (["pairing", "status"].includes(screen) && !(screen === "pairing" && allowPairingShot))) throw new Error(`Roku screenshot refused on ${screen || "unknown"} screen`);
       if (screen === "playback" && !playerShot) throw new Error("Roku parity driver refuses player screenshots");
       if (artEnabled && screen === "home") { await waitForArt("home"); await sleep(1000); }
       if (artEnabled && screen === "browse" && ["movie", "movies"].includes(browse)) await waitForArt("movies");
@@ -1207,7 +1257,7 @@ export function createDriver({ out, args = [] } = {}) {
       // controls are down (no seek slider in the tree); a wrong fill is fixed with the seek input alone.
       const sliderUp = (xml) => /name="a11y\|slider\|0\|Seek"/.test(xml);
       const focusRingUp = (xml) => /<Poster\b(?![^>]*visible="false")[^>]*uri="pkg:\/images\/round-outline-r25\.9\.png"[^>]*bounds="\{[\d.]+, 9\d\d/.test(xml) || /<Poster\b(?![^>]*visible="false")[^>]*bounds="\{[\d.]+, 9\d\d[^>]*uri="pkg:\/images\/round-outline-r25\.9\.png"/.test(xml);
-      if (playerShot) {
+      if (playerShot && !playerBare) {
         let held = false;
         for (let i = 0; i < 8 && !held; i += 1) {
           const xml = await fetchAppUi();
@@ -1254,7 +1304,7 @@ export function createDriver({ out, args = [] } = {}) {
       // The layout document (docs/parity/LAYOUT.md) of the screen just captured: same state as the screenshot.
       if (artEnabled && process.env.ROKU_PARITY_LAYOUT !== "0") {
         const appUi = await fetchAppUi();
-        if (playerShot && !playerHeld(appUi)) throw new Error("Roku player controls changed during the capture");
+        if (playerShot && !playerBare && !playerHeld(appUi)) throw new Error("Roku player controls changed during the capture");
         writeFileSync(`${file}.appui.xml`, appUi); // the measured tree, kept so the export can be redone offline
         const themeDir = dirname(resolve(file));
         const id = resolve(file).split("/").pop().replace(/\.png$/, "");
@@ -1269,6 +1319,7 @@ export function createDriver({ out, args = [] } = {}) {
       }
       if (playerShot) { // leave the player so the next screen starts from the channel's own screens
         playerShot = false;
+        playerBare = false;
         await sendEcp("keypress/Back");
         await sleep(2500);
         await sendEcp("keypress/Back");

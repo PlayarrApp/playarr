@@ -30,6 +30,7 @@ sub Main(args as Dynamic)
         else if type(message) = "roInputEvent"
             info = message.GetInfo()
             if parityArtEnabled and info <> invalid and info.paritySeek <> invalid then scene.paritySeek = Val(info.paritySeek)
+            if parityArtEnabled and info <> invalid and info.parityControls <> invalid then scene.parityControls = info.parityControls
         end if
     end while
 end sub
