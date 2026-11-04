@@ -141,40 +141,41 @@ namespace Playarr.Xbox.Views
                 var shadowCanvas = new Canvas { Tag = "focus-shadow", Height = 0, Width = 0, HorizontalAlignment = HorizontalAlignment.Left, IsHitTestVisible = false, Visibility = Visibility.Collapsed };
                 // Dark theme: the web's shadow colour (56 38 33) is lighter than the dark page, and the measured web dark
                 // ref shows the page colour again 12 px below a focused card, so only light theme gets the extra layers.
-                foreach (var (offset, grow, alpha) in Theme.IsLight ? FocusShadowLayers : System.Array.Empty<(int, int, byte)>())
+                if (Theme.IsLight)
                 {
-                    var shadow = new Border
+                    var shadowLayers = new System.Collections.Generic.List<GlowBitmap.Layer>();
+                    foreach (var (offset, grow, alpha) in FocusShadowLayers)
                     {
-                        Width = art.ActualWidth + 2 * grow,
-                        Height = art.ActualHeight + 2 * grow,
-                        CornerRadius = new CornerRadius(Math.Max(0, radius + grow)),
-                        Background = new SolidColorBrush(Windows.UI.Color.FromArgb(alpha, 56, 38, 33)),
-                    };
-                    Canvas.SetLeft(shadow, -grow);
-                    Canvas.SetTop(shadow, offset - grow);
-                    shadowCanvas.Children.Add(shadow);
+                        shadowLayers.Add(new GlowBitmap.Layer(-grow, offset - grow, art.ActualWidth + 2 * grow, art.ActualHeight + 2 * grow, Math.Max(0, radius + grow), 0, alpha, 56, 38, 33));
+                    }
+
+                    // One pre-blended bitmap instead of 25 stacked translucent fills (see GlowBitmap).
+                    const int shadowPad = 88;
+                    var shadowKey = FormattableString.Invariant($"shadow|{art.ActualWidth:R}|{art.ActualHeight:R}|{radius:R}");
+                    var shadowImage = GlowBitmap.Plate(GlowBitmap.Render(shadowKey, shadowLayers, (int)Math.Ceiling(art.ActualWidth) + 2 * shadowPad, (int)Math.Ceiling(art.ActualHeight) + 2 * shadowPad, shadowPad));
+                    Canvas.SetLeft(shadowImage, -shadowPad);
+                    Canvas.SetTop(shadowImage, -shadowPad);
+                    shadowCanvas.Children.Add(shadowImage);
                 }
 
                 card.Children.Insert(0, shadowCanvas);
 
+                var color = Theme.CardGlow;
+                var glowLayers = new System.Collections.Generic.List<GlowBitmap.Layer>();
                 for (var k = 0; k < 11; k++)
                 {
                     // Distance from the art edge: the spread (to 7 px) is solid, the 20 px blur fades the rest.
                     var d = 1 + k * 2; // the 3 px ring sits inside the art edge, so the halo starts at the edge
                     var fade = k < 2 ? 1 : Math.Pow(1 - (k - 1) / 11.0, 2);
-                    var color = Theme.CardGlow;
-                    canvas.Children.Add(new Border
-                    {
-                        Tag = d,
-                        Width = art.ActualWidth + 2 * d,
-                        Height = art.ActualHeight + 2 * d,
-                        CornerRadius = new CornerRadius(radius + d),
-                        BorderThickness = new Thickness(2),
-                        BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb((byte)(255 * 0.45 * fade), color.R, color.G, color.B)),
-                    });
-                    Canvas.SetLeft((FrameworkElement)canvas.Children[canvas.Children.Count - 1], origin.X - d);
-                    Canvas.SetTop((FrameworkElement)canvas.Children[canvas.Children.Count - 1], origin.Y - d);
+                    glowLayers.Add(new GlowBitmap.Layer(-d, -d, art.ActualWidth + 2 * d, art.ActualHeight + 2 * d, radius + d, 2, (byte)(255 * 0.45 * fade), color.R, color.G, color.B));
                 }
+
+                const int glowPad = 24;
+                var glowKey = FormattableString.Invariant($"glow|{art.ActualWidth:R}|{art.ActualHeight:R}|{radius:R}|{color.R},{color.G},{color.B}");
+                var glowImage = GlowBitmap.Plate(GlowBitmap.Render(glowKey, glowLayers, (int)Math.Ceiling(art.ActualWidth) + 2 * glowPad, (int)Math.Ceiling(art.ActualHeight) + 2 * glowPad, glowPad));
+                Canvas.SetLeft(glowImage, origin.X - glowPad);
+                Canvas.SetTop(glowImage, origin.Y - glowPad);
+                canvas.Children.Add(glowImage);
 
                 if (ringOutset > 0)
                 {
@@ -219,14 +220,18 @@ namespace Playarr.Xbox.Views
         private static void ApplyHalo(Panel card, Grid art, bool focused, double ringOutset)
         {
             SetSoftGlow(card, art, focused, ringOutset);
-            if (!(art.RenderTransform is ScaleTransform scale))
-            {
-                scale = new ScaleTransform { ScaleX = 1, ScaleY = 1 };
-                art.RenderTransform = scale;
-                art.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
-            }
+            PaintSnap.Attach(art);
+            var scale = PaintSnap.FocusScale(art)!;
 
             var target = focused ? 1.025 : 1;
+            if (ParityClock.IsPinned)
+            {
+                // A parity capture shows the settled state: the end value is set directly so the frame never depends on when an animated transform was last re-rasterised.
+                scale.ScaleX = scale.ScaleY = target;
+                PaintSnap.Update(art);
+                return;
+            }
+
             var grow = new Storyboard();
             foreach (var axis in new[] { "ScaleX", "ScaleY" })
             {
@@ -336,6 +341,14 @@ namespace Playarr.Xbox.Views
                 move = new CompositeTransform();
                 card.RenderTransform = move;
                 card.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
+            }
+
+            if (ParityClock.IsPinned)
+            {
+                // Settled state set directly in a parity capture (see ApplyHalo).
+                move.TranslateY = focused ? lift : 0;
+                move.ScaleX = move.ScaleY = focused ? cardScale : 1;
+                return;
             }
 
             // --card-lift-ease: cubic-bezier(0.2, 0.8, 0.2, 1) over --card-lift-duration.

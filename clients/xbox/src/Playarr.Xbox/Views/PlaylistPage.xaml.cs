@@ -13,7 +13,7 @@ namespace Playarr.Xbox.Views
     /// <summary>One playlist's titles in the library grid; a card opens the title.</summary>
     public sealed partial class PlaylistPage : Page
     {
-        private readonly GridView _grid = new GridView
+        private readonly GridView _grid = new LinkGridView
         {
             Width = 1080,
             Margin = new Thickness(783, 0, 0, 0),
