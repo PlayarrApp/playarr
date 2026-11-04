@@ -21,7 +21,7 @@ ETA: 2026-10-20 23:00 ICT
 
 | ID | Task | Status | Owner | Branch | Depends | ETA | Notes |
 |---|---|---|---|---|---|---|---|
-| 10900 | playarr-dev Helm chart owns its Namespace | in_review | claude | cluster-257-namespace | | 2026-10-20 23:00 ICT | PR open: #495. helm template with create=true renders the Namespace; defaults render nothing.<br>Scope: (`namespace.create`, default false; labels and annotations from values) for CLUSTER-257 |
+| 10900 | playarr-dev Helm chart owns its Namespace | done | claude | cluster-257-namespace | | | Done: PR #495 merged 2026-10-20 12:03 UTC; CI green (ci-required pass).<br>`namespace.create` (default false) renders the Namespace for CLUSTER-257. |
 | 10901 | Build host disk cleanup for the repository move (CLUSTER-287): task worktrees, scratch data, retired private repository clones | done | | | | | Done 2026-10-21: 260 merged or abandoned task worktrees removed (each bundled first; 3 with open PRs #481, #484, #491 kept), scratch data cut from about 53 GB to 3.5 GB (cargo targets, downloaded previewer bundles, raw mirror frames, bulky logs trimmed, old capture images pruned to the latest run per folder by owner decision; live parity and device-wall services untouched; two idle parity emulators stopped by owner decision), 16 clones of the retired private repository removed (about 5.8 GiB) after bundling, and its bare mirror removed by the owner (a full verified bundle is kept in the scratch data). Its only unlanded work is kept as local branch `stale/resume-reset-series-year` (see 27.417). Board PR #496. |
 
 ## 64. Smart downloads
