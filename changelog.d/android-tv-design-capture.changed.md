@@ -1,0 +1,1 @@
+- Android TV design report capture script (design-capture.mjs) now covers every TV screen and state in both themes: search results, keyboard, playlists, player, settings pages and more.
