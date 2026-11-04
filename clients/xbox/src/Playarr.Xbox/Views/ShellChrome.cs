@@ -261,7 +261,7 @@ namespace Playarr.Xbox.Views
 
         private Button RailButton(UIElement content, Type? page, WorkKind? kind)
         {
-            var button = new Button
+            var button = new LinkButton
             {
                 Content = content,
                 Width = 64, // the web's --tv-nav-item-size

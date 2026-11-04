@@ -161,6 +161,9 @@ namespace Playarr.Xbox.Views
         }
 
         private static readonly Dictionary<Guid, string> Runtimes = new Dictionary<Guid, string>();
+
+        /// <summary>Detail loads still in flight: the runtime joins the meta line late, so a frame taken before it is not final.</summary>
+        internal static int Pending;
         private Guid _runtimeFor;
 
         /// <summary>
@@ -171,6 +174,30 @@ namespace Playarr.Xbox.Views
         {
             _runtimeFor = id;
             if (!Runtimes.TryGetValue(id, out var label))
+            {
+                System.Threading.Interlocked.Increment(ref Pending);
+                try
+                {
+                    await LoadRuntimeAsync(id, homeHero);
+                }
+                finally
+                {
+                    System.Threading.Interlocked.Decrement(ref Pending);
+                }
+
+                return;
+            }
+
+            if (_runtimeFor == id)
+            {
+                var cachedBasis = homeHero ? new List<string>() : (_meta.Tag as List<string> ?? new List<string>());
+                SetMetaParts(cachedBasis.Concat(new[] { label }));
+            }
+        }
+
+        private async System.Threading.Tasks.Task LoadRuntimeAsync(Guid id, bool homeHero)
+        {
+            string label;
             {
                 await System.Threading.Tasks.Task.Delay(300);
                 if (_runtimeFor != id)

@@ -57,7 +57,7 @@
                 Foreground="{StaticResource PlayarrInkMuted}"
                 Margin="0,23.44,0,0" />
             <StackPanel x:Name="PrimaryRow" Orientation="Horizontal" Spacing="16" Margin="0,16.49,0,0">
-            <Button
+            <local:LinkButton
                 x:Name="PlayButton"
                 MinWidth="156"
                 Height="64"
@@ -77,7 +77,7 @@
                     <TextBlock x:Name="PlayIcon" Text="&#x25B6;" FontSize="10.12" Foreground="{StaticResource PlayarrBg}" VerticalAlignment="Center" />
                     <TextBlock x:Name="PlayLabel" Text="Play" FontSize="11.9" FontWeight="Bold" Foreground="{StaticResource PlayarrBg}" VerticalAlignment="Center" />
                 </StackPanel>
-            </Button>
+            </local:LinkButton>
             </StackPanel>
 
             <StackPanel x:Name="ActionRow" Orientation="Horizontal" Spacing="16" Margin="0,12,0,0" Visibility="Collapsed" />

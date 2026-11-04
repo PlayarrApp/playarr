@@ -72,7 +72,7 @@ namespace Playarr.Xbox.Views
                 var arrow = new TextBlock { Text = "\u2192", FontSize = 20.8, LineHeight = 28, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrInkMuted"), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, CharacterSpacing = 135 };
                 row.Children.Add(arrow);
                 def.Arrow = arrow;
-                def.Tab = new Button
+                def.Tab = new LinkButton
                 {
                     Width = 470.4,
                     Height = 91.9,
@@ -88,6 +88,18 @@ namespace Playarr.Xbox.Views
                 TabsPanel.Children.Add(def.Tab);
             }
         }
+
+        /// <summary>Design-report capture: opens section N of the numbered list, as a click on its row would.</summary>
+        internal void ShowSectionForTest(int section)
+        {
+            if (section >= 0 && section < _sections.Count)
+            {
+                ShowSection(section);
+            }
+        }
+
+        /// <summary>Design-report capture: the Server section's Sign out button.</summary>
+        internal void SignOutForTest() => SignOutButton_Click(this, null!);
 
         private void ShowSection(int section)
         {

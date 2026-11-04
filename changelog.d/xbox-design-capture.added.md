@@ -1,0 +1,1 @@
+- Xbox: design-report capture mode for the hosted parity workflow takes plain PNGs of every screen in both themes (new pages, Settings sections, add-profile, player, sign-in pages), with test-only hooks on the parity trace.

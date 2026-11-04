@@ -56,6 +56,7 @@ namespace Playarr.Xbox.Views
             _writing = true;
             try
             {
+                UiRequested(frame, folder);
                 var (accountProbe, accountMatchesTest) = await CheckTestAccountAsync(folder);
                 if (accountMatchesTest)
                 {
@@ -144,6 +145,50 @@ namespace Playarr.Xbox.Views
             }
         }
 
+        /// <summary>
+        /// A <c>parity.do</c> file holding <c>verb</c> or <c>verb:argument</c> reaches a screen the design-report capture cannot click to:
+        /// <c>section:N</c> opens Settings section N (0-based), <c>search:text</c> types the Search query, <c>signout</c> signs out from Settings,
+        /// <c>manual</c> toggles manual sign-in on the sign-in page, <c>addprofile</c> opens the Profiles add-profile confirmation.
+        /// </summary>
+        private static void UiRequested(Frame frame, string folder)
+        {
+            var file = System.IO.Path.Combine(folder, "parity.do");
+            try
+            {
+                if (!System.IO.File.Exists(file))
+                {
+                    return;
+                }
+
+                var text = System.IO.File.ReadAllText(file).Trim();
+                System.IO.File.Delete(file);
+                var colon = text.IndexOf(':');
+                var verb = colon < 0 ? text : text.Substring(0, colon);
+                var argument = colon < 0 ? string.Empty : text.Substring(colon + 1);
+                switch (verb)
+                {
+                    case "section" when frame.Content is SettingsPage settings && int.TryParse(argument, out var section):
+                        settings.ShowSectionForTest(section);
+                        break;
+                    case "search" when frame.Content is SearchPage search:
+                        search.SetQueryForTest(argument);
+                        break;
+                    case "signout" when frame.Content is SettingsPage leaving:
+                        leaving.SignOutForTest();
+                        break;
+                    case "manual" when frame.Content is LoginPage login:
+                        login.ToggleManualForTest();
+                        break;
+                    case "addprofile" when frame.Content is ProfilesPage profiles:
+                        profiles.AddProfileForTest();
+                        break;
+                }
+            }
+            catch (Exception)
+            {
+            }
+        }
+
         /// <summary>A <c>parity.resume</c> file puts the player in the state the web's D-pad checks start from: playing, controls up, focus on play/pause.</summary>
         private static void ResumeRequested(Frame frame, string folder)
         {
@@ -194,15 +239,43 @@ namespace Playarr.Xbox.Views
                 {
                     var parts = System.IO.File.ReadAllText(file).Trim().Split(',');
                     System.IO.File.Delete(file);
+
+                    // Late-loaded text (the runtime in the meta line) must be on screen before any frame is hashed or exported.
+                    for (var waited = 0; waited < 20000 && System.Threading.Volatile.Read(ref FocusDetail.Pending) > 0; waited += 100)
+                    {
+                        await System.Threading.Tasks.Task.Delay(100);
+                    }
+
+                    await System.Threading.Tasks.Task.Delay(300);
                     if (parts.Length == 3)
                     {
-                        var json = await LayoutExport.BuildAsync(parts[1], parts[0]);
+                        string json;
+                        try
+                        {
+                            json = await LayoutExport.BuildAsync(parts[1], parts[0]);
+                        }
+                        catch (Exception failure)
+                        {
+                            // Say why the export failed instead of leaving the driver to time out.
+                            json = Newtonsoft.Json.JsonConvert.SerializeObject(new { error = failure.GetType().Name + " " + failure.Message });
+                        }
+
                         System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "layout.json"), json.Substring(0, json.Length - 1) + ",\"layoutNonce\":\"" + parts[2] + "\"}");
                     }
                     else if (parts.Length == 4 && parts[3] == "frame")
                     {
                         // Only the hash of the app's render: the driver brackets the screenshot with it.
-                        System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "layout.json"), "{\"frame\":\"" + await LayoutExport.FrameHashAsync() + "\",\"layoutNonce\":\"" + parts[2] + "\"}");
+                        string answer;
+                        try
+                        {
+                            answer = "{\"frame\":\"" + await LayoutExport.FrameHashAsync() + "\",\"layoutNonce\":\"" + parts[2] + "\"}";
+                        }
+                        catch (Exception failure)
+                        {
+                            answer = Newtonsoft.Json.JsonConvert.SerializeObject(new { error = failure.GetType().Name + " " + failure.Message, layoutNonce = parts[2] });
+                        }
+
+                        System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "layout.json"), answer);
                     }
                 }
             }

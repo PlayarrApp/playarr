@@ -248,6 +248,9 @@ namespace Playarr.Xbox.Views
             Render();
         }
 
+        /// <summary>Design-report capture: the Sign in manually / Sign in with QR code button.</summary>
+        internal void ToggleManualForTest() => ModeButton_Click(this, null!);
+
         private void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
             _viewModel.ServerAddress = ServerAddressBox.Text;

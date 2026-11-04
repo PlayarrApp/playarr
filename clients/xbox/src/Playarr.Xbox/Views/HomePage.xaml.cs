@@ -172,7 +172,7 @@ namespace Playarr.Xbox.Views
             }
 
             var top = System.Math.Max(128, System.Math.Min(174, viewport * 0.15));
-            RailsPanel.Margin = new Thickness(730, top, 0, viewport / 2);
+            RailsPanel.Margin = new Thickness(729.6, top, 0, viewport / 2);
         }
 
         private Control? RestoreOrFirst(ListView firstList)
@@ -213,7 +213,7 @@ namespace Playarr.Xbox.Views
 
         private UIElement BuildRail(HomeRail rail)
         {
-            var list = new ListView
+            var list = new LinkListView
             {
                 SelectionMode = ListViewSelectionMode.None,
                 IsItemClickEnabled = true,
@@ -245,7 +245,7 @@ namespace Playarr.Xbox.Views
                 list.Items.Add(CatalogTileFactory.CreateLandscapeCard(work, cover: Appearance.HomeCover));
             }
 
-            var section = new StackPanel { Spacing = 34.65, Margin = new Thickness(53, 0, 0, RailsPanel.Children.Count == 0 ? -0.15 : 0) };
+            var section = new StackPanel { Spacing = 34.65, Margin = new Thickness(53.76, 0, 0, RailsPanel.Children.Count == 0 ? -0.15 : 0) };
             section.Children.Add(LayoutExport.Heading(new TextBlock { Text = rail.Title, Style = (Style)Application.Current.Resources["PlayarrRailTitle"], FontSize = 17.66, FontFamily = WebFont.Face(610), FontWeight = WebFont.Weight(610), CharacterSpacing = -31, LineHeight = 24, Margin = new Thickness(0, 0, 0, 2), LineStackingStrategy = Windows.UI.Xaml.LineStackingStrategy.BlockLineHeight }));
             if (RailsPanel.Children.Count == 0)
             {

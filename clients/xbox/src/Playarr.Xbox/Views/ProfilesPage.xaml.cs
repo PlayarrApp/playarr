@@ -177,7 +177,9 @@ namespace Playarr.Xbox.Views
         {
             var side = box ?? size;
             var icon = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = size, Foreground = (Brush)Application.Current.Resources[brushKey], HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-            return new Grid { Width = side, Height = side, VerticalAlignment = VerticalAlignment.Center, Children = { icon } };
+            var holder = new Grid { Width = side, Height = side, VerticalAlignment = VerticalAlignment.Center, Children = { icon } };
+            Windows.UI.Xaml.Automation.AutomationProperties.SetLocalizedControlType(holder, "image"); // a drawn icon: the export reports one image, as the web's svg
+            return holder;
         }
 
         /// <summary>The web's gear (Settings) and Sign out pills under the selected profile.</summary>
@@ -199,6 +201,9 @@ namespace Playarr.Xbox.Views
             signOut.GotFocus += (s, e) => Select(row);
             return row;
         }
+
+        /// <summary>Design-report capture: the add-profile tile's confirmation dialog.</summary>
+        internal void AddProfileForTest() => ConfirmAddProfile();
 
         /// <summary>
         /// This app holds one paired account, so adding a profile means signing out and pairing another; the viewer

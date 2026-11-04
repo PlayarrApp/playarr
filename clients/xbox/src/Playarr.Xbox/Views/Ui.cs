@@ -113,7 +113,7 @@ namespace Playarr.Xbox.Views
                 CornerRadius = new CornerRadius(41),
                 BorderBrush = Res("PlayarrLine"),
                 BorderThickness = new Thickness(1),
-                Child = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 26, Foreground = Res("PlayarrBrand"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+                Child = Icon(glyph, 26, "PlayarrBrand"),
             });
             var text = new StackPanel { Spacing = 10, VerticalAlignment = VerticalAlignment.Center, MaxWidth = 340 };
             text.Children.Add(Text(title, 17, FontWeights.SemiBold, "PlayarrInk"));
@@ -137,22 +137,35 @@ namespace Playarr.Xbox.Views
             return button;
         }
 
-        public static Button RoundButton(string glyph, Action onClick)
+        /// <summary>A drawn icon: the glyph centred in a square holder that the export reports as one image, as the web's svg.</summary>
+        public static Grid Icon(string glyph, double size, string brushKey = null)
         {
-            var button = new Button
+            var icon = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = size, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            if (brushKey != null)
             {
-                Width = 50,
-                Height = 50,
-                Padding = new Thickness(0),
-                CornerRadius = new CornerRadius(25),
-                Background = new SolidColorBrush(Colors.Transparent),
-                BorderBrush = Res("PlayarrLineStrong"),
-                BorderThickness = new Thickness(1),
-                Content = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14 },
-                FocusVisualPrimaryBrush = Theme.FocusRing,
-                FocusVisualPrimaryThickness = new Thickness(3),
-                FocusVisualSecondaryThickness = new Thickness(0),
-            };
+                icon.Foreground = Res(brushKey);
+            }
+
+            var holder = new Grid { Width = size, Height = size, VerticalAlignment = VerticalAlignment.Center, Children = { icon } };
+            Windows.UI.Xaml.Automation.AutomationProperties.SetLocalizedControlType(holder, "image");
+            return holder;
+        }
+
+        public static Button RoundButton(string glyph, Action onClick, bool link = false)
+        {
+            // Back navigates, so it is an anchor on the web: its peer reports a Hyperlink.
+            Button button = link ? new LinkButton() : new Button();
+            button.Width = 50;
+            button.Height = 50;
+            button.Padding = new Thickness(0);
+            button.CornerRadius = new CornerRadius(25);
+            button.Background = new SolidColorBrush(Colors.Transparent);
+            button.BorderBrush = Res("PlayarrLineStrong");
+            button.BorderThickness = new Thickness(1);
+            button.Content = Icon(glyph, 14);
+            button.FocusVisualPrimaryBrush = Theme.FocusRing;
+            button.FocusVisualPrimaryThickness = new Thickness(3);
+            button.FocusVisualSecondaryThickness = new Thickness(0);
             button.Click += (s, e) => onClick();
             return button;
         }

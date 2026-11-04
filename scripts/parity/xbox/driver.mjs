@@ -263,6 +263,17 @@ export async function createDriver() {
       await sleep(name === "select" && !long ? 9000 : 1200);
     },
     async clickAt(x, y, wait = 4) { await click(x, y, wait); },
+    // Design-report helpers (design-captures.mjs). `anon` skips the Device Test identity probe, for the signed-out sign-in pages.
+    async trace() { return trace(); },
+    async ui(command, { anon = false, wait = 4 } = {}) { if (!anon) await requireTestAccount(); run("write", "parity.do", command); await sleep(wait * 1000); },
+    async pressKey(name, wait = 1.5) { await requireTestAccount(); run("key", name); await sleep(wait * 1000); },
+    async parkPointer() { await requireTestAccount(); run("move", 1919, 600); await sleep(500); },
+    async shotPlain(file, { anon = false, unguarded = false } = {}) {
+      if (!anon) await requireTestAccount();
+      mkdirSync(dirname(file), { recursive: true });
+      run("shot", file, ...(theme && !unguarded && trace().screen !== "playback" ? [theme] : [])); // the helper (the player is black in both themes) refuses a frame of the other theme (exit 4)
+    },
+    async waitFor(fn, seconds, what) { await until(fn, seconds, what); },
     // The web's D-pad checks start with the video playing, controls up and focus on play/pause.
     async playerReady() {
       await requireTestAccount();
@@ -281,19 +292,24 @@ export async function createDriver() {
       run("move", 1919, 600); await sleep(500);
       await requireTestAccount();
       mkdirSync(dirname(file), { recursive: true });
+      // Design-report runs (XBOX_DESIGN=1) want the picture only: no frame hashing, no layout export (those take minutes a screen).
+      if (process.env.XBOX_DESIGN) { await sleep(2500); await this.shotPlain(file); return; }
       // The app hashes its own render of the screen before the screenshot and again with the layout export; the layout belongs to the
       // captured frame only when the hashes are equal (no animation, focus or data change between the two).
       const request = async (screen, mode) => {
         const nonce = randomUUID().replaceAll("-", "");
         await requireTestAccount();
         run("write", "parity.layout", `${theme},${screen},${nonce}${mode ? `,${mode}` : ""}`); // a comma: a pipe would reach cmd.exe
-        const deadline = Date.now() + 90000; // the full export renders the screen once per exported element
+        const deadline = Date.now() + 900000; // the full export renders the screen several times per exported element
         while (Date.now() < deadline) {
           await sleep(500);
-          try {
-            const answer = JSON.parse(run("read", "layout.json"));
-            if (answer.layoutNonce === nonce) { delete answer.layoutNonce; return answer; }
-          } catch { /* not written yet */ }
+          let answer = null;
+          try { answer = JSON.parse(run("read", "layout.json")); } catch { /* not written yet */ }
+          if (answer && answer.layoutNonce === nonce) {
+            if (answer.error) throw new Error(`layout export failed in the app: ${answer.error}`);
+            delete answer.layoutNonce;
+            return answer;
+          }
         }
         throw new Error("the app did not answer the layout request");
       };

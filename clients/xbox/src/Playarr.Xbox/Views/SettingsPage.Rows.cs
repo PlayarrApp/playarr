@@ -145,12 +145,12 @@ namespace Playarr.Xbox.Views
             label.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             label.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             label.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            label.Children.Add(new FontIcon { Glyph = "", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 16, Foreground = Ui.Res("PlayarrInk"), VerticalAlignment = VerticalAlignment.Center });
+            label.Children.Add(Ui.Icon("", 16, "PlayarrInk"));
             var current = Ui.Text(Lang.NameOf(Lang.Preference), 14, FontWeights.SemiBold, "PlayarrInk");
             current.VerticalAlignment = VerticalAlignment.Center;
             Grid.SetColumn(current, 1);
             label.Children.Add(current);
-            var chevron = new FontIcon { Glyph = _languageOpen ? "" : "", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 12, Foreground = Ui.Res("PlayarrInkSoft"), VerticalAlignment = VerticalAlignment.Center };
+            var chevron = Ui.Icon(_languageOpen ? "" : "", 12, "PlayarrInkSoft");
             Grid.SetColumn(chevron, 2);
             label.Children.Add(chevron);
             _languageTrigger = new Button
