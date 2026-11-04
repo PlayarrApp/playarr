@@ -604,7 +604,8 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
           focused={focusedControl}
           onFocusControl={(control) => {
             setFocusedControl(control);
-            reveal();
+            // Focus put back on Play while the controls are hidden must not raise them again; keys reveal on their own.
+            if (controlsRef.current) reveal();
           }}
           onTogglePlay={guarded(togglePlay)}
           onClose={guarded(() => void stop().then(() => onClose?.()))}

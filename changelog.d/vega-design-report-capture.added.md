@@ -1,0 +1,1 @@
+- Fire TV (Vega OS) design report capture: the parity control reaches every screen by its web path (settings pages, link, sites, music detail, search results, not found) and `scripts/parity/vega/design-capture.mjs` captures each one in dark and light on the Vega virtual device, with a manifest that records the screens the app does not have.

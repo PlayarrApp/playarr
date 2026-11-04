@@ -30,7 +30,7 @@ import {indexWatchProgressByWork, WatchState} from '../tv/WatchState';
 import {useAccessToken} from './LibraryScreen';
 import {SearchDiscoveryCard} from './SearchDiscoveryCard';
 import {discoveryLibraryWorkId, discoveryTitleIsRequestable, filterSearchWorks, matchingSearchPlaylists, searchPlaylistTarget, searchSourcePlan, visibleSearchMediaTypes, snapshotFromDiscoveryTitle, type SearchMediaType} from '../lib/searchModel';
-import {reportFocus} from '../debug/parityControl';
+import {reportFocus, takePendingQuery} from '../debug/parityControl';
 import {focusNode} from '../platform/focus';
 import {CatalogKindsContext} from '../lib/catalogKindsContext';
 
@@ -69,8 +69,8 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
   const baseUrl = client.resolveUrl('/');
   const {t} = useLanguage();
   const {colour, scheme} = useTheme();
-  const [query, setQuery] = useState('');
-  const [debounced, setDebounced] = useState('');
+  const [query, setQuery] = useState(() => takePendingQuery('q') ?? '');
+  const [debounced, setDebounced] = useState(query.trim());
   const [focusIndex, setFocusIndex] = useState(0);
   const [inputFocused, setInputFocused] = useState(false);
   const [cardFocused, setCardFocused] = useState(false);
