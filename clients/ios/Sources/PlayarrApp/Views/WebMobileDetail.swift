@@ -24,7 +24,7 @@ struct WMRemoteImage: View {
     var body: some View {
         ZStack {
             if let image {
-                Image(uiImage: image).resizable().scaledToFill()
+                WMFillImage(image: image)
             }
         }
         .clipped()
@@ -290,7 +290,7 @@ struct WMDetailPage: View {
                 ZStack(alignment: .topLeading) {
                     artBackdrop
                     // The web header is opaque page colour down to 69 pt, then the art fades in over about 50 pt.
-                    LinearGradient(
+                    WMGradient(
                         stops: [
                             Gradient.Stop(color: WM.page, location: 0),
                             Gradient.Stop(color: WM.page, location: 69.0 / 120),
@@ -629,7 +629,7 @@ struct WMDetailPage: View {
             if !similar.isEmpty { similarTrack }
         }
         .background(
-            LinearGradient(
+            WMGradient(
                 stops: [
                     .init(color: WM.page, location: 0),
                     .init(color: WM.adaptive(light: (251, 250, 249), dark: (40, 35, 40)), location: 0.35),
@@ -918,7 +918,7 @@ extension View {
     /// Web `.tv-episode-art`: grayscale(0.25) image under a 135deg black 5% to 48% wash.
     func wmEpisodeArtTreatment() -> some View {
         saturation(0.75).overlay(
-            LinearGradient(colors: [.black.opacity(0.05), .black.opacity(0.48)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            WMGradient(colors: [.black.opacity(0.05), .black.opacity(0.48)], startPoint: .topLeading, endPoint: .bottomTrailing)
         )
     }
 }

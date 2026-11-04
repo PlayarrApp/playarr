@@ -1,0 +1,1 @@
+- iOS parity: library cards no longer widen their link frame with the unseen-dot bitmap, the grid row gap and card height follow the web CSS (24 px gap, 24.72 px copy block), the page header title uses the 44 px control line box, and the phone letter rail takes its top, height and letter cells from the web CSS.

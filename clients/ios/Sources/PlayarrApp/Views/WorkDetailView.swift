@@ -177,7 +177,7 @@ struct WorkDetailView: View {
                     .frame(height: min(520, proxy.size.height * 0.58))
                     .opacity(0.58)
                     .overlay {
-                        LinearGradient(
+                        WMGradient(
                             colors: [.clear, PlayarrStyle.surface.opacity(0.25), PlayarrStyle.surface],
                             startPoint: .top,
                             endPoint: .bottom
@@ -229,15 +229,15 @@ struct WorkDetailView: View {
                             .frame(width: 0.52 * proxy.size.width - clearance, height: 1.06 * proxy.size.height)
                             .scaleEffect(1.04, anchor: UnitPoint(x: 0, y: 0.5))
                             .parityOpacity(scheme == .dark ? 0.72 : 0.24)
-                            .mask(LinearGradient(stops: [.init(color: .black, location: 0.72), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
+                            .mask(WMGradient(stops: [.init(color: .black, location: 0.72), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
                             .parityFade(.horizontal) { _ -> [Gradient.Stop] in [Gradient.Stop(color: .black, location: 0.72), Gradient.Stop(color: .clear, location: 1)] }
-                        LinearGradient(stops: [.init(color: PlayarrStyle.surface, location: 0), .init(color: .clear, location: 0.22)], startPoint: .leading, endPoint: .trailing)
-                        LinearGradient(stops: [.init(color: PlayarrStyle.surface, location: 0), .init(color: .clear, location: 0.22), .init(color: .clear, location: 0.82), .init(color: PlayarrStyle.surface, location: 1)], startPoint: .bottom, endPoint: .top)
+                        WMGradient(stops: [.init(color: PlayarrStyle.surface, location: 0), .init(color: .clear, location: 0.22)], startPoint: .leading, endPoint: .trailing)
+                        WMGradient(stops: [.init(color: PlayarrStyle.surface, location: 0), .init(color: .clear, location: 0.22), .init(color: .clear, location: 0.82), .init(color: PlayarrStyle.surface, location: 1)], startPoint: .bottom, endPoint: .top)
                     }
                     .frame(width: proxy.size.width - clearance, height: proxy.size.height, alignment: .topLeading)
                     .parityClipped()
                     .offset(x: clearance)
-                    LinearGradient(
+                    WMGradient(
                         stops: [.init(color: PlayarrStyle.surface.opacity(0.94), location: 0), .init(color: PlayarrStyle.surface.opacity(0.9), location: 0.36), .init(color: .clear, location: 0.52)],
                         startPoint: .leading, endPoint: .trailing
                     )
@@ -247,7 +247,7 @@ struct WorkDetailView: View {
                     .frame(width: proxy.size.width, height: proxy.size.height)
                     .opacity(scheme == .dark ? 0.3 : 0.07)
                     .overlay {
-                        LinearGradient(
+                        WMGradient(
                             colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
                             startPoint: .leading,
                             endPoint: .trailing
@@ -285,7 +285,7 @@ struct WorkDetailView: View {
                     .frame(width: proxy.size.width * 0.62, height: proxy.size.height)
                     .background {
                         if detail.work.kind != .movie && detail.work.kind != .series {
-                            LinearGradient(
+                            WMGradient(
                                 colors: [.clear, PlayarrStyle.surface.opacity(0.92), PlayarrStyle.surface],
                                 startPoint: .leading,
                                 endPoint: .trailing
@@ -1525,7 +1525,7 @@ struct WorkDetailView: View {
                 } else {
                     PlayarrStyle.surfaceStrong
                 }
-                LinearGradient(colors: [.clear, .black.opacity(0.68)], startPoint: .center, endPoint: .bottom)
+                WMGradient(colors: [.clear, .black.opacity(0.68)], startPoint: .center, endPoint: .bottom)
                 if let tabletScale {
                     Text(String(format: "%02d", detail.episode.episodeNumber))
                         .wm(13.66 * tabletScale, 560, color: .white, text: String(format: "%02d", detail.episode.episodeNumber))

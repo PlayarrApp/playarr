@@ -1,0 +1,1 @@
+- iOS parity captures draw player glyphs, gradients and scaled artwork from CPU bitmaps so two runs agree on more pixels (debug parity builds only).

@@ -119,7 +119,7 @@ struct PlayarrArtwork: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
+            WMGradient(
                 colors: [
                     Color(red: 0.19, green: 0.13, blue: 0.17),
                     Color(red: 0.075, green: 0.062, blue: 0.075),
@@ -129,9 +129,7 @@ struct PlayarrArtwork: View {
             )
 
             if let image = loader.image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
+                WMFillImage(image: image)
                     .transition(.opacity)
             } else {
                 PlayarrLogo(size: 46)
@@ -254,13 +252,13 @@ struct PlayarrAlbumArtwork: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
+            WMGradient(
                 colors: [Color(red: 0.24, green: 0.15, blue: 0.21), Color(red: 0.08, green: 0.065, blue: 0.08)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             if let image = loader.image {
-                Image(uiImage: image).resizable().scaledToFill()
+                WMFillImage(image: image)
             } else {
                 Image(systemName: "music.note").font(.system(size: 38, weight: .ultraLight)).foregroundStyle(PlayarrStyle.pink)
             }

@@ -101,6 +101,26 @@ struct PlayerGlyphView: View {
     let glyph: PlayerGlyph
     var size: CGFloat = 20
     var color: Color = .white
+    @Environment(\.self) private var environment
+
+    var body: some View {
+        // Parity captures blit a bitmap drawn once (GPU vector strokes antialias differently on each runner host).
+        #if DEBUG
+        if ParityLaunch.zeroInsets, let image = PlayerGlyphBitmap.image(glyph: glyph, color: color, size: size, environment: environment) {
+            Image(uiImage: image).resizable().frame(width: size, height: size)
+        } else {
+            PlayerGlyphCanvas(glyph: glyph, size: size, color: color)
+        }
+        #else
+        PlayerGlyphCanvas(glyph: glyph, size: size, color: color)
+        #endif
+    }
+}
+
+struct PlayerGlyphCanvas: View {
+    let glyph: PlayerGlyph
+    var size: CGFloat = 20
+    var color: Color = .white
 
     var body: some View {
         Canvas { context, _ in
@@ -121,6 +141,24 @@ struct PlayerGlyphView: View {
         .frame(width: size, height: size)
     }
 }
+
+#if DEBUG
+@MainActor
+enum PlayerGlyphBitmap {
+    private static var cache: [String: UIImage] = [:]
+
+    static func image(glyph: PlayerGlyph, color: Color, size: CGFloat, environment: EnvironmentValues) -> UIImage? {
+        let resolved = color.resolve(in: environment)
+        let key = "\(glyph)|\(size)|\(resolved)"
+        if let cached = cache[key] { return cached }
+        let renderer = ImageRenderer(content: PlayerGlyphCanvas(glyph: glyph, size: size, color: Color(resolved)))
+        renderer.scale = UIScreen.main.scale
+        guard let image = renderer.uiImage else { return nil }
+        cache[key] = image
+        return image
+    }
+}
+#endif
 
 // MARK: - Quality model (web `qualityMatrix.ts` and `playerQualityLabel.ts`)
 
@@ -315,7 +353,6 @@ struct PlayerQualityMatrix: View {
                             WMText(tier.name, 8.96, 650, color: .white, lh: 13.44)
                             WMText(tier.resolution, 7.04, 400, color: .white.opacity(0.54), lh: 10.56)
                         }
-                        .offset(y: -0.3)
                         .padding(.horizontal, 4)
                         .frame(width: headingColumn, height: 48, alignment: .leading)
                         ForEach(tier.choices) { item in
@@ -342,12 +379,11 @@ struct PlayerQualityMatrix: View {
         let selected = id == selectedID
         return Button { onSelect(id) } label: {
             HStack(spacing: 5.6) {
-                // Offsets measured against the web capture (Chromium line boxes).
+                // Centred in the 48 px cell; each line carries its own CSS line box (WMText).
                 VStack(alignment: .leading, spacing: 1.5) {
                     WMText(label, 9.28, 650, color: .white, lh: 13.92)
                     WMText(detail, 7.04, 400, color: .white.opacity(0.54), lh: 10.56)
                 }
-                .offset(y: -1.2)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Text(selected ? "✓" : "")
                     .wm(11.84, color: WM.pink, text: selected ? "✓" : "")
