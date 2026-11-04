@@ -63,6 +63,14 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
         .build()
 }
 
+/// Capture hook: `name` opens that section's panel (the design report routes `settings-<section>`).
+fn register_hook(app: &Rc<App>, name: &'static str, row: &gtk4::Button) {
+    let row = row.clone();
+    app.hooks
+        .borrow_mut()
+        .insert(name, Rc::new(move |_| row.emit_clicked()));
+}
+
 pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
     let page = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     page.set_margin_bottom(110);
@@ -181,6 +189,7 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
             app.present_panel("Preferences", "Appearance", &col, true);
         });
     }
+    register_hook(&app, "settings-appearance", &appearance);
     list.append(&appearance);
 
     let avatar_row = section_row(2, "Profile avatar", "Choose how your profile appears on this device.");
@@ -212,6 +221,7 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
             app.present_panel("Preferences", "Profile avatar", &grid, true);
         });
     }
+    register_hook(&app, "settings-profile-avatar", &avatar_row);
     list.append(&avatar_row);
 
     list.append(&section_row(
@@ -336,6 +346,7 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
             app.present_panel("Preferences", "Server connection", &col, true);
         });
     }
+    register_hook(&app, "settings-server", &server);
     list.append(&server);
     // The web's last two sections have no native screen yet: they open a short notice instead of disappearing.
     for (n, title, desc) in [
@@ -347,6 +358,7 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
         ),
     ] {
         let row = section_row(n, title, desc);
+        let hook_app = app.clone();
         let app = app.clone();
         row.connect_clicked(move |_| {
             let note = gtk4::Label::builder()
@@ -360,6 +372,15 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
                 .build();
             app.present_panel("Preferences", title, &note, true);
         });
+        register_hook(
+            &hook_app,
+            if n == 6 {
+                "settings-profile-lock"
+            } else {
+                "settings-invite"
+            },
+            &row,
+        );
         list.append(&row);
     }
     let _ = (icons::markup("home"), Tone::Soft);
