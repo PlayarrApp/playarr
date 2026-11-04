@@ -203,6 +203,18 @@ const TV_SEEK_SIZE: number = 64;
 const TV_ROW_GAP: number = 13.6;
 const TV_BAR_GAP: number = 0; // web: the 44 px seek row sits directly over the controls
 const TV_TIME_FONT_SIZE: number = 10.88; // web: 0.68rem
+/** Advance widths in em of the Nunito Sans glyphs a clock run uses (hmtx / unitsPerEm; digits are tabular, as web's `tabular-nums`). */
+const TIME_DIGIT_EM: number = 0.6;
+const TIME_COLON_EM: number = 0.228;
+const TIME_SLASH_EM: number = 0.283;
+/** The box width web gives a time run: the sum of its glyph advances. ArkUI otherwise sizes the box from its own text measure (about 1 px off per run). */
+function timeRunWidth(run: string, size: number): number {
+  let em: number = 0;
+  for (const ch of run) {
+    em += ch === ':' ? TIME_COLON_EM : (ch === '/' ? TIME_SLASH_EM : TIME_DIGIT_EM);
+  }
+  return em * size;
+}
 const TV_QUALITY_WIDTH: number = 120;
 const TV_VOLUME_WIDTH: number = 64;
 const BACK_BUTTON_WIDTH_TV: number = 96;
@@ -333,6 +345,8 @@ struct ChromeButton {
   glassAlpha: number = 0;
   icon: Resource | undefined = undefined;
   iconSize: number = 20;
+  /** The icon's own box width when it is not square (0 = `iconSize`). */
+  iconWidth: number = 0;
 
   onActivate: () => void = () => {};
   /** Reports this button's own focus transitions up to the hosting
@@ -357,7 +371,7 @@ struct ChromeButton {
       if (this.showGlyph) {
         PlayPauseGlyph({ isPlaying: this.isPlaying, glyphSize: this.glyphSize })
       } else if (this.icon !== undefined) {
-        Image(this.icon).width(this.iconSize).height(this.iconSize)
+        Image(this.icon).width(this.iconWidth > 0 ? this.iconWidth : this.iconSize).height(this.iconSize).objectFit(ImageFit.Contain)
       } else {
         Text(this.label).fontFamily(nunitoAt(700, this.fontSize))
           .fontSize(this.fontSize).lineHeight(webLineHeight(this.fontSize)).halfLeading(true)
@@ -646,7 +660,8 @@ export struct PlayerChrome {
         ChromeButton({
           label: '',
           icon: $r('app.media.player_close'),
-          iconSize: tv(20),
+          iconSize: tv(22), // web `.player-close svg`: 22 high, and 14 wide once the 1 rem side padding and 1 px border leave 48 - 32 - 2 of the button
+          iconWidth: tv(14),
           circle: true,
           glassAlpha: 0.55,
           ringAlpha: 0.2,
@@ -699,13 +714,13 @@ export struct PlayerChrome {
           } else {
             // web: three spans, the times white and the slash muted, 5.6 apart
             Row({ space: tv(5.6) }) {
-              Text(formatClockMs(this.positionMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE))).fontFeature('"tnum" 1')
+              Text(formatClockMs(this.positionMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE))).fontFeature('"tnum" 1').width(timeRunWidth(formatClockMs(this.positionMs), tv(TV_TIME_FONT_SIZE)))
                 .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
                 .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
-              Text('/').fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE)))
+              Text('/').fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE))).width(timeRunWidth('/', tv(TV_TIME_FONT_SIZE)))
                 .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
                 .fontColor(toResourceColor(CHROME_TEXT_MUTED))
-              Text(formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE))).fontFeature('"tnum" 1')
+              Text(formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE))).fontFeature('"tnum" 1').width(timeRunWidth(formatClockMs(this.durationMs), tv(TV_TIME_FONT_SIZE)))
                 .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
                 .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
             }
