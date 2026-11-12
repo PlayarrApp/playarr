@@ -4,7 +4,7 @@ import {Pressable, View} from 'react-native';
 import {Icon, type IconName} from '../shell/icons';
 import {useTheme} from '../theme/ThemeProvider';
 import {Box, T, u} from './kit';
-import {lx} from '../debug/layoutMarks';
+
 
 export interface DropdownOption {
   id: string;
@@ -32,8 +32,7 @@ export function Dropdown({x, y, w, icon, label, options, selectedId, onSelect, a
     <>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-        {...lx('button', icon === 'theme' ? `Theme: ${label}` : label)}
+        accessibilityLabel={icon === 'theme' ? `Theme: ${label}` : label}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         onPress={() => setOpen((value) => !value)}

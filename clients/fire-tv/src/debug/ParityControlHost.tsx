@@ -98,7 +98,7 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
       },
       theme: () => schemeRef.current,
       layout: async (debug) => {
-        const elements = probeRef.current ? await exportLayout(probeRef.current, schemeRef.current === 'dark' ? '#151315' : '#f5f3f2', debug) : [];
+        const elements = probeRef.current ? await exportLayout(probeRef.current, debug) : [];
         return JSON.stringify(elements);
       },
     });

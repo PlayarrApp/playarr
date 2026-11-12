@@ -15,7 +15,7 @@ import {Box, T, u} from './kit';
 import {CardCaption, MediaFocus} from './mediaFocus';
 import {WatchState} from './WatchState';
 import {reportFocus} from '../debug/parityControl';
-import {lx} from '../debug/layoutMarks';
+
 
 const TRACK_X = 881.6;
 const TRACK_VIEW_X = 729.6;
@@ -240,9 +240,8 @@ function TrackCard({item, x, token, selected, preferred, onFocus}: {item: TrackI
   return (
     <Pressable
       ref={ref}
-      accessibilityRole="button"
-      accessibilityLabel={item.title}
-      {...(item.web ? lx('link', item.web) : null)}
+      accessibilityRole={item.web ? 'link' : 'button'}
+      accessibilityLabel={item.web ?? item.title}
       hasTVPreferredFocus={preferred}
       onFocus={onFocus}
       onPress={item.onPress}

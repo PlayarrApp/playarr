@@ -9,7 +9,7 @@ import {Dimensions} from 'react-native';
 import {textRun} from '../theme/fonts';
 import {useTheme} from '../theme/ThemeProvider';
 import {PARITY_CONTROL} from '../debug/parityControl';
-import {registerLines, registerText} from '../debug/layoutExport';
+import {registerLines} from '../debug/layoutExport';
 
 /** One web CSS pixel in device pixels. */
 export function u(value: number): number {
@@ -72,14 +72,10 @@ export interface TProps {
   upper?: boolean;
   mono?: boolean;
   lines?: number;
-  /** Parity layout export only: the web element is a heading (h1 to h3). */
+  /** The text is a heading (accessibility role header). */
   heading?: boolean;
-  /** Parity layout export only: the web role of the element this text is (a button whose only content is text). */
+  /** The accessibility role of a text that is the whole content of a control (a button whose only content is its label). */
   wrole?: string;
-  /** Parity layout export only: the web element's own corner radius. */
-  wradius?: number;
-  /** Parity layout export only: Text views with the same group are one web element. */
-  group?: string;
   style?: StyleProp<TextStyle>;
   onTextLayout?: (event: NativeSyntheticEvent<TextLayoutEventData>) => void;
   children?: React.ReactNode;
@@ -97,15 +93,14 @@ export function halfLeading(size: number, lh: number | undefined): number {
   return lh >= content ? (lh - content) / 2 : (content - lh) * 0.274;
 }
 
-export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines, heading, wrole, wradius, group, style, onTextLayout, children}: TProps): React.ReactElement {
+export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines, heading, wrole, style, onTextLayout, children}: TProps): React.ReactElement {
   const run = textRun(uf(size), weight, {letterSpacing: ls === undefined ? undefined : uf(ls), lineHeight: lh === undefined ? undefined : uf(lh), mono});
-  // Parity builds record the CSS size, weight and laid-out lines of every run for the layout exporter.
+  // Parity builds record the renderer's laid-out lines of every run for the layout exporter.
   const node = React.useRef<object | null>(null);
   const parity = PARITY_CONTROL
     ? {
         ref: (instance: object | null) => {
           node.current = instance;
-          registerText(instance, {size, weight, lh, group, radius: wradius, dy: 0, ...(wrole ? {role: wrole} : heading ? {role: 'heading'} : null)});
         },
         onTextLayout: (event: NativeSyntheticEvent<TextLayoutEventData>) => {
           registerLines(node.current, event.nativeEvent.lines);
@@ -116,6 +111,7 @@ export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines
   return (
     <Text
       numberOfLines={lines}
+      {...(wrole || heading ? {accessibilityRole: (wrole ?? 'header') as 'header'} : null)}
       {...parity}
       allowFontScaling={false}
       style={[run, {color, includeFontPadding: false, position: 'relative', top: u(halfLeading(size, lh) + dy), left: ls && ls < 0 && size >= 30 ? uf(-ls / 2) : 0}, upper ? {textTransform: 'uppercase'} : null, style]}
@@ -192,7 +188,6 @@ export function balanceLines(tokens: readonly string[], widths: readonly number[
 }
 
 export function BalancedT({width, children, ...text}: Omit<TProps, 'onTextLayout'> & {width: number}): React.ReactElement {
-  const group = React.useRef(`bt${Math.random().toString(36).slice(2)}`).current;
   const source = typeof children === 'string' ? children : '';
   const tokens = React.useMemo(() => titleTokens(source), [source]);
   // Probes: every trimmed token, then "a a" and "aa" (their difference is one space; Vega may trim a measured trailing space).
@@ -206,24 +201,26 @@ export function BalancedT({width, children, ...text}: Omit<TProps, 'onTextLayout
   const ready = tokens.length > 1 && probes.every((_, index) => measured[index] !== undefined);
   const ends = ready ? balanceLines(tokens, tokens.map((_, index) => measured[index]), measured[probes.length - 2] - measured[probes.length - 1], width) : null;
   if (ends) {
+    // One Text with explicit line breaks: the renderer lays the balanced lines out as one element, as a browser does.
     let from = 0;
+    const balanced = ends
+      .map((to) => {
+        const line = tokens.slice(from, to).join('').trim();
+        from = to;
+        return line;
+      })
+      .join('\n');
     return (
       <View>
-        {ends.map((to) => {
-          const line = tokens.slice(from, to).join('').trim();
-          from = to;
-          return (
-            <T key={from} heading {...text} group={group} lines={1} style={[text.style, {width: u(width * 2)}]}>
-              {line}
-            </T>
-          );
-        })}
+        <T heading {...text} style={[text.style, {width: u(width * 2)}]}>
+          {balanced}
+        </T>
       </View>
     );
   }
   return (
     <View style={{width: u(width)}}>
-      <T heading {...text} group={group}>{children}</T>
+      <T heading {...text}>{children}</T>
       {tokens.length > 1 && !ready ? (
         <View pointerEvents="none" style={{position: 'absolute', opacity: 0, width: u(width * 4)}}>
           {probes.map((probe, index) => (

@@ -7,7 +7,7 @@ import {FocusRing} from './FocusRing';
 import {useTheme} from '../theme/ThemeProvider';
 import {Box, T, u} from './kit';
 import {reportFocus} from '../debug/parityControl';
-import {lx} from '../debug/layoutMarks';
+
 
 /** `h3` of a settings card: 26.4px/560, 39.6px line. */
 export function SectionTitle({children, small}: {children: React.ReactNode; small?: boolean}): React.ReactElement {
@@ -72,9 +72,6 @@ export function Button({label, onPress, variant = 'primary', w, h, disabled, has
   const height = h ?? (primary ? 58 : 38);
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      {...lx('none')}
       disabled={disabled}
       hasTVPreferredFocus={hasTVPreferredFocus}
       onFocus={() => {
@@ -129,9 +126,9 @@ function SegmentButton({label, active, gap, onPress}: {label: string; active: bo
   const [focused, setFocused] = useState(false);
   return (
     <Pressable
-      accessibilityRole="button"
       accessibilityState={{selected: active}}
-      {...lx('button', label.charAt(0).toUpperCase() + label.slice(1), 12)}
+      accessibilityRole="button"
+      accessibilityLabel={label.charAt(0).toUpperCase() + label.slice(1)}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPress={onPress}

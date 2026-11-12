@@ -24,7 +24,7 @@ import {runtimeLabel} from '../lib/runtimeLabel';
 import {blend} from '../theme/color';
 import {EdgeFade} from '../tv/EdgeFade';
 import {CardCaption, focusInk, MediaFocus} from '../tv/mediaFocus';
-import {lx, NATIVE_DRIVER} from '../debug/layoutMarks';
+import {NATIVE_DRIVER} from '../debug/layoutMarks';
 import {BalancedT, Box, T, u} from '../tv/kit';
 import {indexWatchProgressByWork, WatchState} from '../tv/WatchState';
 import {RailFrost, Stage} from '../tv/Stage';
@@ -534,9 +534,8 @@ const HomeCard = memo(function HomeCard(props: {
     <Pressable
       ref={setRefs}
       {...(last && selfTag !== undefined ? ({nextFocusRight: selfTag} as object) : {})}
-      accessibilityRole="button"
-      accessibilityLabel={work.title}
-      {...lx('link', `${work.title} ${subtitle}`)}
+      accessibilityRole="link"
+      accessibilityLabel={`${work.title} ${subtitle}`}
       hasTVPreferredFocus={first}
       onFocus={onFocus}
       onPress={onPress}

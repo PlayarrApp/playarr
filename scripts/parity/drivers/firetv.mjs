@@ -129,7 +129,7 @@ export async function createDriver({ out } = {}) {
     }
     throw new Error("the app did not deliver its layout document");
   }
-  async function state(timeoutMs = 25000) {
+  async function state(timeoutMs = 25000, { strict = false } = {}) {
     const n = await send({ cmd: "state" });
     const t0 = Date.now();
     while (Date.now() - t0 < timeoutMs) {
@@ -137,7 +137,7 @@ export async function createDriver({ out } = {}) {
       await readAnswers();
       if (answers.has(n)) return answers.get(n);
       // the player's repeated state (the app sends it every 2 s while the player is up) stands in for a lost answer
-      const tick = ticks.filter((x) => x.t >= t0 + (offsetMs ?? 0) - 500).pop();
+      const tick = strict ? null : ticks.filter((x) => x.t >= t0 + (offsetMs ?? 0) - 500).pop();
       if (tick) return { ...tick, focus: null, theme: null };
     }
     throw new Error("the app did not answer the state request (is it built with PLAYARR_PARITY_CONTROL=1 and in the foreground?)");
@@ -152,6 +152,16 @@ export async function createDriver({ out } = {}) {
       if (!answers.has(n)) await sleep(1000);
     }
     return answers.get(n) ?? null;
+  }
+  // The applied theme is a checked precondition of every capture: the app's own answer (not the last command sent) must name the
+  // wanted theme, or the theme is applied again; a capture in the wrong theme is never taken.
+  async function ensureTheme(want) {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const s = await state(25000, { strict: true }).catch(() => null);
+      if (s?.theme === want) return;
+      await command({ cmd: "theme", name: want }, 6000);
+    }
+    throw new Error(`the app did not apply the ${want} theme`);
   }
   const launch = async () => {
     await vega("device", "terminate-app", "-d", DEVICE, "--appName", APP).catch(() => {});
@@ -196,6 +206,7 @@ export async function createDriver({ out } = {}) {
       // Always sent: the state's theme is the resolved one, so a system preference that happens to resolve to the wanted theme would
       // otherwise stay "System" and the Appearance panel would not show the chosen theme as web's does.
       await command({ cmd: "theme", name: theme }, 6000);
+      await ensureTheme(theme);
     },
     async home() {
       // A relaunch: Home is only drawn with its first card focused when it is the first page after the profile is chosen
@@ -253,11 +264,16 @@ export async function createDriver({ out } = {}) {
         const t0 = Date.now();
         while (Date.now() - t0 < 50000) {
           const player = (await state(20000).catch(() => ({}))).player ?? {};
-          if (player.state === "paused" && Math.abs(player.positionSeconds - 2) <= 0.05) { paused = true; break; }
+          // Exactly 2.000 s, paused, and still there a second later: the frame, the time label and the progress fill are the same every run.
+          if (player.state === "paused" && Math.abs(player.positionSeconds - 2) < 0.0005) {
+            await sleep(1000);
+            const again = (await state(20000).catch(() => ({}))).player ?? {};
+            if (again.state === "paused" && Math.abs(again.positionSeconds - 2) < 0.0005) { paused = true; break; }
+          }
           await sleep(1500);
         }
       }
-      if (!paused) throw new Error("the Vega player did not pause at 2 s");
+      if (!paused) throw new Error("the Vega player did not hold exactly 2.000 s paused");
       await press("Right"); // the first input only raises the controls
       await sleep(2500);
     },
@@ -300,6 +316,7 @@ export async function createDriver({ out } = {}) {
       // The layout document of the same screen state goes next to the capture: <out>/layout/<theme>/<screen>.json.
       const theme = basename(dirname(file));
       if (theme === "dark" || theme === "light") {
+        await ensureTheme(theme);
         const layout = await layoutDocument();
         const dir = join(dirname(dirname(file)), "layout", theme);
         mkdirSync(dir, { recursive: true });

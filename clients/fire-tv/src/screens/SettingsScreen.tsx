@@ -12,7 +12,7 @@ import {useTvBackNavigation} from '../navigation/backPolicy';
 import {ROUTES, type RouteName} from '../navigation/routes';
 import {useTheme} from '../theme/ThemeProvider';
 import {Box, T, u} from '../tv/kit';
-import {lx, NATIVE_DRIVER} from '../debug/layoutMarks';
+import {NATIVE_DRIVER} from '../debug/layoutMarks';
 import {EdgeFade} from '../tv/EdgeFade';
 import {PageHeader} from '../tv/PageHeader';
 import {RailFrost, Stage} from '../tv/Stage';
@@ -174,9 +174,8 @@ function Row({section, y, active, onFocus, onPress}: {section: Section; y: numbe
   const lit = active || focused;
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={t(section.titleKey)}
-      {...lx('link', `${section.number} ${t(section.titleKey)} →`)}
+      accessibilityRole="link"
+      accessibilityLabel={`${section.number} ${t(section.titleKey)} →`}
       onFocus={() => {
         setFocused(true);
         onFocus();

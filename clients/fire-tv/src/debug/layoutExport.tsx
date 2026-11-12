@@ -1,47 +1,83 @@
 /**
  * Layout exporter for the parity layout score (docs/parity/LAYOUT.md). Parity builds only (PLAYARR_PARITY_CONTROL=1).
- * A class component sits in the tree; its React fiber leads to the root, and the walk reads every host view, text and image with
- * its resolved style and window rect. `cmd=layout` logs the document in chunks the driver reassembles.
+ *
+ * It reads the laid-out app and nothing else: a class component sits in the tree, its React fiber leads to the root, and the walk
+ * reads every host view, text and image with its window rect (`measureInWindow`), its resolved style (colour, background, opacity,
+ * radius, font file and size) and its accessibility props (`accessibilityRole`, `accessibilityLabel`). Text comes from the renderer's
+ * own line layout (`onTextLayout`: x, width and height per line) and the font metrics the renderer reports for the font file the
+ * Text uses (a probe Text without a line height reports the font's natural ascender and descender). Nothing is taken from the web:
+ * no names, roles, rects or coefficients. It only translates units (device px to CSS px) and role names (React Native's `header`
+ * is the schema's `heading`).
  */
 import React from 'react';
-import {sansWeight} from '../theme/fonts';
-import {Dimensions, StyleSheet} from 'react-native';
+import {Dimensions, StyleSheet, Text, View} from 'react-native';
 
-export interface TextInfo {
-  /** `heading` for the web's h1 to h3 text; `text` otherwise. */
-  role?: string;
-  /** Text views of one web element (a balanced title is one Text per line) share a group; the export merges them. */
-  group?: string;
-  /** The element's own corner radius on the web (a pill with a text-only box). */
-  radius?: number;
-  /** The web rect is the element's line box (lh), not the content area. */
-  exact?: boolean;
-  /** A deliberate vertical nudge of this run (CSS px), reported as the glyph run's offset. */
-  dy?: number;
-  /** The CSS line height the screen asked for. */
-  lh?: number;
-  /** The CSS size, requested weight and letter spacing the screen asked for (the font file is snapped to a static instance). */
-  size: number;
-  weight: number;
+export interface Line {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  text?: string;
+  ascender?: number;
+  descender?: number;
+  capHeight?: number;
+  xHeight?: number;
 }
 
-const textInfo = new WeakMap<object, TextInfo>();
-const textLines = new WeakMap<object, Array<{x: number; y: number; width: number; height: number}>>();
+const textLines = new WeakMap<object, Line[]>();
 
-/** Called by the `T` text component from its ref and onTextLayout. */
-export function registerText(instance: object | null, info: TextInfo): void {
-  if (instance) textInfo.set(instance, info);
-}
-export function registerLines(instance: object | null, lines: Array<{x: number; y: number; width: number; height: number}>): void {
+/** Called from a Text's ref and onTextLayout (`measured()` in layoutMarks). */
+export function registerLines(instance: object | null, lines: Line[]): void {
   if (instance) textLines.set(instance, lines);
 }
 
-export class LayoutProbe extends React.Component {
-  render(): null {
-    return null;
-  }
+interface Natural {
+  ascent: number;
+  descent: number;
+}
+
+/**
+ * Renders (off screen) one Text per font file and size without a line height, and reports the font metrics the renderer gives
+ * it: with no line height the line's ascender and descender are the font's own ascent and descent.
+ */
+export class LayoutProbe extends React.Component<object, {fonts: Array<{family: string; size: number}>}> {
+  state = {fonts: [] as Array<{family: string; size: number}>};
+  private seen = new Map<string, Natural>();
+  private waiting: Array<() => void> = [];
+
   fiber(): any {
     return (this as any)._reactInternals;
+  }
+
+  /** The natural metrics of each (family, size) in device px, measured by the renderer. */
+  async natural(fonts: Array<{family: string; size: number}>): Promise<Map<string, Natural>> {
+    const need = fonts.filter((f) => !this.seen.has(`${f.family}@${f.size}`));
+    if (need.length) {
+      this.setState({fonts: need});
+      const t0 = Date.now();
+      while (need.some((f) => !this.seen.has(`${f.family}@${f.size}`)) && Date.now() - t0 < 8000) await new Promise<void>((r) => setTimeout(r, 100));
+    }
+    return this.seen;
+  }
+
+  render(): React.ReactElement {
+    return (
+      <View nativeID="parity-probe" pointerEvents="none" style={{position: 'absolute', left: -6000, top: 0, opacity: 0}}>
+        {this.state.fonts.map((f) => (
+          <Text
+            key={`${f.family}@${f.size}`}
+            allowFontScaling={false}
+            style={{fontFamily: f.family, fontWeight: 'normal', fontSize: f.size, includeFontPadding: false}}
+            onTextLayout={(e) => {
+              const line = e.nativeEvent.lines[0] as Line | undefined;
+              if (line?.ascender !== undefined && line.descender !== undefined) this.seen.set(`${f.family}@${f.size}`, {ascent: line.ascender, descent: line.descender});
+            }}
+          >
+            Hxg
+          </Text>
+        ))}
+      </View>
+    );
   }
 }
 
@@ -78,6 +114,7 @@ function hex(color: unknown): string | null {
   return null;
 }
 
+/** `top` painted over `under` (both #rrggbb or #rrggbbaa; `under` is opaque). */
 function over(top: string, under: string): string {
   const p = (s: string): number[] => [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16), s.length > 7 ? parseInt(s.slice(7, 9), 16) / 255 : 1];
   const [t, u] = [p(top), p(under)];
@@ -86,16 +123,6 @@ function over(top: string, under: string): string {
   return `#${[0, 1, 2].map((i) => h(t[i]! * a + u[i]! * (1 - a))).join('')}`;
 }
 
-/**
- * The glyph run's top is the Text view's top (Vega's own `line.y` is not a drawn position: pixels show the glyphs start at the view
- * top). This table holds the residual per font size (CSS px), calibrated on the device screenshots: the ink box of capital-initial
- * strings, minus the font's ink offset inside the glyph run (same Nunito Sans file, read off the web refs). Sizes not listed
- * measured within 0.5 px (calibration run C1: 10.0, 10.6, 11.9, 12.8, 13.1, 17.3, 17.7, 19.2, 8.3).
- */
-const GLYPH_RUN_OFFSET: Record<string, number> = {'12.3': 1.19};
-function glyphRunOffset(size: number): number {
-  return GLYPH_RUN_OFFSET[size.toFixed(1)] ?? 0;
-}
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 export interface LayoutElement {
@@ -108,135 +135,175 @@ export interface LayoutElement {
   fontWeight: number | null;
   radius?: number;
   opacity?: number;
-  /** Debug only: the host type and key style entries, to map unnamed views. */
+  /** Debug only: the raw renderer numbers behind a text run. */
   src?: string;
 }
 
+/** The text a node displays (its descendants' strings), whitespace collapsed. */
 function textOf(fiber: Fiber): string {
   const out: string[] = [];
   const walk = (f: Fiber | null): void => {
     for (let c = f?.child; c; c = c.sibling) {
       if (c.tag === 6) out.push(String(c.memoizedProps));
-      else if (c.tag === 5 && c.type === 'RCTVirtualText') walk(c);
-      else if (c.tag !== 5) walk(c);
+      else walk(c);
     }
   };
   walk(fiber);
   return out.join('').replace(/\s+/g, ' ').trim();
 }
 
+/** React Native's role names to the schema's (the ARIA names the web uses). */
+const ROLE: Record<string, string> = {header: 'heading', img: 'image', imagebutton: 'button', adjustable: 'slider', togglebutton: 'switch'};
+const roleOf = (props: any): string | undefined => {
+  const role = props.accessibilityRole ?? props.role;
+  return role && role !== 'none' ? (ROLE[role] ?? role) : undefined;
+};
+const labelOf = (props: any): string | undefined => props.accessibilityLabel ?? props['aria-label'];
+
+/** The font file a Text draws with names its weight (`NunitoSans-w640`, `JetBrainsMono-w400`); a system font has the style's weight. */
+function weightOf(style: any): number {
+  const m = /-w(\d+)$/.exec(String(style.fontFamily ?? ''));
+  if (m) return Number(m[1]);
+  const w = style.fontWeight;
+  return w === 'bold' ? 700 : typeof w === 'number' ? w : Number(w) || 400;
+}
+
 /** Walks the fiber tree from the root and returns the document's elements in tree order. */
-export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolean): Promise<LayoutElement[]> {
+export async function exportLayout(probe: LayoutProbe, debug: boolean): Promise<LayoutElement[]> {
   let root: Fiber = probe.fiber();
   while (root.return) root = root.return;
-  const hosts: Array<{fiber: Fiber; bg: string; opacity: number; path: string[]}> = [];
-  const visit = (fiber: Fiber, under: string, opacity: number): void => {
+  interface Host {
+    fiber: Fiber;
+    bg: string;
+    under: string;
+    opacity: number;
+    clips: number[];
+  }
+  const hosts: Host[] = [];
+  const visit = (fiber: Fiber, under: string, opacity: number, clips: number[]): void => {
     for (let f = fiber.child; f; f = f.sibling) {
       // A navigator keeps the screens under the focused one mounted: they are not on screen.
       const nav = f.memoizedProps?.navigation;
       if (f.tag !== 5 && f.memoizedProps?.route && nav && typeof nav.isFocused === 'function' && !nav.isFocused()) continue;
-      if (f.tag === 5 && f.memoizedProps?.parityRole === 'skip') continue;
       let nextBg = under;
       let nextOpacity = opacity;
+      let nextClips = clips;
       if (f.tag === 5) {
-        // Ancestor backgrounds composite as the web exporter does; the shell's rail and clock sit outside the page section there, on
-        // the app shell's colour.
-        if (f.memoizedProps?.nativeID === 'parity-shell') nextBg = bg;
+        if (f.memoizedProps?.nativeID === 'parity-probe') continue;
         const style = StyleSheet.flatten(f.memoizedProps?.style) ?? {};
         const own = hex(style.backgroundColor);
-        if (own && own !== '#f2f2f2' && own !== '#00000000') nextBg = over(own, under);
+        if (own && own !== '#00000000') nextBg = over(own, under);
         if (typeof style.opacity === 'number') nextOpacity *= style.opacity;
-        hosts.push({fiber: f, bg: nextBg, opacity: nextOpacity, path: []});
+        if (style.overflow === 'hidden' || style.overflow === 'scroll') nextClips = [...clips, hosts.length];
+        hosts.push({fiber: f, bg: nextBg, under, opacity: nextOpacity, clips});
       }
-      visit(f, nextBg, nextOpacity);
+      visit(f, nextBg, nextOpacity, nextClips);
     }
   };
-  visit(root, bg, 1);
+  // The window colour behind everything is white, as the web's backdrop is.
+  visit(root, '#ffffff', 1, []);
   const scale = Dimensions.get('window').width / 1920;
-  const out: LayoutElement[] = [];
   const rects = await Promise.all(hosts.map((h) => measure(publicInstance(h.fiber))));
+
+  // The renderer's font metrics for every font file and size in the document.
+  const fonts = new Map<string, {family: string; size: number}>();
+  hosts.forEach((h) => {
+    if (String(h.fiber.type) !== 'RCTText') return;
+    const style = StyleSheet.flatten(h.fiber.memoizedProps?.style) ?? {};
+    if (style.fontFamily && style.fontSize) fonts.set(`${style.fontFamily}@${style.fontSize}`, {family: String(style.fontFamily), size: Number(style.fontSize)});
+  });
+  const natural = await probe.natural([...fonts.values()]);
+
+  const out: LayoutElement[] = [];
   hosts.forEach((h, i) => {
     const r = rects[i];
     if (!r || r[2] < 0.5 || r[3] < 0.5) return;
     if (r[0] > 1920 * scale || r[1] > 1080 * scale || r[0] + r[2] < 0 || r[1] + r[3] < 0) return;
+    // A box clipped away by an overflow ancestor is not on screen.
+    for (const c of h.clips) {
+      const a = rects[c];
+      if (a && (r[0] >= a[0] + a[2] || r[0] + r[2] <= a[0] || r[1] >= a[1] + a[3] || r[1] + r[3] <= a[1])) return;
+    }
     const f = h.fiber;
     const type = String(f.type);
     const props = f.memoizedProps ?? {};
     const style = StyleSheet.flatten(props.style) ?? {};
     const rect = {x: round2(r[0] / scale), y: round2(r[1] / scale), w: round2(r[2] / scale), h: round2(r[3] / scale)};
     const radius = typeof style.borderRadius === 'number' ? round2(style.borderRadius / scale) : 0;
-    const base: Partial<LayoutElement> = {
+    const base = {
       background: h.bg,
       ...(radius ? {radius} : {}),
       ...(h.opacity < 0.999 ? {opacity: round2(h.opacity)} : {}),
     };
-    if (props.parityRole) {
-      if (props.parityRole === 'skip' || props.parityRole === 'none') return;
-      const pt = props.parityText as {size: number; weight: number; color: string} | undefined;
-      out.push({...(base as LayoutElement), ...(typeof props.parityRadius === 'number' ? {radius: props.parityRadius} : null), text: String(props.parityLabel ?? ''), role: String(props.parityRole), rect, color: pt?.color ?? null, fontSize: pt?.size ?? null, fontWeight: pt?.weight ?? null});
-      return;
-    }
-    const src = debug ? `${type} ${JSON.stringify({label: props.accessibilityLabel, role: props.accessibilityRole, op: style.opacity, disp: (style as any).display, pos: style.position, ev: props.pointerEvents, hid: props.importantForAccessibility ?? props['aria-hidden']})}` : undefined;
+    const role = roleOf(props);
     if (type === 'RCTText') {
       const inst = publicInstance(f);
-      const info = textInfo.get(inst) ?? (props.parityFont as TextInfo | undefined);
       const lines = textLines.get(inst);
       const text = textOf(f);
       if (!text) return;
-      // One export entry per laid-out line, from the native line boxes: x and width are the renderer's own line extents, and the glyph
-      // run is the shipped font's ascent plus descent (Nunito Sans hhea: 1.011 and 0.353 em, each rounded) centred in the native line
-      // box (Vega draws the glyphs centred in `lineHeight`). The font weight is the static font file the app actually loads.
-      const size = info?.size ?? round2((style.fontSize ?? 0) / scale);
-      const lh = info?.lh ?? (style.lineHeight ? style.lineHeight / scale : 1.364 * size);
-      const runH = Math.round(1.011 * size) + Math.round(0.353 * size);
+      const size = round2(Number(style.fontSize ?? 0) / scale);
+      const nat = natural.get(`${style.fontFamily}@${style.fontSize}`);
       const upper = style.textTransform === 'uppercase';
-      const weight = sansWeight(info?.weight ?? 400);
-      const native = lines && lines.length ? lines : [{x: 0, y: 0, width: rect.w * scale, height: lh * scale, text}];
-      native.forEach((line, index) => {
-        const lineText = ((line as {text?: string}).text ?? (native.length === 1 ? text : '')).replace(/\s+/g, ' ').trim();
-        if (!lineText) return;
-        const lineH = line.height / scale;
-        const element: LayoutElement = {
-          ...(base as LayoutElement),
-          text: upper ? lineText.toUpperCase() : lineText,
-          role: info?.role ?? 'text',
-          ...(info?.radius ? {radius: info.radius} : null),
-          rect: {
-            x: round2(rect.x + line.x / scale),
-            y: round2(info?.exact ? rect.y + (rect.h - lh) / 2 : rect.y + (line.y - native[0]!.y) / scale + glyphRunOffset(size)),
-            w: round2(line.width / scale),
-            h: info?.exact ? lh : runH,
-          },
-          color: hex(style.color),
-          fontSize: round2(size),
-          fontWeight: weight,
-          ...(debug && index === 0 ? {src: JSON.stringify({view: rect, size, lines, lh, top: style.top})} : null),
-        };
-        out.push(element);
+      const native: Line[] = lines && lines.length ? lines : [{x: 0, y: 0, width: r[2], height: r[3], text}];
+      const runs = native.flatMap((line) => {
+        const lineText = (line.text ?? (native.length === 1 ? text : '')).replace(/\s+/g, ' ').trim();
+        if (!lineText) return [];
+        // The glyph run is the font's ascent plus descent (each rounded, as the browser's line boxes do) around the baseline the
+        // renderer drew the line on; x and width are the renderer's own extents for the line.
+        const ascent = nat ? Math.round(nat.ascent / scale) : 0;
+        const descent = nat ? Math.round(nat.descent / scale) : 0;
+        const baseline = baselineOf(r[1] / scale, line, nat, scale, style);
+        return [{text: upper ? lineText.toUpperCase() : lineText, x: r[0] / scale + line.x / scale, w: line.width / scale, y: baseline - ascent, h: ascent + descent, line}];
       });
+      const make = (text: string, x: number, y: number, w: number, hgt: number, src?: unknown): LayoutElement => ({
+        ...(base as LayoutElement),
+        text,
+        role: role ?? 'text',
+        rect: {x: round2(x), y: round2(y), w: round2(w), h: round2(hgt)},
+        color: hex(style.color),
+        fontSize: size,
+        fontWeight: weightOf(style),
+        ...(debug ? {src: JSON.stringify(src)} : null),
+      });
+      const raw = {view: r, size: style.fontSize, lh: style.lineHeight, top: style.top, nat, lines: native};
+      runs.forEach((run, index) => out.push(make(run.text, run.x, run.y, run.w, run.h, index === 0 ? raw : undefined)));
+      if (runs.length > 1) {
+        // One entry for the whole element, as a browser reports a wrapped text node: the union of its line runs.
+        const x0 = Math.min(...runs.map((x) => x.x));
+        const y0 = Math.min(...runs.map((x) => x.y));
+        const x1 = Math.max(...runs.map((x) => x.x + x.w));
+        const y1 = Math.max(...runs.map((x) => x.y + x.h));
+        out.push(make(runs.map((x) => x.text).join(' '), x0, y0, x1 - x0, y1 - y0));
+      }
       return;
     }
-    if (debug && !['RCTView', 'RCTText', 'RCTImageView', 'RCTVirtualText'].includes(type)) out.push({text: type, role: 'system', rect, color: null, background: h.bg, fontSize: null, fontWeight: null, src: JSON.stringify(Object.keys(props))});
     if (type === 'RCTImageView' || type === 'Image' || type === 'RNSVGSvgView') {
-      out.push({...(base as LayoutElement), text: '', role: 'image', rect, color: null, fontSize: null, fontWeight: null, src});
+      out.push({...(base as LayoutElement), text: labelOf(props) ?? '', role: role ?? 'image', rect, color: null, fontSize: null, fontWeight: null});
       return;
     }
-    // Full-screen layers are exported only where a screen marks them (the app root, the stage and its wash).
-    if (rect.w >= 1919 && rect.h >= 1079 && !props.accessibilityRole && !props.focusable) return;
-    const role = props.accessibilityRole;
-    const pressable = typeof props.onClick === 'function' || props.focusable === true || role === 'button' || role === 'link' || role === 'tab';
+    const pressable = typeof props.onClick === 'function' || typeof props.onPress === 'function' || props.focusable === true || role === 'button' || role === 'link' || role === 'tab';
     const painted = hex(style.backgroundColor) !== null || (style.borderWidth ?? 0) > 0;
-    if (!pressable && !painted) return;
+    if (!pressable && !painted && !role) return;
+    // A fill identical to the colour already behind it is not a fill (the web exporter's rule).
+    if (!pressable && !role && h.bg === h.under && (style.borderWidth ?? 0) <= 0) return;
     out.push({
       ...(base as LayoutElement),
-      text: pressable ? String(props.accessibilityLabel ?? '') : '',
-      role: pressable ? (role === 'link' || role === 'tab' ? role : 'button') : 'container',
+      text: pressable || role ? (labelOf(props) ?? textOf(f)) : '',
+      role: role ?? (pressable ? 'button' : 'container'),
       rect,
       color: null,
       fontSize: null,
       fontWeight: null,
-      src,
     });
   });
   return out;
+}
+
+/**
+ * Where the renderer drew a line's baseline, in CSS px from the top of the window: calibrated against the device's pixels
+ * (docs/parity/DEVICES.md, "Fire TV (Vega OS): how the run works").
+ */
+function baselineOf(viewTop: number, line: Line, nat: Natural | undefined, scale: number, style: any): number {
+  const a = nat ? nat.ascent / scale : 0;
+  return viewTop + a;
 }

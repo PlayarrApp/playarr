@@ -16,7 +16,7 @@ import {useTheme} from '../theme/ThemeProvider';
 import {FocusRing} from './FocusRing';
 import {EdgeFade} from './EdgeFade';
 import {T, u} from './kit';
-import {lx, NATIVE_DRIVER} from '../debug/layoutMarks';
+import {NATIVE_DRIVER} from '../debug/layoutMarks';
 import {useScrollReveal} from './useScrollReveal';
 
 export const DRAWER_X = 1560;
@@ -126,7 +126,7 @@ export function FilterDrawer({kicker, title, closeLabel, onClose, sections, foot
         style={{position: 'absolute', left: u((wide ? WIDE_X : DRAWER_X) - 90), top: 0, width: u(90), height: u(1080), backgroundColor: 'rgba(40, 26, 24, 0.04)'}}
       />
       <Animated.View
-        {...lx('dialog', '')}
+        role="dialog"
         style={{
           position: 'absolute',
           left: u(wide ? WIDE_X : DRAWER_X),
@@ -205,7 +205,6 @@ export function CloseButton({label, onPress, onFocused, x = 1826 - DRAWER_X, tak
       ref={ref}
       accessibilityRole="button"
       accessibilityLabel={label}
-      {...lx('button', label, 50)}
       hasTVPreferredFocus={takesFocus}
       onFocus={() => {
         setFocused(true);
@@ -264,8 +263,7 @@ function Chip({chip, x, y, w, onReveal, focusOwner}: {chip: DrawerChip; x: numbe
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={chip.label}
-      {...(chip.icon ? lx('button', capitalise(chip.label), 12) : null)}
+      accessibilityLabel={chip.icon ? capitalise(chip.label) : chip.label}
       accessibilityState={{selected: chip.selected}}
       onFocus={() => {
         setFocused(true);
@@ -364,24 +362,22 @@ function SelectField({label, value, onPress, x, y, w, onReveal}: {label: string;
   const [focused, setFocused] = useState(false);
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${label}: ${value}`}
       onFocus={() => {
         setFocused(true);
         onReveal(y, SELECT_H);
       }}
       onBlur={() => setFocused(false)}
       onPress={onPress}
-      {...lx('group', '', 12)}
+      role="group"
       style={{position: 'absolute', left: u(x), top: u(y), width: u(w), height: u(SELECT_H), borderRadius: u(12), borderWidth: 1, borderColor: colour.lineStrong, backgroundColor: mix(colour.surfaceSoft, 0.64), padding: u(6.39)}}
     >
-      <View {...lx('button', `${value} \u2304`, 10)} style={{flex: 1, borderRadius: u(10), flexDirection: 'row', alignItems: 'center', paddingHorizontal: u(12)}}>
+      <View style={{flex: 1, borderRadius: u(10), flexDirection: 'row', alignItems: 'center', paddingHorizontal: u(12)}}>
         <View style={{flex: 1}}>
           <T size={11.84} weight={680} lh={17.76} color={colour.ink} lines={1}>
             {value}
           </T>
         </View>
-        <View {...lx('skip')}>
+        <View>
           <T size={11.84} weight={680} lh={17.76} color={colour.inkMuted}>
             {'\u2304'}
           </T>

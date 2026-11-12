@@ -72,7 +72,7 @@ import {useTheme, type ThemePreference} from '../theme/ThemeProvider';
 import {Icon} from '../shell/icons';
 import {PlayarrLogo} from '../shell/Logo';
 import {Dropdown} from '../tv/Dropdown';
-import {lx} from '../debug/layoutMarks';
+
 import {Box, T, u} from '../tv/kit';
 import {ROUTES, type RouteName} from '../navigation/routes';
 import {APP_SHELL_ROUTE} from '../navigation/AppShellNavigator';
@@ -178,12 +178,10 @@ function ProfileChoice({
       onFocus={onFocus}
       onPress={() => onSelect(profile)}
       accessibilityRole="button"
-      accessibilityLabel={profile.display_name || profile.username}
-      {...lx('button', `${profile.display_name || profile.username}${profile.is_current ? ', current profile' : ''}`)}
+      accessibilityLabel={`${profile.display_name || profile.username}${profile.is_current ? ', current profile' : ''}`}
       style={{width: u(244), alignItems: 'center', transform: selected ? [{translateY: u(-8)}, {scale: 1.045}] : []}}
     >
       <View
-        {...lx('container', '', 50)}
         style={{
           width: u(244),
           height: u(244),
@@ -217,12 +215,10 @@ function AddProfileTile({selected, onFocus, onPress}: {selected: boolean; onFocu
       onFocus={onFocus}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={t('pages.profiles.signIn')}
-      {...lx('button', `+ ${t('pages.profiles.signIn')} ${t('pages.profiles.addAnotherProfile').toUpperCase()}`)}
+      accessibilityLabel={`+ ${t('pages.profiles.signIn')} ${t('pages.profiles.addAnotherProfile').toUpperCase()}`}
       style={{width: u(244), alignItems: 'center', transform: selected ? [{translateY: u(-8)}, {scale: 1.045}] : []}}
     >
       <View
-        {...lx('container', '', 50)}
         style={{
           width: u(244),
           height: u(244),
@@ -292,8 +288,7 @@ function ActionButton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
-      {...lx('button', web ?? label, 999)}
+      accessibilityLabel={web ?? label}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPress={onPress}
@@ -454,7 +449,7 @@ export function ProfilesScreen(): React.ReactElement {
   const background = colour.bg;
 
   return (
-    <View {...lx('container', '')} style={{flex: 1, backgroundColor: background}}>
+    <View style={{flex: 1, backgroundColor: background}}>
       <LinearGradient
         style={{position: 'absolute', left: 0, top: 0, right: 0, bottom: 0}}
         start={{x: 0.2033, y: -0.2532}}

@@ -13,7 +13,7 @@ import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {FocusRing} from '../tv/FocusRing';
 import {T, u} from '../tv/kit';
-import {lx} from '../debug/layoutMarks';
+
 
 export type ChromeControl = 'close' | 'scrubber' | 'play' | 'subtitles' | 'quality';
 
@@ -68,10 +68,10 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
   const buffered = duration > 0 ? Math.min(1, Math.max(played, props.bufferedSeconds / duration)) : 0;
 
   return (
-    <View {...lx('container', '')} style={StyleSheet.absoluteFill} pointerEvents={props.visible ? 'box-none' : 'none'}>
-      <View {...lx('video', '')} pointerEvents="none" style={StyleSheet.absoluteFill} />
+    <View style={StyleSheet.absoluteFill} pointerEvents={props.visible ? 'box-none' : 'none'}>
+      <View pointerEvents="none" style={StyleSheet.absoluteFill} />
       {/* Scrim: rises from the bottom, recedes downwards. */}
-      <Animated.View pointerEvents="none" {...lx('container', '')} style={{position: 'absolute', left: 0, right: 0, bottom: 0, height: u(518.39), transform: [{translateY: scrimShift}]}}>
+      <Animated.View pointerEvents="none" style={{position: 'absolute', left: 0, right: 0, bottom: 0, height: u(518.39), transform: [{translateY: scrimShift}]}}>
         <LinearGradient style={StyleSheet.absoluteFill} start={{x: 0, y: 0}} end={{x: 0, y: 1}} colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.86)']} locations={[0, 0.19, 0.6355, 1]} />
       </Animated.View>
       {/* The top gradient fades separately. */}
@@ -88,7 +88,7 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
         <Decor icon="skipPrev" label="Previous episode" x={70} y={958} />
         <Decor icon="skipNext" label="Next episode" x={225.19} y={958} />
         <RoundButton icon={props.playing ? 'pause' : 'play'} label={props.playing ? 'Pause' : 'Play'} web={props.playing ? 'Pause' : 'Play'} size={64} x={147.59} y={958} iconSize={20} control="play" {...props} nodeRef={props.playRef} onPress={props.onTogglePlay} filled />
-        <View {...lx('container', `${formatTime(shown)} / ${formatTime(duration)}`)} style={{position: 'absolute', left: u(302.78), top: u(978.7), flexDirection: 'row'}} pointerEvents="none">
+        <View style={{position: 'absolute', left: u(302.78), top: u(978.7), flexDirection: 'row'}} pointerEvents="none">
           <T size={11.136} weight={600} color={colour.ink} lh={22}>
             {formatTime(shown)}
           </T>
@@ -122,8 +122,7 @@ function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>
     <Pressable
       ref={props.nodeRef}
       accessibilityRole="button"
-      accessibilityLabel={props.label}
-      {...lx('button', props.web ?? props.label, 50)}
+      accessibilityLabel={props.web ?? props.label}
       focusable={props.focusable}
       hasTVPreferredFocus={props.control === 'play'}
       onFocus={() => props.onFocusControl(props.control)}
@@ -148,16 +147,15 @@ function Scrubber(props: PlayerChromeProps & {played: number; buffered: number; 
   const focused = props.focused === 'scrubber';
   return (
     <Pressable
-      accessibilityRole="adjustable"
-      accessibilityLabel="Seek"
-      {...lx('slider', 'Seek')}
+      role="slider"
+      accessibilityLabel={'Seek'}
       onFocus={() => props.onFocusControl('scrubber')}
       onPress={props.onTogglePlay}
       style={{position: 'absolute', left: u(SCRUB_X), top: u(SCRUB_TOP), width: u(SCRUB_W), height: u(44), justifyContent: 'center'}}
     >
       <View style={{height: u(focused ? 8 : 6), borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.22)', overflow: 'hidden'}}>
         <View style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${props.buffered * 100}%`, backgroundColor: 'rgba(255,255,255,0.38)'}} />
-        <View {...lx('container', '')} style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${props.played * 100}%`, backgroundColor: '#cf3157'}} />
+        <View style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${props.played * 100}%`, backgroundColor: '#cf3157'}} />
       </View>
       {focused ? (
         <>
@@ -186,7 +184,6 @@ function QualityPill(props: PlayerChromeProps): React.ReactElement {
       ref={props.qualityRef}
       accessibilityRole="button"
       accessibilityLabel={`Quality: ${props.qualityLabel}`}
-      {...lx('button', `Quality: ${props.qualityLabel}`, 999)}
       onFocus={() => props.onFocusControl('quality')}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
@@ -218,7 +215,7 @@ function QualityPill(props: PlayerChromeProps): React.ReactElement {
 /** A drawn-only transport button (previous, next episode) at the web's 64 px box, dimmed like a disabled control. */
 function Decor({icon, label, x, y}: {icon: IconName; label: string; x: number; y: number}): React.ReactElement {
   return (
-    <View pointerEvents="none" {...lx('button', label, 50)} style={{position: 'absolute', left: u(x), top: u(y), width: u(64), height: u(64), borderRadius: 999, alignItems: 'center', justifyContent: 'center', opacity: 0.28}}>
+    <View pointerEvents="none" accessibilityRole="button" accessibilityLabel={label} style={{position: 'absolute', left: u(x), top: u(y), width: u(64), height: u(64), borderRadius: 999, alignItems: 'center', justifyContent: 'center', opacity: 0.28}}>
       <Icon name={icon} size={u(20)} color="#ffffff" strokeWidth={2} />
     </View>
   );
@@ -226,7 +223,7 @@ function Decor({icon, label, x, y}: {icon: IconName; label: string; x: number; y
 
 function InlineIcon({icon, label, x, bright}: {icon: IconName; label: string; x: number; bright?: boolean}): React.ReactElement {
   return (
-    <View pointerEvents="none" {...lx('button', label, 50)} style={{position: 'absolute', left: u(x), top: u(958), width: u(64), height: u(64), borderRadius: 999, alignItems: 'center', justifyContent: 'center'}}>
+    <View pointerEvents="none" accessibilityRole="button" accessibilityLabel={label} style={{position: 'absolute', left: u(x), top: u(958), width: u(64), height: u(64), borderRadius: 999, alignItems: 'center', justifyContent: 'center'}}>
       <Icon name={icon} size={u(20)} color={bright ? '#ffffff' : 'rgba(255,255,255,0.34)'} strokeWidth={2} />
     </View>
   );
@@ -236,7 +233,8 @@ function MinimisePill(): React.ReactElement {
   return (
     <View
       pointerEvents="none"
-      {...lx('button', 'Minimise player', 999)}
+      accessibilityRole="button"
+      accessibilityLabel={'Minimise player'}
       style={{position: 'absolute', left: u(1678), top: u(37.8), width: u(124), height: u(48), borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center'}}
     >
       <Icon name="minimise" size={u(20)} color="#ffffff" strokeWidth={2} />

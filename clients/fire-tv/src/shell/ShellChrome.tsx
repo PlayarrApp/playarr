@@ -7,7 +7,7 @@ import {focusDefaultTarget, focusNode, getFocusedTag, TvFocusScope, useRemoteKey
 import {findNodeHandle, Pressable, StyleSheet, Text, View} from 'react-native';
 import type {WorkKind} from '@playarr-tv/api-client';
 import {reportFocus} from '../debug/parityControl';
-import {lf, lx} from '../debug/layoutMarks';
+import {measured} from '../debug/layoutMarks';
 import {ProfileAvatar} from '../components/ProfileAvatar';
 import {mix} from '../theme/color';
 import {textRun} from '../theme/fonts';
@@ -123,10 +123,9 @@ function RailLink({
   return (
     <Pressable
       ref={activeRefCallback}
-      accessibilityRole="button"
-      accessibilityLabel={item.label}
       accessibilityState={{selected: active}}
-      {...lx('link', item.label)}
+      accessibilityRole="link"
+      accessibilityLabel={item.label}
       {...({nextFocusUp: up, nextFocusDown: down} as object)}
       onFocus={(event) => {
         reportFocus(item.label, {rail: 'nav', index}, undefined, event.nativeEvent.target);
@@ -146,7 +145,7 @@ function RailLink({
     >
       <Icon name={item.icon} size={sw(20)} color={ink} />
       <Text
-        {...lf(8.832, 680, 8.832)}
+        {...measured()}
         style={[
           textRun(8.832, 680, {letterSpacing: 0.309, lineHeight: 8.832}),
           {color: ink, marginTop: sw(4.8), fontSize: sw(8.832)},
@@ -253,9 +252,9 @@ export function ShellClock({right}: {right: number}): React.ReactElement {
   }, []);
   return (
     <View style={{position: 'absolute', top: sw(60.2), right: sw(1920 - right), height: sw(42), flexDirection: 'row', alignItems: 'center'}}>
-      <Text {...lf(17.28, 760, 25.92, true)} style={[textRun(17.28, 760, {letterSpacing: -0.5184}), {color: colour.ink, fontSize: sw(17.28)}]}>{formatClockTime(now)}</Text>
+      <Text {...measured()} style={[textRun(17.28, 760, {letterSpacing: -0.5184}), {color: colour.ink, fontSize: sw(17.28)}]}>{formatClockTime(now)}</Text>
       <Text
-        {...lf(11.136, 640, 12.25, true)}
+        {...measured()}
         style={[
           textRun(11.136, 640, {letterSpacing: 0.4454}),
           {color: colour.ink, marginLeft: sw(11.2), textTransform: 'uppercase', fontSize: sw(11.136)},
@@ -307,9 +306,8 @@ function ProfileChip({profileId, name, version, onPress, onNode, up, navCount = 
             if (node) onNode?.('profile', node);
           }}
           {...({nextFocusUp: up} as object)}
-          accessibilityRole="button"
-          accessibilityLabel={`Profile ${name}`}
-          {...lx('link', `Signed in as ${name}. Open profiles.`)}
+          accessibilityRole="link"
+          accessibilityLabel={`Signed in as ${name}. Open profiles.`}
           onFocus={(event) => {
             reportFocus('device', {rail: 'nav', index: navCount}, undefined, event.nativeEvent.target);
             setFocused(true);
@@ -326,12 +324,12 @@ function ProfileChip({profileId, name, version, onPress, onNode, up, navCount = 
             transform: [{scale: focused ? 1.1 : 1}],
           }}
         >
-          <View {...lx('container', '', 50)} style={{width: sw(20), height: sw(20)}}>
+          <View style={{width: sw(20), height: sw(20)}}>
             {profileId ? <ProfileAvatar profileId={profileId} size={sw(20)} /> : null}
           </View>
           <Text
             numberOfLines={1}
-            {...lf(8.832, 680, 8.832)}
+            {...measured()}
             style={[
               textRun(8.832, 680, {letterSpacing: 0.309, lineHeight: 8.832}),
               {color: ink, marginTop: sw(4.8), maxWidth: sw(58), fontSize: sw(8.832)},
@@ -342,7 +340,7 @@ function ProfileChip({profileId, name, version, onPress, onNode, up, navCount = 
         </Pressable>
       </View>
       <Text
-        {...lf(8, 700)}
+        {...measured()}
         style={[
           textRun(8, 700, {letterSpacing: 0.32, mono: true}),
           {position: 'absolute', left: sw(GROUP_X), width: sw(78), textAlign: 'center', top: sw(1038), color: colour.ink, fontSize: sw(8)},

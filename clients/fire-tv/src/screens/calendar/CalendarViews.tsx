@@ -9,7 +9,7 @@ import type {CalendarEntry} from '@playarr-tv/api-client';
 import {useLanguage} from '../../i18n/LanguageProvider';
 import {type CalendarItem, type Day, type DayGroup, type MonthCell, buildMonthGrid, buildWeekDays, groupSeriesEpisodes, itemAvailability, itemPillTone, parseDay} from '../../lib/calendar';
 import {reportFocus} from '../../debug/parityControl';
-import {lx} from '../../debug/layoutMarks';
+
 import {mix} from '../../theme/color';
 import {useTheme} from '../../theme/ThemeProvider';
 import {EdgeFade} from '../../tv/EdgeFade';
@@ -54,7 +54,7 @@ function DayHeading({day, today, locale, height = HEADING_H, background}: {day: 
   const {colour} = useTheme();
   const {t} = useLanguage();
   return (
-    <View {...lx('heading', '')} style={{flexDirection: 'row', alignItems: 'center', height: u(height), backgroundColor: background ?? colour.bg}}>
+    <View accessibilityRole="header" style={{flexDirection: 'row', alignItems: 'center', height: u(height), backgroundColor: background ?? colour.bg}}>
       <T size={18.4} weight={640} lh={HEADING_H} color={day === today ? colour.accent : colour.ink}>
         {dayHeading(day, locale)}
       </T>
@@ -344,8 +344,7 @@ const Line = React.memo(function Line({day, item, x, y, w, h, today, onSelect}: 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={itemTitle(item)}
-      {...lx('button', `${itemTitle(item)}, ${t(pillKey(itemPillTone(item, today)))}, ${new Intl.DateTimeFormat('en-GB', {weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC'}).format(parseDay(day)).replace(',', '')}`, 4)}
+      accessibilityLabel={`${itemTitle(item)}, ${t(pillKey(itemPillTone(item, today)))}, ${new Intl.DateTimeFormat('en-GB', {weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC'}).format(parseDay(day)).replace(',', '')}`}
       onFocus={() => {
         reportFocus(label);
         setFocused(true);
@@ -354,7 +353,7 @@ const Line = React.memo(function Line({day, item, x, y, w, h, today, onSelect}: 
       onPress={() => onSelect(item)}
       style={{position: 'absolute', left: u(x), top: u(y), width: u(w), height: u(h), borderRadius: u(4), flexDirection: 'row', alignItems: 'center', paddingHorizontal: u(5.6)}}
     >
-      <View {...lx('container', '', 50)} style={{width: u(8.8), height: u(8.8), borderRadius: u(4.4), backgroundColor: dot}} />
+      <View style={{width: u(8.8), height: u(8.8), borderRadius: u(4.4), backgroundColor: dot}} />
       <View style={{marginLeft: u(7.2), flex: 1}}>
         <T size={12.48} weight={item.kind === 'series' ? 700 : 400} lh={18} dy={-1.3} color={colour.ink} lines={1} style={focused ? {textDecorationLine: 'underline'} : undefined}>
           {label}

@@ -4,7 +4,7 @@ import {LayoutChangeEvent, Pressable, View} from 'react-native';
 import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {T, u, uf} from './kit';
-import {lx} from '../debug/layoutMarks';
+
 
 export interface BackButtonProps {
   onPress: () => void;
@@ -22,9 +22,8 @@ export function BackButton({onPress, x = 153.6, y = 56.2, size = 50, accessibili
   const [focused, setFocused] = useState(false);
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      {...lx(webBack.role, webBack.label, 50)}
+      accessibilityRole={webBack.role}
+      accessibilityLabel={webBack.label}
       hasTVPreferredFocus={hasTVPreferredFocus}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}

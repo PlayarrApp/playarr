@@ -40,7 +40,7 @@ import {RailFrost, Stage} from '../tv/Stage';
 import {DetailSheet, FiltersPanel, LinkPanel, PeriodPicker} from './calendar/CalendarPanels';
 import {AgendaView, MonthView, WeekView, type ViewShared} from './calendar/CalendarViews';
 import {reportQuery, takePendingQuery} from '../debug/parityControl';
-import {lx} from '../debug/layoutMarks';
+
 import {appNow, isClockFrozen} from '../shell/clock';
 
 export function CalendarScreen(): React.ReactElement {
@@ -57,7 +57,7 @@ export function CalendarScreen(): React.ReactElement {
     reportQuery('view', view);
   }, [view]);
   const [anchor, setAnchor] = useState<Day>(today);
-  const [panel, setPanelState] = useState<'filters' | 'link' | null>(null);
+  const [panel, setPanelState] = useState<'filters' | 'link' | null>(() => (takePendingQuery('panel') === 'link' ? 'link' : null));
   // The action column stays out of the D-pad's reach once a drawer holds focus.
   const [drawerFocused, setDrawerFocused] = useState(false);
   const setPanel = (next: 'filters' | 'link' | null): void => {
@@ -192,7 +192,6 @@ function RoundNav({x, glyph, label, onPress}: {x: number; glyph: string; label: 
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      {...lx('button', label, 50)}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPress={onPress}
@@ -229,9 +228,6 @@ function TodayPill({label, onPress, settled}: {label: string; onPress: () => voi
   return (
     <Pressable
       ref={ref}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      {...lx('none')}
       hasTVPreferredFocus
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}

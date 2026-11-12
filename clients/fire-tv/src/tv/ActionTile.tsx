@@ -11,7 +11,7 @@ import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {T, u} from './kit';
 import {reportFocus} from '../debug/parityControl';
-import {lx} from '../debug/layoutMarks';
+
 
 export const ACTION_COLUMN_X = 1846;
 export const ACTION_COLUMN_Y = 152;
@@ -28,7 +28,6 @@ export function ActionTile({icon, label, slot = 0, onPress, active, focusable = 
       ref={ref}
       accessibilityRole="button"
       accessibilityLabel={label}
-      {...lx('button', label, 14)}
       focusable={focusable}
       onFocus={() => {
         reportFocus(focusId ?? label);
