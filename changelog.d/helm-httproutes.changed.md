@@ -1,0 +1,1 @@
+- Helm chart playarr-dev: add Envoy Gateway HTTPRoutes next to the six Mappings, attached to the edge Gateway only. No live traffic change.
