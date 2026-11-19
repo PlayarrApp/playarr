@@ -1,0 +1,111 @@
+{{- /* Envoy Gateway routes for the Mappings in mappings.yaml and regional.yaml. The Mappings stay until the VIP cut-over. */}}
+{{- range $name, $workload := .Values.workloads }}
+{{- range $route := $workload.routes }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $route.name }}
+  labels:
+    {{- include "playarr-dev.labels" $ | nindent 4 }}
+  annotations:
+    dynacom.dev/emissary-mapping: {{ printf "%s/%s" $.Release.Namespace $route.name | quote }}
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: edge
+      namespace: envoy-gateway-system
+  hostnames:
+    - {{ $route.host | quote }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      {{- with $route.hostRewrite }}
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            hostname: {{ . | quote }}
+      {{- end }}
+      timeouts:
+        request: 3s
+      backendRefs:
+        - name: {{ $name }}
+          port: 80
+{{- end }}
+{{- end }}
+{{- range $name, $instance := .Values.regionalInstances }}
+{{- $tls := $instance.tls | default dict }}
+{{- $acme := $instance.acme | default dict }}
+{{- $httpsOn := or (not (empty $tls.hostnames)) ($acme.enabled | default false) }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "playarr-dev.regionalLabels" (dict "context" $ "name" $name) | nindent 4 }}
+  annotations:
+    dynacom.dev/emissary-mapping: {{ printf "%s/%s" $.Release.Namespace $name | quote }}
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: edge
+      namespace: envoy-gateway-system
+  hostnames:
+    - {{ $instance.routeHost | quote }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      timeouts:
+        request: 0s
+      backendRefs:
+        {{- if $httpsOn }}
+        - group: gateway.envoyproxy.io
+          kind: Backend
+          name: {{ $name }}
+        {{- else }}
+        - name: {{ $name }}
+          port: 80
+        {{- end }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "playarr-dev.regionalLabels" (dict "context" $ "name" $name) | nindent 4 }}
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ $name }}
+  mergeType: StrategicMerge
+  timeout:
+    http:
+      streamIdleTimeout: 1h
+{{- if $httpsOn }}
+---
+# The pod terminates TLS itself. Like the Mapping, the proxy does not verify the pod certificate.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: Backend
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "playarr-dev.regionalLabels" (dict "context" $ "name" $name) | nindent 4 }}
+spec:
+  endpoints:
+    - fqdn:
+        hostname: {{ printf "%s.%s.svc.cluster.local" $name $.Release.Namespace | quote }}
+        port: 443
+  tls:
+    insecureSkipVerify: true
+    alpnProtocols:
+      - http/1.1
+{{- end }}
+{{- end }}

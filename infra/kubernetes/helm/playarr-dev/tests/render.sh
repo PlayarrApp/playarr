@@ -32,6 +32,10 @@ test "$(grep -c '^              path: /$' "$rendered")" -eq 18
 grep -q 'value: "playarr-marketing.example.com"' "$rendered"
 test "$(grep -c '^kind: Service$' "$rendered")" -eq 8
 test "$(grep -c '^kind: Mapping$' "$rendered")" -eq 7
+test "$(grep -c '^kind: HTTPRoute$' "$rendered")" -eq 7
+# Every Mapping has an HTTPRoute with the same name, attached to the edge Gateway only.
+test "$(grep -c '^    dynacom.dev/emissary-mapping: ' "$rendered")" -eq 7
+test "$(grep -c '^      name: edge$' "$rendered")" -eq 7
 test "$(grep -c '^kind: PersistentVolumeClaim$' "$rendered")" -eq 2
 test "$(grep -c '^kind: ServiceAccount$' "$rendered")" -eq 2
 test "$(grep -c '^kind: Secret$' "$rendered")" -eq 0
